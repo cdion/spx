@@ -9,10 +9,11 @@ public static class AccountEndpointRouteBuilderExtensions
 {
     public static IEndpointRouteBuilder MapAccountEndpoints(this IEndpointRouteBuilder endpoints)
     {
+        endpoints.MapPost("/logout", LogoutAsync).RequireAuthorization();
+
         var group = endpoints.MapGroup("/account");
 
         group.MapPost("/login", LoginAsync);
-        group.MapPost("/logout", LogoutAsync).RequireAuthorization();
         group.MapPost("/register", RegisterAsync);
         group.MapGet("/confirm-email", ConfirmEmailAsync);
         group.MapPost("/forgot-password", ForgotPasswordAsync);
