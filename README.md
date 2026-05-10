@@ -59,6 +59,19 @@ If the port changes on your machine, use the URL printed by the AppHost.
 
 The Aspire dashboard URL is printed by the AppHost on startup.
 
+## Orleans persistence
+
+The AppHost now provisions a dedicated PostgreSQL database named `orleansdb` for Orleans grain storage while keeping Redis as the clustering backend.
+
+On silo startup, `src/Spx.Silo` automatically bootstraps the official Orleans PostgreSQL ADO.NET schema into `orleansdb` if the schema is missing. The checked-in SQL assets live here:
+
+- `src/Spx.Silo/Sql/Orleans.PostgreSQL-Main.sql`
+- `src/Spx.Silo/Sql/Orleans.PostgreSQL-Persistence.sql`
+
+This bootstrap path is intentionally separate from the ASP.NET Core Identity Entity Framework migrations used by the web app.
+
+At this stage, the repo only provisions the Orleans storage provider and its schema. No grain has been converted to use persistent state yet, so the storage provider is registered and ready without changing current grain behavior.
+
 ## Auth local setup
 
 The web app uses ASP.NET Core Identity with PostgreSQL, and the intended local startup path is still the AppHost:
