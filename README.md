@@ -3,6 +3,7 @@
 This workspace contains a minimal Microsoft Orleans starter built with:
 
 - .NET 10 SDK
+- .NET local tool manifest for `dotnet-ef`
 - ASP.NET Core minimal hosting
 - .NET Aspire AppHost orchestration for local development
 - Aspire ServiceDefaults for health checks, telemetry, and service discovery
@@ -29,6 +30,14 @@ This is the idiomatic Aspire layout for this repo shape:
 
 ## Run it
 
+Before working with Entity Framework migrations, restore the repo-local .NET tools:
+
+```bash
+dotnet tool restore
+```
+
+This repo commits `.config/dotnet-tools.json` so everyone gets the same `dotnet-ef` version. The `.tools/` directory is ignored because it contains machine-local install artifacts.
+
 Preferred local dev run path:
 
 ```bash
@@ -49,6 +58,22 @@ Then open the web endpoint shown by Aspire and submit a name from the Blazor pag
 If the port changes on your machine, use the URL printed by the AppHost.
 
 The Aspire dashboard URL is printed by the AppHost on startup.
+
+## Entity Framework tools
+
+Use the local tool manifest instead of installing `dotnet-ef` into the repo manually:
+
+```bash
+dotnet tool restore
+dotnet tool run dotnet-ef -- --help
+```
+
+Typical migration commands from the repo root:
+
+```bash
+dotnet tool run dotnet-ef -- migrations add NameOfMigration --project src/Spx.Web/Spx.Web.csproj --startup-project src/Spx.Web/Spx.Web.csproj
+dotnet tool run dotnet-ef -- database update --project src/Spx.Web/Spx.Web.csproj --startup-project src/Spx.Web/Spx.Web.csproj
+```
 
 ## Tailwind workflow
 
