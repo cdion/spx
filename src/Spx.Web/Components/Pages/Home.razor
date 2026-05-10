@@ -1,5 +1,7 @@
 ﻿@page "/"
+@attribute [Authorize]
 
+@using System.Security.Claims
 @inject IHelloService HelloService
 
 <PageTitle>Home</PageTitle>
@@ -53,6 +55,8 @@
 	private string? greeting;
 	private string? errorMessage;
 	private bool isLoading;
+	[CascadingParameter]
+	private Task<AuthenticationState> AuthenticationStateTask { get; set; } = default!;
 
 	private async Task SendGreetingAsync()
 	{
@@ -61,7 +65,15 @@
 
 		try
 		{
-			greeting = await HelloService.SayHelloAsync(name);
+			var authenticationState = await AuthenticationStateTask;
+			var userId = authenticationState.User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+			if (string.IsNullOrWhiteSpace(userId))
+			{
+				throw new InvalidOperationException("The current user does not have an identity id claim.");
+			}
+
+			greeting = await HelloService.SayHelloAsync(userId, name);
 		}
 		catch (Exception exception)
 		{

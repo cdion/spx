@@ -1,0 +1,66 @@
+@page "/register"
+@attribute [AllowAnonymous]
+
+<PageTitle>Create account</PageTitle>
+
+<section class="mx-auto flex max-w-2xl flex-col gap-8">
+    <header class="space-y-4">
+        <p class="text-xs font-semibold uppercase tracking-[0.3em] text-sky-300">Identity</p>
+        <h1 class="text-4xl font-semibold tracking-tight text-white sm:text-5xl">Create account</h1>
+        <p class="max-w-2xl text-base leading-7 text-slate-300 sm:text-lg">
+            Register with your email address. You will confirm the account before the first sign-in.
+        </p>
+    </header>
+
+    <div class="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-2xl shadow-slate-950/40 backdrop-blur sm:p-8">
+        <div class="space-y-6">
+            @if (!string.IsNullOrWhiteSpace(Error))
+            {
+                <div class="rounded-2xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-100" role="alert">@Error</div>
+            }
+
+            <form method="post" action="/account/register" class="space-y-6">
+                <AntiforgeryToken />
+
+                <div class="space-y-2">
+                    <label class="block text-sm font-medium text-slate-200" for="email">Email</label>
+                    <input id="email" name="email" type="email" value="@Email" autocomplete="email" required
+                           class="w-full rounded-2xl border border-white/10 bg-slate-950/60 px-4 py-3 text-base text-white outline-none transition placeholder:text-slate-500 focus:border-sky-300/60 focus:ring-2 focus:ring-sky-400/30" />
+                </div>
+
+                <div class="space-y-2">
+                    <label class="block text-sm font-medium text-slate-200" for="password">Password</label>
+                    <input id="password" name="password" type="password" autocomplete="new-password" required
+                           class="w-full rounded-2xl border border-white/10 bg-slate-950/60 px-4 py-3 text-base text-white outline-none transition placeholder:text-slate-500 focus:border-sky-300/60 focus:ring-2 focus:ring-sky-400/30" />
+                </div>
+
+                <div class="space-y-2">
+                    <label class="block text-sm font-medium text-slate-200" for="confirmPassword">Confirm password</label>
+                    <input id="confirmPassword" name="confirmPassword" type="password" autocomplete="new-password" required
+                           class="w-full rounded-2xl border border-white/10 bg-slate-950/60 px-4 py-3 text-base text-white outline-none transition placeholder:text-slate-500 focus:border-sky-300/60 focus:ring-2 focus:ring-sky-400/30" />
+                </div>
+
+                <p class="text-sm text-slate-400">
+                    Passwords must be at least 12 characters and include uppercase, lowercase, and a digit.
+                </p>
+
+                <button class="inline-flex items-center justify-center rounded-full bg-sky-400 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-sky-300" type="submit">
+                    Create account
+                </button>
+            </form>
+
+            <p class="text-sm text-slate-300">
+                Already registered?
+                <a class="font-medium text-sky-300 hover:text-sky-200" href="/login">Sign in</a>
+            </p>
+        </div>
+    </div>
+</section>
+
+@code {
+    [SupplyParameterFromQuery(Name = "error")]
+    public string? Error { get; set; }
+
+    [SupplyParameterFromQuery(Name = "email")]
+    public string? Email { get; set; }
+}
