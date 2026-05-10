@@ -26,7 +26,7 @@ builder.Services.AddAuthentication(IdentityConstants.ApplicationScheme)
 builder.Services.ConfigureApplicationCookie(options =>
 {
     options.LoginPath = "/login";
-    options.LogoutPath = "/logout";
+    options.LogoutPath = "/account/logout";
     options.AccessDeniedPath = "/not-authorized";
 });
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
