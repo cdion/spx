@@ -59,6 +59,28 @@ If the port changes on your machine, use the URL printed by the AppHost.
 
 The Aspire dashboard URL is printed by the AppHost on startup.
 
+## Auth local setup
+
+The web app uses ASP.NET Core Identity with PostgreSQL, and the intended local startup path is still the AppHost:
+
+```bash
+dotnet run --project src/Spx.AppHost
+```
+
+Or in VS Code, run the `apphost: run` task or the `dev: apphost + tailwind` task.
+
+For local development, account confirmation and password reset emails are not delivered externally. Instead, the web app logs the full confirmation and reset links.
+
+To test the auth flow locally:
+
+1. Start the AppHost.
+2. Open the Aspire dashboard.
+3. Open the `web` resource logs.
+4. Register a new account or request a password reset.
+5. Copy the logged link from the `web` logs and open it in the browser.
+
+Those links are logged by the `web` resource, not by the AppHost host process itself.
+
 ## Entity Framework tools
 
 Use the local tool manifest instead of installing `dotnet-ef` into the repo manually:
