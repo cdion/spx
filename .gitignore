@@ -1,6 +1,7 @@
 bin/
 obj/
 .tools/
+coverage/
 
 .vs/
 .idea/

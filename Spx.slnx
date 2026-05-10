@@ -7,4 +7,7 @@
     <Project Path="src/Spx.ServiceDefaults/Spx.ServiceDefaults.csproj" />
     <Project Path="src/Spx.Web/Spx.Web.csproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Spx.Grains.Tests/Spx.Grains.Tests.csproj" />
+  </Folder>
 </Solution>

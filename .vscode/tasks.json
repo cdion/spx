@@ -2,6 +2,70 @@
   "version": "2.0.0",
   "tasks": [
     {
+      "label": "tests: restore tools",
+      "type": "shell",
+      "command": "dotnet",
+      "args": [
+        "tool",
+        "restore"
+      ],
+      "problemMatcher": [],
+      "group": "test"
+    },
+    {
+      "label": "tests: run",
+      "type": "shell",
+      "command": "dotnet",
+      "args": [
+        "test",
+        "${workspaceFolder}/tests/Spx.Grains.Tests/Spx.Grains.Tests.csproj"
+      ],
+      "problemMatcher": [],
+      "group": "test"
+    },
+    {
+      "label": "tests: clean coverage",
+      "type": "shell",
+      "command": "rm",
+      "args": [
+        "-rf",
+        "${workspaceFolder}/coverage"
+      ],
+      "problemMatcher": []
+    },
+    {
+      "label": "tests: collect coverage",
+      "type": "shell",
+      "command": "dotnet",
+      "args": [
+        "test",
+        "${workspaceFolder}/tests/Spx.Grains.Tests/Spx.Grains.Tests.csproj",
+        "--collect:XPlat Code Coverage",
+        "--results-directory",
+        "${workspaceFolder}/coverage/testresults"
+      ],
+      "problemMatcher": [],
+      "group": "test"
+    },
+    {
+      "label": "tests: report html",
+      "type": "shell",
+      "command": "dotnet tool run reportgenerator -- '-reports:${workspaceFolder}/coverage/testresults/**/coverage.cobertura.xml' '-targetdir:${workspaceFolder}/coverage/html' '-reporttypes:Html'",
+      "problemMatcher": [],
+      "group": "test"
+    },
+    {
+      "label": "tests: coverage html",
+      "dependsOn": [
+        "tests: restore tools",
+        "tests: clean coverage",
+        "tests: collect coverage",
+        "tests: report html"
+      ],
+      "dependsOrder": "sequence",
+      "group": "test"
+    },
+    {
       "label": "tailwind: build css",
       "type": "shell",
       "command": "${workspaceFolder}/tools/tailwind/bin/tailwindcss-linux-x64",
