@@ -16,9 +16,9 @@ public sealed class ApplicationDbContextFactory : IDesignTimeDbContextFactory<Ap
             .AddEnvironmentVariables()
             .Build();
 
-        var connectionString = configuration.GetConnectionString("identitydb")
-            ?? configuration["IDENTITYDB_URI"]
-            ?? "Host=localhost;Database=identitydb;Username=postgres;Password=postgres";
+        var connectionString = configuration.GetConnectionString("appdb")
+            ?? configuration["APPDB_URI"]
+            ?? "Host=localhost;Database=appdb;Username=postgres;Password=postgres";
 
         var optionsBuilder = new DbContextOptionsBuilder<ApplicationDbContext>();
         optionsBuilder.UseNpgsql(connectionString);

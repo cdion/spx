@@ -1,88 +1,54 @@
 ﻿@page "/"
 @attribute [Authorize]
 
-@using System.Security.Claims
-@inject IHelloService HelloService
+<PageTitle>Game Lobby</PageTitle>
 
-<PageTitle>Home</PageTitle>
 
-<section class="mx-auto flex max-w-3xl flex-col gap-8">
+<section class="mx-auto flex max-w-5xl flex-col gap-8">
 	<header class="space-y-4">
-		<p class="text-xs font-semibold uppercase tracking-[0.3em] text-sky-300">Orleans + Tailwind</p>
-		<h1 class="text-4xl font-semibold tracking-tight text-white sm:text-5xl">Hello grain demo</h1>
+		<p class="text-xs font-semibold uppercase tracking-[0.3em] text-sky-300">Lobby</p>
+		<h1 class="text-4xl font-semibold tracking-tight text-white sm:text-5xl">Game lobby</h1>
 		<p class="max-w-2xl text-base leading-7 text-slate-300 sm:text-lg">
-			Invoke the existing hello grain directly from the Blazor server app through an Orleans client.
+			Create a game, join with an invite code, and reopen any active seats from one place.
 		</p>
 	</header>
 
-	<div class="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-2xl shadow-slate-950/40 backdrop-blur sm:p-8">
-		<div class="space-y-6">
-			<div class="space-y-2">
-				<label class="block text-sm font-medium text-slate-200" for="name">Name</label>
-				<input id="name"
-					   class="w-full rounded-2xl border border-white/10 bg-slate-950/60 px-4 py-3 text-base text-white outline-none transition placeholder:text-slate-500 focus:border-sky-300/60 focus:ring-2 focus:ring-sky-400/30"
-					   placeholder="orleans"
-					   @bind="name" />
-			</div>
-
-			<div class="flex flex-wrap items-center gap-3">
-				<button class="inline-flex items-center justify-center rounded-full bg-sky-400 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-sky-300 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400"
-						@onclick="SendGreetingAsync"
-						disabled="@isLoading">
-					@(isLoading ? "Calling grain..." : "Say hello")
-				</button>
-				<p class="text-sm text-slate-400">Grain key is normalized from the entered name.</p>
-			</div>
-
-			@if (!string.IsNullOrWhiteSpace(errorMessage))
-			{
-				<div class="rounded-2xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-100" role="alert">@errorMessage</div>
-			}
-
-			@if (!string.IsNullOrWhiteSpace(greeting))
-			{
-				<div class="rounded-2xl border border-emerald-400/30 bg-emerald-500/10 px-4 py-4 text-sm text-emerald-100" role="status">
-					<p class="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-300">Response</p>
-					<p class="mt-2 text-base text-emerald-50">@greeting</p>
+	<div class="grid gap-6 lg:grid-cols-[1.3fr_0.9fr]">
+		<section class="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-2xl shadow-slate-950/40 backdrop-blur sm:p-8">
+			<div class="space-y-6">
+				<div class="space-y-3">
+					<p class="text-xs font-semibold uppercase tracking-[0.25em] text-emerald-300">Quick Start</p>
+					<h2 class="text-2xl font-semibold tracking-tight text-white">Choose your next move</h2>
+					<p class="max-w-xl text-sm leading-6 text-slate-300">
+						Start a fresh lobby for a new match, or jump straight into an existing game with an invite code.
+					</p>
 				</div>
-			}
-		</div>
+
+				<div class="flex flex-wrap gap-3">
+					<a class="inline-flex items-center justify-center rounded-full bg-sky-400 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-sky-300" href="/games/create">
+						Create game
+					</a>
+					<a class="inline-flex items-center justify-center rounded-full border border-white/10 px-5 py-3 text-sm font-semibold text-slate-200 transition hover:border-sky-300/60 hover:text-white" href="/games/join">
+						Join with code
+					</a>
+					<a class="inline-flex items-center justify-center rounded-full border border-white/10 px-5 py-3 text-sm font-semibold text-slate-200 transition hover:border-sky-300/60 hover:text-white" href="/games">
+						View my games
+					</a>
+				</div>
+			</div>
+		</section>
+
+		<aside class="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-2xl shadow-slate-950/40 backdrop-blur sm:p-8">
+			<div class="space-y-3">
+				<p class="text-xs font-semibold uppercase tracking-[0.25em] text-sky-300">What Changed</p>
+				<h2 class="text-2xl font-semibold tracking-tight text-white">Lobby-first flow</h2>
+			</div>
+
+			<ul class="mt-6 space-y-3 text-sm leading-6 text-slate-300">
+				<li>The game lobby is now the default authenticated landing page.</li>
+				<li>Invite codes get players into the right game without a separate demo path.</li>
+				<li>Active and ended games stay grouped under your account.</li>
+			</ul>
+		</aside>
 	</div>
 </section>
-
-@code {
-	private string name = "orleans";
-	private string? greeting;
-	private string? errorMessage;
-	private bool isLoading;
-	[CascadingParameter]
-	private Task<AuthenticationState> AuthenticationStateTask { get; set; } = default!;
-
-	private async Task SendGreetingAsync()
-	{
-		isLoading = true;
-		errorMessage = null;
-
-		try
-		{
-			var authenticationState = await AuthenticationStateTask;
-			var userId = authenticationState.User.FindFirstValue(ClaimTypes.NameIdentifier);
-
-			if (string.IsNullOrWhiteSpace(userId))
-			{
-				throw new InvalidOperationException("The current user does not have an identity id claim.");
-			}
-
-			greeting = await HelloService.SayHelloAsync(userId, name);
-		}
-		catch (Exception exception)
-		{
-			greeting = null;
-			errorMessage = exception.Message;
-		}
-		finally
-		{
-			isLoading = false;
-		}
-	}
-}

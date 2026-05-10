@@ -4,9 +4,9 @@ CREATE TABLE OrleansStorage
     grainidn0 bigint NOT NULL,
     grainidn1 bigint NOT NULL,
     graintypehash integer NOT NULL,
-    graintypestring character varying(512)  NOT NULL,
-    grainidextensionstring character varying(512) ,
-    serviceid character varying(150)  NOT NULL,
+    graintypestring character varying(512) NOT NULL,
+    grainidextensionstring character varying(512),
+    serviceid character varying(150) NOT NULL,
     payloadbinary bytea,
     modifiedon timestamp without time zone NOT NULL,
     version integer
@@ -34,25 +34,6 @@ AS $function$
      RowCountVar integer := 0;
 
     BEGIN
-
-    -- Grain state is not null, so the state must have been read from the storage before.
-    -- Let's try to update it.
-    --
-    -- When Orleans is running in normal, non-split state, there will
-    -- be only one grain with the given ID and type combination only. This
-    -- grain saves states mostly serially if Orleans guarantees are upheld. Even
-    -- if not, the updates should work correctly due to version number.
-    --
-    -- In split brain situations there can be a situation where there are two or more
-    -- grains with the given ID and type combination. When they try to INSERT
-    -- concurrently, the table needs to be locked pessimistically before one of
-    -- the grains gets @GrainStateVersion = 1 in return and the other grains will fail
-    -- to update storage. The following arrangement is made to reduce locking in normal operation.
-    --
-    -- If the version number explicitly returned is still the same, Orleans interprets it so the update did not succeed
-    -- and throws an InconsistentStateException.
-    --
-    -- See further information at https://learn.microsoft.com/dotnet/orleans/grains/grain-persistence.
     IF _GrainStateVersion IS NOT NULL
     THEN
         UPDATE OrleansStorage
@@ -78,8 +59,6 @@ AS $function$
         END IF;
     END IF;
 
-    -- The grain state has not been read. The following locks rather pessimistically
-    -- to ensure only one INSERT succeeds.
     IF _GrainStateVersion IS NULL
     THEN
         INSERT INTO OrleansStorage
@@ -108,7 +87,6 @@ AS $function$
             1
         WHERE NOT EXISTS
          (
-            -- There should not be any version of this grain state.
             SELECT 1
             FROM OrleansStorage
             WHERE

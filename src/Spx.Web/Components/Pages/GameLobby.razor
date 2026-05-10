@@ -1,0 +1,240 @@
+@page "/games/{GameId:guid}"
+@attribute [Authorize]
+@implements IAsyncDisposable
+@using System.Security.Claims
+@inject IGameService GameService
+@inject IGameLobbyNotifier GameLobbyNotifier
+@inject NavigationManager Navigation
+
+<PageTitle>Game Lobby</PageTitle>
+
+@if (isLoading)
+{
+    <section class="mx-auto max-w-4xl rounded-3xl border border-white/10 bg-white/5 p-8 text-slate-300 shadow-2xl shadow-slate-950/40 backdrop-blur">
+        Loading lobby...
+    </section>
+}
+else if (lobby is null)
+{
+    <section class="mx-auto flex max-w-3xl flex-col gap-6 rounded-3xl border border-white/10 bg-white/5 p-8 shadow-2xl shadow-slate-950/40 backdrop-blur">
+        <div class="space-y-3">
+            <p class="text-xs font-semibold uppercase tracking-[0.3em] text-sky-300">Lobby</p>
+            <h1 class="text-3xl font-semibold tracking-tight text-white">Game unavailable</h1>
+            <p class="text-base leading-7 text-slate-300">
+                You can only open lobby pages for games where you are currently an active player.
+            </p>
+        </div>
+        <div class="flex flex-wrap gap-3">
+            <a class="inline-flex items-center justify-center rounded-full bg-sky-400 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-sky-300" href="/games">
+                Back to my games
+            </a>
+            <a class="inline-flex items-center justify-center rounded-full border border-white/10 px-5 py-3 text-sm font-semibold text-slate-200 transition hover:border-sky-300/60 hover:text-white" href="/games/join">
+                Join another game
+            </a>
+        </div>
+    </section>
+}
+else
+{
+    <section class="mx-auto flex max-w-5xl flex-col gap-8">
+        <header class="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-2xl shadow-slate-950/40 backdrop-blur sm:p-8">
+            <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+                <div class="space-y-3">
+                    <p class="text-xs font-semibold uppercase tracking-[0.3em] text-sky-300">Lobby</p>
+                    <h1 class="text-4xl font-semibold tracking-tight text-white sm:text-5xl">@lobby.Name</h1>
+                    <p class="text-base leading-7 text-slate-300 sm:text-lg">
+                        Invite code <span class="font-semibold tracking-[0.25em] text-sky-300">@lobby.InviteCode</span>
+                    </p>
+                </div>
+
+                <div class="flex flex-wrap items-center gap-3">
+                    <span class="rounded-full border border-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">
+                        @lobby.Status
+                    </span>
+                    <span class="rounded-full border border-emerald-400/30 bg-emerald-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-emerald-200">
+                        @lobby.Players.Count / @lobby.MaxPlayers players
+                    </span>
+                </div>
+            </div>
+        </header>
+
+        @if (!string.IsNullOrWhiteSpace(errorMessage))
+        {
+            <div class="rounded-2xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-100" role="alert">@errorMessage</div>
+        }
+
+        <div class="grid gap-6 xl:grid-cols-[1.4fr_1fr]">
+            <section class="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-2xl shadow-slate-950/40 backdrop-blur sm:p-8">
+                <div class="space-y-2">
+                    <p class="text-xs font-semibold uppercase tracking-[0.25em] text-sky-300">Roster</p>
+                    <h2 class="text-2xl font-semibold tracking-tight text-white">Active players</h2>
+                </div>
+
+                <div class="mt-6 space-y-4">
+                    @foreach (var player in lobby.Players)
+                    {
+                        <article class="flex items-center justify-between rounded-2xl border border-white/10 bg-slate-950/40 px-4 py-4">
+                            <div>
+                                <p class="text-base font-semibold text-white">@player.Name</p>
+                                <p class="text-sm text-slate-400">Joined @FormatDateTime(player.JoinedAtUtc)</p>
+                            </div>
+
+                            @if (player.IsCurrentUser)
+                            {
+                                <span class="rounded-full border border-sky-400/30 bg-sky-400/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-sky-200">
+                                    You
+                                </span>
+                            }
+                        </article>
+                    }
+
+                    @if (lobby.Players.Count < lobby.MaxPlayers)
+                    {
+                        <article class="rounded-2xl border border-dashed border-white/10 bg-slate-950/30 px-4 py-5 text-sm text-slate-400">
+                            Waiting for another player to join with the invite code.
+                        </article>
+                    }
+                </div>
+            </section>
+
+            <aside class="space-y-6 rounded-3xl border border-white/10 bg-white/5 p-6 shadow-2xl shadow-slate-950/40 backdrop-blur sm:p-8">
+                <div class="space-y-3">
+                    <p class="text-xs font-semibold uppercase tracking-[0.25em] text-sky-300">You</p>
+                    <h2 class="text-2xl font-semibold tracking-tight text-white">@lobby.CurrentPlayerName</h2>
+                    <p class="text-sm leading-6 text-slate-300">Leaving removes your active seat. If you are the last active player, the game ends.</p>
+                </div>
+
+                <div class="space-y-3 text-sm leading-6 text-slate-300">
+                    <p>Created @FormatDateTime(lobby.CreatedAtUtc)</p>
+                    @if (lobby.EndedAtUtc is not null)
+                    {
+                        <p>Ended @FormatDateTime(lobby.EndedAtUtc.Value)</p>
+                    }
+                </div>
+
+                <div class="flex flex-wrap gap-3">
+                    <button class="inline-flex items-center justify-center rounded-full border border-rose-400/40 px-5 py-3 text-sm font-semibold text-rose-100 transition hover:border-rose-300 hover:text-white disabled:cursor-not-allowed disabled:border-white/10 disabled:text-slate-500"
+                            @onclick="LeaveGameAsync"
+                            disabled="@isLeaving">
+                        @(isLeaving ? "Leaving..." : "Leave game")
+                    </button>
+                    <a class="inline-flex items-center justify-center rounded-full border border-white/10 px-5 py-3 text-sm font-semibold text-slate-200 transition hover:border-sky-300/60 hover:text-white" href="/games">
+                        Back to my games
+                    </a>
+                </div>
+            </aside>
+        </div>
+    </section>
+}
+
+@code {
+    [Parameter]
+    public Guid GameId { get; set; }
+
+    [CascadingParameter]
+    private Task<AuthenticationState> AuthenticationStateTask { get; set; } = default!;
+
+    private GameLobbyView? lobby;
+    private string? errorMessage;
+    private bool isLoading = true;
+    private bool isLeaving;
+    private Guid? subscribedGameId;
+    private IAsyncDisposable? lobbySubscription;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadLobbyAsync();
+
+        if (lobby is null || subscribedGameId == lobby.GameId)
+        {
+            return;
+        }
+
+        if (lobbySubscription is not null)
+        {
+            await lobbySubscription.DisposeAsync();
+        }
+
+        lobbySubscription = await GameLobbyNotifier.SubscribeAsync(lobby.GameId, HandleLobbyChangedAsync);
+        subscribedGameId = lobby.GameId;
+    }
+
+    private async Task LoadLobbyAsync()
+    {
+        isLoading = true;
+        errorMessage = null;
+
+        try
+        {
+            var userId = await GetUserIdAsync();
+            lobby = await GameService.GetLobbyAsync(GameId, userId);
+        }
+        catch (Exception exception)
+        {
+            lobby = null;
+            errorMessage = exception.Message;
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private Task HandleLobbyChangedAsync()
+        => InvokeAsync(async () =>
+        {
+            await LoadLobbyAsync();
+            StateHasChanged();
+        });
+
+    private async Task LeaveGameAsync()
+    {
+        if (isLeaving)
+        {
+            return;
+        }
+
+        isLeaving = true;
+        errorMessage = null;
+
+        try
+        {
+            var userId = await GetUserIdAsync();
+            var result = await GameService.LeaveGameAsync(GameId, userId);
+
+            if (!result.Succeeded)
+            {
+                errorMessage = result.ErrorMessage ?? "The game could not be left.";
+                return;
+            }
+
+            Navigation.NavigateTo("/games");
+        }
+        catch (Exception exception)
+        {
+            errorMessage = exception.Message;
+        }
+        finally
+        {
+            isLeaving = false;
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (lobbySubscription is not null)
+        {
+            await lobbySubscription.DisposeAsync();
+        }
+    }
+
+    private async Task<string> GetUserIdAsync()
+    {
+        var authenticationState = await AuthenticationStateTask;
+        return authenticationState.User.FindFirstValue(ClaimTypes.NameIdentifier)
+            ?? throw new InvalidOperationException("The current user does not have an identity id claim.");
+    }
+
+    private static string FormatDateTime(DateTime value)
+        => value.ToLocalTime().ToString("g");
+}

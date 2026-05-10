@@ -13,7 +13,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.AddServiceDefaults();
 builder.AddKeyedRedisClient("orleans-redis");
-builder.AddNpgsqlDbContext<ApplicationDbContext>("identitydb");
+builder.AddNpgsqlDbContext<ApplicationDbContext>("appdb");
 builder.UseOrleansClient();
 builder.Services.Configure<ResendOptions>(builder.Configuration.GetSection(ResendOptions.SectionName));
 
@@ -72,7 +72,8 @@ else
         serviceProvider.GetRequiredService<ResendAccountEmailSender>());
 }
 
-builder.Services.AddScoped<IHelloService, HelloService>();
+builder.Services.AddScoped<IGameService, GameService>();
+builder.Services.AddSingleton<IGameLobbyNotifier, OrleansGameLobbyNotifier>();
 
 var app = builder.Build();
 

@@ -1,0 +1,186 @@
+@page "/games"
+@attribute [Authorize]
+@using System.Security.Claims
+@inject IGameService GameService
+
+<PageTitle>My Games</PageTitle>
+
+@if (isLoading)
+{
+    <section class="mx-auto max-w-5xl rounded-3xl border border-white/10 bg-white/5 p-8 text-slate-300 shadow-2xl shadow-slate-950/40 backdrop-blur">
+        Loading your games...
+    </section>
+}
+else if (!string.IsNullOrWhiteSpace(loadError))
+{
+    <section class="mx-auto max-w-5xl rounded-3xl border border-red-400/30 bg-red-500/10 p-8 text-red-100 shadow-2xl shadow-slate-950/40 backdrop-blur">
+        @loadError
+    </section>
+}
+else if (games is not null)
+{
+    <section class="mx-auto flex max-w-6xl flex-col gap-8">
+        <header class="flex flex-col gap-4 rounded-3xl border border-white/10 bg-white/5 p-6 shadow-2xl shadow-slate-950/40 backdrop-blur sm:flex-row sm:items-end sm:justify-between sm:p-8">
+            <div class="space-y-3">
+                <p class="text-xs font-semibold uppercase tracking-[0.3em] text-sky-300">Lobby</p>
+                <h1 class="text-4xl font-semibold tracking-tight text-white sm:text-5xl">My games</h1>
+                <p class="max-w-2xl text-base leading-7 text-slate-300 sm:text-lg">
+                    Open games stay actionable, while ended games remain available as lightweight history.
+                </p>
+            </div>
+
+            <div class="flex flex-wrap gap-3">
+                <a class="inline-flex items-center justify-center rounded-full bg-sky-400 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-sky-300" href="/games/create">
+                    Create game
+                </a>
+                <a class="inline-flex items-center justify-center rounded-full border border-white/10 px-5 py-3 text-sm font-semibold text-slate-200 transition hover:border-sky-300/60 hover:text-white" href="/games/join">
+                    Join with code
+                </a>
+            </div>
+        </header>
+
+        <div class="grid gap-6 xl:grid-cols-[1.4fr_1fr]">
+            <div class="space-y-6">
+                <section class="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-2xl shadow-slate-950/40 backdrop-blur sm:p-8">
+                    <div class="flex items-start justify-between gap-4">
+                        <div class="space-y-2">
+                            <p class="text-xs font-semibold uppercase tracking-[0.25em] text-emerald-300">Open</p>
+                            <h2 class="text-2xl font-semibold tracking-tight text-white">Active seats</h2>
+                        </div>
+                        <span class="rounded-full border border-emerald-400/30 bg-emerald-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-emerald-200">
+                            @games.OpenGames.Count game(s)
+                        </span>
+                    </div>
+
+                    @if (games.OpenGames.Count == 0)
+                    {
+                        <p class="mt-6 text-sm leading-6 text-slate-300">You are not currently seated in any open games.</p>
+                    }
+                    else
+                    {
+                        <div class="mt-6 space-y-4">
+                            @foreach (var game in games.OpenGames)
+                            {
+                                <article class="rounded-2xl border border-white/10 bg-slate-950/40 p-5">
+                                    <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                                        <div class="space-y-2">
+                                            <h3 class="text-xl font-semibold text-white">@game.Name</h3>
+                                            <p class="text-sm text-slate-300">Invite code: <span class="font-semibold tracking-[0.2em] text-sky-300">@game.InviteCode</span></p>
+                                            <p class="text-sm text-slate-400">You are playing as @game.CurrentPlayerName.</p>
+                                        </div>
+
+                                        <div class="flex flex-wrap gap-3">
+                                            <span class="rounded-full border border-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">
+                                                @game.ActivePlayerCount / @game.MaxPlayers players
+                                            </span>
+                                            <a class="inline-flex items-center justify-center rounded-full bg-sky-400 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-sky-300" href="/games/@game.GameId">
+                                                Open lobby
+                                            </a>
+                                        </div>
+                                    </div>
+                                </article>
+                            }
+                        </div>
+                    }
+                </section>
+
+                <section class="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-2xl shadow-slate-950/40 backdrop-blur sm:p-8">
+                    <div class="flex items-start justify-between gap-4">
+                        <div class="space-y-2">
+                            <p class="text-xs font-semibold uppercase tracking-[0.25em] text-slate-400">Ended</p>
+                            <h2 class="text-2xl font-semibold tracking-tight text-white">History</h2>
+                        </div>
+                        <span class="rounded-full border border-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">
+                            @games.EndedGames.Count game(s)
+                        </span>
+                    </div>
+
+                    @if (games.EndedGames.Count == 0)
+                    {
+                        <p class="mt-6 text-sm leading-6 text-slate-300">Ended games will appear here after their final player leaves.</p>
+                    }
+                    else
+                    {
+                        <div class="mt-6 space-y-4">
+                            @foreach (var game in games.EndedGames)
+                            {
+                                <article class="rounded-2xl border border-white/10 bg-slate-950/40 p-5">
+                                    <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                                        <div class="space-y-2">
+                                            <h3 class="text-xl font-semibold text-white">@game.Name</h3>
+                                            <p class="text-sm text-slate-300">Invite code: <span class="font-semibold tracking-[0.2em] text-slate-100">@game.InviteCode</span></p>
+                                            <p class="text-sm text-slate-400">Your last player name was @game.CurrentPlayerName.</p>
+                                        </div>
+
+                                        <div class="space-y-2 text-sm text-slate-400 sm:text-right">
+                                            <p>Ended @FormatDateTime(game.EndedAtUtc ?? game.CreatedAtUtc)</p>
+                                            <p>Created @FormatDateTime(game.CreatedAtUtc)</p>
+                                        </div>
+                                    </div>
+                                </article>
+                            }
+                        </div>
+                    }
+                </section>
+            </div>
+
+            <aside class="space-y-6 rounded-3xl border border-white/10 bg-white/5 p-6 shadow-2xl shadow-slate-950/40 backdrop-blur sm:p-8">
+                <div class="space-y-3">
+                    <p class="text-xs font-semibold uppercase tracking-[0.25em] text-sky-300">Notes</p>
+                    <h2 class="text-2xl font-semibold tracking-tight text-white">Current rules</h2>
+                </div>
+
+                <ul class="space-y-3 text-sm leading-6 text-slate-300">
+                    <li>Every game supports exactly two active player seats in this first slice.</li>
+                    <li>Player names must be unique within a game and can be updated when you reattach.</li>
+                    <li>Only active players can open a lobby page for a game.</li>
+                    <li>Ended games stay visible here as history after the last player leaves.</li>
+                </ul>
+            </aside>
+        </div>
+    </section>
+}
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState> AuthenticationStateTask { get; set; } = default!;
+
+    private UserGamesView? games;
+    private string? loadError;
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        isLoading = true;
+        loadError = null;
+
+        try
+        {
+            var userId = await GetUserIdAsync();
+            games = await GameService.GetUserGamesAsync(userId);
+        }
+        catch (Exception exception)
+        {
+            loadError = exception.Message;
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task<string> GetUserIdAsync()
+    {
+        var authenticationState = await AuthenticationStateTask;
+        return authenticationState.User.FindFirstValue(ClaimTypes.NameIdentifier)
+            ?? throw new InvalidOperationException("The current user does not have an identity id claim.");
+    }
+
+    private static string FormatDateTime(DateTime value)
+        => value.ToLocalTime().ToString("g");
+}

@@ -1,0 +1,105 @@
+@page "/games/create"
+@attribute [Authorize]
+@using System.Security.Claims
+@inject IGameService GameService
+@inject NavigationManager Navigation
+
+<PageTitle>Create Game</PageTitle>
+
+<section class="mx-auto flex max-w-2xl flex-col gap-8">
+    <header class="space-y-4">
+        <p class="text-xs font-semibold uppercase tracking-[0.3em] text-sky-300">Lobby</p>
+        <h1 class="text-4xl font-semibold tracking-tight text-white sm:text-5xl">Create a game</h1>
+        <p class="max-w-2xl text-base leading-7 text-slate-300 sm:text-lg">
+            Creating a game reserves the invite code and seats you immediately as player one.
+        </p>
+    </header>
+
+    <div class="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-2xl shadow-slate-950/40 backdrop-blur sm:p-8">
+        <div class="space-y-6">
+            @if (!string.IsNullOrWhiteSpace(errorMessage))
+            {
+                <div class="rounded-2xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-100" role="alert">@errorMessage</div>
+            }
+
+            <div class="space-y-2">
+                <label class="block text-sm font-medium text-slate-200" for="game-name">Game name</label>
+                <input id="game-name"
+                       class="w-full rounded-2xl border border-white/10 bg-slate-950/60 px-4 py-3 text-base text-white outline-none transition placeholder:text-slate-500 focus:border-sky-300/60 focus:ring-2 focus:ring-sky-400/30"
+                       maxlength="100"
+                       placeholder="Weekend match"
+                       @bind="gameName" />
+            </div>
+
+            <div class="space-y-2">
+                <label class="block text-sm font-medium text-slate-200" for="player-name">Player name</label>
+                <input id="player-name"
+                       class="w-full rounded-2xl border border-white/10 bg-slate-950/60 px-4 py-3 text-base text-white outline-none transition placeholder:text-slate-500 focus:border-sky-300/60 focus:ring-2 focus:ring-sky-400/30"
+                       maxlength="40"
+                       placeholder="Captain Red"
+                       @bind="playerName" />
+            </div>
+
+            <div class="flex flex-wrap gap-3">
+                <button class="inline-flex items-center justify-center rounded-full bg-sky-400 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-sky-300 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400"
+                        @onclick="CreateGameAsync"
+                        disabled="@isSubmitting">
+                    @(isSubmitting ? "Creating game..." : "Create and join")
+                </button>
+                <a class="inline-flex items-center justify-center rounded-full border border-white/10 px-5 py-3 text-sm font-semibold text-slate-200 transition hover:border-sky-300/60 hover:text-white" href="/games">
+                    Cancel
+                </a>
+            </div>
+        </div>
+    </div>
+</section>
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState> AuthenticationStateTask { get; set; } = default!;
+
+    private string gameName = string.Empty;
+    private string playerName = string.Empty;
+    private string? errorMessage;
+    private bool isSubmitting;
+
+    private async Task CreateGameAsync()
+    {
+        if (isSubmitting)
+        {
+            return;
+        }
+
+        isSubmitting = true;
+        errorMessage = null;
+
+        try
+        {
+            var userId = await GetUserIdAsync();
+            var result = await GameService.CreateGameAsync(userId, new CreateGameRequest(gameName, playerName));
+
+            if (!result.Succeeded || result.GameId is null)
+            {
+                errorMessage = result.ErrorMessage ?? "The game could not be created.";
+                return;
+            }
+
+            Navigation.NavigateTo($"/games/{result.GameId.Value}");
+        }
+        catch (Exception exception)
+        {
+            errorMessage = exception.Message;
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+
+    private async Task<string> GetUserIdAsync()
+    {
+        var authenticationState = await AuthenticationStateTask;
+        return authenticationState.User.FindFirstValue(ClaimTypes.NameIdentifier)
+            ?? throw new InvalidOperationException("The current user does not have an identity id claim.");
+    }
+}

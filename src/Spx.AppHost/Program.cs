@@ -1,16 +1,17 @@
 var builder = DistributedApplication.CreateBuilder(args);
 
 var redis = builder.AddRedis("orleans-redis");
-var postgres = builder.AddPostgres("postgres");
-var identityDb = postgres.AddDatabase("identitydb");
+var postgres = builder.AddPostgres("postgres")
+    .WithDataVolume("spx-postgres-data");
+var appDb = postgres.AddDatabase("appdb");
 var orleansDb = postgres.AddDatabase("orleansdb");
 
 var orleans = builder.AddOrleans("cluster")
-    .WithClustering(redis)
-    .WithGrainStorage("Default", orleansDb);
+    .WithClustering(redis);
 
 var silo = builder.AddProject<Projects.Spx_Silo>("silo")
     .WithReference(orleans)
+    .WithReference(orleansDb)
     .WaitFor(redis)
     .WaitFor(orleansDb)
     .WithHttpHealthCheck("/health")
@@ -18,10 +19,10 @@ var silo = builder.AddProject<Projects.Spx_Silo>("silo")
 
 builder.AddProject<Projects.Spx_Web>("web")
     .WithReference(orleans.AsClient())
-    .WithReference(identityDb)
+    .WithReference(appDb)
     .WithHttpHealthCheck("/health")
     .WithExternalHttpEndpoints()
-    .WaitFor(identityDb)
+    .WaitFor(appDb)
     .WaitFor(silo);
 
 builder.Build().Run();

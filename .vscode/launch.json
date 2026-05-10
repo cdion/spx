@@ -1,0 +1,39 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": ".NET Launch AppHost (Recommended)",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build: apphost",
+      "program": "${workspaceFolder}/src/Spx.AppHost/bin/Debug/net10.0/Spx.AppHost.dll",
+      "cwd": "${workspaceFolder}/src/Spx.AppHost",
+      "env": {
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "DOTNET_ENVIRONMENT": "Development",
+        "ASPIRE_ALLOW_UNSECURED_TRANSPORT": "true",
+        "PATH": "/var/home/chris/distrobox/spx/.local/bin:${env:PATH}"
+      },
+      "stopAtEntry": false,
+      "console": "internalConsole",
+      "serverReadyAction": {
+        "action": "openExternally",
+        "pattern": "Login to the dashboard at (https?://\\S+)"
+      }
+    },
+    {
+      "name": ".NET Attach to Process",
+      "type": "coreclr",
+      "request": "attach",
+      "processId": "${command:pickProcess}"
+    }
+  ],
+  "compounds": [
+    {
+      "name": ".NET Launch AppHost",
+      "configurations": [
+        ".NET Launch AppHost (Recommended)"
+      ]
+    }
+  ]
+}
