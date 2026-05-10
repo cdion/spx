@@ -1,0 +1,25 @@
+﻿@inherits LayoutComponentBase
+
+<div class="min-h-screen bg-[radial-gradient(circle_at_top,#0f172a_0%,#020617_60%)] text-slate-100">
+    <div class="mx-auto flex min-h-screen w-full max-w-7xl flex-col lg:flex-row">
+        <aside class="border-b border-white/10 bg-slate-900/70 px-5 py-4 backdrop-blur lg:sticky lg:top-0 lg:min-h-screen lg:w-72 lg:border-b-0 lg:border-r lg:px-6 lg:py-8">
+            <NavMenu />
+        </aside>
+
+        <main class="flex-1">
+            <div class="flex items-center justify-end border-b border-white/10 px-6 py-4 text-sm text-slate-400 lg:px-10">
+                <a class="font-medium text-slate-300" href="https://learn.microsoft.com/aspnet/core/" target="_blank" rel="noreferrer">ASP.NET Core</a>
+            </div>
+
+            <article class="px-6 py-8 lg:px-10 lg:py-10">
+            @Body
+            </article>
+        </main>
+    </div>
+</div>
+
+<div id="blazor-error-ui" data-nosnippet>
+    An unhandled error has occurred.
+    <a href="." class="reload">Reload</a>
+    <span class="dismiss">🗙</span>
+</div>

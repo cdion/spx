@@ -1,0 +1,81 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "tailwind: build css",
+      "type": "shell",
+      "command": "${workspaceFolder}/tools/tailwind/bin/tailwindcss-linux-x64",
+      "args": [
+        "-i",
+        "${workspaceFolder}/src/Spx.Web/Styles/app.css",
+        "-o",
+        "${workspaceFolder}/src/Spx.Web/wwwroot/app.css",
+        "--minify"
+      ],
+      "problemMatcher": [],
+      "group": "build"
+    },
+    {
+      "label": "tailwind: watch css",
+      "type": "shell",
+      "command": "${workspaceFolder}/tools/tailwind/bin/tailwindcss-linux-x64",
+      "args": [
+        "-i",
+        "${workspaceFolder}/src/Spx.Web/Styles/app.css",
+        "-o",
+        "${workspaceFolder}/src/Spx.Web/wwwroot/app.css",
+        "--watch"
+      ],
+      "isBackground": true,
+      "problemMatcher": {
+        "owner": "tailwind",
+        "pattern": {
+          "regexp": ".+"
+        },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": ".*tailwindcss.*",
+          "endsPattern": ".*Done in .*"
+        }
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "apphost: run",
+      "type": "shell",
+      "command": "dotnet",
+      "args": [
+        "run",
+        "--project",
+        "${workspaceFolder}/src/Spx.AppHost/Spx.AppHost.csproj"
+      ],
+      "isBackground": true,
+      "problemMatcher": {
+        "owner": "apphost",
+        "pattern": {
+          "regexp": ".+"
+        },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": ".*Distributed application starting\\..*",
+          "endsPattern": ".*Distributed application started\\. Press Ctrl\\+C to shut down\\..*"
+        }
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "dev: apphost + tailwind",
+      "dependsOn": [
+        "tailwind: watch css",
+        "apphost: run"
+      ],
+      "dependsOrder": "parallel"
+    }
+  ]
+}

@@ -1,0 +1,76 @@
+﻿@page "/"
+
+@inject IHelloService HelloService
+
+<PageTitle>Home</PageTitle>
+
+<section class="mx-auto flex max-w-3xl flex-col gap-8">
+	<header class="space-y-4">
+		<p class="text-xs font-semibold uppercase tracking-[0.3em] text-sky-300">Orleans + Tailwind</p>
+		<h1 class="text-4xl font-semibold tracking-tight text-white sm:text-5xl">Hello grain demo</h1>
+		<p class="max-w-2xl text-base leading-7 text-slate-300 sm:text-lg">
+			Invoke the existing hello grain directly from the Blazor server app through an Orleans client.
+		</p>
+	</header>
+
+	<div class="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-2xl shadow-slate-950/40 backdrop-blur sm:p-8">
+		<div class="space-y-6">
+			<div class="space-y-2">
+				<label class="block text-sm font-medium text-slate-200" for="name">Name</label>
+				<input id="name"
+					   class="w-full rounded-2xl border border-white/10 bg-slate-950/60 px-4 py-3 text-base text-white outline-none transition placeholder:text-slate-500 focus:border-sky-300/60 focus:ring-2 focus:ring-sky-400/30"
+					   placeholder="orleans"
+					   @bind="name" />
+			</div>
+
+			<div class="flex flex-wrap items-center gap-3">
+				<button class="inline-flex items-center justify-center rounded-full bg-sky-400 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-sky-300 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400"
+						@onclick="SendGreetingAsync"
+						disabled="@isLoading">
+					@(isLoading ? "Calling grain..." : "Say hello")
+				</button>
+				<p class="text-sm text-slate-400">Grain key is normalized from the entered name.</p>
+			</div>
+
+			@if (!string.IsNullOrWhiteSpace(errorMessage))
+			{
+				<div class="rounded-2xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-100" role="alert">@errorMessage</div>
+			}
+
+			@if (!string.IsNullOrWhiteSpace(greeting))
+			{
+				<div class="rounded-2xl border border-emerald-400/30 bg-emerald-500/10 px-4 py-4 text-sm text-emerald-100" role="status">
+					<p class="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-300">Response</p>
+					<p class="mt-2 text-base text-emerald-50">@greeting</p>
+				</div>
+			}
+		</div>
+	</div>
+</section>
+
+@code {
+	private string name = "orleans";
+	private string? greeting;
+	private string? errorMessage;
+	private bool isLoading;
+
+	private async Task SendGreetingAsync()
+	{
+		isLoading = true;
+		errorMessage = null;
+
+		try
+		{
+			greeting = await HelloService.SayHelloAsync(name);
+		}
+		catch (Exception exception)
+		{
+			greeting = null;
+			errorMessage = exception.Message;
+		}
+		finally
+		{
+			isLoading = false;
+		}
+	}
+}

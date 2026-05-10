@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <BlazorDisableThrowNavigationException>true</BlazorDisableThrowNavigationException>
+    <TailwindCli>$(MSBuildProjectDirectory)/../../tools/tailwind/bin/tailwindcss-linux-x64</TailwindCli>
+    <TailwindInput>$(MSBuildProjectDirectory)/Styles/app.css</TailwindInput>
+    <TailwindOutput>$(MSBuildProjectDirectory)/wwwroot/app.css</TailwindOutput>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Spx.Contracts\Spx.Contracts.csproj" />
+    <ProjectReference Include="..\Spx.ServiceDefaults\Spx.ServiceDefaults.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Orleans.Client" Version="10.1.0" />
+    <PackageReference Include="Microsoft.Orleans.Clustering.Redis" Version="10.1.0" />
+    <PackageReference Include="Aspire.StackExchange.Redis" Version="13.3.0" />
+  </ItemGroup>
+
+  <Target Name="EnsureTailwindCli" BeforeTargets="Build;Publish">
+    <Error Condition="!Exists('$(TailwindCli)')" Text="Tailwind standalone binary not found at $(TailwindCli)." />
+  </Target>
+
+  <Target Name="BuildTailwindCss" BeforeTargets="Build;Publish" DependsOnTargets="EnsureTailwindCli">
+    <Exec Command="&quot;$(TailwindCli)&quot; -i &quot;$(TailwindInput)&quot; -o &quot;$(TailwindOutput)&quot; --minify" WorkingDirectory="$(MSBuildProjectDirectory)" />
+  </Target>
+
+</Project>

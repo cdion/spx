@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <ItemGroup>
+    <ProjectReference Include="..\Spx.Contracts\Spx.Contracts.csproj" />
+    <ProjectReference Include="..\Spx.Grains\Spx.Grains.csproj" />
+    <ProjectReference Include="..\Spx.ServiceDefaults\Spx.ServiceDefaults.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Orleans.Server" Version="10.1.0" />
+    <PackageReference Include="Microsoft.Orleans.Clustering.Redis" Version="10.1.0" />
+    <PackageReference Include="Aspire.StackExchange.Redis" Version="13.3.0" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>Spx.Silo</AssemblyName>
+    <RootNamespace>Spx.Silo</RootNamespace>
+  </PropertyGroup>
+
+</Project>

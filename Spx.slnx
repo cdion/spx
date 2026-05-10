@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Spx.AppHost/Spx.AppHost.csproj" />
+    <Project Path="src/Spx.Contracts/Spx.Contracts.csproj" />
+    <Project Path="src/Spx.Grains/Spx.Grains.csproj" />
+    <Project Path="src/Spx.Silo/Spx.Silo.csproj" />
+    <Project Path="src/Spx.ServiceDefaults/Spx.ServiceDefaults.csproj" />
+    <Project Path="src/Spx.Web/Spx.Web.csproj" />
+  </Folder>
+</Solution>
