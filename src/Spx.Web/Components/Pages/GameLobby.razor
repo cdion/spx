@@ -1,9 +1,13 @@
 @page "/games/{GameId:guid}"
 @attribute [Authorize]
 @implements IAsyncDisposable
+@using Spx.Data
 @using System.Security.Claims
 @inject IGameService GameService
-@inject IGameLobbyNotifier GameLobbyNotifier
+@inject IGameMessagingService GameMessagingService
+@inject IGameLobbySubscriptionService GameLobbySubscriptions
+@inject IGameMessageSubscriptionService GameMessageSubscriptions
+@inject IJSRuntime JS
 @inject NavigationManager Navigation
 
 <PageTitle>Game Lobby</PageTitle>
@@ -21,7 +25,7 @@ else if (lobby is null)
             <p class="text-xs font-semibold uppercase tracking-[0.3em] text-sky-300">Lobby</p>
             <h1 class="text-3xl font-semibold tracking-tight text-white">Game unavailable</h1>
             <p class="text-base leading-7 text-slate-300">
-                You can only open lobby pages for games where you are currently an active player.
+                You can only open lobby pages for games where you are an active player or where you previously played.
             </p>
         </div>
         <div class="flex flex-wrap gap-3">
@@ -36,7 +40,7 @@ else if (lobby is null)
 }
 else
 {
-    <section class="mx-auto flex max-w-5xl flex-col gap-8">
+    <section class="mx-auto flex max-w-6xl flex-col gap-8">
         <header class="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-2xl shadow-slate-950/40 backdrop-blur sm:p-8">
             <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
                 <div class="space-y-3">
@@ -62,6 +66,234 @@ else
         {
             <div class="rounded-2xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-100" role="alert">@errorMessage</div>
         }
+
+        @if (!lobby.IsCurrentUserActive)
+        {
+            <div class="rounded-2xl border border-amber-400/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100" role="status">
+                You are viewing this game as a former player. Timeline history is limited to the point when you left.
+            </div>
+        }
+
+        <section class="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-2xl shadow-slate-950/40 backdrop-blur sm:p-8">
+            <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                <div class="space-y-2">
+                    <p class="text-xs font-semibold uppercase tracking-[0.25em] text-sky-300">Timeline</p>
+                    <h2 class="text-2xl font-semibold tracking-tight text-white">Messages and game events</h2>
+                </div>
+
+                @if (timelineItems.Count > 0)
+                {
+                    <p class="text-sm text-slate-400">
+                        Newest cursor <span class="font-medium text-slate-200">@FormatTimelineCursor(newestMessageId)</span>
+                    </p>
+                }
+            </div>
+
+            @if (!string.IsNullOrWhiteSpace(messageError))
+            {
+                <div class="mt-6 rounded-2xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-100" role="alert">@messageError</div>
+            }
+
+            <div class="mt-6 grid gap-6 lg:grid-cols-[1.3fr_0.9fr]">
+                <div class="rounded-2xl border border-white/10 bg-slate-950/40 p-3 sm:p-4">
+                    <div class="mb-3 flex items-center justify-between px-2 text-xs uppercase tracking-[0.2em] text-slate-400">
+                        <span>History</span>
+                        @if (isLoadingOlderMessages)
+                        {
+                            <span>Loading older...</span>
+                        }
+                    </div>
+
+                    <div class="h-[32rem] overflow-y-auto rounded-2xl border border-white/10 bg-black/30 p-3" @ref="timelineContainer">
+                        <div @ref="timelineTopSentinel" class="h-px w-full"></div>
+
+                        @if (isTimelineLoading)
+                        {
+                            <div class="rounded-2xl border border-white/10 bg-slate-950/40 px-4 py-5 text-sm text-slate-400">
+                                Loading timeline...
+                            </div>
+                        }
+                        else if (timelineItems.Count == 0)
+                        {
+                            <div class="rounded-2xl border border-dashed border-white/10 bg-slate-950/30 px-4 py-5 text-sm text-slate-400">
+                                No messages or events have appeared in this game yet.
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="space-y-3">
+                                @if (hasOlderMessages)
+                                {
+                                    <div class="px-2 py-1 text-center text-xs uppercase tracking-[0.2em] text-slate-500">
+                                        Scroll up to load older history
+                                    </div>
+                                }
+
+                                @foreach (var item in timelineItems)
+                                {
+                                    <article class="rounded-2xl border @(GetTimelineCardBorderClass(item)) bg-slate-950/60 px-4 py-4">
+                                        <div class="flex items-start justify-between gap-4">
+                                            <div class="space-y-2">
+                                                <div class="flex flex-wrap items-center gap-2">
+                                                    <p class="text-sm font-semibold text-white">@GetTimelineTitle(item)</p>
+                                                    @if (IsPrivate(item))
+                                                    {
+                                                        <span class="rounded-full border border-amber-400/30 bg-amber-500/10 px-2 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-amber-100">
+                                                            @GetPrivateBadgeText(item)
+                                                        </span>
+                                                    }
+                                                    @if (IsPending(item))
+                                                    {
+                                                        <span class="rounded-full border border-sky-400/30 bg-sky-400/10 px-2 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-sky-200">
+                                                            Pending
+                                                        </span>
+                                                    }
+                                                    @if (IsFailed(item))
+                                                    {
+                                                        <span class="rounded-full border border-red-400/30 bg-red-500/10 px-2 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-red-100">
+                                                            Failed
+                                                        </span>
+                                                    }
+                                                </div>
+
+                                                <p class="text-sm leading-6 text-slate-200 whitespace-pre-wrap">@GetTimelineBody(item)</p>
+
+                                                <div class="flex flex-wrap items-center gap-3 text-xs uppercase tracking-[0.2em] text-slate-500">
+                                                    <span>@FormatDateTime(GetTimelineCreatedAt(item))</span>
+                                                    @if (IsEdited(item))
+                                                    {
+                                                        <span>Edited</span>
+                                                    }
+                                                    @if (IsDeleted(item))
+                                                    {
+                                                        <span>Deleted</span>
+                                                    }
+                                                </div>
+                                            </div>
+
+                                            @if (item.Message is not null && editingMessageId != item.Message.Id && (item.Message.CanEdit || item.Message.CanDelete))
+                                            {
+                                                <div class="flex flex-wrap gap-2">
+                                                    @if (item.Message.CanEdit)
+                                                    {
+                                                        <button class="rounded-full border border-white/10 px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-300 transition hover:border-sky-300/60 hover:text-white"
+                                                                @onclick="() => BeginEdit(item.Message)">
+                                                            Edit
+                                                        </button>
+                                                    }
+                                                    @if (item.Message.CanDelete)
+                                                    {
+                                                        <button class="rounded-full border border-rose-400/40 px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-rose-100 transition hover:border-rose-300 hover:text-white"
+                                                                @onclick="() => DeleteMessageAsync(item.Message.Id)">
+                                                            Delete
+                                                        </button>
+                                                    }
+                                                </div>
+                                            }
+                                            else if (IsFailed(item))
+                                            {
+                                                <div class="flex flex-wrap gap-2">
+                                                    <button class="rounded-full border border-sky-400/30 px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-sky-200 transition hover:border-sky-300/60 hover:text-white"
+                                                            @onclick="() => RetryPendingMessageAsync(item.Key)">
+                                                        Retry
+                                                    </button>
+                                                    <button class="rounded-full border border-white/10 px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-300 transition hover:border-sky-300/60 hover:text-white"
+                                                            @onclick="() => DismissPendingMessage(item.Key)">
+                                                        Dismiss
+                                                    </button>
+                                                </div>
+                                            }
+                                        </div>
+
+                                        @if (item.Message is not null && editingMessageId == item.Message.Id)
+                                        {
+                                            <div class="mt-4 space-y-3 rounded-2xl border border-sky-400/30 bg-sky-400/10 p-4">
+                                                <textarea class="min-h-24 w-full rounded-2xl border border-white/10 bg-slate-950/60 px-4 py-3 text-sm text-slate-100 outline-none transition focus:border-sky-300/60 focus:ring-2 focus:ring-sky-400/30"
+                                                          @bind="editMessageText"
+                                                          @bind:event="oninput"></textarea>
+                                                <div class="flex flex-wrap justify-end gap-3">
+                                                    <button class="rounded-full border border-white/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-300 transition hover:border-sky-300/60 hover:text-white"
+                                                            @onclick="CancelEdit">
+                                                        Cancel
+                                                    </button>
+                                                    <button class="rounded-full bg-sky-400 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-950 transition hover:bg-sky-300 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400"
+                                                            @onclick="SaveEditAsync"
+                                                            disabled="@isSavingEdit">
+                                                        @(isSavingEdit ? "Saving..." : "Save")
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        }
+                                    </article>
+                                }
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                <div class="space-y-4 rounded-2xl border border-white/10 bg-slate-950/40 p-5">
+                    <div class="space-y-2">
+                        <p class="text-xs font-semibold uppercase tracking-[0.25em] text-sky-300">Composer</p>
+                        <h3 class="text-xl font-semibold tracking-tight text-white">Send a message</h3>
+                        <p class="text-sm leading-6 text-slate-300">
+                            @if (lobby.IsCurrentUserActive)
+                            {
+                                <span>Enter sends. Shift+Enter adds a new line. Choose a player to send privately.</span>
+                            }
+                            else
+                            {
+                                <span>Only active players can send new messages.</span>
+                            }
+                        </p>
+                    </div>
+
+                    @if (lobby.IsCurrentUserActive)
+                    {
+                        <div class="space-y-4">
+                            <div class="space-y-2">
+                                <label class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400" for="message-recipient">Recipient</label>
+                                <select id="message-recipient"
+                                        class="w-full rounded-2xl border border-white/10 bg-slate-950/60 px-4 py-3 text-sm text-slate-100 outline-none transition focus:border-sky-300/60 focus:ring-2 focus:ring-sky-400/30"
+                                        @bind="selectedRecipientPlayerIdString">
+                                    <option value="">All active players</option>
+                                    @foreach (var player in lobby.Players.Where(player => !player.IsCurrentUser))
+                                    {
+                                        <option value="@player.PlayerId">@player.Name</option>
+                                    }
+                                </select>
+                            </div>
+
+                            <div class="space-y-2">
+                                <label class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400" for="message-composer">Message</label>
+                                <textarea id="message-composer"
+                                          class="min-h-32 w-full rounded-2xl border border-white/10 bg-slate-950/60 px-4 py-3 text-sm text-slate-100 outline-none transition placeholder:text-slate-500 focus:border-sky-300/60 focus:ring-2 focus:ring-sky-400/30"
+                                          placeholder="Write something for the game timeline..."
+                                          @bind="composerText"
+                                          @bind:event="oninput"
+                                          @ref="composerTextArea"></textarea>
+                            </div>
+
+                            <div class="flex flex-wrap items-center justify-between gap-3">
+                                <p class="text-xs uppercase tracking-[0.2em] text-slate-500">
+                                    @composerText.Length / 1024 characters
+                                </p>
+                                <button class="inline-flex items-center justify-center rounded-full bg-sky-400 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-sky-300 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400"
+                                        @onclick="SendMessageAsync"
+                                        disabled="@isSendingMessage">
+                                    @(isSendingMessage ? "Sending..." : "Send message")
+                                </button>
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="rounded-2xl border border-dashed border-white/10 bg-slate-950/30 px-4 py-5 text-sm text-slate-400">
+                            This composer is disabled because you are no longer an active player in this game.
+                        </div>
+                    }
+                </div>
+            </div>
+        </section>
 
         <div class="grid gap-6 xl:grid-cols-[1.4fr_1fr]">
             <section class="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-2xl shadow-slate-950/40 backdrop-blur sm:p-8">
@@ -101,7 +333,7 @@ else
                 <div class="space-y-3">
                     <p class="text-xs font-semibold uppercase tracking-[0.25em] text-sky-300">You</p>
                     <h2 class="text-2xl font-semibold tracking-tight text-white">@lobby.CurrentPlayerName</h2>
-                    <p class="text-sm leading-6 text-slate-300">Leaving removes your active seat. If you are the last active player, the game ends.</p>
+                    <p class="text-sm leading-6 text-slate-300">@GetPlayerPanelMessage()</p>
                 </div>
 
                 <div class="space-y-3 text-sm leading-6 text-slate-300">
@@ -113,11 +345,14 @@ else
                 </div>
 
                 <div class="flex flex-wrap gap-3">
-                    <button class="inline-flex items-center justify-center rounded-full border border-rose-400/40 px-5 py-3 text-sm font-semibold text-rose-100 transition hover:border-rose-300 hover:text-white disabled:cursor-not-allowed disabled:border-white/10 disabled:text-slate-500"
-                            @onclick="LeaveGameAsync"
-                            disabled="@isLeaving">
-                        @(isLeaving ? "Leaving..." : "Leave game")
-                    </button>
+                    @if (lobby.IsCurrentUserActive)
+                    {
+                        <button class="inline-flex items-center justify-center rounded-full border border-rose-400/40 px-5 py-3 text-sm font-semibold text-rose-100 transition hover:border-rose-300 hover:text-white disabled:cursor-not-allowed disabled:border-white/10 disabled:text-slate-500"
+                                @onclick="LeaveGameAsync"
+                                disabled="@isLeaving">
+                            @(isLeaving ? "Leaving..." : "Leave game")
+                        </button>
+                    }
                     <a class="inline-flex items-center justify-center rounded-full border border-white/10 px-5 py-3 text-sm font-semibold text-slate-200 transition hover:border-sky-300/60 hover:text-white" href="/games">
                         Back to my games
                     </a>
@@ -134,29 +369,111 @@ else
     [CascadingParameter]
     private Task<AuthenticationState> AuthenticationStateTask { get; set; } = default!;
 
+    private readonly List<LobbyTimelineItem> timelineItems = [];
+
     private GameLobbyView? lobby;
+    private string currentUserId = string.Empty;
     private string? errorMessage;
+    private string? messageError;
     private bool isLoading = true;
     private bool isLeaving;
+    private bool isTimelineLoading = true;
+    private bool isLoadingOlderMessages;
+    private bool isSendingMessage;
+    private bool isSavingEdit;
     private Guid? subscribedGameId;
     private IAsyncDisposable? lobbySubscription;
+    private IAsyncDisposable? messageSubscription;
+    private string composerText = string.Empty;
+    private string? selectedRecipientPlayerIdString;
+    private Guid? oldestMessageId;
+    private Guid? newestMessageId;
+    private bool hasOlderMessages;
+    private Guid? editingMessageId;
+    private string editMessageText = string.Empty;
+    private ElementReference timelineContainer;
+    private ElementReference timelineTopSentinel;
+    private ElementReference composerTextArea;
+    private IJSObjectReference? gameLobbyModule;
+    private DotNetObjectReference<GameLobby>? dotNetReference;
+    private double restoreScrollHeight;
+    private double restoreScrollTop;
+    private bool shouldRestoreScrollAfterOlderLoad;
+    private bool shouldScrollTimelineToBottom;
 
     protected override async Task OnParametersSetAsync()
     {
+        currentUserId = await GetUserIdAsync();
         await LoadLobbyAsync();
 
-        if (lobby is null || subscribedGameId == lobby.GameId)
+        if (lobby is null)
         {
+            await DisposeSubscriptionsAsync();
+            ResetTimelineState();
             return;
         }
 
-        if (lobbySubscription is not null)
+        var isNewGame = subscribedGameId != lobby.GameId;
+        if (isNewGame)
         {
-            await lobbySubscription.DisposeAsync();
+            await DisposeSubscriptionsAsync();
+            ResetTimelineState();
+            await LoadInitialMessagesAsync();
+            lobbySubscription = await GameLobbySubscriptions.SubscribeAsync(lobby.GameId, HandleLobbyChangedAsync);
+            if (lobby.IsCurrentUserActive)
+            {
+                messageSubscription = await GameMessageSubscriptions.SubscribeToMessagesAsync(lobby.GameId, HandleMessagesChangedAsync);
+            }
+            subscribedGameId = lobby.GameId;
+            shouldScrollTimelineToBottom = true;
+            return;
         }
 
-        lobbySubscription = await GameLobbyNotifier.SubscribeAsync(lobby.GameId, HandleLobbyChangedAsync);
-        subscribedGameId = lobby.GameId;
+        if (timelineItems.Count == 0)
+        {
+            await LoadInitialMessagesAsync();
+            shouldScrollTimelineToBottom = true;
+        }
+
+        if (lobby.IsCurrentUserActive && messageSubscription is null)
+        {
+            messageSubscription = await GameMessageSubscriptions.SubscribeToMessagesAsync(lobby.GameId, HandleMessagesChangedAsync);
+        }
+        else if (!lobby.IsCurrentUserActive && messageSubscription is not null)
+        {
+            await messageSubscription.DisposeAsync();
+            messageSubscription = null;
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (gameLobbyModule is null)
+        {
+            gameLobbyModule = await JS.InvokeAsync<IJSObjectReference>("import", "./Components/Pages/GameLobby.razor.js");
+            dotNetReference = DotNetObjectReference.Create(this);
+        }
+
+        if (lobby is not null && dotNetReference is not null)
+        {
+            await gameLobbyModule.InvokeVoidAsync("setTimelineObserver", timelineContainer, timelineTopSentinel, dotNetReference);
+
+            if (lobby.IsCurrentUserActive)
+            {
+                await gameLobbyModule.InvokeVoidAsync("setComposerSubmit", composerTextArea, dotNetReference);
+            }
+        }
+
+        if (shouldRestoreScrollAfterOlderLoad)
+        {
+            shouldRestoreScrollAfterOlderLoad = false;
+            await gameLobbyModule.InvokeVoidAsync("restoreScrollAfterPrepend", timelineContainer, restoreScrollHeight, restoreScrollTop);
+        }
+        else if (shouldScrollTimelineToBottom)
+        {
+            shouldScrollTimelineToBottom = false;
+            await gameLobbyModule.InvokeVoidAsync("scrollToBottom", timelineContainer);
+        }
     }
 
     private async Task LoadLobbyAsync()
@@ -166,8 +483,7 @@ else
 
         try
         {
-            var userId = await GetUserIdAsync();
-            lobby = await GameService.GetLobbyAsync(GameId, userId);
+            lobby = await GameService.GetLobbyAsync(GameId, currentUserId);
         }
         catch (Exception exception)
         {
@@ -184,6 +500,20 @@ else
         => InvokeAsync(async () =>
         {
             await LoadLobbyAsync();
+
+            if (lobby is not null && !lobby.IsCurrentUserActive && messageSubscription is not null)
+            {
+                await messageSubscription.DisposeAsync();
+                messageSubscription = null;
+            }
+
+            StateHasChanged();
+        });
+
+    private Task HandleMessagesChangedAsync()
+        => InvokeAsync(async () =>
+        {
+            await LoadMessageUpdatesAsync();
             StateHasChanged();
         });
 
@@ -199,8 +529,7 @@ else
 
         try
         {
-            var userId = await GetUserIdAsync();
-            var result = await GameService.LeaveGameAsync(GameId, userId);
+            var result = await GameService.LeaveGameAsync(GameId, currentUserId);
 
             if (!result.Succeeded)
             {
@@ -220,12 +549,343 @@ else
         }
     }
 
+    private async Task LoadInitialMessagesAsync()
+    {
+        if (lobby is null)
+        {
+            return;
+        }
+
+        isTimelineLoading = true;
+        messageError = null;
+
+        try
+        {
+            var page = await GameMessagingService.GetMessagesAsync(lobby.GameId, currentUserId);
+            timelineItems.Clear();
+
+            if (page is not null)
+            {
+                var orderedItems = page.Items.OrderBy(entry => entry.Id).ToList();
+                timelineItems.AddRange(orderedItems.Select(entry => new LobbyTimelineItem
+                {
+                    Key = entry.Id,
+                    Message = entry
+                }));
+
+                hasOlderMessages = page.HasMore;
+                oldestMessageId = orderedItems.FirstOrDefault()?.Id;
+                newestMessageId = orderedItems.LastOrDefault()?.Id;
+            }
+            else
+            {
+                hasOlderMessages = false;
+                oldestMessageId = null;
+                newestMessageId = null;
+            }
+        }
+        catch (Exception exception)
+        {
+            messageError = exception.Message;
+        }
+        finally
+        {
+            isTimelineLoading = false;
+        }
+    }
+
+    private async Task LoadMessageUpdatesAsync()
+    {
+        if (lobby is null)
+        {
+            return;
+        }
+
+        if (newestMessageId is null)
+        {
+            await LoadInitialMessagesAsync();
+            shouldScrollTimelineToBottom = true;
+            return;
+        }
+
+        try
+        {
+            var shouldStickToBottom = gameLobbyModule is null || await gameLobbyModule.InvokeAsync<bool>("isNearBottom", timelineContainer);
+            var updates = await GameMessagingService.GetMessageUpdatesAsync(lobby.GameId, currentUserId, newestMessageId);
+            if (updates is null || updates.Count == 0)
+            {
+                return;
+            }
+
+            UpsertPersistedMessages(updates);
+            if (shouldStickToBottom)
+            {
+                shouldScrollTimelineToBottom = true;
+            }
+        }
+        catch (Exception exception)
+        {
+            messageError = exception.Message;
+        }
+    }
+
+    private async Task LoadOlderMessagesAsync()
+    {
+        if (lobby is null || !hasOlderMessages || isLoadingOlderMessages || oldestMessageId is null)
+        {
+            return;
+        }
+
+        isLoadingOlderMessages = true;
+
+        try
+        {
+            var metrics = gameLobbyModule is null
+                ? new ScrollMetrics()
+                : await gameLobbyModule.InvokeAsync<ScrollMetrics>("getScrollMetrics", timelineContainer);
+            var page = await GameMessagingService.GetMessagesAsync(lobby.GameId, currentUserId, oldestMessageId);
+            if (page is null)
+            {
+                return;
+            }
+
+            var existingIds = timelineItems.Where(entry => entry.Message is not null).Select(entry => entry.Message!.Id).ToHashSet();
+            var olderItems = page.Items
+                .Where(entry => !existingIds.Contains(entry.Id))
+                .OrderBy(entry => entry.Id)
+                .Select(entry => new LobbyTimelineItem
+                {
+                    Key = entry.Id,
+                    Message = entry
+                })
+                .ToList();
+
+            if (olderItems.Count > 0)
+            {
+                timelineItems.InsertRange(0, olderItems);
+                oldestMessageId = timelineItems.FirstOrDefault(entry => entry.Message is not null)?.Message?.Id;
+                restoreScrollHeight = metrics.ScrollHeight;
+                restoreScrollTop = metrics.ScrollTop;
+                shouldRestoreScrollAfterOlderLoad = true;
+            }
+
+            hasOlderMessages = page.HasMore;
+        }
+        catch (Exception exception)
+        {
+            messageError = exception.Message;
+        }
+        finally
+        {
+            isLoadingOlderMessages = false;
+        }
+    }
+
+    private async Task SendMessageAsync()
+    {
+        if (lobby is null || !lobby.IsCurrentUserActive || isSendingMessage)
+        {
+            return;
+        }
+
+        messageError = null;
+        var body = composerText.Trim();
+        if (string.IsNullOrWhiteSpace(body))
+        {
+            messageError = "Messages cannot be empty.";
+            return;
+        }
+
+        var recipient = GetSelectedRecipient();
+        var pendingItem = CreatePendingMessage(body, recipient);
+        timelineItems.Add(pendingItem);
+        composerText = string.Empty;
+        selectedRecipientPlayerIdString = null;
+        shouldScrollTimelineToBottom = true;
+        isSendingMessage = true;
+
+        try
+        {
+            GameMessageCommandResult result;
+            if (recipient is null)
+            {
+                result = await GameMessagingService.SendPublicMessageAsync(lobby.GameId, currentUserId, new SendGameMessageRequest(body));
+            }
+            else
+            {
+                result = await GameMessagingService.SendPrivateMessageAsync(lobby.GameId, currentUserId, recipient.PlayerId, new SendGameMessageRequest(body));
+            }
+
+            if (!result.Succeeded || result.Message is null)
+            {
+                pendingItem.Pending!.Failed = true;
+                messageError = result.ErrorMessage ?? "The message could not be sent.";
+                return;
+            }
+
+            ReplacePendingWithPersistedMessage(pendingItem.Key, result.Message);
+        }
+        catch (Exception exception)
+        {
+            pendingItem.Pending!.Failed = true;
+            messageError = exception.Message;
+        }
+        finally
+        {
+            isSendingMessage = false;
+        }
+    }
+
+    private async Task RetryPendingMessageAsync(Guid itemKey)
+    {
+        var item = timelineItems.SingleOrDefault(entry => entry.Key == itemKey && entry.Pending is not null);
+        if (item?.Pending is null || isSendingMessage || lobby is null)
+        {
+            return;
+        }
+
+        item.Pending.Failed = false;
+        isSendingMessage = true;
+        messageError = null;
+
+        try
+        {
+            GameMessageCommandResult result;
+            if (item.Pending.RecipientPlayerId is null)
+            {
+                result = await GameMessagingService.SendPublicMessageAsync(lobby.GameId, currentUserId, new SendGameMessageRequest(item.Pending.Body));
+            }
+            else
+            {
+                result = await GameMessagingService.SendPrivateMessageAsync(lobby.GameId, currentUserId, item.Pending.RecipientPlayerId.Value, new SendGameMessageRequest(item.Pending.Body));
+            }
+
+            if (!result.Succeeded || result.Message is null)
+            {
+                item.Pending.Failed = true;
+                messageError = result.ErrorMessage ?? "The message could not be sent.";
+                return;
+            }
+
+            ReplacePendingWithPersistedMessage(itemKey, result.Message);
+        }
+        catch (Exception exception)
+        {
+            item.Pending.Failed = true;
+            messageError = exception.Message;
+        }
+        finally
+        {
+            isSendingMessage = false;
+        }
+    }
+
+    private void DismissPendingMessage(Guid itemKey)
+    {
+        timelineItems.RemoveAll(entry => entry.Key == itemKey && entry.Pending is not null);
+    }
+
+    private void BeginEdit(GameMessageView message)
+    {
+        editingMessageId = message.Id;
+        editMessageText = message.Body;
+    }
+
+    private void CancelEdit()
+    {
+        editingMessageId = null;
+        editMessageText = string.Empty;
+        isSavingEdit = false;
+    }
+
+    private async Task SaveEditAsync()
+    {
+        if (lobby is null || editingMessageId is null || isSavingEdit)
+        {
+            return;
+        }
+
+        isSavingEdit = true;
+        messageError = null;
+
+        try
+        {
+            var result = await GameMessagingService.EditMessageAsync(lobby.GameId, currentUserId, editingMessageId.Value, new UpdateGameMessageRequest(editMessageText));
+            if (!result.Succeeded || result.Message is null)
+            {
+                messageError = result.ErrorMessage ?? "The message could not be updated.";
+                return;
+            }
+
+            UpsertPersistedMessages([result.Message]);
+            CancelEdit();
+        }
+        catch (Exception exception)
+        {
+            messageError = exception.Message;
+        }
+        finally
+        {
+            isSavingEdit = false;
+        }
+    }
+
+    private async Task DeleteMessageAsync(Guid messageId)
+    {
+        if (lobby is null)
+        {
+            return;
+        }
+
+        messageError = null;
+
+        try
+        {
+            var result = await GameMessagingService.DeleteMessageAsync(lobby.GameId, currentUserId, messageId);
+            if (!result.Succeeded || result.Message is null)
+            {
+                messageError = result.ErrorMessage ?? "The message could not be deleted.";
+                return;
+            }
+
+            UpsertPersistedMessages([result.Message]);
+            if (editingMessageId == messageId)
+            {
+                CancelEdit();
+            }
+        }
+        catch (Exception exception)
+        {
+            messageError = exception.Message;
+        }
+    }
+
+    [JSInvokable]
+    public Task HandleComposerEnterAsync()
+        => SendMessageAsync();
+
+    [JSInvokable]
+    public Task HandleTimelineNearTopAsync()
+        => LoadOlderMessagesAsync();
+
     public async ValueTask DisposeAsync()
     {
-        if (lobbySubscription is not null)
+        await DisposeSubscriptionsAsync();
+
+        if (gameLobbyModule is not null)
         {
-            await lobbySubscription.DisposeAsync();
+            try
+            {
+                await gameLobbyModule.InvokeVoidAsync("disposeTimelineObserver", timelineTopSentinel);
+                await gameLobbyModule.InvokeVoidAsync("clearComposerSubmit", composerTextArea);
+                await gameLobbyModule.DisposeAsync();
+            }
+            catch (JSDisconnectedException)
+            {
+            }
         }
+
+        dotNetReference?.Dispose();
     }
 
     private async Task<string> GetUserIdAsync()
@@ -235,6 +895,240 @@ else
             ?? throw new InvalidOperationException("The current user does not have an identity id claim.");
     }
 
+    private async Task DisposeSubscriptionsAsync()
+    {
+        if (lobbySubscription is not null)
+        {
+            await lobbySubscription.DisposeAsync();
+            lobbySubscription = null;
+        }
+
+        if (messageSubscription is not null)
+        {
+            await messageSubscription.DisposeAsync();
+            messageSubscription = null;
+        }
+
+        subscribedGameId = null;
+    }
+
+    private void ResetTimelineState()
+    {
+        timelineItems.Clear();
+        oldestMessageId = null;
+        newestMessageId = null;
+        hasOlderMessages = false;
+        isTimelineLoading = true;
+        isLoadingOlderMessages = false;
+        messageError = null;
+        composerText = string.Empty;
+        selectedRecipientPlayerIdString = null;
+        editingMessageId = null;
+        editMessageText = string.Empty;
+    }
+
+    private void UpsertPersistedMessages(IEnumerable<GameMessageView> messages)
+    {
+        foreach (var message in messages)
+        {
+            var existingItem = timelineItems.SingleOrDefault(entry => entry.Message?.Id == message.Id);
+            if (existingItem is not null)
+            {
+                existingItem.Message = message;
+                continue;
+            }
+
+            timelineItems.Add(new LobbyTimelineItem
+            {
+                Key = message.Id,
+                Message = message
+            });
+        }
+
+        timelineItems.Sort(static (left, right) => CompareTimelineItems(left, right));
+        oldestMessageId = timelineItems.FirstOrDefault(entry => entry.Message is not null)?.Message?.Id;
+        newestMessageId = timelineItems.LastOrDefault(entry => entry.Message is not null)?.Message?.Id;
+    }
+
+    private void ReplacePendingWithPersistedMessage(Guid itemKey, GameMessageView message)
+    {
+        timelineItems.RemoveAll(entry => entry.Key == itemKey);
+        UpsertPersistedMessages([message]);
+    }
+
+    private PendingRecipient? GetSelectedRecipient()
+    {
+        if (!Guid.TryParse(selectedRecipientPlayerIdString, out var recipientPlayerId) || lobby is null)
+        {
+            return null;
+        }
+
+        var player = lobby.Players.SingleOrDefault(entry => entry.PlayerId == recipientPlayerId);
+        return player is null ? null : new PendingRecipient(player.PlayerId, player.Name);
+    }
+
+    private LobbyTimelineItem CreatePendingMessage(string body, PendingRecipient? recipient)
+        => new()
+        {
+            Key = Guid.NewGuid(),
+            Pending = new PendingTimelineMessage(
+                body,
+                recipient?.PlayerId,
+                recipient?.Name ?? string.Empty,
+                DateTime.UtcNow,
+                recipient is not null,
+                false)
+        };
+
+    private static int CompareTimelineItems(LobbyTimelineItem left, LobbyTimelineItem right)
+    {
+        if (left.Message is null && right.Message is not null)
+        {
+            return 1;
+        }
+
+        if (left.Message is not null && right.Message is null)
+        {
+            return -1;
+        }
+
+        if (left.Message is null && right.Message is null)
+        {
+            return DateTime.Compare(left.Pending?.CreatedAtUtc ?? DateTime.MinValue, right.Pending?.CreatedAtUtc ?? DateTime.MinValue);
+        }
+
+        return left.Message!.Id.CompareTo(right.Message!.Id);
+    }
+
+    private string GetPlayerPanelMessage()
+        => lobby?.IsCurrentUserActive == true
+            ? "Leaving removes your active seat. If you are the last active player, the game ends."
+            : "You previously played in this game. This page remains available for archived timeline review.";
+
+    private static string GetTimelineCardBorderClass(LobbyTimelineItem item)
+    {
+        if (IsFailed(item))
+        {
+            return "border-red-400/30";
+        }
+
+        if (IsPrivate(item))
+        {
+            return "border-amber-400/30";
+        }
+
+        return item.Message?.Kind switch
+        {
+            GameMessageKind.GameCreated or GameMessageKind.PlayerJoined or GameMessageKind.PlayerLeft or GameMessageKind.GameEnded => "border-emerald-400/30",
+            _ => "border-white/10"
+        };
+    }
+
+    private string GetTimelineTitle(LobbyTimelineItem item)
+    {
+        if (item.Message is null)
+        {
+            return lobby?.CurrentPlayerName ?? "You";
+        }
+
+        return item.Message.Kind switch
+        {
+            GameMessageKind.GameCreated => "Game created",
+            GameMessageKind.PlayerJoined => "Player joined",
+            GameMessageKind.PlayerLeft => "Player left",
+            GameMessageKind.GameEnded => "Game ended",
+            _ => item.Message.SenderDisplayName
+        };
+    }
+
+    private string GetTimelineBody(LobbyTimelineItem item)
+    {
+        if (item.Message is null)
+        {
+            return item.Pending?.Body ?? string.Empty;
+        }
+
+        if (item.Message.DeletedAtUtc is not null)
+        {
+            return "Message deleted.";
+        }
+
+        return item.Message.Kind switch
+        {
+            GameMessageKind.GameCreated => $"{item.Message.SenderDisplayName} created the game.",
+            GameMessageKind.PlayerJoined => $"{item.Message.SenderDisplayName} joined the game.",
+            GameMessageKind.PlayerLeft => $"{item.Message.SenderDisplayName} left the game.",
+            GameMessageKind.GameEnded => "The game ended.",
+            _ => item.Message.Body
+        };
+    }
+
+    private string GetPrivateBadgeText(LobbyTimelineItem item)
+    {
+        if (item.Message is null)
+        {
+            return item.Pending?.RecipientDisplayName is { Length: > 0 } recipientName
+                ? $"Private to {recipientName}"
+                : "Private";
+        }
+
+        return item.Message.IsCurrentUserSender && !string.IsNullOrWhiteSpace(item.Message.RecipientDisplayName)
+            ? $"Private to {item.Message.RecipientDisplayName}"
+            : "Private";
+    }
+
+    private static bool IsPrivate(LobbyTimelineItem item)
+        => item.Message?.IsPrivate == true || item.Pending?.IsPrivate == true;
+
+    private static bool IsPending(LobbyTimelineItem item)
+        => item.Pending is not null && !item.Pending.Failed;
+
+    private static bool IsFailed(LobbyTimelineItem item)
+        => item.Pending?.Failed == true;
+
+    private static bool IsEdited(LobbyTimelineItem item)
+        => item.Message?.EditedAtUtc is not null;
+
+    private static bool IsDeleted(LobbyTimelineItem item)
+        => item.Message?.DeletedAtUtc is not null;
+
+    private static DateTime GetTimelineCreatedAt(LobbyTimelineItem item)
+        => item.Message?.CreatedAtUtc ?? item.Pending?.CreatedAtUtc ?? DateTime.UtcNow;
+
+    private static string FormatTimelineCursor(Guid? cursor)
+        => cursor?.ToString()[^8..] ?? "none";
+
     private static string FormatDateTime(DateTime value)
         => value.ToLocalTime().ToString("g");
+
+    private sealed class LobbyTimelineItem
+    {
+        public Guid Key { get; init; }
+
+        public GameMessageView? Message { get; set; }
+
+        public PendingTimelineMessage? Pending { get; set; }
+    }
+
+    private sealed record PendingTimelineMessage(
+        string Body,
+        Guid? RecipientPlayerId,
+        string RecipientDisplayName,
+        DateTime CreatedAtUtc,
+        bool IsPrivate,
+        bool Failed)
+    {
+        public bool Failed { get; set; } = Failed;
+    }
+
+    private sealed record PendingRecipient(Guid PlayerId, string Name);
+
+    private sealed class ScrollMetrics
+    {
+        public double ScrollTop { get; set; }
+
+        public double ScrollHeight { get; set; }
+
+        public double ClientHeight { get; set; }
+    }
 }

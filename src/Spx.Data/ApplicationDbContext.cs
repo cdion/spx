@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
-namespace Spx.Web.Data;
+namespace Spx.Data;
 
 public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
     : IdentityDbContext<ApplicationUser>(options)
@@ -9,6 +9,8 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
     public DbSet<Game> Games => Set<Game>();
 
     public DbSet<GamePlayer> GamePlayers => Set<GamePlayer>();
+
+    public DbSet<GameMessage> GameMessages => Set<GameMessage>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -46,6 +48,11 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
                 .WithOne(entry => entry.Game)
                 .HasForeignKey(entry => entry.GameId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            game.HasMany(entry => entry.Messages)
+                .WithOne(entry => entry.Game)
+                .HasForeignKey(entry => entry.GameId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         builder.Entity<GamePlayer>(player =>
@@ -68,6 +75,44 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
             player.HasOne(entry => entry.User)
                 .WithMany()
                 .HasForeignKey(entry => entry.UserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            player.HasMany(entry => entry.SentMessages)
+                .WithOne(entry => entry.SenderPlayer)
+                .HasForeignKey(entry => entry.SenderPlayerId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            player.HasMany(entry => entry.ReceivedPrivateMessages)
+                .WithOne(entry => entry.RecipientPlayer)
+                .HasForeignKey(entry => entry.RecipientPlayerId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<GameMessage>(message =>
+        {
+            message.Property(entry => entry.SenderKind)
+                .HasConversion<string>()
+                .HasMaxLength(16);
+            message.Property(entry => entry.Kind)
+                .HasConversion<string>()
+                .HasMaxLength(16);
+            message.Property(entry => entry.Body)
+                .HasMaxLength(1024);
+            message.Property(entry => entry.SenderDisplayName)
+                .HasMaxLength(40);
+            message.Property(entry => entry.RecipientDisplayName)
+                .HasMaxLength(40);
+
+            message.HasIndex(entry => new { entry.GameId, entry.Id });
+
+            message.HasOne(entry => entry.SenderPlayer)
+                .WithMany(entry => entry.SentMessages)
+                .HasForeignKey(entry => entry.SenderPlayerId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            message.HasOne(entry => entry.RecipientPlayer)
+                .WithMany(entry => entry.ReceivedPrivateMessages)
+                .HasForeignKey(entry => entry.RecipientPlayerId)
                 .OnDelete(DeleteBehavior.Restrict);
         });
     }

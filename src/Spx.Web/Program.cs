@@ -2,8 +2,9 @@ using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Spx.Games;
 using Spx.Web.Components;
-using Spx.Web.Data;
+using Spx.Data;
 using Spx.Web.Endpoints;
 using Spx.Web.Options;
 using Spx.Web.Services.Email;
@@ -72,8 +73,17 @@ else
         serviceProvider.GetRequiredService<ResendAccountEmailSender>());
 }
 
+builder.Services.AddSingleton<OrleansGameLobbySubscriptionService>();
+builder.Services.AddSingleton<IGameLobbySubscriptionService>(serviceProvider =>
+    serviceProvider.GetRequiredService<OrleansGameLobbySubscriptionService>());
+builder.Services.AddSingleton<IGameMessageSubscriptionService>(serviceProvider =>
+    serviceProvider.GetRequiredService<OrleansGameLobbySubscriptionService>());
+builder.Services.AddSingleton<IGameLobbyEventsPublisher>(serviceProvider =>
+    serviceProvider.GetRequiredService<OrleansGameLobbySubscriptionService>());
+builder.Services.AddSingleton<IGameMessageEventsPublisher>(serviceProvider =>
+    serviceProvider.GetRequiredService<OrleansGameLobbySubscriptionService>());
 builder.Services.AddScoped<IGameService, GameService>();
-builder.Services.AddSingleton<IGameLobbyNotifier, OrleansGameLobbyNotifier>();
+builder.Services.AddScoped<IGameMessagingService, GameMessagingService>();
 
 var app = builder.Build();
 

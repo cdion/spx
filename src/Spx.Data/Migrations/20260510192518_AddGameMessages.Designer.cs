@@ -2,18 +2,21 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
-using Spx.Web.Data;
+using Spx.Data;
 
 #nullable disable
 
-namespace Spx.Web.Data.Migrations
+namespace Spx.Data.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260510192518_AddGameMessages")]
+    partial class AddGameMessages
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -154,7 +157,7 @@ namespace Spx.Web.Data.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
-            modelBuilder.Entity("Spx.Web.Data.ApplicationUser", b =>
+            modelBuilder.Entity("Spx.Data.ApplicationUser", b =>
                 {
                     b.Property<string>("Id")
                         .HasColumnType("text");
@@ -218,7 +221,7 @@ namespace Spx.Web.Data.Migrations
                     b.ToTable("AspNetUsers", (string)null);
                 });
 
-            modelBuilder.Entity("Spx.Web.Data.Game", b =>
+            modelBuilder.Entity("Spx.Data.Game", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -263,7 +266,67 @@ namespace Spx.Web.Data.Migrations
                     b.ToTable("Games");
                 });
 
-            modelBuilder.Entity("Spx.Web.Data.GamePlayer", b =>
+            modelBuilder.Entity("Spx.Data.GameMessage", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Body")
+                        .IsRequired()
+                        .HasMaxLength(1024)
+                        .HasColumnType("character varying(1024)");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("DeletedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("EditedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("GameId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<string>("RecipientDisplayName")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<Guid?>("RecipientPlayerId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("SenderDisplayName")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<string>("SenderKind")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<Guid?>("SenderPlayerId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RecipientPlayerId");
+
+                    b.HasIndex("SenderPlayerId");
+
+                    b.HasIndex("GameId", "Id");
+
+                    b.ToTable("GameMessages");
+                });
+
+            modelBuilder.Entity("Spx.Data.GamePlayer", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -293,6 +356,9 @@ namespace Spx.Web.Data.Migrations
                         .HasMaxLength(450)
                         .HasColumnType("character varying(450)");
 
+                    b.Property<Guid?>("VisibleThroughMessageId")
+                        .HasColumnType("uuid");
+
                     b.HasKey("Id");
 
                     b.HasIndex("UserId");
@@ -319,7 +385,7 @@ namespace Spx.Web.Data.Migrations
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserClaim<string>", b =>
                 {
-                    b.HasOne("Spx.Web.Data.ApplicationUser", null)
+                    b.HasOne("Spx.Data.ApplicationUser", null)
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -328,7 +394,7 @@ namespace Spx.Web.Data.Migrations
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserLogin<string>", b =>
                 {
-                    b.HasOne("Spx.Web.Data.ApplicationUser", null)
+                    b.HasOne("Spx.Data.ApplicationUser", null)
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -343,7 +409,7 @@ namespace Spx.Web.Data.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("Spx.Web.Data.ApplicationUser", null)
+                    b.HasOne("Spx.Data.ApplicationUser", null)
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -352,16 +418,16 @@ namespace Spx.Web.Data.Migrations
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserToken<string>", b =>
                 {
-                    b.HasOne("Spx.Web.Data.ApplicationUser", null)
+                    b.HasOne("Spx.Data.ApplicationUser", null)
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("Spx.Web.Data.Game", b =>
+            modelBuilder.Entity("Spx.Data.Game", b =>
                 {
-                    b.HasOne("Spx.Web.Data.ApplicationUser", "CreatedBy")
+                    b.HasOne("Spx.Data.ApplicationUser", "CreatedBy")
                         .WithMany()
                         .HasForeignKey("CreatedByUserId")
                         .OnDelete(DeleteBehavior.Restrict)
@@ -370,15 +436,40 @@ namespace Spx.Web.Data.Migrations
                     b.Navigation("CreatedBy");
                 });
 
-            modelBuilder.Entity("Spx.Web.Data.GamePlayer", b =>
+            modelBuilder.Entity("Spx.Data.GameMessage", b =>
                 {
-                    b.HasOne("Spx.Web.Data.Game", "Game")
+                    b.HasOne("Spx.Data.Game", "Game")
+                        .WithMany("Messages")
+                        .HasForeignKey("GameId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Spx.Data.GamePlayer", "RecipientPlayer")
+                        .WithMany("ReceivedPrivateMessages")
+                        .HasForeignKey("RecipientPlayerId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Spx.Data.GamePlayer", "SenderPlayer")
+                        .WithMany("SentMessages")
+                        .HasForeignKey("SenderPlayerId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Game");
+
+                    b.Navigation("RecipientPlayer");
+
+                    b.Navigation("SenderPlayer");
+                });
+
+            modelBuilder.Entity("Spx.Data.GamePlayer", b =>
+                {
+                    b.HasOne("Spx.Data.Game", "Game")
                         .WithMany("Players")
                         .HasForeignKey("GameId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("Spx.Web.Data.ApplicationUser", "User")
+                    b.HasOne("Spx.Data.ApplicationUser", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Restrict)
@@ -389,9 +480,18 @@ namespace Spx.Web.Data.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("Spx.Web.Data.Game", b =>
+            modelBuilder.Entity("Spx.Data.Game", b =>
                 {
+                    b.Navigation("Messages");
+
                     b.Navigation("Players");
+                });
+
+            modelBuilder.Entity("Spx.Data.GamePlayer", b =>
+                {
+                    b.Navigation("ReceivedPrivateMessages");
+
+                    b.Navigation("SentMessages");
                 });
 #pragma warning restore 612, 618
         }

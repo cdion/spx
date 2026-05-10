@@ -2,7 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
 using Microsoft.Extensions.Configuration;
 
-namespace Spx.Web.Data;
+namespace Spx.Data;
 
 public sealed class ApplicationDbContextFactory : IDesignTimeDbContextFactory<ApplicationDbContext>
 {

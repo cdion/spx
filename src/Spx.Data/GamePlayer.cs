@@ -1,4 +1,4 @@
-namespace Spx.Web.Data;
+namespace Spx.Data;
 
 public sealed class GamePlayer
 {
@@ -16,7 +16,13 @@ public sealed class GamePlayer
 
     public DateTime? LeftAtUtc { get; set; }
 
+    public Guid? VisibleThroughMessageId { get; set; }
+
     public Game? Game { get; set; }
 
     public ApplicationUser? User { get; set; }
+
+    public List<GameMessage> SentMessages { get; set; } = [];
+
+    public List<GameMessage> ReceivedPrivateMessages { get; set; } = [];
 }

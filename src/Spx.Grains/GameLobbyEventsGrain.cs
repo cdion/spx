@@ -25,7 +25,19 @@ public sealed class GameLobbyEventsGrain : Grain, IGameLobbyEventsGrain
         return Task.CompletedTask;
     }
 
+    public Task PublishMessagesChanged()
+    {
+        NotifyMessageObservers(this.GetPrimaryKey(), observers);
+        return Task.CompletedTask;
+    }
+
     internal static void NotifyObservers(Guid gameId, ICollection<IGameLobbyObserver> observers)
+        => NotifyObservers(gameId, observers, static (observer, targetGameId) => observer.OnLobbyChanged(targetGameId));
+
+    internal static void NotifyMessageObservers(Guid gameId, ICollection<IGameLobbyObserver> observers)
+        => NotifyObservers(gameId, observers, static (observer, targetGameId) => observer.OnMessagesChanged(targetGameId));
+
+    private static void NotifyObservers(Guid gameId, ICollection<IGameLobbyObserver> observers, Action<IGameLobbyObserver, Guid> notifyObserver)
     {
         List<IGameLobbyObserver>? disconnectedObservers = null;
 
@@ -33,7 +45,7 @@ public sealed class GameLobbyEventsGrain : Grain, IGameLobbyEventsGrain
         {
             try
             {
-                observer.OnLobbyChanged(gameId);
+                notifyObserver(observer, gameId);
             }
             catch
             {

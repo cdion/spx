@@ -1,6 +1,6 @@
 using System.Security.Cryptography;
 
-namespace Spx.Web.Services;
+namespace Spx.Games;
 
 internal static class InviteCodeGenerator
 {

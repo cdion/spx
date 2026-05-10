@@ -5,4 +5,6 @@ namespace Spx.Contracts;
 public interface IGameLobbyObserver : IGrainObserver
 {
     void OnLobbyChanged(Guid gameId);
+
+    void OnMessagesChanged(Guid gameId);
 }

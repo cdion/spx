@@ -1,4 +1,4 @@
-namespace Spx.Web.Data;
+namespace Spx.Data;
 
 public enum GameStatus
 {

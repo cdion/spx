@@ -22,8 +22,9 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="../../src/Spx.Data/Spx.Data.csproj" />
+    <ProjectReference Include="../../src/Spx.Games/Spx.Games.csproj" />
     <ProjectReference Include="../../src/Spx.Grains/Spx.Grains.csproj" />
-    <ProjectReference Include="../../src/Spx.Web/Spx.Web.csproj" />
   </ItemGroup>
 
 </Project>

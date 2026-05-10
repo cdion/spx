@@ -1,6 +1,6 @@
-using Spx.Web.Data;
+using Spx.Data;
 
-namespace Spx.Web.Services;
+namespace Spx.Games;
 
 public sealed record CreateGameRequest(string GameName, string PlayerName);
 
@@ -24,7 +24,8 @@ public sealed record GameLobbyView(
     DateTime CreatedAtUtc,
     DateTime? EndedAtUtc,
     string CurrentPlayerName,
-    IReadOnlyList<GamePlayerView> Players);
+    IReadOnlyList<GamePlayerView> Players,
+    bool IsCurrentUserActive);
 
 public sealed record GameSummaryView(
     Guid GameId,

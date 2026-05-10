@@ -12,6 +12,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Spx.Contracts\Spx.Contracts.csproj" />
+    <ProjectReference Include="..\Spx.Data\Spx.Data.csproj" />
+    <ProjectReference Include="..\Spx.Games\Spx.Games.csproj" />
     <ProjectReference Include="..\Spx.ServiceDefaults\Spx.ServiceDefaults.csproj" />
   </ItemGroup>
 

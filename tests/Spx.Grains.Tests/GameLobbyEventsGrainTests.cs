@@ -22,9 +22,28 @@ public sealed class GameLobbyEventsGrainTests
         Assert.DoesNotContain(throwingObserver, observers);
     }
 
-    private sealed class DelegateGameLobbyObserver(Action<Guid> onLobbyChanged) : IGameLobbyObserver
+    [Fact]
+    public void NotifyMessageObservers_RemovesObserversThatThrow()
+    {
+        var notifiedGameIds = new List<Guid>();
+        var workingObserver = new DelegateGameLobbyObserver(onMessagesChanged: gameId => notifiedGameIds.Add(gameId));
+        var throwingObserver = new DelegateGameLobbyObserver(onMessagesChanged: static _ => throw new InvalidOperationException("boom"));
+        var observers = new HashSet<IGameLobbyObserver> { workingObserver, throwingObserver };
+        var gameId = Guid.NewGuid();
+
+        GameLobbyEventsGrain.NotifyMessageObservers(gameId, observers);
+
+        Assert.Equal([gameId], notifiedGameIds);
+        Assert.Contains(workingObserver, observers);
+        Assert.DoesNotContain(throwingObserver, observers);
+    }
+
+    private sealed class DelegateGameLobbyObserver(Action<Guid>? onLobbyChanged = null, Action<Guid>? onMessagesChanged = null) : IGameLobbyObserver
     {
         public void OnLobbyChanged(Guid gameId)
-            => onLobbyChanged(gameId);
+            => onLobbyChanged?.Invoke(gameId);
+
+        public void OnMessagesChanged(Guid gameId)
+            => onMessagesChanged?.Invoke(gameId);
     }
 }

@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Http.Extensions;
 using Microsoft.AspNetCore.Identity;
-using Spx.Web.Data;
+using Spx.Data;
 using Spx.Web.Services.Email;
 
 namespace Spx.Web.Endpoints;

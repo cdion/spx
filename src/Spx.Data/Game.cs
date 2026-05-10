@@ -1,4 +1,4 @@
-namespace Spx.Web.Data;
+namespace Spx.Data;
 
 public sealed class Game
 {
@@ -21,4 +21,6 @@ public sealed class Game
     public ApplicationUser? CreatedBy { get; set; }
 
     public List<GamePlayer> Players { get; set; } = [];
+
+    public List<GameMessage> Messages { get; set; } = [];
 }

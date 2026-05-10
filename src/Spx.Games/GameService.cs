@@ -1,14 +1,15 @@
 using System.Data;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Npgsql;
-using Orleans;
-using Spx.Web.Data;
+using Spx.Data;
 
-namespace Spx.Web.Services;
+namespace Spx.Games;
 
 public sealed class GameService(
     ApplicationDbContext dbContext,
-    IGameLobbyNotifier gameLobbyNotifier,
+    IGameLobbyEventsPublisher gameLobbyEventsPublisher,
+    IGameMessageEventsPublisher gameMessageEventsPublisher,
     ILogger<GameService> logger) : IGameService
 {
     private const int MaxPlayersPerGame = 2;
@@ -55,8 +56,11 @@ public sealed class GameService(
                     JoinedAtUtc = now
                 };
 
+                var createdMessage = GameMessageFactory.CreateSystemEvent(game.Id, GameMessageKind.GameCreated, now, player);
+
                 dbContext.Games.Add(game);
                 dbContext.GamePlayers.Add(player);
+                dbContext.GameMessages.Add(createdMessage);
 
                 try
                 {
@@ -75,7 +79,8 @@ public sealed class GameService(
 
             if (gameId.HasValue)
             {
-                await gameLobbyNotifier.PublishLobbyChangedAsync(gameId.Value, cancellationToken);
+                await gameLobbyEventsPublisher.PublishLobbyChangedAsync(gameId.Value, cancellationToken);
+                await gameMessageEventsPublisher.PublishMessagesChangedAsync(gameId.Value, cancellationToken);
                 return GameCommandResult.Success(gameId.Value);
             }
         }
@@ -106,12 +111,12 @@ public sealed class GameService(
 
             if (game is null)
             {
-                return (GameCommandResult.Failure("That invite code does not match an open game."), (Guid?)null);
+                return (GameCommandResult.Failure("That invite code does not match an open game."), (Guid?)null, false);
             }
 
             if (game.Status != GameStatus.Open)
             {
-                return (GameCommandResult.Failure("That game is no longer open."), (Guid?)null);
+                return (GameCommandResult.Failure("That game is no longer open."), (Guid?)null, false);
             }
 
             var activePlayers = await dbContext.GamePlayers
@@ -126,27 +131,27 @@ public sealed class GameService(
                 {
                     if (activePlayers.Any(entry => entry.Id != existingPlayer.Id && entry.NormalizedName == playerNameLookup))
                     {
-                        return (GameCommandResult.Failure("That player name is already taken in this game."), (Guid?)null);
+                        return (GameCommandResult.Failure("That player name is already taken in this game."), (Guid?)null, false);
                     }
 
                     existingPlayer.Name = playerName;
                     existingPlayer.NormalizedName = playerNameLookup;
                     await dbContext.SaveChangesAsync(innerCancellationToken);
                     await transaction.CommitAsync(innerCancellationToken);
-                    return (GameCommandResult.Success(game.Id), game.Id);
+                    return (GameCommandResult.Success(game.Id), game.Id, false);
                 }
 
-                return (GameCommandResult.Success(game.Id), (Guid?)null);
+                return (GameCommandResult.Success(game.Id), (Guid?)null, false);
             }
 
             if (activePlayers.Count >= game.MaxPlayers)
             {
-                return (GameCommandResult.Failure("That game is already full."), (Guid?)null);
+                return (GameCommandResult.Failure("That game is already full."), (Guid?)null, false);
             }
 
             if (activePlayers.Any(entry => entry.NormalizedName == playerNameLookup))
             {
-                return (GameCommandResult.Failure("That player name is already taken in this game."), (Guid?)null);
+                return (GameCommandResult.Failure("That player name is already taken in this game."), (Guid?)null, false);
             }
 
             dbContext.GamePlayers.Add(new GamePlayer
@@ -159,24 +164,34 @@ public sealed class GameService(
                 JoinedAtUtc = DateTime.UtcNow
             });
 
+            var joinedPlayer = dbContext.ChangeTracker.Entries<GamePlayer>()
+                .Single(entry => entry.Entity.GameId == game.Id && entry.Entity.UserId == userId && entry.Entity.LeftAtUtc == null)
+                .Entity;
+
+            dbContext.GameMessages.Add(GameMessageFactory.CreateSystemEvent(game.Id, GameMessageKind.PlayerJoined, joinedPlayer.JoinedAtUtc, joinedPlayer));
+
             try
             {
                 await dbContext.SaveChangesAsync(innerCancellationToken);
                 await transaction.CommitAsync(innerCancellationToken);
-                return (GameCommandResult.Success(game.Id), game.Id);
+                return (GameCommandResult.Success(game.Id), game.Id, true);
             }
             catch (DbUpdateException exception) when (IsUniqueViolation(exception))
             {
                 logger.LogInformation(exception, "A uniqueness constraint blocked joining the game.");
                 await transaction.RollbackAsync(innerCancellationToken);
                 dbContext.ChangeTracker.Clear();
-                return (GameCommandResult.Failure("That player or seat is no longer available. Refresh and try again."), (Guid?)null);
+                return (GameCommandResult.Failure("That player or seat is no longer available. Refresh and try again."), (Guid?)null, false);
             }
         }, cancellationToken);
 
         if (joinResult.Item2.HasValue)
         {
-            await gameLobbyNotifier.PublishLobbyChangedAsync(joinResult.Item2.Value, cancellationToken);
+            await gameLobbyEventsPublisher.PublishLobbyChangedAsync(joinResult.Item2.Value, cancellationToken);
+            if (joinResult.Item3)
+            {
+                await gameMessageEventsPublisher.PublishMessagesChangedAsync(joinResult.Item2.Value, cancellationToken);
+            }
         }
 
         return joinResult.Item1;
@@ -206,7 +221,11 @@ public sealed class GameService(
             }
 
             var now = DateTime.UtcNow;
+            var leftMessage = GameMessageFactory.CreateSystemEvent(gameId, GameMessageKind.PlayerLeft, now, player);
             player.LeftAtUtc = now;
+            player.VisibleThroughMessageId = leftMessage.Id;
+
+            dbContext.GameMessages.Add(leftMessage);
 
             var remainingPlayers = await dbContext.GamePlayers
                 .CountAsync(entry => entry.GameId == gameId && entry.LeftAtUtc == null && entry.Id != player.Id, innerCancellationToken);
@@ -215,6 +234,10 @@ public sealed class GameService(
             {
                 game.Status = GameStatus.Ended;
                 game.EndedAtUtc = now;
+
+                var endedMessage = GameMessageFactory.CreateSystemEvent(gameId, GameMessageKind.GameEnded, now);
+                player.VisibleThroughMessageId = endedMessage.Id;
+                dbContext.GameMessages.Add(endedMessage);
             }
 
             await dbContext.SaveChangesAsync(innerCancellationToken);
@@ -224,7 +247,8 @@ public sealed class GameService(
 
         if (leaveResult.Item2)
         {
-            await gameLobbyNotifier.PublishLobbyChangedAsync(gameId, cancellationToken);
+            await gameLobbyEventsPublisher.PublishLobbyChangedAsync(gameId, cancellationToken);
+            await gameMessageEventsPublisher.PublishMessagesChangedAsync(gameId, cancellationToken);
         }
 
         return leaveResult.Item1;
@@ -245,7 +269,16 @@ public sealed class GameService(
             .AsNoTracking()
             .SingleOrDefaultAsync(entry => entry.GameId == gameId && entry.UserId == userId && entry.LeftAtUtc == null, cancellationToken);
 
-        if (currentPlayer is null)
+        var formerPlayer = currentPlayer is null
+            ? await dbContext.GamePlayers
+                .AsNoTracking()
+                .Where(entry => entry.GameId == gameId && entry.UserId == userId && entry.LeftAtUtc != null)
+                .OrderByDescending(entry => entry.LeftAtUtc)
+                .FirstOrDefaultAsync(cancellationToken)
+            : null;
+
+        var viewingPlayer = currentPlayer ?? formerPlayer;
+        if (viewingPlayer is null)
         {
             return null;
         }
@@ -265,8 +298,9 @@ public sealed class GameService(
             game.MaxPlayers,
             game.CreatedAtUtc,
             game.EndedAtUtc,
-            currentPlayer.Name,
-            players);
+            viewingPlayer.Name,
+            players,
+            currentPlayer is not null);
     }
 
     public async Task<UserGamesView> GetUserGamesAsync(string userId, CancellationToken cancellationToken = default)

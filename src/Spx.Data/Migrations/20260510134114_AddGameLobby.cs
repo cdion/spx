@@ -1,9 +1,9 @@
-﻿using System;
+using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace Spx.Web.Data.Migrations
+namespace Spx.Data.Migrations
 {
     /// <inheritdoc />
     public partial class AddGameLobby : Migration

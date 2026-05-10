@@ -9,4 +9,6 @@ public interface IGameLobbyEventsGrain : IGrainWithGuidKey
     Task Unsubscribe(IGameLobbyObserver observer);
 
     Task PublishLobbyChanged();
+
+    Task PublishMessagesChanged();
 }

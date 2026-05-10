@@ -1,4 +1,4 @@
-namespace Spx.Web.Services;
+namespace Spx.Games;
 
 internal static class GameInputNormalizer
 {
