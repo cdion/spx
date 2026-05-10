@@ -1,0 +1,32 @@
+<section class="ui-surface-empty mx-auto flex max-w-2xl flex-col gap-6">
+    <div class="space-y-3">
+        <p class="ui-page-eyebrow">Authentication required</p>
+        <h1 class="text-3xl font-semibold tracking-tight text-white">@Title</h1>
+        <p class="text-base leading-7 text-slate-300">@Message</p>
+    </div>
+
+    <div class="ui-actions">
+        <a class="ui-button-primary" href="@SignInHref">@SignInText</a>
+        <a class="ui-button-secondary" href="@RegisterHref">@RegisterText</a>
+    </div>
+</section>
+
+@code {
+    [Parameter]
+    public string Title { get; set; } = "Sign in to continue";
+
+    [Parameter]
+    public string Message { get; set; } = "This page is only available to authenticated users.";
+
+    [Parameter]
+    public string SignInHref { get; set; } = "/login";
+
+    [Parameter]
+    public string SignInText { get; set; } = "Sign in";
+
+    [Parameter]
+    public string RegisterHref { get; set; } = "/register";
+
+    [Parameter]
+    public string RegisterText { get; set; } = "Create account";
+}

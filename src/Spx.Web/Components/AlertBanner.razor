@@ -1,0 +1,22 @@
+@if (ChildContent is not null)
+{
+    <div class="@CssClass" role="@Role">@ChildContent</div>
+}
+
+@code {
+    [Parameter]
+    public string Tone { get; set; } = "error";
+
+    [Parameter]
+    public string Role { get; set; } = "alert";
+
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    private string CssClass => Tone switch
+    {
+        "success" => "ui-alert ui-alert-success",
+        "warning" => "ui-alert ui-alert-warning",
+        _ => "ui-alert ui-alert-error"
+    };
+}

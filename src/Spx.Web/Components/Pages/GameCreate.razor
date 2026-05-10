@@ -6,47 +6,43 @@
 
 <PageTitle>Create Game</PageTitle>
 
-<section class="mx-auto flex max-w-2xl flex-col gap-8">
-    <header class="space-y-4">
-        <p class="text-xs font-semibold uppercase tracking-[0.3em] text-sky-300">Lobby</p>
-        <h1 class="text-4xl font-semibold tracking-tight text-white sm:text-5xl">Create a game</h1>
-        <p class="max-w-2xl text-base leading-7 text-slate-300 sm:text-lg">
-            Creating a game reserves the invite code and seats you immediately as player one.
-        </p>
-    </header>
+<section class="ui-page">
+    <PageHero Eyebrow="Lobby"
+              Title="Create a game"
+              Description="Creating a game reserves the invite code and seats you immediately as player one." />
 
-    <div class="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-2xl shadow-slate-950/40 backdrop-blur sm:p-8">
-        <div class="space-y-6">
+    <div class="ui-surface-form">
+        <div class="ui-flow">
             @if (!string.IsNullOrWhiteSpace(errorMessage))
             {
-                <div class="rounded-2xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-100" role="alert">@errorMessage</div>
+                <AlertBanner>@errorMessage</AlertBanner>
             }
 
-            <div class="space-y-2">
-                <label class="block text-sm font-medium text-slate-200" for="game-name">Game name</label>
+            <div class="ui-field">
+                <label class="ui-label" for="game-name">Game name</label>
                 <input id="game-name"
-                       class="w-full rounded-2xl border border-white/10 bg-slate-950/60 px-4 py-3 text-base text-white outline-none transition placeholder:text-slate-500 focus:border-sky-300/60 focus:ring-2 focus:ring-sky-400/30"
+                       class="ui-input"
                        maxlength="100"
                        placeholder="Weekend match"
                        @bind="gameName" />
             </div>
 
-            <div class="space-y-2">
-                <label class="block text-sm font-medium text-slate-200" for="player-name">Player name</label>
+            <div class="ui-field">
+                <label class="ui-label" for="player-name">Player name</label>
                 <input id="player-name"
-                       class="w-full rounded-2xl border border-white/10 bg-slate-950/60 px-4 py-3 text-base text-white outline-none transition placeholder:text-slate-500 focus:border-sky-300/60 focus:ring-2 focus:ring-sky-400/30"
+                       class="ui-input"
                        maxlength="40"
                        placeholder="Captain Red"
                        @bind="playerName" />
             </div>
 
-            <div class="flex flex-wrap gap-3">
-                <button class="inline-flex items-center justify-center rounded-full bg-sky-400 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-sky-300 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400"
+            <div class="ui-actions">
+                <button class="ui-button-primary"
                         @onclick="CreateGameAsync"
                         disabled="@isSubmitting">
                     @(isSubmitting ? "Creating game..." : "Create and join")
                 </button>
-                <a class="inline-flex items-center justify-center rounded-full border border-white/10 px-5 py-3 text-sm font-semibold text-slate-200 transition hover:border-sky-300/60 hover:text-white" href="/games">
+                <a class="ui-button-secondary" href="/games">
                     Cancel
                 </a>
             </div>

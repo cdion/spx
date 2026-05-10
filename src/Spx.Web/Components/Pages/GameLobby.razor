@@ -14,25 +14,22 @@
 
 @if (isLoading)
 {
-    <section class="mx-auto max-w-4xl rounded-3xl border border-white/10 bg-white/5 p-8 text-slate-300 shadow-2xl shadow-slate-950/40 backdrop-blur">
+    <section class="ui-surface-empty mx-auto max-w-4xl text-slate-300">
         Loading lobby...
     </section>
 }
 else if (lobby is null)
 {
-    <section class="mx-auto flex max-w-3xl flex-col gap-6 rounded-3xl border border-white/10 bg-white/5 p-8 shadow-2xl shadow-slate-950/40 backdrop-blur">
-        <div class="space-y-3">
-            <p class="text-xs font-semibold uppercase tracking-[0.3em] text-sky-300">Lobby</p>
-            <h1 class="text-3xl font-semibold tracking-tight text-white">Game unavailable</h1>
-            <p class="text-base leading-7 text-slate-300">
-                You can only open lobby pages for games where you are an active player or where you previously played.
-            </p>
-        </div>
-        <div class="flex flex-wrap gap-3">
-            <a class="inline-flex items-center justify-center rounded-full bg-sky-400 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-sky-300" href="/games">
+    <section class="ui-surface-empty mx-auto flex max-w-3xl flex-col gap-6">
+        <PageHero Eyebrow="Lobby"
+                  Title="Game unavailable"
+                  Description="You can only open lobby pages for games where you are an active player or where you previously played."
+                  Compact />
+        <div class="ui-actions">
+            <a class="ui-button-primary" href="/games">
                 Back to my games
             </a>
-            <a class="inline-flex items-center justify-center rounded-full border border-white/10 px-5 py-3 text-sm font-semibold text-slate-200 transition hover:border-sky-300/60 hover:text-white" href="/games/join">
+            <a class="ui-button-secondary" href="/games/join">
                 Join another game
             </a>
         </div>
@@ -40,22 +37,22 @@ else if (lobby is null)
 }
 else
 {
-    <section class="mx-auto flex max-w-6xl flex-col gap-8">
-        <header class="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-2xl shadow-slate-950/40 backdrop-blur sm:p-8">
+    <section class="ui-page max-w-6xl">
+        <header class="ui-surface-form">
             <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
                 <div class="space-y-3">
-                    <p class="text-xs font-semibold uppercase tracking-[0.3em] text-sky-300">Lobby</p>
-                    <h1 class="text-4xl font-semibold tracking-tight text-white sm:text-5xl">@lobby.Name</h1>
-                    <p class="text-base leading-7 text-slate-300 sm:text-lg">
+                    <p class="ui-page-eyebrow">Lobby</p>
+                    <h1 class="ui-page-title">@lobby.Name</h1>
+                    <p class="ui-page-copy">
                         Invite code <span class="font-semibold tracking-[0.25em] text-sky-300">@lobby.InviteCode</span>
                     </p>
                 </div>
 
                 <div class="flex flex-wrap items-center gap-3">
-                    <span class="rounded-full border border-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">
+                    <span class="ui-status-badge">
                         @lobby.Status
                     </span>
-                    <span class="rounded-full border border-emerald-400/30 bg-emerald-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-emerald-200">
+                    <span class="ui-status-badge border-emerald-400/30 bg-emerald-500/10 text-emerald-200">
                         @lobby.Players.Count / @lobby.MaxPlayers players
                     </span>
                 </div>
@@ -64,21 +61,21 @@ else
 
         @if (!string.IsNullOrWhiteSpace(errorMessage))
         {
-            <div class="rounded-2xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-100" role="alert">@errorMessage</div>
+            <AlertBanner>@errorMessage</AlertBanner>
         }
 
         @if (!lobby.IsCurrentUserActive)
         {
-            <div class="rounded-2xl border border-amber-400/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100" role="status">
+            <AlertBanner Tone="warning" Role="status">
                 You are viewing this game as a former player. Timeline history is limited to the point when you left.
-            </div>
+            </AlertBanner>
         }
 
-        <section class="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-2xl shadow-slate-950/40 backdrop-blur sm:p-8">
+        <section class="ui-surface-form">
             <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
                 <div class="space-y-2">
-                    <p class="text-xs font-semibold uppercase tracking-[0.25em] text-sky-300">Timeline</p>
-                    <h2 class="text-2xl font-semibold tracking-tight text-white">Messages and game events</h2>
+                    <p class="ui-section-eyebrow">Timeline</p>
+                    <h2 class="ui-section-title">Messages and game events</h2>
                 </div>
 
                 @if (timelineItems.Count > 0)
@@ -91,11 +88,13 @@ else
 
             @if (!string.IsNullOrWhiteSpace(messageError))
             {
-                <div class="mt-6 rounded-2xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-100" role="alert">@messageError</div>
+                <div class="mt-6">
+                    <AlertBanner>@messageError</AlertBanner>
+                </div>
             }
 
             <div class="mt-6 grid gap-6 lg:grid-cols-[1.3fr_0.9fr]">
-                <div class="rounded-2xl border border-white/10 bg-slate-950/40 p-3 sm:p-4">
+                <div class="ui-panel-card-tight">
                     <div class="mb-3 flex items-center justify-between px-2 text-xs uppercase tracking-[0.2em] text-slate-400">
                         <span>History</span>
                         @if (isLoadingOlderMessages)
@@ -104,18 +103,18 @@ else
                         }
                     </div>
 
-                    <div class="h-[32rem] overflow-y-auto rounded-2xl border border-white/10 bg-black/30 p-3" @ref="timelineContainer">
+                    <div class="ui-scroll-panel" @ref="timelineContainer">
                         <div @ref="timelineTopSentinel" class="h-px w-full"></div>
 
                         @if (isTimelineLoading)
                         {
-                            <div class="rounded-2xl border border-white/10 bg-slate-950/40 px-4 py-5 text-sm text-slate-400">
+                            <div class="ui-panel-card text-sm text-slate-400">
                                 Loading timeline...
                             </div>
                         }
                         else if (timelineItems.Count == 0)
                         {
-                            <div class="rounded-2xl border border-dashed border-white/10 bg-slate-950/30 px-4 py-5 text-sm text-slate-400">
+                            <div class="ui-empty-state">
                                 No messages or events have appeared in this game yet.
                             </div>
                         }
@@ -138,19 +137,19 @@ else
                                                     <p class="text-sm font-semibold text-white">@GetTimelineTitle(item)</p>
                                                     @if (IsPrivate(item))
                                                     {
-                                                        <span class="rounded-full border border-amber-400/30 bg-amber-500/10 px-2 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-amber-100">
+                                                        <span class="ui-inline-badge border border-amber-400/30 bg-amber-500/10 text-amber-100">
                                                             @GetPrivateBadgeText(item)
                                                         </span>
                                                     }
                                                     @if (IsPending(item))
                                                     {
-                                                        <span class="rounded-full border border-sky-400/30 bg-sky-400/10 px-2 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-sky-200">
+                                                        <span class="ui-inline-badge border border-sky-400/30 bg-sky-400/10 text-sky-200">
                                                             Pending
                                                         </span>
                                                     }
                                                     @if (IsFailed(item))
                                                     {
-                                                        <span class="rounded-full border border-red-400/30 bg-red-500/10 px-2 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-red-100">
+                                                        <span class="ui-inline-badge border border-red-400/30 bg-red-500/10 text-red-100">
                                                             Failed
                                                         </span>
                                                     }
@@ -176,14 +175,14 @@ else
                                                 <div class="flex flex-wrap gap-2">
                                                     @if (item.Message.CanEdit)
                                                     {
-                                                        <button class="rounded-full border border-white/10 px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-300 transition hover:border-sky-300/60 hover:text-white"
+                                                        <button class="ui-button-compact border border-white/10 text-slate-300 hover:border-sky-300/60 hover:text-white"
                                                                 @onclick="() => BeginEdit(item.Message)">
                                                             Edit
                                                         </button>
                                                     }
                                                     @if (item.Message.CanDelete)
                                                     {
-                                                        <button class="rounded-full border border-rose-400/40 px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-rose-100 transition hover:border-rose-300 hover:text-white"
+                                                        <button class="ui-button-compact border border-rose-400/40 text-rose-100 hover:border-rose-300 hover:text-white"
                                                                 @onclick="() => DeleteMessageAsync(item.Message.Id)">
                                                             Delete
                                                         </button>
@@ -193,11 +192,11 @@ else
                                             else if (IsFailed(item))
                                             {
                                                 <div class="flex flex-wrap gap-2">
-                                                    <button class="rounded-full border border-sky-400/30 px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-sky-200 transition hover:border-sky-300/60 hover:text-white"
+                                                    <button class="ui-button-compact border border-sky-400/30 text-sky-200 hover:border-sky-300/60 hover:text-white"
                                                             @onclick="() => RetryPendingMessageAsync(item.Key)">
                                                         Retry
                                                     </button>
-                                                    <button class="rounded-full border border-white/10 px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-300 transition hover:border-sky-300/60 hover:text-white"
+                                                    <button class="ui-button-compact border border-white/10 text-slate-300 hover:border-sky-300/60 hover:text-white"
                                                             @onclick="() => DismissPendingMessage(item.Key)">
                                                         Dismiss
                                                     </button>
@@ -208,15 +207,15 @@ else
                                         @if (item.Message is not null && editingMessageId == item.Message.Id)
                                         {
                                             <div class="mt-4 space-y-3 rounded-2xl border border-sky-400/30 bg-sky-400/10 p-4">
-                                                <textarea class="min-h-24 w-full rounded-2xl border border-white/10 bg-slate-950/60 px-4 py-3 text-sm text-slate-100 outline-none transition focus:border-sky-300/60 focus:ring-2 focus:ring-sky-400/30"
+                                                <textarea class="ui-textarea min-h-24"
                                                           @bind="editMessageText"
                                                           @bind:event="oninput"></textarea>
                                                 <div class="flex flex-wrap justify-end gap-3">
-                                                    <button class="rounded-full border border-white/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-300 transition hover:border-sky-300/60 hover:text-white"
+                                                    <button class="ui-button-compact border border-white/10 px-4 text-slate-300 hover:border-sky-300/60 hover:text-white"
                                                             @onclick="CancelEdit">
                                                         Cancel
                                                     </button>
-                                                    <button class="rounded-full bg-sky-400 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-950 transition hover:bg-sky-300 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400"
+                                                    <button class="ui-button-compact bg-sky-400 px-4 text-slate-950 hover:bg-sky-300 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400"
                                                             @onclick="SaveEditAsync"
                                                             disabled="@isSavingEdit">
                                                         @(isSavingEdit ? "Saving..." : "Save")
@@ -231,9 +230,9 @@ else
                     </div>
                 </div>
 
-                <div class="space-y-4 rounded-2xl border border-white/10 bg-slate-950/40 p-5">
+                <div class="ui-panel-card space-y-4">
                     <div class="space-y-2">
-                        <p class="text-xs font-semibold uppercase tracking-[0.25em] text-sky-300">Composer</p>
+                        <p class="ui-section-eyebrow">Composer</p>
                         <h3 class="text-xl font-semibold tracking-tight text-white">Send a message</h3>
                         <p class="text-sm leading-6 text-slate-300">
                             @if (lobby.IsCurrentUserActive)
@@ -253,7 +252,7 @@ else
                             <div class="space-y-2">
                                 <label class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400" for="message-recipient">Recipient</label>
                                 <select id="message-recipient"
-                                        class="w-full rounded-2xl border border-white/10 bg-slate-950/60 px-4 py-3 text-sm text-slate-100 outline-none transition focus:border-sky-300/60 focus:ring-2 focus:ring-sky-400/30"
+                                        class="ui-select"
                                         @bind="selectedRecipientPlayerIdString">
                                     <option value="">All active players</option>
                                     @foreach (var player in lobby.Players.Where(player => !player.IsCurrentUser))
@@ -266,7 +265,7 @@ else
                             <div class="space-y-2">
                                 <label class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400" for="message-composer">Message</label>
                                 <textarea id="message-composer"
-                                          class="min-h-32 w-full rounded-2xl border border-white/10 bg-slate-950/60 px-4 py-3 text-sm text-slate-100 outline-none transition placeholder:text-slate-500 focus:border-sky-300/60 focus:ring-2 focus:ring-sky-400/30"
+                                          class="ui-textarea min-h-32"
                                           placeholder="Write something for the game timeline..."
                                           @bind="composerText"
                                           @bind:event="oninput"
@@ -277,7 +276,7 @@ else
                                 <p class="text-xs uppercase tracking-[0.2em] text-slate-500">
                                     @composerText.Length / 1024 characters
                                 </p>
-                                <button class="inline-flex items-center justify-center rounded-full bg-sky-400 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-sky-300 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400"
+                                <button class="ui-button-primary"
                                         @onclick="SendMessageAsync"
                                         disabled="@isSendingMessage">
                                     @(isSendingMessage ? "Sending..." : "Send message")
@@ -287,7 +286,7 @@ else
                     }
                     else
                     {
-                        <div class="rounded-2xl border border-dashed border-white/10 bg-slate-950/30 px-4 py-5 text-sm text-slate-400">
+                        <div class="ui-empty-state">
                             This composer is disabled because you are no longer an active player in this game.
                         </div>
                     }
@@ -296,16 +295,16 @@ else
         </section>
 
         <div class="grid gap-6 xl:grid-cols-[1.4fr_1fr]">
-            <section class="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-2xl shadow-slate-950/40 backdrop-blur sm:p-8">
+            <section class="ui-surface-form">
                 <div class="space-y-2">
-                    <p class="text-xs font-semibold uppercase tracking-[0.25em] text-sky-300">Roster</p>
-                    <h2 class="text-2xl font-semibold tracking-tight text-white">Active players</h2>
+                    <p class="ui-section-eyebrow">Roster</p>
+                    <h2 class="ui-section-title">Active players</h2>
                 </div>
 
                 <div class="mt-6 space-y-4">
                     @foreach (var player in lobby.Players)
                     {
-                        <article class="flex items-center justify-between rounded-2xl border border-white/10 bg-slate-950/40 px-4 py-4">
+                        <article class="ui-panel-row">
                             <div>
                                 <p class="text-base font-semibold text-white">@player.Name</p>
                                 <p class="text-sm text-slate-400">Joined @FormatDateTime(player.JoinedAtUtc)</p>
@@ -313,7 +312,7 @@ else
 
                             @if (player.IsCurrentUser)
                             {
-                                <span class="rounded-full border border-sky-400/30 bg-sky-400/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-sky-200">
+                                <span class="ui-status-badge border-sky-400/30 bg-sky-400/10 text-sky-200">
                                     You
                                 </span>
                             }
@@ -322,17 +321,17 @@ else
 
                     @if (lobby.Players.Count < lobby.MaxPlayers)
                     {
-                        <article class="rounded-2xl border border-dashed border-white/10 bg-slate-950/30 px-4 py-5 text-sm text-slate-400">
+                        <article class="ui-empty-state">
                             Waiting for another player to join with the invite code.
                         </article>
                     }
                 </div>
             </section>
 
-            <aside class="space-y-6 rounded-3xl border border-white/10 bg-white/5 p-6 shadow-2xl shadow-slate-950/40 backdrop-blur sm:p-8">
-                <div class="space-y-3">
-                    <p class="text-xs font-semibold uppercase tracking-[0.25em] text-sky-300">You</p>
-                    <h2 class="text-2xl font-semibold tracking-tight text-white">@lobby.CurrentPlayerName</h2>
+            <aside class="ui-surface-form space-y-6">
+                <div class="ui-section-header">
+                    <p class="ui-section-eyebrow">You</p>
+                    <h2 class="ui-section-title">@lobby.CurrentPlayerName</h2>
                     <p class="text-sm leading-6 text-slate-300">@GetPlayerPanelMessage()</p>
                 </div>
 
@@ -344,16 +343,16 @@ else
                     }
                 </div>
 
-                <div class="flex flex-wrap gap-3">
+                <div class="ui-actions">
                     @if (lobby.IsCurrentUserActive)
                     {
-                        <button class="inline-flex items-center justify-center rounded-full border border-rose-400/40 px-5 py-3 text-sm font-semibold text-rose-100 transition hover:border-rose-300 hover:text-white disabled:cursor-not-allowed disabled:border-white/10 disabled:text-slate-500"
+                        <button class="ui-button-danger"
                                 @onclick="LeaveGameAsync"
                                 disabled="@isLeaving">
                             @(isLeaving ? "Leaving..." : "Leave game")
                         </button>
                     }
-                    <a class="inline-flex items-center justify-center rounded-full border border-white/10 px-5 py-3 text-sm font-semibold text-slate-200 transition hover:border-sky-300/60 hover:text-white" href="/games">
+                    <a class="ui-button-secondary" href="/games">
                         Back to my games
                     </a>
                 </div>
