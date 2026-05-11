@@ -1,7 +1,7 @@
 @page "/games/create"
 @attribute [Authorize]
 @using System.Security.Claims
-@inject IGameService GameService
+@inject ICreateGameHandler CreateGameHandler
 @inject NavigationManager Navigation
 
 <PageTitle>Create Game</PageTitle>
@@ -72,7 +72,7 @@
         try
         {
             var userId = await GetUserIdAsync();
-            var result = await GameService.CreateGameAsync(userId, new CreateGameRequest(gameName, playerName));
+            var result = await CreateGameHandler.HandleAsync(userId, new CreateGameRequest(gameName, playerName));
 
             if (!result.Succeeded || result.GameId is null)
             {

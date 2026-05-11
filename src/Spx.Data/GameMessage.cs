@@ -1,20 +1,6 @@
+using Spx.Games;
+
 namespace Spx.Data;
-
-public enum GameMessageSenderKind
-{
-    Player = 0,
-    Game = 1
-}
-
-public enum GameMessageKind
-{
-    PlayerPublic = 0,
-    PlayerPrivate = 1,
-    GameCreated = 2,
-    PlayerJoined = 3,
-    PlayerLeft = 4,
-    GameEnded = 5
-}
 
 public sealed class GameMessage
 {

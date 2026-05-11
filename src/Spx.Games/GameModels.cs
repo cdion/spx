@@ -1,5 +1,3 @@
-using Spx.Data;
-
 namespace Spx.Games;
 
 public sealed record CreateGameRequest(string GameName, string PlayerName);

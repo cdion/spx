@@ -2,13 +2,14 @@ using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Spx.Account;
 using Spx.Games;
+using Spx.Web.Adapters.Account;
+using Spx.Web.Adapters.Games;
 using Spx.Web.Components;
 using Spx.Data;
 using Spx.Web.Endpoints;
 using Spx.Web.Options;
-using Spx.Web.Services.Email;
-using Spx.Web.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -22,6 +23,7 @@ builder.Services.Configure<ResendOptions>(builder.Configuration.GetSection(Resen
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 builder.Services.AddCascadingAuthenticationState();
+builder.Services.AddHttpContextAccessor();
 builder.Services.AddAuthentication(IdentityConstants.ApplicationScheme)
     .AddIdentityCookies();
 builder.Services.ConfigureApplicationCookie(options =>
@@ -73,17 +75,11 @@ else
         serviceProvider.GetRequiredService<ResendAccountEmailSender>());
 }
 
-builder.Services.AddSingleton<OrleansGameLobbySubscriptionService>();
-builder.Services.AddSingleton<IGameLobbySubscriptionService>(serviceProvider =>
-    serviceProvider.GetRequiredService<OrleansGameLobbySubscriptionService>());
-builder.Services.AddSingleton<IGameMessageSubscriptionService>(serviceProvider =>
-    serviceProvider.GetRequiredService<OrleansGameLobbySubscriptionService>());
-builder.Services.AddSingleton<IGameLobbyEventsPublisher>(serviceProvider =>
-    serviceProvider.GetRequiredService<OrleansGameLobbySubscriptionService>());
-builder.Services.AddSingleton<IGameMessageEventsPublisher>(serviceProvider =>
-    serviceProvider.GetRequiredService<OrleansGameLobbySubscriptionService>());
-builder.Services.AddScoped<IGameService, GameService>();
-builder.Services.AddScoped<IGameMessagingService, GameMessagingService>();
+builder.Services.AddAccountApplication();
+builder.Services.AddAccountWebAdapters();
+builder.Services.AddGameWebAdapters();
+builder.Services.AddGameApplication();
+builder.Services.AddGameDataAdapters();
 
 var app = builder.Build();
 

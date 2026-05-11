@@ -46,6 +46,28 @@
       "group": "test"
     },
     {
+      "label": "tests: run account",
+      "type": "shell",
+      "command": "dotnet",
+      "args": [
+        "test",
+        "${workspaceFolder}/tests/Spx.Account.Tests/Spx.Account.Tests.csproj"
+      ],
+      "problemMatcher": [],
+      "group": "test"
+    },
+    {
+      "label": "tests: run games unit",
+      "type": "shell",
+      "command": "dotnet",
+      "args": [
+        "test",
+        "${workspaceFolder}/tests/Spx.Games.Tests/Spx.Games.Tests.csproj"
+      ],
+      "problemMatcher": [],
+      "group": "test"
+    },
+    {
       "label": "tests: run games",
       "type": "shell",
       "command": "dotnet",
@@ -68,10 +90,24 @@
       "group": "test"
     },
     {
+      "label": "tests: run web",
+      "type": "shell",
+      "command": "dotnet",
+      "args": [
+        "test",
+        "${workspaceFolder}/tests/Spx.Web.Tests/Spx.Web.Tests.csproj"
+      ],
+      "problemMatcher": [],
+      "group": "test"
+    },
+    {
       "label": "tests: run",
       "dependsOn": [
+        "tests: run account",
+        "tests: run games unit",
         "tests: run games",
-        "tests: run grains"
+        "tests: run grains",
+        "tests: run web"
       ],
       "dependsOrder": "sequence",
       "group": "test"
@@ -85,6 +121,34 @@
         "${workspaceFolder}/coverage"
       ],
       "problemMatcher": []
+    },
+    {
+      "label": "tests: collect coverage account",
+      "type": "shell",
+      "command": "dotnet",
+      "args": [
+        "test",
+        "${workspaceFolder}/tests/Spx.Account.Tests/Spx.Account.Tests.csproj",
+        "--collect:XPlat Code Coverage",
+        "--results-directory",
+        "${workspaceFolder}/coverage/testresults"
+      ],
+      "problemMatcher": [],
+      "group": "test"
+    },
+    {
+      "label": "tests: collect coverage games unit",
+      "type": "shell",
+      "command": "dotnet",
+      "args": [
+        "test",
+        "${workspaceFolder}/tests/Spx.Games.Tests/Spx.Games.Tests.csproj",
+        "--collect:XPlat Code Coverage",
+        "--results-directory",
+        "${workspaceFolder}/coverage/testresults"
+      ],
+      "problemMatcher": [],
+      "group": "test"
     },
     {
       "label": "tests: collect coverage games",
@@ -115,10 +179,27 @@
       "group": "test"
     },
     {
+      "label": "tests: collect coverage web",
+      "type": "shell",
+      "command": "dotnet",
+      "args": [
+        "test",
+        "${workspaceFolder}/tests/Spx.Web.Tests/Spx.Web.Tests.csproj",
+        "--collect:XPlat Code Coverage",
+        "--results-directory",
+        "${workspaceFolder}/coverage/testresults"
+      ],
+      "problemMatcher": [],
+      "group": "test"
+    },
+    {
       "label": "tests: collect coverage",
       "dependsOn": [
+        "tests: collect coverage account",
+        "tests: collect coverage games unit",
         "tests: collect coverage games",
-        "tests: collect coverage grains"
+        "tests: collect coverage grains",
+        "tests: collect coverage web"
       ],
       "dependsOrder": "sequence",
       "group": "test"

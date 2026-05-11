@@ -1,7 +1,12 @@
 using Microsoft.AspNetCore.Http.Extensions;
-using Microsoft.AspNetCore.Identity;
-using Spx.Data;
-using Spx.Web.Services.Email;
+using Spx.Account;
+using Spx.Account.Features.ConfirmEmail;
+using Spx.Account.Features.ForgotPassword;
+using Spx.Account.Features.Login;
+using Spx.Account.Features.Logout;
+using Spx.Account.Features.Register;
+using Spx.Account.Features.ResendConfirmation;
+using Spx.Account.Features.ResetPassword;
 
 namespace Spx.Web.Endpoints;
 
@@ -22,207 +27,113 @@ public static class AccountEndpointRouteBuilderExtensions
         return endpoints;
     }
 
-    private static async Task<IResult> LoginAsync(
-        HttpContext httpContext,
-        SignInManager<ApplicationUser> signInManager,
-        UserManager<ApplicationUser> userManager)
+    private static async Task<IResult> LoginAsync(HttpContext httpContext, ILoginHandler handler)
     {
         var form = await httpContext.Request.ReadFormAsync();
         var email = GetRequiredValue(form, "email");
         var password = GetRequiredValue(form, "password");
-        var returnUrl = GetLocalReturnUrl(form["returnUrl"]);
-
-        if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(password))
-        {
-            return Results.LocalRedirect(BuildRedirect("/login", ("error", "Email and password are required."), ("returnUrl", returnUrl)));
-        }
-
-        var user = await userManager.FindByEmailAsync(email);
-        if (user is null)
-        {
-            return Results.LocalRedirect(BuildRedirect("/login", ("error", "Invalid email or password."), ("returnUrl", returnUrl)));
-        }
-
-        var result = await signInManager.PasswordSignInAsync(user, password, isPersistent: false, lockoutOnFailure: true);
-        if (result.Succeeded)
-        {
-            return Results.LocalRedirect(returnUrl);
-        }
-
-        if (result.IsNotAllowed)
-        {
-            return Results.LocalRedirect(BuildRedirect("/login", ("error", "Confirm your email before signing in."), ("email", email), ("returnUrl", returnUrl)));
-        }
-
-        if (result.IsLockedOut)
-        {
-            return Results.LocalRedirect(BuildRedirect("/login", ("error", "Your account is temporarily locked. Try again later."), ("returnUrl", returnUrl)));
-        }
-
-        return Results.LocalRedirect(BuildRedirect("/login", ("error", "Invalid email or password."), ("returnUrl", returnUrl)));
+        return Results.LocalRedirect(MapLoginOutcome(await handler.HandleAsync(email, password, form["returnUrl"])));
     }
 
-    private static async Task<IResult> LogoutAsync(HttpContext httpContext, SignInManager<ApplicationUser> signInManager)
+    private static async Task<IResult> LogoutAsync(ILogoutHandler handler)
     {
-        await signInManager.SignOutAsync();
-        return Results.LocalRedirect("/login?status=You%20have%20been%20signed%20out.");
+        await handler.HandleAsync();
+        return Results.LocalRedirect(BuildRedirect("/login", ("status", "You have been signed out.")));
     }
 
-    private static async Task<IResult> RegisterAsync(
-        HttpContext httpContext,
-        UserManager<ApplicationUser> userManager,
-        IAccountEmailSender emailSender)
+    private static async Task<IResult> RegisterAsync(HttpContext httpContext, IRegisterHandler handler)
     {
         var form = await httpContext.Request.ReadFormAsync();
         var email = GetRequiredValue(form, "email");
         var password = GetRequiredValue(form, "password");
         var confirmPassword = GetRequiredValue(form, "confirmPassword");
-
-        if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(password) || string.IsNullOrWhiteSpace(confirmPassword))
-        {
-            return Results.LocalRedirect(BuildRedirect("/register", ("error", "Email, password, and confirmation are required.")));
-        }
-
-        if (!string.Equals(password, confirmPassword, StringComparison.Ordinal))
-        {
-            return Results.LocalRedirect(BuildRedirect("/register", ("error", "Passwords do not match."), ("email", email)));
-        }
-
-        var user = new ApplicationUser
-        {
-            Email = email,
-            UserName = email
-        };
-
-        var result = await userManager.CreateAsync(user, password);
-        if (!result.Succeeded)
-        {
-            return Results.LocalRedirect(BuildRedirect("/register", ("error", string.Join(" ", result.Errors.Select(static error => error.Description))), ("email", email)));
-        }
-
-        var code = await userManager.GenerateEmailConfirmationTokenAsync(user);
-        var confirmationLink = BuildAbsoluteUri(httpContext, "/account/confirm-email", ("userId", user.Id), ("code", code));
-        await emailSender.SendConfirmationLinkAsync(email, confirmationLink, httpContext.RequestAborted);
-
-        return Results.LocalRedirect(BuildRedirect("/login", ("status", "Check your email to confirm your account."), ("email", email)));
+        return Results.LocalRedirect(MapRegisterOutcome(await handler.HandleAsync(email, password, confirmPassword, httpContext.RequestAborted)));
     }
 
-    private static async Task<IResult> ConfirmEmailAsync(
-        HttpContext httpContext,
-        UserManager<ApplicationUser> userManager,
-        string userId,
-        string code)
+    private static async Task<IResult> ConfirmEmailAsync(IConfirmEmailHandler handler, string userId, string code)
     {
-        if (string.IsNullOrWhiteSpace(userId) || string.IsNullOrWhiteSpace(code))
-        {
-            return Results.LocalRedirect(BuildRedirect("/login", ("error", "The confirmation link is invalid.")));
-        }
-
-        var user = await userManager.FindByIdAsync(userId);
-        if (user is null)
-        {
-            return Results.LocalRedirect(BuildRedirect("/login", ("error", "The confirmation link is invalid.")));
-        }
-
-        var result = await userManager.ConfirmEmailAsync(user, code);
-        return result.Succeeded
-            ? Results.LocalRedirect(BuildRedirect("/login", ("status", "Your email has been confirmed. You can sign in now."), ("email", user.Email)))
-            : Results.LocalRedirect(BuildRedirect("/login", ("error", "Email confirmation failed. Request a new confirmation email and try again."), ("email", user.Email)));
+        return Results.LocalRedirect(MapConfirmEmailOutcome(await handler.HandleAsync(userId, code)));
     }
 
-    private static async Task<IResult> ForgotPasswordAsync(
-        HttpContext httpContext,
-        UserManager<ApplicationUser> userManager,
-        IAccountEmailSender emailSender)
+    private static async Task<IResult> ForgotPasswordAsync(HttpContext httpContext, IForgotPasswordHandler handler)
     {
         var form = await httpContext.Request.ReadFormAsync();
         var email = GetRequiredValue(form, "email");
-        var successMessage = "If the account exists and the email is confirmed, a reset link has been sent.";
-
-        if (string.IsNullOrWhiteSpace(email))
-        {
-            return Results.LocalRedirect(BuildRedirect("/forgot-password", ("error", "Email is required.")));
-        }
-
-        var user = await userManager.FindByEmailAsync(email);
-        if (user is not null && await userManager.IsEmailConfirmedAsync(user))
-        {
-            var code = await userManager.GeneratePasswordResetTokenAsync(user);
-            var resetLink = BuildAbsoluteUri(httpContext, "/reset-password", ("email", email), ("code", code));
-            await emailSender.SendPasswordResetLinkAsync(email, resetLink, httpContext.RequestAborted);
-        }
-
-        return Results.LocalRedirect(BuildRedirect("/forgot-password", ("status", successMessage)));
+        return Results.LocalRedirect(MapForgotPasswordOutcome(await handler.HandleAsync(email, httpContext.RequestAborted)));
     }
 
-    private static async Task<IResult> ResetPasswordAsync(
-        HttpContext httpContext,
-        UserManager<ApplicationUser> userManager)
+    private static async Task<IResult> ResetPasswordAsync(HttpContext httpContext, IResetPasswordHandler handler)
     {
         var form = await httpContext.Request.ReadFormAsync();
         var email = GetRequiredValue(form, "email");
         var code = GetRequiredValue(form, "code");
         var password = GetRequiredValue(form, "password");
         var confirmPassword = GetRequiredValue(form, "confirmPassword");
-
-        if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(code) || string.IsNullOrWhiteSpace(password) || string.IsNullOrWhiteSpace(confirmPassword))
-        {
-            return Results.LocalRedirect(BuildRedirect("/reset-password", ("error", "The reset link is incomplete."), ("email", email), ("code", code)));
-        }
-
-        if (!string.Equals(password, confirmPassword, StringComparison.Ordinal))
-        {
-            return Results.LocalRedirect(BuildRedirect("/reset-password", ("error", "Passwords do not match."), ("email", email), ("code", code)));
-        }
-
-        var user = await userManager.FindByEmailAsync(email);
-        if (user is null)
-        {
-            return Results.LocalRedirect(BuildRedirect("/login", ("status", "Your password has been reset. You can sign in now."), ("email", email)));
-        }
-
-        var result = await userManager.ResetPasswordAsync(user, code, password);
-        return result.Succeeded
-            ? Results.LocalRedirect(BuildRedirect("/login", ("status", "Your password has been reset. You can sign in now."), ("email", email)))
-            : Results.LocalRedirect(BuildRedirect("/reset-password", ("error", string.Join(" ", result.Errors.Select(static error => error.Description))), ("email", email), ("code", code)));
+        return Results.LocalRedirect(MapResetPasswordOutcome(await handler.HandleAsync(email, code, password, confirmPassword)));
     }
 
-    private static async Task<IResult> ResendConfirmationAsync(
-        HttpContext httpContext,
-        UserManager<ApplicationUser> userManager,
-        IAccountEmailSender emailSender)
+    private static async Task<IResult> ResendConfirmationAsync(HttpContext httpContext, IResendConfirmationHandler handler)
     {
         var form = await httpContext.Request.ReadFormAsync();
         var email = GetRequiredValue(form, "email");
-
-        if (string.IsNullOrWhiteSpace(email))
-        {
-            return Results.LocalRedirect(BuildRedirect("/resend-confirmation", ("error", "Email is required.")));
-        }
-
-        var user = await userManager.FindByEmailAsync(email);
-        if (user is not null && !await userManager.IsEmailConfirmedAsync(user))
-        {
-            var code = await userManager.GenerateEmailConfirmationTokenAsync(user);
-            var confirmationLink = BuildAbsoluteUri(httpContext, "/account/confirm-email", ("userId", user.Id), ("code", code));
-            await emailSender.SendConfirmationLinkAsync(email, confirmationLink, httpContext.RequestAborted);
-        }
-
-        return Results.LocalRedirect(BuildRedirect("/resend-confirmation", ("status", "If the account exists and is still unconfirmed, a new confirmation email has been sent."), ("email", email)));
+        return Results.LocalRedirect(MapResendConfirmationOutcome(await handler.HandleAsync(email, httpContext.RequestAborted)));
     }
 
-    private static string GetRequiredValue(IFormCollection form, string key)
-        => form.TryGetValue(key, out var value) ? value.ToString().Trim() : string.Empty;
-
-    private static string GetLocalReturnUrl(string? returnUrl)
-    {
-        if (!string.IsNullOrWhiteSpace(returnUrl) && returnUrl.StartsWith('/') && !returnUrl.StartsWith("//", StringComparison.Ordinal))
+    private static string MapLoginOutcome(LoginOutcome outcome)
+        => outcome.Status switch
         {
-            return returnUrl;
-        }
+            LoginOutcomeStatus.Succeeded => outcome.ReturnUrl,
+            LoginOutcomeStatus.ValidationFailed => BuildRedirect("/login", ("error", "Email and password are required."), ("returnUrl", outcome.ReturnUrl)),
+            LoginOutcomeStatus.InvalidCredentials => BuildRedirect("/login", ("error", "Invalid email or password."), ("returnUrl", outcome.ReturnUrl)),
+            LoginOutcomeStatus.EmailConfirmationRequired => BuildRedirect("/login", ("error", "Confirm your email before signing in."), ("email", outcome.Email), ("returnUrl", outcome.ReturnUrl)),
+            LoginOutcomeStatus.LockedOut => BuildRedirect("/login", ("error", "Your account is temporarily locked. Try again later."), ("returnUrl", outcome.ReturnUrl)),
+            _ => BuildRedirect("/login", ("error", "Invalid email or password."), ("returnUrl", outcome.ReturnUrl))
+        };
 
-        return "/";
-    }
+    private static string MapRegisterOutcome(RegisterOutcome outcome)
+        => outcome.Status switch
+        {
+            RegisterOutcomeStatus.ValidationFailed => BuildRedirect("/register", ("error", "Email, password, and confirmation are required.")),
+            RegisterOutcomeStatus.PasswordMismatch => BuildRedirect("/register", ("error", "Passwords do not match."), ("email", outcome.Email)),
+            RegisterOutcomeStatus.Failed => BuildRedirect("/register", ("error", string.Join(" ", outcome.Errors ?? [])), ("email", outcome.Email)),
+            RegisterOutcomeStatus.ConfirmationSent => BuildRedirect("/login", ("status", "Check your email to confirm your account."), ("email", outcome.Email)),
+            _ => BuildRedirect("/register", ("error", "Unable to register."), ("email", outcome.Email))
+        };
+
+    private static string MapConfirmEmailOutcome(ConfirmEmailOutcome outcome)
+        => outcome.Status switch
+        {
+            ConfirmEmailOutcomeStatus.InvalidLink => BuildRedirect("/login", ("error", "The confirmation link is invalid.")),
+            ConfirmEmailOutcomeStatus.Succeeded => BuildRedirect("/login", ("status", "Your email has been confirmed. You can sign in now."), ("email", outcome.Email)),
+            ConfirmEmailOutcomeStatus.Failed => BuildRedirect("/login", ("error", "Email confirmation failed. Request a new confirmation email and try again."), ("email", outcome.Email)),
+            _ => BuildRedirect("/login", ("error", "The confirmation link is invalid."))
+        };
+
+    private static string MapForgotPasswordOutcome(ForgotPasswordOutcome outcome)
+        => outcome.Status switch
+        {
+            ForgotPasswordOutcomeStatus.ValidationFailed => BuildRedirect("/forgot-password", ("error", "Email is required.")),
+            ForgotPasswordOutcomeStatus.Completed => BuildRedirect("/forgot-password", ("status", "If the account exists and the email is confirmed, a reset link has been sent.")),
+            _ => BuildRedirect("/forgot-password", ("error", "Email is required."))
+        };
+
+    private static string MapResetPasswordOutcome(ResetPasswordOutcome outcome)
+        => outcome.Status switch
+        {
+            ResetPasswordOutcomeStatus.IncompleteLink => BuildRedirect("/reset-password", ("error", "The reset link is incomplete."), ("email", outcome.Email), ("code", outcome.Code)),
+            ResetPasswordOutcomeStatus.PasswordMismatch => BuildRedirect("/reset-password", ("error", "Passwords do not match."), ("email", outcome.Email), ("code", outcome.Code)),
+            ResetPasswordOutcomeStatus.Completed => BuildRedirect("/login", ("status", "Your password has been reset. You can sign in now."), ("email", outcome.Email)),
+            ResetPasswordOutcomeStatus.Failed => BuildRedirect("/reset-password", ("error", string.Join(" ", outcome.Errors ?? [])), ("email", outcome.Email), ("code", outcome.Code)),
+            _ => BuildRedirect("/reset-password", ("error", "The reset link is incomplete."), ("email", outcome.Email), ("code", outcome.Code))
+        };
+
+    private static string MapResendConfirmationOutcome(ResendConfirmationOutcome outcome)
+        => outcome.Status switch
+        {
+            ResendConfirmationOutcomeStatus.ValidationFailed => BuildRedirect("/resend-confirmation", ("error", "Email is required.")),
+            ResendConfirmationOutcomeStatus.Completed => BuildRedirect("/resend-confirmation", ("status", "If the account exists and is still unconfirmed, a new confirmation email has been sent."), ("email", outcome.Email)),
+            _ => BuildRedirect("/resend-confirmation", ("error", "Email is required."))
+        };
 
     private static string BuildRedirect(string path, params (string Key, string? Value)[] values)
     {
@@ -239,18 +150,6 @@ public static class AccountEndpointRouteBuilderExtensions
         return $"{path}{queryBuilder}";
     }
 
-    private static string BuildAbsoluteUri(HttpContext httpContext, string path, params (string Key, string? Value)[] values)
-    {
-        var query = new QueryBuilder();
-
-        foreach (var (key, value) in values)
-        {
-            if (!string.IsNullOrWhiteSpace(value))
-            {
-                query.Add(key, value);
-            }
-        }
-
-        return $"{httpContext.Request.Scheme}://{httpContext.Request.Host}{path}{query}";
-    }
+    private static string GetRequiredValue(IFormCollection form, string key)
+        => form.TryGetValue(key, out var value) ? value.ToString().Trim() : string.Empty;
 }

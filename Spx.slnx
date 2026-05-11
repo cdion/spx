@@ -1,5 +1,6 @@
 <Solution>
   <Folder Name="/src/">
+    <Project Path="src/Spx.Account/Spx.Account.csproj" />
     <Project Path="src/Spx.AppHost/Spx.AppHost.csproj" />
     <Project Path="src/Spx.Contracts/Spx.Contracts.csproj" />
     <Project Path="src/Spx.Data/Spx.Data.csproj" />
@@ -10,7 +11,10 @@
     <Project Path="src/Spx.Web/Spx.Web.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/Spx.Account.Tests/Spx.Account.Tests.csproj" />
+    <Project Path="tests/Spx.Games.Tests/Spx.Games.Tests.csproj" />
     <Project Path="tests/Spx.Games.IntegrationTests/Spx.Games.IntegrationTests.csproj" />
     <Project Path="tests/Spx.Grains.Tests/Spx.Grains.Tests.csproj" />
+    <Project Path="tests/Spx.Web.Tests/Spx.Web.Tests.csproj" />
   </Folder>
 </Solution>

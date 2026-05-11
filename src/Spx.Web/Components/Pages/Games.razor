@@ -1,7 +1,7 @@
 @page "/games"
 @attribute [Authorize]
 @using System.Security.Claims
-@inject IGameService GameService
+@inject IGetUserGamesHandler GetUserGamesHandler
 
 <PageTitle>My Games</PageTitle>
 
@@ -162,7 +162,7 @@ else if (games is not null)
         try
         {
             var userId = await GetUserIdAsync();
-            games = await GameService.GetUserGamesAsync(userId);
+            games = await GetUserGamesHandler.HandleAsync(userId);
         }
         catch (Exception exception)
         {

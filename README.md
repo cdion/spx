@@ -127,3 +127,13 @@ For a real Orleans app, the next decisions are usually:
 3. Move more UI-facing grain interactions behind application services in `Spx.Web`.
 4. Replace the local Redis-backed development clustering setup with your production backing store or managed Redis configuration.
 5. Add tests for grain behavior and UI or host endpoints.
+
+## Testing
+
+The repo testing strategy is documented in `TESTING.md`.
+
+Short version:
+
+- most tests should be unit tests in the application layer
+- keep only a thin set of integration tests for important adapters like EF, ASP.NET Identity, and web endpoint wiring
+- avoid using integration tests as the default place for new application behavior coverage

@@ -1,7 +1,7 @@
 @page "/games/join"
 @attribute [Authorize]
 @using System.Security.Claims
-@inject IGameService GameService
+@inject IJoinGameHandler JoinGameHandler
 @inject NavigationManager Navigation
 
 <PageTitle>Join Game</PageTitle>
@@ -72,7 +72,7 @@
         try
         {
             var userId = await GetUserIdAsync();
-            var result = await GameService.JoinGameAsync(userId, new JoinGameRequest(inviteCode, playerName));
+            var result = await JoinGameHandler.HandleAsync(userId, new JoinGameRequest(inviteCode, playerName));
 
             if (!result.Succeeded || result.GameId is null)
             {

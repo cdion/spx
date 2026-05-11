@@ -1,3 +1,5 @@
+using Spx.Games;
+
 namespace Spx.Data;
 
 public sealed class Game
