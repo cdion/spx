@@ -7,6 +7,22 @@ namespace Spx.Grains.Tests;
 public sealed class GameLobbyEventsGrainTests
 {
     [Fact]
+    public void NotifyObservers_LeavesObserversWhenNoneThrow()
+    {
+        var notifiedGameIds = new List<Guid>();
+        var firstObserver = new DelegateGameLobbyObserver(gameId => notifiedGameIds.Add(gameId));
+        var secondObserver = new DelegateGameLobbyObserver(gameId => notifiedGameIds.Add(gameId));
+        var observers = new HashSet<IGameLobbyObserver> { firstObserver, secondObserver };
+        var gameId = Guid.NewGuid();
+
+        GameLobbyEventsGrain.NotifyObservers(gameId, observers);
+
+        Assert.Equal([gameId, gameId], notifiedGameIds);
+        Assert.Contains(firstObserver, observers);
+        Assert.Contains(secondObserver, observers);
+    }
+
+    [Fact]
     public void NotifyObservers_RemovesObserversThatThrow()
     {
         var notifiedGameIds = new List<Guid>();
@@ -20,6 +36,22 @@ public sealed class GameLobbyEventsGrainTests
         Assert.Equal([gameId], notifiedGameIds);
         Assert.Contains(workingObserver, observers);
         Assert.DoesNotContain(throwingObserver, observers);
+    }
+
+    [Fact]
+    public void NotifyMessageObservers_LeavesObserversWhenNoneThrow()
+    {
+        var notifiedGameIds = new List<Guid>();
+        var firstObserver = new DelegateGameLobbyObserver(onMessagesChanged: gameId => notifiedGameIds.Add(gameId));
+        var secondObserver = new DelegateGameLobbyObserver(onMessagesChanged: gameId => notifiedGameIds.Add(gameId));
+        var observers = new HashSet<IGameLobbyObserver> { firstObserver, secondObserver };
+        var gameId = Guid.NewGuid();
+
+        GameLobbyEventsGrain.NotifyMessageObservers(gameId, observers);
+
+        Assert.Equal([gameId, gameId], notifiedGameIds);
+        Assert.Contains(firstObserver, observers);
+        Assert.Contains(secondObserver, observers);
     }
 
     [Fact]

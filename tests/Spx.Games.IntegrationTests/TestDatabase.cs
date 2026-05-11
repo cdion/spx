@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Spx.Data;
 using Spx.Games;
 
-namespace Spx.Grains.Tests;
+namespace Spx.Games.IntegrationTests;
 
 internal sealed class TestDatabase : IAsyncDisposable
 {

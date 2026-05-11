@@ -9,6 +9,7 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.13.0" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.7" />
     <PackageReference Include="xunit" Version="2.8.1" />
     <PackageReference Include="xunit.runner.visualstudio" Version="2.5.8">
       <PrivateAssets>all</PrivateAssets>
@@ -21,7 +22,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="../../src/Spx.Grains/Spx.Grains.csproj" />
+    <ProjectReference Include="../../src/Spx.Data/Spx.Data.csproj" />
+    <ProjectReference Include="../../src/Spx.Games/Spx.Games.csproj" />
   </ItemGroup>
 
 </Project>

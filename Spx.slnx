@@ -10,6 +10,7 @@
     <Project Path="src/Spx.Web/Spx.Web.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/Spx.Games.IntegrationTests/Spx.Games.IntegrationTests.csproj" />
     <Project Path="tests/Spx.Grains.Tests/Spx.Grains.Tests.csproj" />
   </Folder>
 </Solution>
