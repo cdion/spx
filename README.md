@@ -1,139 +1,171 @@
-# Spx Orleans Starter
+# Spx
 
-This workspace contains a minimal Microsoft Orleans starter built with:
+Spx is a .NET 10 multiplayer game lobby application built on Microsoft Orleans, ASP.NET Core Identity, PostgreSQL, Redis, Blazor, and .NET Aspire.
+
+The current app is no longer a starter template. It includes account flows, invite-code based game creation and joining, lobby views, message persistence, and a split between application, data, web, and Orleans hosting layers.
+
+## Stack
 
 - .NET 10 SDK
-- .NET local tool manifest for `dotnet-ef`
-- ASP.NET Core minimal hosting
-- .NET Aspire AppHost orchestration for local development
-- Aspire ServiceDefaults for health checks, telemetry, and service discovery
-- Blazor Web App for a minimal Orleans client UI
-- Tailwind CSS via the standalone Linux binary
+- .NET Aspire AppHost for local orchestration
+- Microsoft Orleans for distributed runtime and grain hosting
+- Redis for Orleans clustering
+- PostgreSQL for application data and Orleans storage schema
+- ASP.NET Core Identity for authentication and confirmed-account flows
+- Blazor Web App with interactive server components
+- Tailwind CSS via the repo-local standalone binary
+- Local .NET tool manifest for `dotnet-ef` and coverage reporting tools
 
-## Projects
+## Solution Layout
 
-- `src/Spx.Contracts`: grain interfaces shared across the solution
-- `src/Spx.Grains`: grain implementations
-- `src/Spx.AppHost`: the single Aspire AppHost that orchestrates the local silo and web client
-- `src/Spx.Silo`: ASP.NET Core host that runs the Orleans silo and exposes diagnostic HTTP endpoints
+- `src/Spx.Account`: account application handlers for login, registration, email confirmation, password reset, and resend confirmation
+- `src/Spx.AppHost`: Aspire entry point that starts the web app, silo, Redis, PostgreSQL, and the Aspire dashboard for local development
+- `src/Spx.Contracts`: Orleans grain interfaces and shared contracts
+- `src/Spx.Data`: EF Core data model, PostgreSQL persistence, game persistence adapters, Identity entities, and migrations
+- `src/Spx.Games`: application-layer game use cases and view models
+- `src/Spx.Grains`: Orleans grain implementations
+- `src/Spx.Silo`: Orleans silo host plus silo-side storage bootstrap and diagnostics
 - `src/Spx.ServiceDefaults`: shared Aspire defaults for telemetry, health checks, and service discovery
-- `src/Spx.Web`: Blazor Web App that connects to Orleans as a client and invokes the hello grain
-- `tools/tailwind`: repo-local standalone Tailwind binary for CSS generation
+- `src/Spx.Web`: Blazor front end, account endpoints, and adapters that connect the web layer to account and game application services
+- `tests/Spx.Account.Tests`: account-focused tests
+- `tests/Spx.Games.Tests`: games unit tests
+- `tests/Spx.Games.IntegrationTests`: EF-backed games integration tests
+- `tests/Spx.Grains.Tests`: Orleans grain behavior tests
+- `tests/Spx.Web.Tests`: web and adapter integration tests
+- `tools/tailwind`: repo-local Tailwind CLI binary
 
-This is the idiomatic Aspire layout for this repo shape:
+## Prerequisites
 
-- one AppHost project
-- one ServiceDefaults project
-- one hosted ASP.NET Core Orleans silo
-- one hosted Blazor Orleans client
-- separate contracts and grain implementation projects
+- .NET 10 SDK
+- A container runtime compatible with Aspire local development, such as Docker or Podman
 
-## Run it
-
-Before working with Entity Framework migrations, restore the repo-local .NET tools:
+Restore repo-local tools before using EF commands or coverage tasks:
 
 ```bash
 dotnet tool restore
 ```
 
-This repo commits `.config/dotnet-tools.json` so everyone gets the same `dotnet-ef` version. The `.tools/` directory is ignored because it contains machine-local install artifacts.
+## Local Development
 
-Preferred local dev run path:
-
-```bash
-dotnet run --project src/Spx.AppHost
-```
-
-For the Tailwind watcher plus AppHost workflow in VS Code, run the `dev: apphost + tailwind` task.
-
-You can still run the silo or web project directly if you provide the Orleans Redis connection settings yourself, but the Aspire path is the intended local-dev workflow because it starts Redis and wires the silo and client automatically.
-
-Then open the web endpoint shown by Aspire and submit a name from the Blazor page. The silo still exposes these useful paths:
-
-- `/`
-- `/hello/orleans`
-- `/health`
-- `/alive`
-
-If the port changes on your machine, use the URL printed by the AppHost.
-
-The Aspire dashboard URL is printed by the AppHost on startup.
-
-## Orleans persistence
-
-The AppHost now provisions a dedicated PostgreSQL database named `orleansdb` for Orleans grain storage while keeping Redis as the clustering backend.
-
-On silo startup, `src/Spx.Silo` automatically bootstraps the official Orleans PostgreSQL ADO.NET schema into `orleansdb` if the schema is missing. The checked-in SQL assets live here:
-
-- `src/Spx.Silo/Sql/Orleans.PostgreSQL-Main.sql`
-- `src/Spx.Silo/Sql/Orleans.PostgreSQL-Persistence.sql`
-
-This bootstrap path is intentionally separate from the ASP.NET Core Identity Entity Framework migrations used by the web app.
-
-At this stage, the repo only provisions the Orleans storage provider and its schema. No grain has been converted to use persistent state yet, so the storage provider is registered and ready without changing current grain behavior.
-
-## Auth local setup
-
-The web app uses ASP.NET Core Identity with PostgreSQL, and the intended local startup path is still the AppHost:
+The intended local entry point is the Aspire AppHost:
 
 ```bash
-dotnet run --project src/Spx.AppHost
+dotnet run --project src/Spx.AppHost/Spx.AppHost.csproj
 ```
 
-Or in VS Code, run the `apphost: run` task or the `dev: apphost + tailwind` task.
+That starts:
 
-For local development, account confirmation and password reset emails are not delivered externally. Instead, the web app logs the full confirmation and reset links.
+- the `web` app
+- the Orleans `silo`
+- Redis for Orleans clustering
+- PostgreSQL with `appdb` and `orleansdb`
+- the Aspire dashboard
 
-To test the auth flow locally:
+Use the URLs printed by the AppHost or shown in the Aspire dashboard. The dashboard is the easiest place to inspect logs, health, and resolved endpoints.
+
+In VS Code, the main development task is:
+
+- `dev: apphost + tailwind`
+
+That runs the Tailwind watcher and AppHost together.
+
+Useful single-purpose tasks are also checked in:
+
+- `build: web`
+- `build: silo`
+- `build: apphost`
+- `tailwind: build css`
+- `tailwind: watch css`
+- `apphost: run`
+
+## Application Behavior
+
+The authenticated landing page is the game lobby. From there, users can:
+
+- create a new game
+- join an existing game with an invite code
+- reopen active games
+- view ended games as lightweight history
+
+The current web layer is centered on account management and lobby-first multiplayer flows rather than the earlier hello-grain demo path.
+
+## Authentication And Email
+
+The web app uses ASP.NET Core Identity with confirmed accounts enabled.
+
+In development, confirmation and password reset emails are not sent externally. Instead, the web app logs the full confirmation and reset URLs in the `web` resource logs.
+
+Typical local auth test flow:
 
 1. Start the AppHost.
 2. Open the Aspire dashboard.
 3. Open the `web` resource logs.
-4. Register a new account or request a password reset.
-5. Copy the logged link from the `web` logs and open it in the browser.
+4. Register, resend confirmation, or request a password reset.
+5. Copy the logged link into the browser.
 
-Those links are logged by the `web` resource, not by the AppHost host process itself.
+Outside development, the app uses a Resend-backed email sender. Production configuration must provide `Resend:ApiKey` and `Resend:FromEmail`.
 
-## Entity Framework tools
+## Data And Storage
 
-Use the local tool manifest instead of installing `dotnet-ef` into the repo manually:
+The AppHost provisions two PostgreSQL databases:
+
+- `appdb` for ASP.NET Core Identity and EF-backed game data
+- `orleansdb` for Orleans storage schema bootstrap
+
+On web startup, EF Core migrations are applied automatically for `appdb`.
+
+On silo startup, the Orleans PostgreSQL SQL assets are bootstrapped automatically into `orleansdb` if the schema is missing.
+
+Redis remains the clustering backend for Orleans during local development.
+
+## Entity Framework Workflow
+
+Use the checked-in local tool manifest instead of a globally installed `dotnet-ef`:
 
 ```bash
 dotnet tool restore
 dotnet tool run dotnet-ef -- --help
 ```
 
-Typical migration commands from the repo root:
+Typical commands from the repo root:
 
 ```bash
-dotnet tool run dotnet-ef -- migrations add NameOfMigration --project src/Spx.Web/Spx.Web.csproj --startup-project src/Spx.Web/Spx.Web.csproj
-dotnet tool run dotnet-ef -- database update --project src/Spx.Web/Spx.Web.csproj --startup-project src/Spx.Web/Spx.Web.csproj
+dotnet tool run dotnet-ef -- migrations add NameOfMigration --project src/Spx.Data/Spx.Data.csproj --startup-project src/Spx.Web/Spx.Web.csproj
+dotnet tool run dotnet-ef -- database update --project src/Spx.Data/Spx.Data.csproj --startup-project src/Spx.Web/Spx.Web.csproj
 ```
 
-## Tailwind workflow
+Current migrations live under `src/Spx.Data/Migrations`.
 
-- Tailwind source CSS lives in `src/Spx.Web/Styles/app.css`
-- Generated output is written to `src/Spx.Web/wwwroot/app.css`
-- `wwwroot/app.css` is ignored by git and regenerated on build
-- `src/Spx.Web/Spx.Web.csproj` runs a one-shot Tailwind build before `Build` and `Publish`
-- `.vscode/tasks.json` contains a compound task that runs the Tailwind watcher and AppHost together for development
+## Tailwind Workflow
 
-## What you need next
+- Source CSS: `src/Spx.Web/Styles/app.css`
+- Generated CSS: `src/Spx.Web/wwwroot/app.css`
+- The web project runs a one-shot Tailwind build before `Build` and `Publish`
+- The checked-in VS Code task can run the watcher alongside the AppHost during development
 
-For a real Orleans app, the next decisions are usually:
+You can also build the CSS manually:
 
-1. Define your grain interfaces in `Spx.Contracts`.
-2. Implement grain behavior and state in `Spx.Grains`.
-3. Move more UI-facing grain interactions behind application services in `Spx.Web`.
-4. Replace the local Redis-backed development clustering setup with your production backing store or managed Redis configuration.
-5. Add tests for grain behavior and UI or host endpoints.
+```bash
+./tools/tailwind/bin/tailwindcss-linux-x64 -i src/Spx.Web/Styles/app.css -o src/Spx.Web/wwwroot/app.css --minify
+```
 
 ## Testing
 
 The repo testing strategy is documented in `TESTING.md`.
 
-Short version:
+Common commands from the repo root:
 
-- most tests should be unit tests in the application layer
-- keep only a thin set of integration tests for important adapters like EF, ASP.NET Identity, and web endpoint wiring
-- avoid using integration tests as the default place for new application behavior coverage
+```bash
+dotnet test tests/Spx.Account.Tests/Spx.Account.Tests.csproj
+dotnet test tests/Spx.Games.Tests/Spx.Games.Tests.csproj
+dotnet test tests/Spx.Games.IntegrationTests/Spx.Games.IntegrationTests.csproj
+dotnet test tests/Spx.Grains.Tests/Spx.Grains.Tests.csproj
+dotnet test tests/Spx.Web.Tests/Spx.Web.Tests.csproj
+```
+
+The VS Code task file also includes:
+
+- `tests: run`
+- `tests: coverage html`
+
+The coverage task writes HTML output under `coverage/html`.
