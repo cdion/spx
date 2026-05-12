@@ -47,8 +47,7 @@ public sealed class PostgresDatabaseFixture : IAsyncLifetime
 
     public async Task InitializeAsync()
     {
-        container = new ContainerBuilder()
-            .WithImage("postgres:17-alpine")
+        container = new ContainerBuilder("postgres:17-alpine")
             .WithEnvironment("POSTGRES_PASSWORD", PostgresPassword)
             .WithEnvironment("POSTGRES_DB", PostgresDb)
             .WithEnvironment("POSTGRES_USER", PostgresUser)
