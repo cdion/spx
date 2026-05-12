@@ -13,13 +13,13 @@ That fits the current architecture:
 - `Spx.Account` and `Spx.Games` contain application use cases and should carry most of the test volume
 - `Spx.Data`, `Spx.Web`, and Orleans integration points should have a smaller number of focused integration tests where wiring and framework behavior matter
 
-## Target Test Project Layout
+## Current Test Project Layout
 
 ### `tests/Spx.Account.Tests`
 
 Purpose: fast unit tests for account application handlers.
 
-This project should be added next and should become the main home for tests covering:
+This project is the main home for tests covering:
 
 - `Login`
 - `Logout`
@@ -48,7 +48,7 @@ Examples:
 
 Purpose: fast unit tests for games application handlers and pure helpers.
 
-This project should be added next and should become the main home for tests covering:
+This project is the main home for tests covering:
 
 - `CreateGame`
 - `JoinGame`
@@ -146,14 +146,15 @@ That includes:
 
 ## Current Repo Direction
 
-The current repo is still heavier on integration coverage than the target state.
+The repo now has the intended split between unit-heavy application tests and narrower integration seams.
 
 In particular:
 
-- `tests/Spx.Games.IntegrationTests` currently carries coverage that should gradually move into `Spx.Games.Tests`
+- `tests/Spx.Account.Tests` exists and should remain the default place for pure account handler behavior
+- `tests/Spx.Games.Tests` exists and should remain the default place for pure games handler and helper behavior
+- `tests/Spx.Games.IntegrationTests` should stay focused on EF-backed scenarios and avoid becoming the default home for new games behavior tests
 - `tests/Spx.Web.Tests` is in a good place and should remain small and adapter-focused
 - `tests/Spx.Grains.Tests` is already relatively small and focused
-- `tests/Spx.Account.Tests` does not exist yet and should be added
 
 ## Practical Rules For New Tests
 
@@ -166,10 +167,10 @@ When adding a new test, ask:
 3. Would mocking the dependency make the test prove less than a real adapter check?
    Keep one or two integration tests for that seam, not dozens.
 
-## Migration Plan
+## Ongoing Direction
 
-1. Add `tests/Spx.Account.Tests` for account handler unit tests.
-2. Add `tests/Spx.Games.Tests` for games handler and helper unit tests.
-3. Keep `tests/Spx.Games.IntegrationTests` for EF-backed scenarios only.
+1. Add new `Spx.Account` behavior tests to `tests/Spx.Account.Tests` by default.
+2. Add new `Spx.Games` handler and helper tests to `tests/Spx.Games.Tests` by default.
+3. Keep `tests/Spx.Games.IntegrationTests` limited to EF-backed scenarios that need a real database path.
 4. Keep `tests/Spx.Web.Tests` limited to web adapters and endpoint wiring.
 5. Treat integration tests as a thin proving layer, not the default place for new behavior coverage.

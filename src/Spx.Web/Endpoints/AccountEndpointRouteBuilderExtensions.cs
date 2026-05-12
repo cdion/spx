@@ -96,6 +96,7 @@ public static class AccountEndpointRouteBuilderExtensions
             RegisterOutcomeStatus.ValidationFailed => BuildRedirect("/register", ("error", "Email, password, and confirmation are required.")),
             RegisterOutcomeStatus.PasswordMismatch => BuildRedirect("/register", ("error", "Passwords do not match."), ("email", outcome.Email)),
             RegisterOutcomeStatus.Failed => BuildRedirect("/register", ("error", string.Join(" ", outcome.Errors ?? [])), ("email", outcome.Email)),
+            RegisterOutcomeStatus.ConfirmationResendRequired => BuildRedirect("/resend-confirmation", ("status", string.Join(" ", outcome.Errors ?? [])), ("email", outcome.Email)),
             RegisterOutcomeStatus.ConfirmationSent => BuildRedirect("/login", ("status", "Check your email to confirm your account."), ("email", outcome.Email)),
             _ => BuildRedirect("/register", ("error", "Unable to register."), ("email", outcome.Email))
         };

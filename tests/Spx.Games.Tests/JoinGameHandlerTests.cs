@@ -60,6 +60,37 @@ public sealed class JoinGameHandlerTests
     }
 
     [Fact]
+    public async Task HandleAsync_keeps_join_success_and_publishes_when_session_initialization_fails()
+    {
+        var gameId = Guid.NewGuid();
+        var persistence = new FakeGamePersistence
+        {
+            JoinGameResult = new JoinGamePersistenceResult(GameCommandResult.Success(gameId), gameId, true),
+            ActiveSessionPlayers =
+            [
+                new GameSessionPlayer(Guid.NewGuid(), "user-1", "Captain Red"),
+                new GameSessionPlayer(Guid.NewGuid(), "user-2", "Captain Blue")
+            ]
+        };
+        var lobbyPublisher = new FakeGameLobbyEventsPublisher();
+        var messagePublisher = new FakeGameMessageEventsPublisher();
+        var sessionService = new FakeGameSessionService
+        {
+            TryInitializeResult = false
+        };
+        using var services = CreateServices(persistence, lobbyPublisher, messagePublisher, sessionService);
+
+        var handler = services.GetRequiredService<IJoinGameHandler>();
+        var result = await handler.HandleAsync("user-1", new JoinGameRequest("ABC123", "Captain Red"));
+
+        Assert.True(result.Succeeded);
+        Assert.Equal(gameId, result.GameId);
+        Assert.Equal([gameId], sessionService.InitializedGameIds);
+        Assert.Equal([gameId], lobbyPublisher.PublishedGameIds);
+        Assert.Equal([gameId], messagePublisher.PublishedGameIds);
+    }
+
+    [Fact]
     public async Task HandleAsync_does_not_publish_when_persistence_returns_failure_without_game_id()
     {
         var persistence = new FakeGamePersistence
@@ -157,10 +188,12 @@ public sealed class JoinGameHandlerTests
     {
         public List<Guid> InitializedGameIds { get; } = [];
 
+        public bool TryInitializeResult { get; init; } = true;
+
         public Task<bool> TryInitializeAsync(Guid gameId, IReadOnlyList<GameSessionPlayer> players, CancellationToken cancellationToken = default)
         {
             InitializedGameIds.Add(gameId);
-            return Task.FromResult(true);
+            return Task.FromResult(TryInitializeResult);
         }
 
         public Task<GameSessionPlayerView?> GetPlayerViewAsync(Guid gameId, string userId, CancellationToken cancellationToken = default)

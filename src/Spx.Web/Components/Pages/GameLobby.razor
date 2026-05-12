@@ -1,8 +1,10 @@
 @page "/games/{GameId:guid}"
 @attribute [Authorize]
 @implements IAsyncDisposable
+@using Orleans
 @using Spx.Data
 @using System.Security.Claims
+@inject IClusterClient ClusterClient
 @inject IGetLobbyHandler GetLobbyHandler
 @inject ILeaveGameHandler LeaveGameHandler
 @inject IGetMessagesHandler GetMessagesHandler
@@ -11,8 +13,6 @@
 @inject ISendPrivateMessageHandler SendPrivateMessageHandler
 @inject IEditMessageHandler EditMessageHandler
 @inject IDeleteMessageHandler DeleteMessageHandler
-@inject IGameLobbySubscriptionService GameLobbySubscriptions
-@inject IGameMessageSubscriptionService GameMessageSubscriptions
 @inject IJSRuntime JS
 @inject NavigationManager Navigation
 
@@ -386,9 +386,7 @@ else
     private bool isLoadingOlderMessages;
     private bool isSendingMessage;
     private bool isSavingEdit;
-    private Guid? subscribedGameId;
-    private IAsyncDisposable? lobbySubscription;
-    private IAsyncDisposable? messageSubscription;
+    private GameLobbyPageSubscription? liveSubscription;
     private string composerText = string.Empty;
     private string? selectedRecipientPlayerIdString;
     private Guid? oldestMessageId;
@@ -418,18 +416,14 @@ else
             return;
         }
 
-        var isNewGame = subscribedGameId != lobby.GameId;
+        var isNewGame = liveSubscription?.GameId != lobby.GameId;
         if (isNewGame)
         {
             await DisposeSubscriptionsAsync();
             ResetTimelineState();
             await LoadInitialMessagesAsync();
-            lobbySubscription = await GameLobbySubscriptions.SubscribeAsync(lobby.GameId, HandleLobbyChangedAsync);
-            if (lobby.IsCurrentUserActive)
-            {
-                messageSubscription = await GameMessageSubscriptions.SubscribeToMessagesAsync(lobby.GameId, HandleMessagesChangedAsync);
-            }
-            subscribedGameId = lobby.GameId;
+            liveSubscription = new GameLobbyPageSubscription(ClusterClient, lobby.GameId, HandleLobbyChangedAsync, HandleMessagesChangedAsync);
+            await liveSubscription.SubscribeAsync();
             shouldScrollTimelineToBottom = true;
             return;
         }
@@ -438,16 +432,6 @@ else
         {
             await LoadInitialMessagesAsync();
             shouldScrollTimelineToBottom = true;
-        }
-
-        if (lobby.IsCurrentUserActive && messageSubscription is null)
-        {
-            messageSubscription = await GameMessageSubscriptions.SubscribeToMessagesAsync(lobby.GameId, HandleMessagesChangedAsync);
-        }
-        else if (!lobby.IsCurrentUserActive && messageSubscription is not null)
-        {
-            await messageSubscription.DisposeAsync();
-            messageSubscription = null;
         }
     }
 
@@ -505,13 +489,6 @@ else
         => InvokeAsync(async () =>
         {
             await LoadLobbyAsync();
-
-            if (lobby is not null && !lobby.IsCurrentUserActive && messageSubscription is not null)
-            {
-                await messageSubscription.DisposeAsync();
-                messageSubscription = null;
-            }
-
             StateHasChanged();
         });
 
@@ -902,19 +879,11 @@ else
 
     private async Task DisposeSubscriptionsAsync()
     {
-        if (lobbySubscription is not null)
+        if (liveSubscription is not null)
         {
-            await lobbySubscription.DisposeAsync();
-            lobbySubscription = null;
+            await liveSubscription.DisposeAsync();
+            liveSubscription = null;
         }
-
-        if (messageSubscription is not null)
-        {
-            await messageSubscription.DisposeAsync();
-            messageSubscription = null;
-        }
-
-        subscribedGameId = null;
     }
 
     private void ResetTimelineState()

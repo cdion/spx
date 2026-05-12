@@ -73,6 +73,8 @@ internal sealed class FakeAccountIdentity : IAccountIdentity
 
 internal sealed class FakeAccountEmailSender : IAccountEmailSender
 {
+    public Exception? SendConfirmationException { get; init; }
+
     public bool ConfirmationEmailSent { get; private set; }
 
     public bool PasswordResetEmailSent { get; private set; }
@@ -89,6 +91,11 @@ internal sealed class FakeAccountEmailSender : IAccountEmailSender
 
     public Task SendConfirmationEmailAsync(string email, string userId, string code, CancellationToken cancellationToken = default)
     {
+        if (SendConfirmationException is not null)
+        {
+            throw SendConfirmationException;
+        }
+
         ConfirmationEmailSent = true;
         LastConfirmationEmail = email;
         LastConfirmationUserId = userId;

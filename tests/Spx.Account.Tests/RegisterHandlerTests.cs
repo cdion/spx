@@ -49,7 +49,7 @@ public sealed class RegisterHandlerTests
     }
 
     [Fact]
-    public async Task HandleAsync_returns_failed_when_confirmation_token_is_missing()
+    public async Task HandleAsync_returns_confirmation_resend_required_when_confirmation_token_is_missing()
     {
         var identity = new FakeAccountIdentity
         {
@@ -62,9 +62,32 @@ public sealed class RegisterHandlerTests
         var handler = services.GetRequiredService<IRegisterHandler>();
         var outcome = await handler.HandleAsync("user@example.com", "Password1", "Password1");
 
-        Assert.Equal(RegisterOutcomeStatus.Failed, outcome.Status);
+        Assert.Equal(RegisterOutcomeStatus.ConfirmationResendRequired, outcome.Status);
         Assert.Equal("user@example.com", outcome.Email);
-        Assert.Equal(["We could not generate a confirmation email. Please try again."], outcome.Errors);
+        Assert.Equal(["Your account was created, but we could not send a confirmation email. Request a new one below."], outcome.Errors);
+        Assert.False(emailSender.ConfirmationEmailSent);
+    }
+
+    [Fact]
+    public async Task HandleAsync_returns_confirmation_resend_required_when_confirmation_email_send_fails()
+    {
+        var identity = new FakeAccountIdentity
+        {
+            CreateUserResult = new AccountCreateResult(new AccountUser("user-1", "user@example.com"), true, []),
+            EmailConfirmationToken = "confirm-token"
+        };
+        var emailSender = new FakeAccountEmailSender
+        {
+            SendConfirmationException = new InvalidOperationException("mail transport unavailable")
+        };
+        using var services = AccountHandlerTestServices.Create(identity, emailSender);
+
+        var handler = services.GetRequiredService<IRegisterHandler>();
+        var outcome = await handler.HandleAsync("user@example.com", "Password1", "Password1");
+
+        Assert.Equal(RegisterOutcomeStatus.ConfirmationResendRequired, outcome.Status);
+        Assert.Equal("user@example.com", outcome.Email);
+        Assert.Equal(["Your account was created, but we could not send a confirmation email. Request a new one below."], outcome.Errors);
         Assert.False(emailSender.ConfirmationEmailSent);
     }
 

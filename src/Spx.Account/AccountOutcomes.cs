@@ -16,6 +16,7 @@ public enum RegisterOutcomeStatus
     ValidationFailed,
     PasswordMismatch,
     Failed,
+    ConfirmationResendRequired,
     ConfirmationSent
 }
 

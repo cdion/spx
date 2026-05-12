@@ -32,13 +32,9 @@ internal sealed class JoinGameHandler(
             var activePlayers = await gamePersistence.GetActiveSessionPlayersAsync(gameId, cancellationToken);
             if (activePlayers is { Count: 2 })
             {
-                var initSuccess = await gameSessionService.TryInitializeAsync(gameId, activePlayers, cancellationToken);
-                if (!initSuccess)
-                {
-                    // Session initialization failed; return retryable error
-                    // The game persists but is not yet ready to play
-                    return GameCommandResult.Failure("Game session failed to initialize. Please try again.");
-                }
+                // Session initialization is secondary to the persisted join. Keep the
+                // authoritative SQL result even if Orleans needs to recover later.
+                await gameSessionService.TryInitializeAsync(gameId, activePlayers, cancellationToken);
             }
 
             await gameLobbyEventsPublisher.PublishLobbyChangedAsync(gameId, cancellationToken);
