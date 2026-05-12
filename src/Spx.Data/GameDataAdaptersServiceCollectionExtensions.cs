@@ -8,7 +8,6 @@ public static class GameDataAdaptersServiceCollectionExtensions
 {
     public static IServiceCollection AddGameDataAdapters(this IServiceCollection services)
     {
-        services.AddScoped<GameMessagePersistenceSupport>();
         services.AddScoped<IGamePersistence, EfGamePersistence>();
         services.AddScoped<IGameMessagePersistence, EfGameMessagePersistence>();
 

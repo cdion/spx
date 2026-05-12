@@ -1,7 +1,10 @@
+using Spx.Contracts;
+
 namespace Spx.Games.Features.JoinGame;
 
 internal sealed class JoinGameHandler(
     IGamePersistence gamePersistence,
+    IGameSessionService gameSessionService,
     IGameLobbyEventsPublisher gameLobbyEventsPublisher,
     IGameMessageEventsPublisher gameMessageEventsPublisher)
     : IJoinGameHandler
@@ -25,10 +28,23 @@ internal sealed class JoinGameHandler(
 
         if (joinResult.GameIdToPublish.HasValue)
         {
-            await gameLobbyEventsPublisher.PublishLobbyChangedAsync(joinResult.GameIdToPublish.Value, cancellationToken);
+            var gameId = joinResult.GameIdToPublish.Value;
+            var activePlayers = await gamePersistence.GetActiveSessionPlayersAsync(gameId, cancellationToken);
+            if (activePlayers is { Count: 2 })
+            {
+                var initSuccess = await gameSessionService.TryInitializeAsync(gameId, activePlayers, cancellationToken);
+                if (!initSuccess)
+                {
+                    // Session initialization failed; return retryable error
+                    // The game persists but is not yet ready to play
+                    return GameCommandResult.Failure("Game session failed to initialize. Please try again.");
+                }
+            }
+
+            await gameLobbyEventsPublisher.PublishLobbyChangedAsync(gameId, cancellationToken);
             if (joinResult.PublishMessagesChanged)
             {
-                await gameMessageEventsPublisher.PublishMessagesChangedAsync(joinResult.GameIdToPublish.Value, cancellationToken);
+                await gameMessageEventsPublisher.PublishMessagesChangedAsync(gameId, cancellationToken);
             }
         }
 

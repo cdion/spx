@@ -4,6 +4,7 @@ using Spx.Games.Features.CreateGame;
 using Spx.Games.Features.DeleteMessage;
 using Spx.Games.Features.EditMessage;
 using Spx.Games.Features.GetLobby;
+using Spx.Games.Features.GetGamePage;
 using Spx.Games.Features.GetMessageUpdates;
 using Spx.Games.Features.GetMessages;
 using Spx.Games.Features.GetUserGames;
@@ -11,6 +12,7 @@ using Spx.Games.Features.JoinGame;
 using Spx.Games.Features.LeaveGame;
 using Spx.Games.Features.SendPrivateMessage;
 using Spx.Games.Features.SendPublicMessage;
+using Spx.Games.Features.SubmitGameMove;
 
 namespace Microsoft.Extensions.DependencyInjection;
 
@@ -22,7 +24,9 @@ public static class GameApplicationServiceCollectionExtensions
         services.AddScoped<IJoinGameHandler, JoinGameHandler>();
         services.AddScoped<ILeaveGameHandler, LeaveGameHandler>();
         services.AddScoped<IGetLobbyHandler, GetLobbyHandler>();
+        services.AddScoped<IGetGamePageHandler, GetGamePageHandler>();
         services.AddScoped<IGetUserGamesHandler, GetUserGamesHandler>();
+        services.AddScoped<ISubmitGameMoveHandler, SubmitGameMoveHandler>();
 
         services.AddScoped<IGetMessagesHandler, GetMessagesHandler>();
         services.AddScoped<IGetMessageUpdatesHandler, GetMessageUpdatesHandler>();

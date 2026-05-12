@@ -1,23 +1,26 @@
 using System.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Spx.Contracts;
 using Spx.Games;
 
 namespace Spx.Data;
 
 internal sealed class EfGamePersistence(
-    ApplicationDbContext dbContext,
+    IDbContextFactory<ApplicationDbContext> contextFactory,
     ILogger<EfGamePersistence> logger) : IGamePersistence
 {
     private const int MaxPlayersPerGame = 2;
 
     public async Task<Guid?> TryCreateGameAsync(CreateGamePersistenceRequest request, CancellationToken cancellationToken)
     {
+        await using var dbContext = await contextFactory.CreateDbContextAsync(cancellationToken);
         var executionStrategy = dbContext.Database.CreateExecutionStrategy();
 
         return await executionStrategy.ExecuteAsync(async innerCancellationToken =>
         {
             await using var transaction = await dbContext.Database.BeginTransactionAsync(IsolationLevel.Serializable, innerCancellationToken);
+
             var now = DateTime.UtcNow;
             var game = new Game
             {
@@ -64,6 +67,7 @@ internal sealed class EfGamePersistence(
 
     public async Task<JoinGamePersistenceResult> JoinGameAsync(JoinGamePersistenceRequest request, CancellationToken cancellationToken)
     {
+        await using var dbContext = await contextFactory.CreateDbContextAsync(cancellationToken);
         var executionStrategy = dbContext.Database.CreateExecutionStrategy();
 
         return await executionStrategy.ExecuteAsync(async innerCancellationToken =>
@@ -152,6 +156,7 @@ internal sealed class EfGamePersistence(
 
     public async Task<LeaveGamePersistenceResult> LeaveGameAsync(Guid gameId, string userId, CancellationToken cancellationToken)
     {
+        await using var dbContext = await contextFactory.CreateDbContextAsync(cancellationToken);
         var executionStrategy = dbContext.Database.CreateExecutionStrategy();
 
         return await executionStrategy.ExecuteAsync(async innerCancellationToken =>
@@ -200,8 +205,22 @@ internal sealed class EfGamePersistence(
         }, cancellationToken);
     }
 
+    public async Task<IReadOnlyList<GameSessionPlayer>?> GetActiveSessionPlayersAsync(Guid gameId, CancellationToken cancellationToken)
+    {
+        await using var dbContext = await contextFactory.CreateDbContextAsync(cancellationToken);
+        var players = await dbContext.GamePlayers
+            .AsNoTracking()
+            .Where(entry => entry.GameId == gameId && entry.LeftAtUtc == null)
+            .OrderBy(entry => entry.JoinedAtUtc)
+            .Select(entry => new GameSessionPlayer(entry.Id, entry.UserId, entry.Name))
+            .ToListAsync(cancellationToken);
+
+        return players.Count == 0 ? null : players;
+    }
+
     public async Task<GameLobbyView?> GetLobbyAsync(Guid gameId, string userId, CancellationToken cancellationToken)
     {
+        await using var dbContext = await contextFactory.CreateDbContextAsync(cancellationToken);
         var game = await dbContext.Games
             .AsNoTracking()
             .SingleOrDefaultAsync(entry => entry.Id == gameId, cancellationToken);
@@ -251,6 +270,7 @@ internal sealed class EfGamePersistence(
 
     public async Task<UserGamesView> GetUserGamesAsync(string userId, CancellationToken cancellationToken)
     {
+        await using var dbContext = await contextFactory.CreateDbContextAsync(cancellationToken);
         var openGames = await dbContext.Games
             .AsNoTracking()
             .Where(game => game.Status == GameStatus.Open

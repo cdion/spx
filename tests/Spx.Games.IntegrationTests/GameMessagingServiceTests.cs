@@ -5,16 +5,17 @@ using Xunit;
 
 namespace Spx.Games.IntegrationTests;
 
-public sealed class GameMessagingServiceTests
+[Collection(IntegrationTestCollection.Name)]
+public sealed class GameMessagingServiceTests(PostgresDatabaseFixture fixture) : IntegrationTestBase(fixture)
 {
     [Fact]
     public async Task SendPublicMessageAsync_CreatesMessageAndReturnsMappedView()
     {
-        await using var database = await TestDatabase.CreateAsync();
+        var database = Database;
         await database.AddUserAsync("user-1", "user1@example.com");
         var game = await database.AddGameAsync("user-1", "ABC123", "Alpha", "user-1", "Captain Red");
         var publisher = new FakeGameMessagePublisher();
-        var features = GameFeatureTestFactory.Create(database.Context, messagePublisher: publisher);
+        var features = GameFeatureTestFactory.Create(database.ContextFactory, messagePublisher: publisher);
 
         var result = await features.SendPublicMessage.HandleAsync(game.Id, "user-1", new SendGameMessageRequest("Hello crew"));
 
@@ -32,7 +33,7 @@ public sealed class GameMessagingServiceTests
     [Fact]
     public async Task SendPrivateMessageAsync_OnlySenderAndRecipientCanSeeIt()
     {
-        await using var database = await TestDatabase.CreateAsync();
+        var database = Database;
         await database.AddUserAsync("user-1", "user1@example.com");
         await database.AddUserAsync("user-2", "user2@example.com");
         await database.AddUserAsync("user-3", "user3@example.com");
@@ -40,7 +41,7 @@ public sealed class GameMessagingServiceTests
         var recipient = await database.AddGamePlayerAsync(game.Id, "user-2", "Captain Blue");
         await database.AddGamePlayerAsync(game.Id, "user-3", "Captain Green");
         var publisher = new FakeGameMessagePublisher();
-        var features = GameFeatureTestFactory.Create(database.Context, messagePublisher: publisher);
+        var features = GameFeatureTestFactory.Create(database.ContextFactory, messagePublisher: publisher);
 
         var sendResult = await features.SendPrivateMessage.HandleAsync(game.Id, "user-1", recipient.Id, new SendGameMessageRequest("Keep this private."));
 
@@ -60,13 +61,13 @@ public sealed class GameMessagingServiceTests
     [Fact]
     public async Task SendPrivateMessageAsync_RejectsRecipientWhoIsNoLongerActive()
     {
-        await using var database = await TestDatabase.CreateAsync();
+        var database = Database;
         await database.AddUserAsync("user-1", "user1@example.com");
         await database.AddUserAsync("user-2", "user2@example.com");
         var game = await database.AddGameAsync("user-1", "ABC123", "Alpha", "user-1", "Captain Red");
         var recipient = await database.AddGamePlayerAsync(game.Id, "user-2", "Captain Blue", leftAtUtc: DateTime.UtcNow.AddMinutes(-1));
         var publisher = new FakeGameMessagePublisher();
-        var features = GameFeatureTestFactory.Create(database.Context, messagePublisher: publisher);
+        var features = GameFeatureTestFactory.Create(database.ContextFactory, messagePublisher: publisher);
 
         var result = await features.SendPrivateMessage.HandleAsync(game.Id, "user-1", recipient.Id, new SendGameMessageRequest("Still there?"));
 
@@ -78,7 +79,7 @@ public sealed class GameMessagingServiceTests
     [Fact]
     public async Task GetMessagesAsync_FormerPlayerStopsAtVisibilityCutoff()
     {
-        await using var database = await TestDatabase.CreateAsync();
+        var database = Database;
         await database.AddUserAsync("user-1", "user1@example.com");
         await database.AddUserAsync("user-2", "user2@example.com");
         var game = await database.AddGameAsync("user-1", "ABC123", "Alpha", "user-1", "Captain Red");
@@ -88,10 +89,9 @@ public sealed class GameMessagingServiceTests
         var cutoffMessage = await database.AddMessageAsync(game.Id, GameMessageKind.PlayerPublic, GameMessageSenderKind.Player, hostPlayer.Id, null, hostPlayer.Name, string.Empty, "Second", createdAtUtc: DateTime.UtcNow.AddMinutes(-4), id: Guid.Parse("019e0000-0000-7000-8000-000000000002"));
         await database.AddMessageAsync(game.Id, GameMessageKind.PlayerPublic, GameMessageSenderKind.Player, hostPlayer.Id, null, hostPlayer.Name, string.Empty, "Third", createdAtUtc: DateTime.UtcNow.AddMinutes(-3), id: Guid.Parse("019e0000-0000-7000-8000-000000000003"));
 
-        formerPlayer.VisibleThroughMessageId = cutoffMessage.Id;
-        await database.Context.SaveChangesAsync();
+        await database.SetVisibleThroughMessageIdAsync(formerPlayer.Id, cutoffMessage.Id);
 
-        var features = GameFeatureTestFactory.Create(database.Context);
+        var features = GameFeatureTestFactory.Create(database.ContextFactory);
 
         var page = await features.GetMessages.HandleAsync(game.Id, "user-2");
 
@@ -103,14 +103,14 @@ public sealed class GameMessagingServiceTests
     [Fact]
     public async Task GetMessagesAsync_HonorsBeforeCursorAndHasMore()
     {
-        await using var database = await TestDatabase.CreateAsync();
+        var database = Database;
         await database.AddUserAsync("user-1", "user1@example.com");
         var game = await database.AddGameAsync("user-1", "ABC123", "Alpha", "user-1", "Captain Red");
         var sender = await database.Context.GamePlayers.SingleAsync(entry => entry.GameId == game.Id && entry.UserId == "user-1");
         await database.AddMessageAsync(game.Id, GameMessageKind.PlayerPublic, GameMessageSenderKind.Player, sender.Id, null, sender.Name, string.Empty, "First", id: Guid.Parse("019e0000-0000-7000-8000-000000000001"));
         var secondMessage = await database.AddMessageAsync(game.Id, GameMessageKind.PlayerPublic, GameMessageSenderKind.Player, sender.Id, null, sender.Name, string.Empty, "Second", id: Guid.Parse("019e0000-0000-7000-8000-000000000002"));
         var thirdMessage = await database.AddMessageAsync(game.Id, GameMessageKind.PlayerPublic, GameMessageSenderKind.Player, sender.Id, null, sender.Name, string.Empty, "Third", id: Guid.Parse("019e0000-0000-7000-8000-000000000003"));
-        var features = GameFeatureTestFactory.Create(database.Context);
+        var features = GameFeatureTestFactory.Create(database.ContextFactory);
 
         var page = await features.GetMessages.HandleAsync(game.Id, "user-1", beforeMessageId: thirdMessage.Id, take: 1);
 
@@ -123,14 +123,14 @@ public sealed class GameMessagingServiceTests
     [Fact]
     public async Task GetMessageUpdatesAsync_ReturnsMessagesAfterCursorInAscendingOrder()
     {
-        await using var database = await TestDatabase.CreateAsync();
+        var database = Database;
         await database.AddUserAsync("user-1", "user1@example.com");
         var game = await database.AddGameAsync("user-1", "ABC123", "Alpha", "user-1", "Captain Red");
         var sender = await database.Context.GamePlayers.SingleAsync(entry => entry.GameId == game.Id && entry.UserId == "user-1");
         var firstMessage = await database.AddMessageAsync(game.Id, GameMessageKind.PlayerPublic, GameMessageSenderKind.Player, sender.Id, null, sender.Name, string.Empty, "First", id: Guid.Parse("019e0000-0000-7000-8000-000000000011"));
         var secondMessage = await database.AddMessageAsync(game.Id, GameMessageKind.PlayerPublic, GameMessageSenderKind.Player, sender.Id, null, sender.Name, string.Empty, "Second", id: Guid.Parse("019e0000-0000-7000-8000-000000000012"));
         var thirdMessage = await database.AddMessageAsync(game.Id, GameMessageKind.PlayerPublic, GameMessageSenderKind.Player, sender.Id, null, sender.Name, string.Empty, "Third", id: Guid.Parse("019e0000-0000-7000-8000-000000000013"));
-        var features = GameFeatureTestFactory.Create(database.Context);
+        var features = GameFeatureTestFactory.Create(database.ContextFactory);
 
         var updates = await features.GetMessageUpdates.HandleAsync(game.Id, "user-1", firstMessage.Id, take: 10);
 
@@ -141,12 +141,12 @@ public sealed class GameMessagingServiceTests
     [Fact]
     public async Task EditMessageAsync_RejectsExpiredMessage()
     {
-        await using var database = await TestDatabase.CreateAsync();
+        var database = Database;
         await database.AddUserAsync("user-1", "user1@example.com");
         var game = await database.AddGameAsync("user-1", "ABC123", "Alpha", "user-1", "Captain Red");
         var sender = await database.Context.GamePlayers.SingleAsync(entry => entry.GameId == game.Id && entry.UserId == "user-1");
         var message = await database.AddMessageAsync(game.Id, GameMessageKind.PlayerPublic, GameMessageSenderKind.Player, sender.Id, null, sender.Name, string.Empty, "Original", createdAtUtc: DateTime.UtcNow.AddMinutes(-3));
-        var features = GameFeatureTestFactory.Create(database.Context);
+        var features = GameFeatureTestFactory.Create(database.ContextFactory);
 
         var result = await features.EditMessage.HandleAsync(game.Id, "user-1", message.Id, new UpdateGameMessageRequest("Updated"));
 
@@ -157,12 +157,12 @@ public sealed class GameMessagingServiceTests
     [Fact]
     public async Task EditMessageAsync_RejectsDeletedMessage()
     {
-        await using var database = await TestDatabase.CreateAsync();
+        var database = Database;
         await database.AddUserAsync("user-1", "user1@example.com");
         var game = await database.AddGameAsync("user-1", "ABC123", "Alpha", "user-1", "Captain Red");
         var sender = await database.Context.GamePlayers.SingleAsync(entry => entry.GameId == game.Id && entry.UserId == "user-1");
         var message = await database.AddMessageAsync(game.Id, GameMessageKind.PlayerPublic, GameMessageSenderKind.Player, sender.Id, null, sender.Name, string.Empty, "Original", deletedAtUtc: DateTime.UtcNow.AddSeconds(-5));
-        var features = GameFeatureTestFactory.Create(database.Context);
+        var features = GameFeatureTestFactory.Create(database.ContextFactory);
 
         var result = await features.EditMessage.HandleAsync(game.Id, "user-1", message.Id, new UpdateGameMessageRequest("Updated"));
 
@@ -173,13 +173,13 @@ public sealed class GameMessagingServiceTests
     [Fact]
     public async Task DeleteMessageAsync_SoftDeletesOwnedMessageWithinWindow()
     {
-        await using var database = await TestDatabase.CreateAsync();
+        var database = Database;
         await database.AddUserAsync("user-1", "user1@example.com");
         var game = await database.AddGameAsync("user-1", "ABC123", "Alpha", "user-1", "Captain Red");
         var sender = await database.Context.GamePlayers.SingleAsync(entry => entry.GameId == game.Id && entry.UserId == "user-1");
         var message = await database.AddMessageAsync(game.Id, GameMessageKind.PlayerPublic, GameMessageSenderKind.Player, sender.Id, null, sender.Name, string.Empty, "Original", createdAtUtc: DateTime.UtcNow.AddMinutes(-1));
         var publisher = new FakeGameMessagePublisher();
-        var features = GameFeatureTestFactory.Create(database.Context, messagePublisher: publisher);
+        var features = GameFeatureTestFactory.Create(database.ContextFactory, messagePublisher: publisher);
 
         var result = await features.DeleteMessage.HandleAsync(game.Id, "user-1", message.Id);
 
@@ -194,13 +194,13 @@ public sealed class GameMessagingServiceTests
     [Fact]
     public async Task DeleteMessageAsync_RejectsAlreadyDeletedMessage()
     {
-        await using var database = await TestDatabase.CreateAsync();
+        var database = Database;
         await database.AddUserAsync("user-1", "user1@example.com");
         var game = await database.AddGameAsync("user-1", "ABC123", "Alpha", "user-1", "Captain Red");
         var sender = await database.Context.GamePlayers.SingleAsync(entry => entry.GameId == game.Id && entry.UserId == "user-1");
         var message = await database.AddMessageAsync(game.Id, GameMessageKind.PlayerPublic, GameMessageSenderKind.Player, sender.Id, null, sender.Name, string.Empty, "Original", deletedAtUtc: DateTime.UtcNow.AddSeconds(-5));
         var publisher = new FakeGameMessagePublisher();
-        var features = GameFeatureTestFactory.Create(database.Context, messagePublisher: publisher);
+        var features = GameFeatureTestFactory.Create(database.ContextFactory, messagePublisher: publisher);
 
         var result = await features.DeleteMessage.HandleAsync(game.Id, "user-1", message.Id);
 

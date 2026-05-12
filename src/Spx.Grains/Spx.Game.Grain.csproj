@@ -1,7 +1,8 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
-    <ProjectReference Include="..\Spx.Contracts\Spx.Contracts.csproj" />
+    <ProjectReference Include="..\Spx.Contracts\Spx.Game.Contract.csproj" />
+    <ProjectReference Include="..\Spx.Game.Domain\Spx.Game.Domain.csproj" />
   </ItemGroup>
 
   <ItemGroup>

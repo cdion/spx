@@ -2,10 +2,11 @@
   <Folder Name="/src/">
     <Project Path="src/Spx.Account/Spx.Account.csproj" />
     <Project Path="src/Spx.AppHost/Spx.AppHost.csproj" />
-    <Project Path="src/Spx.Contracts/Spx.Contracts.csproj" />
+    <Project Path="src/Spx.Contracts/Spx.Game.Contract.csproj" />
     <Project Path="src/Spx.Data/Spx.Data.csproj" />
-    <Project Path="src/Spx.Games/Spx.Games.csproj" />
-    <Project Path="src/Spx.Grains/Spx.Grains.csproj" />
+    <Project Path="src/Spx.Game.Domain/Spx.Game.Domain.csproj" />
+    <Project Path="src/Spx.Games/Spx.Game.Application.csproj" />
+    <Project Path="src/Spx.Grains/Spx.Game.Grain.csproj" />
     <Project Path="src/Spx.Silo/Spx.Silo.csproj" />
     <Project Path="src/Spx.ServiceDefaults/Spx.ServiceDefaults.csproj" />
     <Project Path="src/Spx.Web/Spx.Web.csproj" />

@@ -4,8 +4,7 @@ using Spx.Games;
 namespace Spx.Data;
 
 internal sealed class EfGameMessagePersistence(
-    ApplicationDbContext dbContext,
-    GameMessagePersistenceSupport support) : IGameMessagePersistence
+    IDbContextFactory<ApplicationDbContext> contextFactory) : IGameMessagePersistence
 {
     public async Task<GameMessagePageView?> GetMessagesAsync(
         Guid gameId,
@@ -14,6 +13,8 @@ internal sealed class EfGameMessagePersistence(
         int take,
         CancellationToken cancellationToken)
     {
+        await using var dbContext = await contextFactory.CreateDbContextAsync(cancellationToken);
+        var support = new GameMessagePersistenceSupport(dbContext);
         var access = await support.GetReadAccessAsync(gameId, userId, cancellationToken);
         if (access is null)
         {
@@ -67,6 +68,8 @@ internal sealed class EfGameMessagePersistence(
         int take,
         CancellationToken cancellationToken)
     {
+        await using var dbContext = await contextFactory.CreateDbContextAsync(cancellationToken);
+        var support = new GameMessagePersistenceSupport(dbContext);
         var access = await support.GetReadAccessAsync(gameId, userId, cancellationToken);
         if (access is null)
         {
@@ -107,6 +110,8 @@ internal sealed class EfGameMessagePersistence(
         string body,
         CancellationToken cancellationToken)
     {
+        await using var dbContext = await contextFactory.CreateDbContextAsync(cancellationToken);
+        var support = new GameMessagePersistenceSupport(dbContext);
         var sender = await support.GetActivePlayerAsync(gameId, userId, cancellationToken);
         if (sender is null)
         {
@@ -144,6 +149,8 @@ internal sealed class EfGameMessagePersistence(
         string body,
         CancellationToken cancellationToken)
     {
+        await using var dbContext = await contextFactory.CreateDbContextAsync(cancellationToken);
+        var support = new GameMessagePersistenceSupport(dbContext);
         var sender = await support.GetActivePlayerAsync(gameId, userId, cancellationToken);
         if (sender is null)
         {
@@ -189,6 +196,8 @@ internal sealed class EfGameMessagePersistence(
         string body,
         CancellationToken cancellationToken)
     {
+        await using var dbContext = await contextFactory.CreateDbContextAsync(cancellationToken);
+        var support = new GameMessagePersistenceSupport(dbContext);
         if (!await support.IsActivePlayerAsync(gameId, userId, cancellationToken))
         {
             return GameMessageCommandResult.Failure("You are not an active player in that game.");
@@ -245,6 +254,8 @@ internal sealed class EfGameMessagePersistence(
         Guid messageId,
         CancellationToken cancellationToken)
     {
+        await using var dbContext = await contextFactory.CreateDbContextAsync(cancellationToken);
+        var support = new GameMessagePersistenceSupport(dbContext);
         if (!await support.IsActivePlayerAsync(gameId, userId, cancellationToken))
         {
             return GameMessageCommandResult.Failure("You are not an active player in that game.");

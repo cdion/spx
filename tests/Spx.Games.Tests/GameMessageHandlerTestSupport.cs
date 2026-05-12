@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using Spx.Contracts;
 using Spx.Games;
 
 namespace Spx.Games.Tests;
@@ -108,6 +109,9 @@ internal sealed class StubGamePersistence : IGamePersistence
         => throw new NotSupportedException();
 
     public Task<LeaveGamePersistenceResult> LeaveGameAsync(Guid gameId, string userId, CancellationToken cancellationToken)
+        => throw new NotSupportedException();
+
+    public Task<IReadOnlyList<GameSessionPlayer>?> GetActiveSessionPlayersAsync(Guid gameId, CancellationToken cancellationToken)
         => throw new NotSupportedException();
 
     public Task<GameLobbyView?> GetLobbyAsync(Guid gameId, string userId, CancellationToken cancellationToken)

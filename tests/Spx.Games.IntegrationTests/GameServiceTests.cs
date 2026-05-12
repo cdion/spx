@@ -5,16 +5,17 @@ using Xunit;
 
 namespace Spx.Games.IntegrationTests;
 
-public sealed class GameServiceTests
+[Collection(IntegrationTestCollection.Name)]
+public sealed class GameServiceTests(PostgresDatabaseFixture fixture) : IntegrationTestBase(fixture)
 {
     [Fact]
     public async Task CreateGameAsync_CreatesGameAndHostPlayer()
     {
-        await using var database = await TestDatabase.CreateAsync();
+        var database = Database;
         await database.AddUserAsync("user-1", "user1@example.com");
         var notifier = new FakeGameLobbyNotifier();
         var messagePublisher = new FakeGameMessagePublisher();
-        var features = GameFeatureTestFactory.Create(database.Context, notifier, messagePublisher);
+        var features = GameFeatureTestFactory.Create(database.ContextFactory, notifier, messagePublisher);
 
         var result = await features.CreateGame.HandleAsync("user-1", new CreateGameRequest("Weekend match", "Captain Red"));
 
@@ -38,12 +39,12 @@ public sealed class GameServiceTests
     [Fact]
     public async Task JoinGameAsync_ReattachesAndRenamesExistingActivePlayer()
     {
-        await using var database = await TestDatabase.CreateAsync();
+        var database = Database;
         await database.AddUserAsync("user-1", "user1@example.com");
         var game = await database.AddGameAsync("user-1", "ABC123", "Alpha", activePlayerUserId: "user-1", activePlayerName: "Captain Red");
         var notifier = new FakeGameLobbyNotifier();
         var messagePublisher = new FakeGameMessagePublisher();
-        var features = GameFeatureTestFactory.Create(database.Context, notifier, messagePublisher);
+        var features = GameFeatureTestFactory.Create(database.ContextFactory, notifier, messagePublisher);
 
         var result = await features.JoinGame.HandleAsync("user-1", new JoinGameRequest(game.InviteCode, "Captain Blue"));
 
@@ -61,7 +62,7 @@ public sealed class GameServiceTests
     [Fact]
     public async Task JoinGameAsync_RejectsFullGame()
     {
-        await using var database = await TestDatabase.CreateAsync();
+        var database = Database;
         await database.AddUserAsync("user-1", "user1@example.com");
         await database.AddUserAsync("user-2", "user2@example.com");
         await database.AddUserAsync("user-3", "user3@example.com");
@@ -69,7 +70,7 @@ public sealed class GameServiceTests
         await database.AddGamePlayerAsync(game.Id, "user-2", "Captain Blue");
         var notifier = new FakeGameLobbyNotifier();
         var messagePublisher = new FakeGameMessagePublisher();
-        var features = GameFeatureTestFactory.Create(database.Context, notifier, messagePublisher);
+        var features = GameFeatureTestFactory.Create(database.ContextFactory, notifier, messagePublisher);
 
         var result = await features.JoinGame.HandleAsync("user-3", new JoinGameRequest(game.InviteCode, "Captain Green"));
 
@@ -82,13 +83,13 @@ public sealed class GameServiceTests
     [Fact]
     public async Task JoinGameAsync_RejectsDuplicatePlayerName()
     {
-        await using var database = await TestDatabase.CreateAsync();
+        var database = Database;
         await database.AddUserAsync("user-1", "user1@example.com");
         await database.AddUserAsync("user-3", "user3@example.com");
         var game = await database.AddGameAsync("user-1", "ABC123", "Alpha", activePlayerUserId: "user-1", activePlayerName: "Captain Red");
         var notifier = new FakeGameLobbyNotifier();
         var messagePublisher = new FakeGameMessagePublisher();
-        var features = GameFeatureTestFactory.Create(database.Context, notifier, messagePublisher);
+        var features = GameFeatureTestFactory.Create(database.ContextFactory, notifier, messagePublisher);
 
         var result = await features.JoinGame.HandleAsync("user-3", new JoinGameRequest(game.InviteCode, "Captain Red"));
 
@@ -101,12 +102,12 @@ public sealed class GameServiceTests
     [Fact]
     public async Task LeaveGameAsync_LastPlayerEndsGameAndSoftDeletesMembership()
     {
-        await using var database = await TestDatabase.CreateAsync();
+        var database = Database;
         await database.AddUserAsync("user-1", "user1@example.com");
         var game = await database.AddGameAsync("user-1", "ABC123", "Alpha", activePlayerUserId: "user-1", activePlayerName: "Captain Red");
         var notifier = new FakeGameLobbyNotifier();
         var messagePublisher = new FakeGameMessagePublisher();
-        var features = GameFeatureTestFactory.Create(database.Context, notifier, messagePublisher);
+        var features = GameFeatureTestFactory.Create(database.ContextFactory, notifier, messagePublisher);
 
         var result = await features.LeaveGame.HandleAsync(game.Id, "user-1");
 
@@ -126,14 +127,14 @@ public sealed class GameServiceTests
     [Fact]
     public async Task LeaveGameAsync_WhenAnotherPlayerRemains_KeepsGameOpen()
     {
-        await using var database = await TestDatabase.CreateAsync();
+        var database = Database;
         await database.AddUserAsync("user-1", "user1@example.com");
         await database.AddUserAsync("user-2", "user2@example.com");
         var game = await database.AddGameAsync("user-1", "ABC123", "Alpha", activePlayerUserId: "user-1", activePlayerName: "Captain Red");
         await database.AddGamePlayerAsync(game.Id, "user-2", "Captain Blue");
         var notifier = new FakeGameLobbyNotifier();
         var messagePublisher = new FakeGameMessagePublisher();
-        var features = GameFeatureTestFactory.Create(database.Context, notifier, messagePublisher);
+        var features = GameFeatureTestFactory.Create(database.ContextFactory, notifier, messagePublisher);
 
         var result = await features.LeaveGame.HandleAsync(game.Id, "user-1");
 
@@ -154,11 +155,11 @@ public sealed class GameServiceTests
     [Fact]
     public async Task GetUserGamesAsync_SplitsOpenAndEndedGames()
     {
-        await using var database = await TestDatabase.CreateAsync();
+        var database = Database;
         await database.AddUserAsync("user-1", "user1@example.com");
         var openGame = await database.AddGameAsync("user-1", "OPEN01", "Open Game", activePlayerUserId: "user-1", activePlayerName: "Captain Red");
         var endedGame = await database.AddGameAsync("user-1", "DONE01", "Ended Game", activePlayerUserId: "user-1", activePlayerName: "Captain Red", status: GameStatus.Ended, endedAtUtc: DateTime.UtcNow.AddMinutes(-5), leftAtUtc: DateTime.UtcNow.AddMinutes(-4));
-        var features = GameFeatureTestFactory.Create(database.Context, new FakeGameLobbyNotifier(), new FakeGameMessagePublisher());
+        var features = GameFeatureTestFactory.Create(database.ContextFactory, new FakeGameLobbyNotifier(), new FakeGameMessagePublisher());
 
         var games = await features.GetUserGames.HandleAsync("user-1");
 

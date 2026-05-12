@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using Spx.Contracts;
 using Spx.Games;
 using Spx.Games.Features.JoinGame;
 using Xunit;
@@ -13,7 +14,8 @@ public sealed class JoinGameHandlerTests
         var persistence = new FakeGamePersistence();
         var lobbyPublisher = new FakeGameLobbyEventsPublisher();
         var messagePublisher = new FakeGameMessageEventsPublisher();
-        using var services = CreateServices(persistence, lobbyPublisher, messagePublisher);
+        var sessionService = new FakeGameSessionService();
+        using var services = CreateServices(persistence, lobbyPublisher, messagePublisher, sessionService);
 
         var handler = services.GetRequiredService<IJoinGameHandler>();
         var result = await handler.HandleAsync("user-1", new JoinGameRequest("abc", "Captain Red"));
@@ -21,6 +23,7 @@ public sealed class JoinGameHandlerTests
         Assert.False(result.Succeeded);
         Assert.Equal("Invite codes must be six characters long.", result.ErrorMessage);
         Assert.Null(persistence.LastJoinRequest);
+        Assert.Empty(sessionService.InitializedGameIds);
         Assert.Empty(lobbyPublisher.PublishedGameIds);
         Assert.Empty(messagePublisher.PublishedGameIds);
     }
@@ -31,11 +34,17 @@ public sealed class JoinGameHandlerTests
         var gameId = Guid.NewGuid();
         var persistence = new FakeGamePersistence
         {
-            JoinGameResult = new JoinGamePersistenceResult(GameCommandResult.Success(gameId), gameId, true)
+            JoinGameResult = new JoinGamePersistenceResult(GameCommandResult.Success(gameId), gameId, true),
+            ActiveSessionPlayers =
+            [
+                new GameSessionPlayer(Guid.NewGuid(), "user-1", "Captain Red"),
+                new GameSessionPlayer(Guid.NewGuid(), "user-2", "Captain Blue")
+            ]
         };
         var lobbyPublisher = new FakeGameLobbyEventsPublisher();
         var messagePublisher = new FakeGameMessageEventsPublisher();
-        using var services = CreateServices(persistence, lobbyPublisher, messagePublisher);
+        var sessionService = new FakeGameSessionService();
+        using var services = CreateServices(persistence, lobbyPublisher, messagePublisher, sessionService);
 
         var handler = services.GetRequiredService<IJoinGameHandler>();
         var result = await handler.HandleAsync("user-1", new JoinGameRequest(" abc123 ", " Captain Red "));
@@ -45,6 +54,7 @@ public sealed class JoinGameHandlerTests
         Assert.Equal("ABC123", persistence.LastJoinRequest!.InviteCode);
         Assert.Equal("Captain Red", persistence.LastJoinRequest.PlayerName);
         Assert.Equal("CAPTAIN RED", persistence.LastJoinRequest.PlayerNameLookup);
+        Assert.Equal([gameId], sessionService.InitializedGameIds);
         Assert.Equal([gameId], lobbyPublisher.PublishedGameIds);
         Assert.Equal([gameId], messagePublisher.PublishedGameIds);
     }
@@ -61,13 +71,15 @@ public sealed class JoinGameHandlerTests
         };
         var lobbyPublisher = new FakeGameLobbyEventsPublisher();
         var messagePublisher = new FakeGameMessageEventsPublisher();
-        using var services = CreateServices(persistence, lobbyPublisher, messagePublisher);
+        var sessionService = new FakeGameSessionService();
+        using var services = CreateServices(persistence, lobbyPublisher, messagePublisher, sessionService);
 
         var handler = services.GetRequiredService<IJoinGameHandler>();
         var result = await handler.HandleAsync("user-3", new JoinGameRequest("ABC123", "Captain Red"));
 
         Assert.False(result.Succeeded);
         Assert.Equal("That player name is already taken in this game.", result.ErrorMessage);
+        Assert.Empty(sessionService.InitializedGameIds);
         Assert.Empty(lobbyPublisher.PublishedGameIds);
         Assert.Empty(messagePublisher.PublishedGameIds);
     }
@@ -75,11 +87,13 @@ public sealed class JoinGameHandlerTests
     private static ServiceProvider CreateServices(
         FakeGamePersistence persistence,
         FakeGameLobbyEventsPublisher lobbyPublisher,
-        FakeGameMessageEventsPublisher messagePublisher)
+        FakeGameMessageEventsPublisher messagePublisher,
+        FakeGameSessionService sessionService)
     {
         var services = new ServiceCollection();
         services.AddGameApplication();
         services.AddSingleton<IGamePersistence>(persistence);
+        services.AddSingleton<IGameSessionService>(sessionService);
         services.AddSingleton<IGameLobbyEventsPublisher>(lobbyPublisher);
         services.AddSingleton<IGameMessageEventsPublisher>(messagePublisher);
         services.AddSingleton<IGameMessagePersistence, FakeGameMessagePersistence>();
@@ -93,6 +107,8 @@ public sealed class JoinGameHandlerTests
 
         public JoinGamePersistenceRequest? LastJoinRequest { get; private set; }
 
+        public IReadOnlyList<GameSessionPlayer>? ActiveSessionPlayers { get; init; }
+
         public Task<Guid?> TryCreateGameAsync(CreateGamePersistenceRequest request, CancellationToken cancellationToken)
             => throw new NotSupportedException();
 
@@ -104,6 +120,9 @@ public sealed class JoinGameHandlerTests
 
         public Task<LeaveGamePersistenceResult> LeaveGameAsync(Guid gameId, string userId, CancellationToken cancellationToken)
             => throw new NotSupportedException();
+
+        public Task<IReadOnlyList<GameSessionPlayer>?> GetActiveSessionPlayersAsync(Guid gameId, CancellationToken cancellationToken)
+            => Task.FromResult(ActiveSessionPlayers);
 
         public Task<GameLobbyView?> GetLobbyAsync(Guid gameId, string userId, CancellationToken cancellationToken)
             => throw new NotSupportedException();
@@ -132,6 +151,26 @@ public sealed class JoinGameHandlerTests
             PublishedGameIds.Add(gameId);
             return Task.CompletedTask;
         }
+    }
+
+    private sealed class FakeGameSessionService : IGameSessionService
+    {
+        public List<Guid> InitializedGameIds { get; } = [];
+
+        public Task<bool> TryInitializeAsync(Guid gameId, IReadOnlyList<GameSessionPlayer> players, CancellationToken cancellationToken = default)
+        {
+            InitializedGameIds.Add(gameId);
+            return Task.FromResult(true);
+        }
+
+        public Task<GameSessionPlayerView?> GetPlayerViewAsync(Guid gameId, string userId, CancellationToken cancellationToken = default)
+            => throw new NotSupportedException();
+
+        public Task<GameSessionPlayerView> SubmitMoveAsync(Guid gameId, SubmitGameMoveCommand command, CancellationToken cancellationToken = default)
+            => throw new NotSupportedException();
+
+        public Task<GameSessionPlayerView> AbandonAsync(Guid gameId, string userId, CancellationToken cancellationToken = default)
+            => throw new NotSupportedException();
     }
 
     private sealed class FakeGameMessagePersistence : IGameMessagePersistence

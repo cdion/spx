@@ -17,6 +17,8 @@ public static class GameWebAdaptersServiceCollectionExtensions
             serviceProvider.GetRequiredService<OrleansGameLobbyAdapter>());
         services.AddSingleton<IGameMessageEventsPublisher>(serviceProvider =>
             serviceProvider.GetRequiredService<OrleansGameLobbyAdapter>());
+        services.AddSingleton<IGameSessionService>(serviceProvider =>
+            serviceProvider.GetRequiredService<OrleansGameLobbyAdapter>());
 
         return services;
     }

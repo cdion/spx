@@ -1,40 +1,38 @@
-using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Spx.Data;
 using Spx.Games;
 
 namespace Spx.Games.IntegrationTests;
 
-internal sealed class TestDatabase : IAsyncDisposable
+public sealed class TestDatabase : IAsyncDisposable
 {
-    private readonly SqliteConnection connection;
+    private readonly List<ApplicationDbContext> leasedContexts = [];
+    private readonly TestDbContextFactory contextFactory;
 
-    private TestDatabase(SqliteConnection connection, ApplicationDbContext context)
+    internal TestDatabase(string connectionString)
     {
-        this.connection = connection;
-        Context = context;
+        contextFactory = new TestDbContextFactory(connectionString);
     }
 
-    public ApplicationDbContext Context { get; }
+    public IDbContextFactory<ApplicationDbContext> ContextFactory => contextFactory;
 
-    public static async Task<TestDatabase> CreateAsync()
+    public ApplicationDbContext Context => LeaseContext();
+
+    public ApplicationDbContext CreateDbContext()
+        => contextFactory.CreateDbContext();
+
+    private ApplicationDbContext LeaseContext()
     {
-        var connection = new SqliteConnection("Data Source=:memory:");
-        await connection.OpenAsync();
-
-        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
-            .UseSqlite(connection)
-            .Options;
-
-        var context = new ApplicationDbContext(options);
-        await context.Database.EnsureCreatedAsync();
-
-        return new TestDatabase(connection, context);
+        var context = contextFactory.CreateDbContext();
+        leasedContexts.Add(context);
+        return context;
     }
 
     public async Task AddUserAsync(string userId, string email)
     {
-        Context.Users.Add(new ApplicationUser
+        await using var context = CreateDbContext();
+
+        context.Users.Add(new ApplicationUser
         {
             Id = userId,
             UserName = email,
@@ -43,10 +41,10 @@ internal sealed class TestDatabase : IAsyncDisposable
             NormalizedEmail = email.ToUpperInvariant()
         });
 
-        await Context.SaveChangesAsync();
+        await context.SaveChangesAsync();
     }
 
-    public async Task<Game> AddGameAsync(
+    public async Task<Spx.Data.Game> AddGameAsync(
         string createdByUserId,
         string inviteCode,
         string name,
@@ -57,8 +55,10 @@ internal sealed class TestDatabase : IAsyncDisposable
         DateTime? leftAtUtc = null,
         Guid? visibleThroughMessageId = null)
     {
+        await using var context = CreateDbContext();
+
         var now = DateTime.UtcNow.AddMinutes(-10);
-        var game = new Game
+        var game = new Spx.Data.Game
         {
             Id = Guid.NewGuid(),
             Name = name,
@@ -70,8 +70,8 @@ internal sealed class TestDatabase : IAsyncDisposable
             EndedAtUtc = endedAtUtc
         };
 
-        Context.Games.Add(game);
-        Context.GamePlayers.Add(new GamePlayer
+        context.Games.Add(game);
+        context.GamePlayers.Add(new GamePlayer
         {
             Id = Guid.NewGuid(),
             GameId = game.Id,
@@ -83,7 +83,7 @@ internal sealed class TestDatabase : IAsyncDisposable
             VisibleThroughMessageId = visibleThroughMessageId
         });
 
-        await Context.SaveChangesAsync();
+        await context.SaveChangesAsync();
         return game;
     }
 
@@ -95,6 +95,8 @@ internal sealed class TestDatabase : IAsyncDisposable
         DateTime? leftAtUtc = null,
         Guid? visibleThroughMessageId = null)
     {
+        await using var context = CreateDbContext();
+
         var player = new GamePlayer
         {
             Id = Guid.NewGuid(),
@@ -107,9 +109,17 @@ internal sealed class TestDatabase : IAsyncDisposable
             VisibleThroughMessageId = visibleThroughMessageId
         };
 
-        Context.GamePlayers.Add(player);
-        await Context.SaveChangesAsync();
+        context.GamePlayers.Add(player);
+        await context.SaveChangesAsync();
         return player;
+    }
+
+    public async Task SetVisibleThroughMessageIdAsync(Guid playerId, Guid? visibleThroughMessageId)
+    {
+        await using var context = CreateDbContext();
+        var player = await context.GamePlayers.SingleAsync(entry => entry.Id == playerId);
+        player.VisibleThroughMessageId = visibleThroughMessageId;
+        await context.SaveChangesAsync();
     }
 
     public async Task<GameMessage> AddMessageAsync(
@@ -126,6 +136,8 @@ internal sealed class TestDatabase : IAsyncDisposable
         DateTime? deletedAtUtc = null,
         Guid? id = null)
     {
+        await using var context = CreateDbContext();
+
         var message = new GameMessage
         {
             Id = id ?? Guid.CreateVersion7(),
@@ -142,15 +154,17 @@ internal sealed class TestDatabase : IAsyncDisposable
             DeletedAtUtc = deletedAtUtc
         };
 
-        Context.GameMessages.Add(message);
-        await Context.SaveChangesAsync();
+        context.GameMessages.Add(message);
+        await context.SaveChangesAsync();
         return message;
     }
 
     public async ValueTask DisposeAsync()
     {
-        await Context.DisposeAsync();
-        await connection.DisposeAsync();
+        foreach (var context in leasedContexts)
+        {
+            await context.DisposeAsync();
+        }
     }
 }
 
@@ -173,5 +187,27 @@ internal sealed class FakeGameMessagePublisher : IGameMessageEventsPublisher
     {
         PublishedGameIds.Add(gameId);
         return Task.CompletedTask;
+    }
+}
+
+internal sealed class TestDbContextFactory(string connectionString) : IDbContextFactory<ApplicationDbContext>
+{
+    public ApplicationDbContext CreateDbContext()
+    {
+        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseNpgsql(connectionString)
+            .Options;
+
+        return new ApplicationDbContext(options);
+    }
+
+    public async ValueTask<ApplicationDbContext> CreateDbContextAsync(CancellationToken cancellationToken = default)
+    {
+        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseNpgsql(connectionString)
+            .Options;
+
+        await Task.CompletedTask;
+        return new ApplicationDbContext(options);
     }
 }

@@ -1,3 +1,5 @@
+using Spx.Contracts;
+
 namespace Spx.Games;
 
 public interface IGamePersistence
@@ -7,6 +9,8 @@ public interface IGamePersistence
     Task<JoinGamePersistenceResult> JoinGameAsync(JoinGamePersistenceRequest request, CancellationToken cancellationToken);
 
     Task<LeaveGamePersistenceResult> LeaveGameAsync(Guid gameId, string userId, CancellationToken cancellationToken);
+
+    Task<IReadOnlyList<GameSessionPlayer>?> GetActiveSessionPlayersAsync(Guid gameId, CancellationToken cancellationToken);
 
     Task<GameLobbyView?> GetLobbyAsync(Guid gameId, string userId, CancellationToken cancellationToken);
 

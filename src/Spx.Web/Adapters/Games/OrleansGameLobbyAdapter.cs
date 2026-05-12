@@ -7,7 +7,7 @@ namespace Spx.Web.Adapters.Games;
 public sealed class OrleansGameLobbyAdapter(
     IClusterClient clusterClient,
     ILogger<OrleansGameLobbyAdapter> logger)
-    : IGameLobbySubscriptionService, IGameMessageSubscriptionService, IGameLobbyEventsPublisher, IGameMessageEventsPublisher, IGameLobbyObserver
+    : IGameLobbySubscriptionService, IGameMessageSubscriptionService, IGameLobbyEventsPublisher, IGameMessageEventsPublisher, IGameSessionService, IGameLobbyObserver
 {
     private readonly SemaphoreSlim gate = new(1, 1);
     private readonly Dictionary<Guid, Dictionary<Guid, Func<Task>>> lobbySubscriptions = [];
@@ -37,6 +37,55 @@ public sealed class OrleansGameLobbyAdapter(
             logger.LogWarning(exception, "Failed to publish message update for game {GameId}.", gameId);
         }
     }
+
+    public async Task<bool> TryInitializeAsync(Guid gameId, IReadOnlyList<GameSessionPlayer> players, CancellationToken cancellationToken = default)
+    {
+        if (players.Count != 2)
+        {
+            return false;
+        }
+
+        try
+        {
+            await clusterClient.GetGrain<IGameSessionGrain>(gameId).InitializeAsync(new InitializeGameSessionCommand(players[0], players[1]));
+            return true;
+        }
+        catch (Exception exception)
+        {
+            logger.LogWarning(exception, "Failed to initialize a game session for game {GameId}.", gameId);
+            return false;
+        }
+    }
+
+    public async Task<GameSessionPlayerView?> GetPlayerViewAsync(Guid gameId, string userId, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            return await clusterClient.GetGrain<IGameSessionGrain>(gameId).GetPlayerViewAsync(new GetGameSessionPlayerViewQuery(userId));
+        }
+        catch (Exception exception)
+        {
+            logger.LogWarning(exception, "Failed to fetch player view for game {GameId} user {UserId}. Session data unavailable.", gameId, userId);
+            // Return null to allow page to degrade to lobby-only view
+            return null;
+        }
+    }
+
+    public async Task<GameSessionPlayerView> SubmitMoveAsync(Guid gameId, SubmitGameMoveCommand command, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            return await clusterClient.GetGrain<IGameSessionGrain>(gameId).SubmitMoveAsync(command);
+        }
+        catch (Exception exception)
+        {
+            logger.LogWarning(exception, "Failed to submit move for game {GameId} user {UserId}.", gameId, command.UserId);
+            throw;
+        }
+    }
+
+    public async Task<GameSessionPlayerView> AbandonAsync(Guid gameId, string userId, CancellationToken cancellationToken = default)
+        => await clusterClient.GetGrain<IGameSessionGrain>(gameId).AbandonAsync(new AbandonGameSessionPlayerCommand(userId));
 
     public async ValueTask<IAsyncDisposable> SubscribeAsync(Guid gameId, Func<Task> onLobbyChanged, CancellationToken cancellationToken = default)
         => await SubscribeCoreAsync(gameId, onLobbyChanged, SubscriptionKind.Lobby, cancellationToken);

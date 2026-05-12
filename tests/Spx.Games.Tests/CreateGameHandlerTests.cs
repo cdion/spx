@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using Spx.Contracts;
 using Spx.Games;
 using Spx.Games.Features.CreateGame;
 using Xunit;
@@ -55,6 +56,7 @@ public sealed class CreateGameHandlerTests
         var services = new ServiceCollection();
         services.AddGameApplication();
         services.AddSingleton<IGamePersistence>(persistence);
+        services.AddSingleton<IGameSessionService, FakeGameSessionService>();
         services.AddSingleton<IGameLobbyEventsPublisher>(lobbyPublisher);
         services.AddSingleton<IGameMessageEventsPublisher>(messagePublisher);
         services.AddSingleton<IGameMessagePersistence, FakeGameMessagePersistence>();
@@ -75,6 +77,9 @@ public sealed class CreateGameHandlerTests
             => throw new NotSupportedException();
 
         public Task<LeaveGamePersistenceResult> LeaveGameAsync(Guid gameId, string userId, CancellationToken cancellationToken)
+            => throw new NotSupportedException();
+
+        public Task<IReadOnlyList<GameSessionPlayer>?> GetActiveSessionPlayersAsync(Guid gameId, CancellationToken cancellationToken)
             => throw new NotSupportedException();
 
         public Task<GameLobbyView?> GetLobbyAsync(Guid gameId, string userId, CancellationToken cancellationToken)
@@ -124,6 +129,21 @@ public sealed class CreateGameHandlerTests
             => throw new NotSupportedException();
 
         public Task<GameMessageCommandResult> DeleteMessageAsync(Guid gameId, string userId, Guid messageId, CancellationToken cancellationToken)
+            => throw new NotSupportedException();
+    }
+
+    private sealed class FakeGameSessionService : IGameSessionService
+    {
+        public Task<bool> TryInitializeAsync(Guid gameId, IReadOnlyList<GameSessionPlayer> players, CancellationToken cancellationToken = default)
+            => Task.FromResult(true);
+
+        public Task<GameSessionPlayerView?> GetPlayerViewAsync(Guid gameId, string userId, CancellationToken cancellationToken = default)
+            => Task.FromResult<GameSessionPlayerView?>(null);
+
+        public Task<GameSessionPlayerView> SubmitMoveAsync(Guid gameId, SubmitGameMoveCommand command, CancellationToken cancellationToken = default)
+            => throw new NotSupportedException();
+
+        public Task<GameSessionPlayerView> AbandonAsync(Guid gameId, string userId, CancellationToken cancellationToken = default)
             => throw new NotSupportedException();
     }
 }
