@@ -21,12 +21,13 @@ internal sealed class RegisterHandler(
         }
 
         var result = await accountIdentity.CreateUserAsync(email, password);
-        if (!result.Succeeded)
+        if (result is not AccountCreateSucceeded created)
         {
-            return new RegisterOutcome(RegisterOutcomeStatus.Failed, email, result.Errors);
+            var failed = (AccountCreateFailed)result;
+            return new RegisterOutcome(RegisterOutcomeStatus.Failed, email, failed.Errors);
         }
 
-        var user = result.User!;
+        var user = created.User;
         var code = await accountIdentity.GenerateEmailConfirmationTokenAsync(user);
         if (string.IsNullOrWhiteSpace(code))
         {

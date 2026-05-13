@@ -1,4 +1,4 @@
-using Spx.Games;
+using Spx.Game.Application;
 
 namespace Spx.Data;
 

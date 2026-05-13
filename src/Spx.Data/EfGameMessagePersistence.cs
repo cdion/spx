@@ -1,5 +1,5 @@
 using Microsoft.EntityFrameworkCore;
-using Spx.Games;
+using Spx.Game.Application;
 
 namespace Spx.Data;
 
@@ -104,7 +104,7 @@ internal sealed class EfGameMessagePersistence(
             .ToListAsync(cancellationToken);
     }
 
-    public async Task<GameMessageCommandResult> SendPublicMessageAsync(
+    public async Task<GameMessageCommandOutcome> SendPublicMessageAsync(
         Guid gameId,
         string userId,
         string body,
@@ -115,7 +115,7 @@ internal sealed class EfGameMessagePersistence(
         var sender = await support.GetActivePlayerAsync(gameId, userId, cancellationToken);
         if (sender is null)
         {
-            return GameMessageCommandResult.Failure("You are not an active player in that game.");
+            return new GameMessageCommandFailed("You are not an active player in that game.");
         }
 
         var now = DateTime.UtcNow;
@@ -123,7 +123,7 @@ internal sealed class EfGameMessagePersistence(
         dbContext.GameMessages.Add(message);
         await dbContext.SaveChangesAsync(cancellationToken);
 
-        return GameMessageCommandResult.Success(GameMessageSupport.MapMessage(
+        return new GameMessageCommandSucceeded(GameMessageSupport.MapMessage(
             new GameMessageSupport.GameMessageSnapshot(
                 message.Id,
                 message.Kind,
@@ -142,7 +142,7 @@ internal sealed class EfGameMessagePersistence(
             now));
     }
 
-    public async Task<GameMessageCommandResult> SendPrivateMessageAsync(
+    public async Task<GameMessageCommandOutcome> SendPrivateMessageAsync(
         Guid gameId,
         string userId,
         Guid recipientPlayerId,
@@ -154,7 +154,7 @@ internal sealed class EfGameMessagePersistence(
         var sender = await support.GetActivePlayerAsync(gameId, userId, cancellationToken);
         if (sender is null)
         {
-            return GameMessageCommandResult.Failure("You are not an active player in that game.");
+            return new GameMessageCommandFailed("You are not an active player in that game.");
         }
 
         var recipient = await dbContext.GamePlayers
@@ -162,7 +162,7 @@ internal sealed class EfGameMessagePersistence(
 
         if (recipient is null)
         {
-            return GameMessageCommandResult.Failure("That recipient is not an active player in this game.");
+            return new GameMessageCommandFailed("That recipient is not an active player in this game.");
         }
 
         var now = DateTime.UtcNow;
@@ -170,7 +170,7 @@ internal sealed class EfGameMessagePersistence(
         dbContext.GameMessages.Add(message);
         await dbContext.SaveChangesAsync(cancellationToken);
 
-        return GameMessageCommandResult.Success(GameMessageSupport.MapMessage(
+        return new GameMessageCommandSucceeded(GameMessageSupport.MapMessage(
             new GameMessageSupport.GameMessageSnapshot(
                 message.Id,
                 message.Kind,
@@ -189,7 +189,7 @@ internal sealed class EfGameMessagePersistence(
             now));
     }
 
-    public async Task<GameMessageCommandResult> EditMessageAsync(
+    public async Task<GameMessageCommandOutcome> EditMessageAsync(
         Guid gameId,
         string userId,
         Guid messageId,
@@ -200,7 +200,7 @@ internal sealed class EfGameMessagePersistence(
         var support = new GameMessagePersistenceSupport(dbContext);
         if (!await support.IsActivePlayerAsync(gameId, userId, cancellationToken))
         {
-            return GameMessageCommandResult.Failure("You are not an active player in that game.");
+            return new GameMessageCommandFailed("You are not an active player in that game.");
         }
 
         var message = await dbContext.GameMessages
@@ -211,25 +211,25 @@ internal sealed class EfGameMessagePersistence(
 
         if (message is null || message.SenderPlayer?.UserId != userId)
         {
-            return GameMessageCommandResult.Failure("That message could not be edited.");
+            return new GameMessageCommandFailed("That message could not be edited.");
         }
 
         if (message.DeletedAtUtc is not null)
         {
-            return GameMessageCommandResult.Failure("Deleted messages cannot be edited.");
+            return new GameMessageCommandFailed("Deleted messages cannot be edited.");
         }
 
         var now = DateTime.UtcNow;
         if (now - message.CreatedAtUtc > GameMessageSupport.MessageMutationWindow)
         {
-            return GameMessageCommandResult.Failure("That message can no longer be edited.");
+            return new GameMessageCommandFailed("That message can no longer be edited.");
         }
 
         message.Body = body;
         message.EditedAtUtc = now;
 
         await dbContext.SaveChangesAsync(cancellationToken);
-        return GameMessageCommandResult.Success(GameMessageSupport.MapMessage(
+        return new GameMessageCommandSucceeded(GameMessageSupport.MapMessage(
             new GameMessageSupport.GameMessageSnapshot(
                 message.Id,
                 message.Kind,
@@ -248,7 +248,7 @@ internal sealed class EfGameMessagePersistence(
             now));
     }
 
-    public async Task<GameMessageCommandResult> DeleteMessageAsync(
+    public async Task<GameMessageCommandOutcome> DeleteMessageAsync(
         Guid gameId,
         string userId,
         Guid messageId,
@@ -258,7 +258,7 @@ internal sealed class EfGameMessagePersistence(
         var support = new GameMessagePersistenceSupport(dbContext);
         if (!await support.IsActivePlayerAsync(gameId, userId, cancellationToken))
         {
-            return GameMessageCommandResult.Failure("You are not an active player in that game.");
+            return new GameMessageCommandFailed("You are not an active player in that game.");
         }
 
         var message = await dbContext.GameMessages
@@ -269,25 +269,25 @@ internal sealed class EfGameMessagePersistence(
 
         if (message is null || message.SenderPlayer?.UserId != userId)
         {
-            return GameMessageCommandResult.Failure("That message could not be deleted.");
+            return new GameMessageCommandFailed("That message could not be deleted.");
         }
 
         if (message.DeletedAtUtc is not null)
         {
-            return GameMessageCommandResult.Failure("That message has already been deleted.");
+            return new GameMessageCommandFailed("That message has already been deleted.");
         }
 
         var now = DateTime.UtcNow;
         if (now - message.CreatedAtUtc > GameMessageSupport.MessageMutationWindow)
         {
-            return GameMessageCommandResult.Failure("That message can no longer be deleted.");
+            return new GameMessageCommandFailed("That message can no longer be deleted.");
         }
 
         message.Body = string.Empty;
         message.DeletedAtUtc = now;
 
         await dbContext.SaveChangesAsync(cancellationToken);
-        return GameMessageCommandResult.Success(GameMessageSupport.MapMessage(
+        return new GameMessageCommandSucceeded(GameMessageSupport.MapMessage(
             new GameMessageSupport.GameMessageSnapshot(
                 message.Id,
                 message.Kind,

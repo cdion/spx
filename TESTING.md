@@ -10,7 +10,7 @@ The default rule is:
 
 That fits the current architecture:
 
-- `Spx.Account` and `Spx.Games` contain application use cases and should carry most of the test volume
+- `Spx.Account` and `Spx.Game.Application` contain application use cases and should carry most of the test volume
 - `Spx.Data`, `Spx.Web`, and Orleans integration points should have a smaller number of focused integration tests where wiring and framework behavior matter
 
 ## Current Test Project Layout
@@ -44,7 +44,7 @@ Examples:
 - `ResetPasswordHandler` maps identity failures to the right outcome
 - `LoginHandler` maps sign-in statuses to the right redirect/outcome behavior
 
-### `tests/Spx.Games.Tests`
+### `tests/Spx.Game.Application.Tests`
 
 Purpose: fast unit tests for games application handlers and pure helpers.
 
@@ -81,7 +81,7 @@ Examples:
 - message update filtering logic
 - lobby result shaping for allowed and denied access
 
-### `tests/Spx.Games.IntegrationTests`
+### `tests/Spx.Game.Application.IntegrationTests`
 
 Purpose: integration tests for the EF-backed games persistence path.
 
@@ -151,8 +151,8 @@ The repo now has the intended split between unit-heavy application tests and nar
 In particular:
 
 - `tests/Spx.Account.Tests` exists and should remain the default place for pure account handler behavior
-- `tests/Spx.Games.Tests` exists and should remain the default place for pure games handler and helper behavior
-- `tests/Spx.Games.IntegrationTests` should stay focused on EF-backed scenarios and avoid becoming the default home for new games behavior tests
+- `tests/Spx.Game.Application.Tests` exists and should remain the default place for pure games handler and helper behavior
+- `tests/Spx.Game.Application.IntegrationTests` should stay focused on EF-backed scenarios and avoid becoming the default home for new games behavior tests
 - `tests/Spx.Web.Tests` is in a good place and should remain small and adapter-focused
 - `tests/Spx.Grains.Tests` is already relatively small and focused
 
@@ -160,7 +160,7 @@ In particular:
 
 When adding a new test, ask:
 
-1. Is the behavior decided in `Spx.Account` or `Spx.Games` without needing a real framework implementation?
+1. Is the behavior decided in `Spx.Account` or `Spx.Game.Application` without needing a real framework implementation?
    Put it in a unit test project.
 2. Does the behavior depend on EF Core, ASP.NET Identity, endpoint binding, or Orleans runtime semantics?
    Put it in the relevant integration test project.
@@ -170,7 +170,7 @@ When adding a new test, ask:
 ## Ongoing Direction
 
 1. Add new `Spx.Account` behavior tests to `tests/Spx.Account.Tests` by default.
-2. Add new `Spx.Games` handler and helper tests to `tests/Spx.Games.Tests` by default.
-3. Keep `tests/Spx.Games.IntegrationTests` limited to EF-backed scenarios that need a real database path.
+2. Add new `Spx.Game.Application` handler and helper tests to `tests/Spx.Game.Application.Tests` by default.
+3. Keep `tests/Spx.Game.Application.IntegrationTests` limited to EF-backed scenarios that need a real database path.
 4. Keep `tests/Spx.Web.Tests` limited to web adapters and endpoint wiring.
 5. Treat integration tests as a thin proving layer, not the default place for new behavior coverage.

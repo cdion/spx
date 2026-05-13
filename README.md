@@ -22,14 +22,14 @@ The current app is no longer a starter template. It includes account flows, invi
 - `src/Spx.AppHost`: Aspire entry point that starts the web app, silo, Redis, PostgreSQL, and the Aspire dashboard for local development
 - `src/Spx.Contracts`: Orleans grain interfaces and shared contracts
 - `src/Spx.Data`: EF Core data model, PostgreSQL persistence, game persistence adapters, Identity entities, and migrations
-- `src/Spx.Games`: application-layer game use cases and view models
+- `src/Spx.Game.Application`: application-layer game use cases and view models
 - `src/Spx.Grains`: Orleans grain implementations
 - `src/Spx.Silo`: Orleans silo host plus silo-side storage bootstrap and diagnostics
 - `src/Spx.ServiceDefaults`: shared Aspire defaults for telemetry, health checks, and service discovery
 - `src/Spx.Web`: Blazor front end, account endpoints, and adapters that connect the web layer to account and game application services
 - `tests/Spx.Account.Tests`: account-focused tests
-- `tests/Spx.Games.Tests`: games unit tests
-- `tests/Spx.Games.IntegrationTests`: EF-backed games integration tests
+- `tests/Spx.Game.Application.Tests`: games unit tests
+- `tests/Spx.Game.Application.IntegrationTests`: EF-backed games integration tests
 - `tests/Spx.Grains.Tests`: Orleans grain behavior tests
 - `tests/Spx.Web.Tests`: web and adapter integration tests
 - `tools/tailwind`: repo-local Tailwind CLI binary
@@ -157,8 +157,8 @@ Common commands from the repo root:
 
 ```bash
 dotnet test tests/Spx.Account.Tests/Spx.Account.Tests.csproj
-dotnet test tests/Spx.Games.Tests/Spx.Games.Tests.csproj
-dotnet test tests/Spx.Games.IntegrationTests/Spx.Games.IntegrationTests.csproj
+dotnet test tests/Spx.Game.Application.Tests/Spx.Game.Application.Tests.csproj
+dotnet test tests/Spx.Game.Application.IntegrationTests/Spx.Game.Application.IntegrationTests.csproj
 dotnet test tests/Spx.Grains.Tests/Spx.Grains.Tests.csproj
 dotnet test tests/Spx.Web.Tests/Spx.Web.Tests.csproj
 ```

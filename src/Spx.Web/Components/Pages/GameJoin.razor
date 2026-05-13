@@ -74,13 +74,13 @@
             var userId = await GetUserIdAsync();
             var result = await JoinGameHandler.HandleAsync(userId, new JoinGameRequest(inviteCode, playerName));
 
-            if (!result.Succeeded || result.GameId is null)
+            if (result is not GameCommandSucceeded succeeded)
             {
-                errorMessage = result.ErrorMessage ?? "The game could not be joined.";
+                errorMessage = ((GameCommandFailed)result).ErrorMessage;
                 return;
             }
 
-            Navigation.NavigateTo($"/games/{result.GameId.Value}");
+            Navigation.NavigateTo($"/games/{succeeded.GameId}");
         }
         catch (Exception exception)
         {

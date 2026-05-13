@@ -21,19 +21,19 @@ internal sealed class FakeAccountIdentity : IAccountIdentity
 
     public AccountUser? FindByIdResult { get; init; }
 
-    public AccountPasswordSignInResult PasswordSignInResult { get; init; } = new(AccountPasswordSignInStatus.Failed);
+    public AccountPasswordSignInOutcome PasswordSignInResult { get; init; } = new(AccountPasswordSignInStatus.Failed);
 
-    public AccountCreateResult CreateUserResult { get; init; } = new(null, false, []);
+    public AccountCreateOutcome CreateUserResult { get; init; } = new AccountCreateFailed([]);
 
     public string EmailConfirmationToken { get; init; } = string.Empty;
 
-    public AccountOperationResult ConfirmEmailResult { get; init; } = new(false, []);
+    public AccountOperationOutcome ConfirmEmailResult { get; init; } = new AccountOperationFailed([]);
 
     public bool IsEmailConfirmedResult { get; init; }
 
     public string PasswordResetToken { get; init; } = string.Empty;
 
-    public AccountOperationResult ResetPasswordResult { get; init; } = new(false, []);
+    public AccountOperationOutcome ResetPasswordResult { get; init; } = new AccountOperationFailed([]);
 
     public bool SignOutCalled { get; private set; }
 
@@ -43,7 +43,7 @@ internal sealed class FakeAccountIdentity : IAccountIdentity
     public Task<AccountUser?> FindByIdAsync(string userId)
         => Task.FromResult(FindByIdResult);
 
-    public Task<AccountPasswordSignInResult> PasswordSignInAsync(AccountUser user, string password)
+    public Task<AccountPasswordSignInOutcome> PasswordSignInAsync(AccountUser user, string password)
         => Task.FromResult(PasswordSignInResult);
 
     public Task SignOutAsync()
@@ -52,13 +52,13 @@ internal sealed class FakeAccountIdentity : IAccountIdentity
         return Task.CompletedTask;
     }
 
-    public Task<AccountCreateResult> CreateUserAsync(string email, string password)
+    public Task<AccountCreateOutcome> CreateUserAsync(string email, string password)
         => Task.FromResult(CreateUserResult);
 
     public Task<string> GenerateEmailConfirmationTokenAsync(AccountUser user)
         => Task.FromResult(EmailConfirmationToken);
 
-    public Task<AccountOperationResult> ConfirmEmailAsync(AccountUser user, string code)
+    public Task<AccountOperationOutcome> ConfirmEmailAsync(AccountUser user, string code)
         => Task.FromResult(ConfirmEmailResult);
 
     public Task<bool> IsEmailConfirmedAsync(AccountUser user)
@@ -67,7 +67,7 @@ internal sealed class FakeAccountIdentity : IAccountIdentity
     public Task<string> GeneratePasswordResetTokenAsync(AccountUser user)
         => Task.FromResult(PasswordResetToken);
 
-    public Task<AccountOperationResult> ResetPasswordAsync(AccountUser user, string code, string password)
+    public Task<AccountOperationOutcome> ResetPasswordAsync(AccountUser user, string code, string password)
         => Task.FromResult(ResetPasswordResult);
 }
 

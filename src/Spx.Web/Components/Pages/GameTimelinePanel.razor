@@ -348,10 +348,10 @@
 
         return item.Message.Kind switch
         {
-            Spx.Games.GameMessageKind.GameCreated => "Game created",
-            Spx.Games.GameMessageKind.PlayerJoined => "Player joined",
-            Spx.Games.GameMessageKind.PlayerLeft => "Player left",
-            Spx.Games.GameMessageKind.GameEnded => "Game ended",
+            Spx.Game.Application.GameMessageKind.GameCreated => "Game created",
+            Spx.Game.Application.GameMessageKind.PlayerJoined => "Player joined",
+            Spx.Game.Application.GameMessageKind.PlayerLeft => "Player left",
+            Spx.Game.Application.GameMessageKind.GameEnded => "Game ended",
             _ => item.Message.SenderDisplayName
         };
     }
@@ -370,7 +370,7 @@
 
         return item.Message?.Kind switch
         {
-            Spx.Games.GameMessageKind.GameCreated or Spx.Games.GameMessageKind.PlayerJoined or Spx.Games.GameMessageKind.PlayerLeft or Spx.Games.GameMessageKind.GameEnded => "border-emerald-400/30",
+            Spx.Game.Application.GameMessageKind.GameCreated or Spx.Game.Application.GameMessageKind.PlayerJoined or Spx.Game.Application.GameMessageKind.PlayerLeft or Spx.Game.Application.GameMessageKind.GameEnded => "border-emerald-400/30",
             _ => "border-white/10"
         };
     }
@@ -389,10 +389,10 @@
 
         return item.Message.Kind switch
         {
-            Spx.Games.GameMessageKind.GameCreated => $"{item.Message.SenderDisplayName} created the game.",
-            Spx.Games.GameMessageKind.PlayerJoined => $"{item.Message.SenderDisplayName} joined the game.",
-            Spx.Games.GameMessageKind.PlayerLeft => $"{item.Message.SenderDisplayName} left the game.",
-            Spx.Games.GameMessageKind.GameEnded => "The game ended.",
+            Spx.Game.Application.GameMessageKind.GameCreated => $"{item.Message.SenderDisplayName} created the game.",
+            Spx.Game.Application.GameMessageKind.PlayerJoined => $"{item.Message.SenderDisplayName} joined the game.",
+            Spx.Game.Application.GameMessageKind.PlayerLeft => $"{item.Message.SenderDisplayName} left the game.",
+            Spx.Game.Application.GameMessageKind.GameEnded => "The game ended.",
             _ => item.Message.Body
         };
     }

@@ -35,7 +35,7 @@ public sealed class RegisterHandlerTests
     {
         var identity = new FakeAccountIdentity
         {
-            CreateUserResult = new AccountCreateResult(null, false, ["Password is too weak."])
+            CreateUserResult = new AccountCreateFailed(["Password is too weak."])
         };
         var emailSender = new FakeAccountEmailSender();
         using var services = AccountHandlerTestServices.Create(identity, emailSender);
@@ -53,7 +53,7 @@ public sealed class RegisterHandlerTests
     {
         var identity = new FakeAccountIdentity
         {
-            CreateUserResult = new AccountCreateResult(new AccountUser("user-1", "user@example.com"), true, []),
+            CreateUserResult = new AccountCreateSucceeded(new AccountUser("user-1", "user@example.com")),
             EmailConfirmationToken = string.Empty
         };
         var emailSender = new FakeAccountEmailSender();
@@ -73,7 +73,7 @@ public sealed class RegisterHandlerTests
     {
         var identity = new FakeAccountIdentity
         {
-            CreateUserResult = new AccountCreateResult(new AccountUser("user-1", "user@example.com"), true, []),
+            CreateUserResult = new AccountCreateSucceeded(new AccountUser("user-1", "user@example.com")),
             EmailConfirmationToken = "confirm-token"
         };
         var emailSender = new FakeAccountEmailSender
@@ -96,7 +96,7 @@ public sealed class RegisterHandlerTests
     {
         var identity = new FakeAccountIdentity
         {
-            CreateUserResult = new AccountCreateResult(new AccountUser("user-1", "user@example.com"), true, []),
+            CreateUserResult = new AccountCreateSucceeded(new AccountUser("user-1", "user@example.com")),
             EmailConfirmationToken = "confirm-token"
         };
         var emailSender = new FakeAccountEmailSender();

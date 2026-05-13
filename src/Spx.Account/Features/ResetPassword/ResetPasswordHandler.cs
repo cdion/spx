@@ -23,8 +23,8 @@ internal sealed class ResetPasswordHandler(IAccountIdentity accountIdentity) : I
         }
 
         var result = await accountIdentity.ResetPasswordAsync(user, code, password);
-        return result.Succeeded
+        return result is AccountOperationSucceeded
             ? new ResetPasswordOutcome(ResetPasswordOutcomeStatus.Completed, email, code)
-            : new ResetPasswordOutcome(ResetPasswordOutcomeStatus.Failed, email, code, result.Errors);
+            : new ResetPasswordOutcome(ResetPasswordOutcomeStatus.Failed, email, code, ((AccountOperationFailed)result).Errors);
     }
 }

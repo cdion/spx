@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Spx.Account;
-using Spx.Games;
+using Spx.Game.Application;
 using Spx.Web.Adapters.Account;
 using Spx.Web.Adapters.Games;
 using Spx.Web.Components;

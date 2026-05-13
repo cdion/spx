@@ -6,21 +6,21 @@ public interface IAccountIdentity
 
     Task<AccountUser?> FindByIdAsync(string userId);
 
-    Task<AccountPasswordSignInResult> PasswordSignInAsync(AccountUser user, string password);
+    Task<AccountPasswordSignInOutcome> PasswordSignInAsync(AccountUser user, string password);
 
     Task SignOutAsync();
 
-    Task<AccountCreateResult> CreateUserAsync(string email, string password);
+    Task<AccountCreateOutcome> CreateUserAsync(string email, string password);
 
     Task<string> GenerateEmailConfirmationTokenAsync(AccountUser user);
 
-    Task<AccountOperationResult> ConfirmEmailAsync(AccountUser user, string code);
+    Task<AccountOperationOutcome> ConfirmEmailAsync(AccountUser user, string code);
 
     Task<bool> IsEmailConfirmedAsync(AccountUser user);
 
     Task<string> GeneratePasswordResetTokenAsync(AccountUser user);
 
-    Task<AccountOperationResult> ResetPasswordAsync(AccountUser user, string code, string password);
+    Task<AccountOperationOutcome> ResetPasswordAsync(AccountUser user, string code, string password);
 }
 
 public sealed record AccountUser(string Id, string Email);
@@ -33,8 +33,16 @@ public enum AccountPasswordSignInStatus
     Failed
 }
 
-public sealed record AccountPasswordSignInResult(AccountPasswordSignInStatus Status);
+public sealed record AccountPasswordSignInOutcome(AccountPasswordSignInStatus Status);
 
-public sealed record AccountCreateResult(AccountUser? User, bool Succeeded, IReadOnlyList<string> Errors);
+public abstract record AccountCreateOutcome;
 
-public sealed record AccountOperationResult(bool Succeeded, IReadOnlyList<string> Errors);
+public sealed record AccountCreateSucceeded(AccountUser User) : AccountCreateOutcome;
+
+public sealed record AccountCreateFailed(IReadOnlyList<string> Errors) : AccountCreateOutcome;
+
+public abstract record AccountOperationOutcome;
+
+public sealed record AccountOperationSucceeded : AccountOperationOutcome;
+
+public sealed record AccountOperationFailed(IReadOnlyList<string> Errors) : AccountOperationOutcome;

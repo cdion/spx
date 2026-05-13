@@ -18,7 +18,7 @@ internal sealed class ConfirmEmailHandler(IAccountIdentity accountIdentity) : IC
         }
 
         var result = await accountIdentity.ConfirmEmailAsync(user, code);
-        return result.Succeeded
+        return result is AccountOperationSucceeded
             ? new ConfirmEmailOutcome(ConfirmEmailOutcomeStatus.Succeeded, user.Email)
             : new ConfirmEmailOutcome(ConfirmEmailOutcomeStatus.Failed, user.Email);
     }

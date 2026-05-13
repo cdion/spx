@@ -46,7 +46,7 @@ public sealed class ResetPasswordHandlerTests
         var identity = new FakeAccountIdentity
         {
             FindByEmailResult = new AccountUser("user-1", "user@example.com"),
-            ResetPasswordResult = new AccountOperationResult(false, ["Reset failed."])
+            ResetPasswordResult = new AccountOperationFailed(["Reset failed."])
         };
         using var services = AccountHandlerTestServices.Create(identity);
 
@@ -63,7 +63,7 @@ public sealed class ResetPasswordHandlerTests
         var identity = new FakeAccountIdentity
         {
             FindByEmailResult = new AccountUser("user-1", "user@example.com"),
-            ResetPasswordResult = new AccountOperationResult(true, [])
+            ResetPasswordResult = new AccountOperationSucceeded()
         };
         using var services = AccountHandlerTestServices.Create(identity);
 

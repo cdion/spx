@@ -14,7 +14,7 @@
     <ProjectReference Include="..\Spx.Account\Spx.Account.csproj" />
     <ProjectReference Include="..\Spx.Contracts\Spx.Game.Contract.csproj" />
     <ProjectReference Include="..\Spx.Data\Spx.Data.csproj" />
-    <ProjectReference Include="..\Spx.Games\Spx.Game.Application.csproj" />
+    <ProjectReference Include="..\Spx.Game.Application\Spx.Game.Application.csproj" />
     <ProjectReference Include="..\Spx.ServiceDefaults\Spx.ServiceDefaults.csproj" />
   </ItemGroup>
 

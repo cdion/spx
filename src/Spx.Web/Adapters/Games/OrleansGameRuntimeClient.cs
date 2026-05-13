@@ -1,6 +1,6 @@
 using Orleans;
 using Spx.Contracts;
-using Spx.Games;
+using Spx.Game.Application;
 
 namespace Spx.Web.Adapters.Games;
 
@@ -33,7 +33,7 @@ public sealed class OrleansGameRuntimeClient(
         }
     }
 
-    public async Task<bool> TryInitializeAsync(Guid gameId, IReadOnlyList<GameSessionParticipantView> players, CancellationToken cancellationToken = default)
+    public async Task<bool> EnsureSessionAsync(Guid gameId, IReadOnlyList<GameSessionParticipantView> players, CancellationToken cancellationToken = default)
     {
         if (players.Count != 2)
         {

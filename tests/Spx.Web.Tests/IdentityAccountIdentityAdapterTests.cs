@@ -96,7 +96,7 @@ public sealed class IdentityAccountIdentityAdapterTests : IAsyncLifetime
 
         Assert.Null(result);
         var operation = await accountIdentity.ResetPasswordAsync(new AccountUser(user.Id, user.Email!), token, "NewPassword1");
-        Assert.False(operation.Succeeded);
+        Assert.IsType<AccountOperationFailed>(operation);
     }
 
     [Fact]
@@ -107,13 +107,13 @@ public sealed class IdentityAccountIdentityAdapterTests : IAsyncLifetime
         var accountIdentity = scope.ServiceProvider.GetRequiredService<IAccountIdentity>();
 
         var createResult = await accountIdentity.CreateUserAsync("user@example.com", "Password1");
-        Assert.True(createResult.Succeeded);
-        var user = createResult.User!;
+        var createSucceeded = Assert.IsType<AccountCreateSucceeded>(createResult);
+        var user = createSucceeded.User;
 
         var token = await accountIdentity.GenerateEmailConfirmationTokenAsync(user);
         var confirmResult = await accountIdentity.ConfirmEmailAsync(user, token);
 
-        Assert.True(confirmResult.Succeeded);
+        Assert.IsType<AccountOperationSucceeded>(confirmResult);
         var storedUser = await userManager.FindByIdAsync(user.Id);
         Assert.NotNull(storedUser);
         Assert.True(storedUser!.EmailConfirmed);

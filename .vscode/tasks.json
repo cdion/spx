@@ -62,7 +62,7 @@
       "command": "dotnet",
       "args": [
         "test",
-        "${workspaceFolder}/tests/Spx.Games.Tests/Spx.Games.Tests.csproj"
+        "${workspaceFolder}/tests/Spx.Game.Application.Tests/Spx.Game.Application.Tests.csproj"
       ],
       "problemMatcher": [],
       "group": "test"
@@ -73,7 +73,7 @@
       "command": "dotnet",
       "args": [
         "test",
-        "${workspaceFolder}/tests/Spx.Games.IntegrationTests/Spx.Games.IntegrationTests.csproj"
+        "${workspaceFolder}/tests/Spx.Game.Application.IntegrationTests/Spx.Game.Application.IntegrationTests.csproj"
       ],
       "problemMatcher": [],
       "group": "test"
@@ -142,7 +142,7 @@
       "command": "dotnet",
       "args": [
         "test",
-        "${workspaceFolder}/tests/Spx.Games.Tests/Spx.Games.Tests.csproj",
+        "${workspaceFolder}/tests/Spx.Game.Application.Tests/Spx.Game.Application.Tests.csproj",
         "--collect:XPlat Code Coverage",
         "--results-directory",
         "${workspaceFolder}/coverage/testresults"
@@ -156,7 +156,7 @@
       "command": "dotnet",
       "args": [
         "test",
-        "${workspaceFolder}/tests/Spx.Games.IntegrationTests/Spx.Games.IntegrationTests.csproj",
+        "${workspaceFolder}/tests/Spx.Game.Application.IntegrationTests/Spx.Game.Application.IntegrationTests.csproj",
         "--collect:XPlat Code Coverage",
         "--results-directory",
         "${workspaceFolder}/coverage/testresults"

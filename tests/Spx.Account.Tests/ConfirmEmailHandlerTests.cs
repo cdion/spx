@@ -35,7 +35,7 @@ public sealed class ConfirmEmailHandlerTests
         var identity = new FakeAccountIdentity
         {
             FindByIdResult = new AccountUser("user-1", "user@example.com"),
-            ConfirmEmailResult = new AccountOperationResult(true, [])
+            ConfirmEmailResult = new AccountOperationSucceeded()
         };
         using var services = AccountHandlerTestServices.Create(identity);
 
@@ -52,7 +52,7 @@ public sealed class ConfirmEmailHandlerTests
         var identity = new FakeAccountIdentity
         {
             FindByIdResult = new AccountUser("user-1", "user@example.com"),
-            ConfirmEmailResult = new AccountOperationResult(false, ["Invalid token."])
+            ConfirmEmailResult = new AccountOperationFailed(["Invalid token."])
         };
         using var services = AccountHandlerTestServices.Create(identity);
 

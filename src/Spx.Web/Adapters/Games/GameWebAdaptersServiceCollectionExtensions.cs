@@ -1,5 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
-using Spx.Games;
+using Spx.Game.Application;
 using Spx.Web.Adapters.Games;
 
 namespace Microsoft.Extensions.DependencyInjection;
