@@ -29,12 +29,13 @@ internal sealed class JoinGameHandler(
         if (joinResult.GameIdToPublish.HasValue)
         {
             var gameId = joinResult.GameIdToPublish.Value;
-            var activePlayers = await gamePersistence.GetActiveSessionPlayersAsync(gameId, cancellationToken);
-            if (activePlayers is { Count: 2 })
+            if (joinResult.PublishMessagesChanged)
             {
-                // Session initialization is secondary to the persisted join. Keep the
-                // authoritative SQL result even if Orleans needs to recover later.
-                await gameSessionService.TryInitializeAsync(gameId, activePlayers, cancellationToken);
+                var activePlayers = await gamePersistence.GetActiveSessionPlayersAsync(gameId, cancellationToken);
+                if (activePlayers is { Count: 2 })
+                {
+                    await gameSessionService.TryInitializeAsync(gameId, activePlayers, cancellationToken);
+                }
             }
 
             await gameLobbyEventsPublisher.PublishLobbyChangedAsync(gameId, cancellationToken);

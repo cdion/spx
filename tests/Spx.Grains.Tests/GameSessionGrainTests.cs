@@ -10,34 +10,55 @@ public sealed class GameSessionGrainTests
     private static readonly Guid GameId = Guid.Parse("6FD75A29-6B90-43AA-B97A-80A0C5210D73");
     private static readonly GameSessionParticipantView FirstPlayer = new(Guid.Parse("0C8999C0-D4D2-46B5-B287-5D211CC99A40"), "user-1", "Red Captain");
     private static readonly GameSessionParticipantView SecondPlayer = new(Guid.Parse("92C6775C-95F1-4C3B-9025-8E37D126CD4B"), "user-2", "Blue Captain");
+    private static readonly GameSessionParticipantView ReplacementPlayer = new(Guid.Parse("D5985582-CF06-447D-A5AD-2F85B86B0AB7"), "user-3", "Green Captain");
     private static readonly IGameRoundResolver RoundResolver = new GameRoundResolver();
 
     [Fact]
-    public void Initialize_allows_same_roster_twice()
+    public void Initialize_allows_same_roster_twice_without_resetting_progress()
     {
-        var state = new GameSessionGrainState();
-        var command = new InitializeGameSessionCommand(FirstPlayer, SecondPlayer);
+        var state = CreateInitializedState();
+        GameSessionEngine.SubmitMove(
+            state,
+            GameId,
+            new SubmitGameMoveCommand(FirstPlayer.UserId, ExpectedRoundNumber: 1, GameMove.Redite),
+            RoundResolver,
+            DateTime.UtcNow);
 
-        GameSessionEngine.Initialize(state, command);
-        GameSessionEngine.Initialize(state, command);
+        GameSessionEngine.Initialize(state, new InitializeGameSessionCommand(FirstPlayer, SecondPlayer));
 
         Assert.Equal(1, state.RoundNumber);
+        Assert.Equal(GameMove.Redite, state.FirstPlayerMove);
+        Assert.Null(state.SecondPlayerMove);
         Assert.Equal(FirstPlayer, state.FirstPlayer);
         Assert.Equal(SecondPlayer, state.SecondPlayer);
     }
 
     [Fact]
-    public void Initialize_rejects_conflicting_roster()
+    public void Initialize_resets_state_for_conflicting_roster()
     {
-        var state = new GameSessionGrainState();
-        GameSessionEngine.Initialize(state, new InitializeGameSessionCommand(FirstPlayer, SecondPlayer));
+        var state = CreateInitializedState();
+        var resolvedAtUtc = new DateTime(2026, 5, 10, 12, 0, 0, DateTimeKind.Utc);
+        GameSessionEngine.SubmitMove(
+            state,
+            GameId,
+            new SubmitGameMoveCommand(FirstPlayer.UserId, ExpectedRoundNumber: 1, GameMove.Redite),
+            RoundResolver,
+            resolvedAtUtc);
+        GameSessionEngine.SubmitMove(
+            state,
+            GameId,
+            new SubmitGameMoveCommand(SecondPlayer.UserId, ExpectedRoundNumber: 1, GameMove.Bluon),
+            RoundResolver,
+            resolvedAtUtc);
 
-        var replacementPlayer = new GameSessionParticipantView(Guid.NewGuid(), "user-3", "Green Captain");
+        GameSessionEngine.Initialize(state, new InitializeGameSessionCommand(FirstPlayer, ReplacementPlayer));
 
-        var exception = Assert.Throws<InvalidOperationException>(() =>
-            GameSessionEngine.Initialize(state, new InitializeGameSessionCommand(FirstPlayer, replacementPlayer)));
-
-        Assert.Equal("The game session was already initialized with a different roster.", exception.Message);
+        Assert.Equal(1, state.RoundNumber);
+        Assert.Equal(FirstPlayer, state.FirstPlayer);
+        Assert.Equal(ReplacementPlayer, state.SecondPlayer);
+        Assert.Null(state.FirstPlayerMove);
+        Assert.Null(state.SecondPlayerMove);
+        Assert.Null(state.LastResolvedRound);
     }
 
     [Fact]

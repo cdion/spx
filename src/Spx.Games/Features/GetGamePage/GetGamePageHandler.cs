@@ -13,6 +13,17 @@ internal sealed class GetGamePageHandler(
         }
 
         var session = await gameSessionService.GetSessionViewAsync(gameId, userId, cancellationToken);
+
+        if (session is null && lobby.IsCurrentUserActive && lobby.Players.Count == lobby.MaxPlayers)
+        {
+            var activePlayers = await gamePersistence.GetActiveSessionPlayersAsync(gameId, cancellationToken);
+            if (activePlayers is { Count: 2 }
+                && await gameSessionService.TryInitializeAsync(gameId, activePlayers, cancellationToken))
+            {
+                session = await gameSessionService.GetSessionViewAsync(gameId, userId, cancellationToken);
+            }
+        }
+
         return new GamePageView(lobby, session);
     }
 }

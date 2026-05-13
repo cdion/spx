@@ -100,6 +100,41 @@ public sealed class GameServiceTests(PostgresDatabaseFixture fixture) : Integrat
     }
 
     [Fact]
+    public async Task JoinGameAsync_KeepsJoinWhenSessionInitializationFails()
+    {
+        var database = Database;
+        await database.AddUserAsync("user-1", "user1@example.com");
+        await database.AddUserAsync("user-2", "user2@example.com");
+        var game = await database.AddGameAsync("user-1", "ABC123", "Alpha", activePlayerUserId: "user-1", activePlayerName: "Captain Red");
+        var notifier = new FakeGameLobbyNotifier();
+        var messagePublisher = new FakeGameMessagePublisher();
+        var sessionService = new FakeGameSessionService
+        {
+            TryInitializeResult = false
+        };
+        var features = GameFeatureTestFactory.Create(database.ContextFactory, notifier, messagePublisher, sessionService);
+
+        var result = await features.JoinGame.HandleAsync("user-2", new JoinGameRequest(game.InviteCode, "Captain Blue"));
+
+        Assert.True(result.Succeeded);
+        Assert.Equal([game.Id], notifier.PublishedGameIds);
+        Assert.Equal([game.Id], messagePublisher.PublishedGameIds);
+
+        var players = await database.Context.GamePlayers
+            .Where(entry => entry.GameId == game.Id && entry.LeftAtUtc == null)
+            .OrderBy(entry => entry.JoinedAtUtc)
+            .ToListAsync();
+        var messages = await database.Context.GameMessages
+            .Where(entry => entry.GameId == game.Id)
+            .ToListAsync();
+
+        Assert.Equal(2, players.Count);
+        Assert.Equal(["user-1", "user-2"], players.Select(entry => entry.UserId));
+        Assert.Single(messages);
+        Assert.Equal(GameMessageKind.PlayerJoined, messages[0].Kind);
+    }
+
+    [Fact]
     public async Task LeaveGameAsync_LastPlayerEndsGameAndSoftDeletesMembership()
     {
         var database = Database;

@@ -58,6 +58,55 @@ public sealed class GetGamePageHandlerTests
         Assert.Equal(session, result.Session);
     }
 
+    [Fact]
+    public async Task HandleAsync_repairs_missing_session_for_full_active_lobby()
+    {
+        var gameId = Guid.NewGuid();
+        var lobby = new GameLobbyView(
+            gameId,
+            "Arena",
+            "ABC123",
+            GameStatus.Open,
+            2,
+            DateTime.UtcNow,
+            null,
+            "Captain Red",
+            [new GamePlayerView(Guid.NewGuid(), "Captain Red", DateTime.UtcNow, true), new GamePlayerView(Guid.NewGuid(), "Captain Blue", DateTime.UtcNow, false)],
+            true);
+
+        var session = new GameSessionView(
+            gameId,
+            1,
+            new GameSessionParticipantView(Guid.NewGuid(), "user-1", "Captain Red"),
+            new GameSessionParticipantView(Guid.NewGuid(), "user-2", "Captain Blue"),
+            false,
+            false,
+            null);
+
+        var persistence = new FakeGamePersistence
+        {
+            Lobby = lobby,
+            ActiveSessionPlayers =
+            [
+                new GameSessionParticipantView(Guid.NewGuid(), "user-1", "Captain Red"),
+                new GameSessionParticipantView(Guid.NewGuid(), "user-2", "Captain Blue")
+            ]
+        };
+        var sessionService = new FakeGameSessionService
+        {
+            Session = null,
+            SessionAfterInitialize = session
+        };
+        using var services = CreateServices(persistence, sessionService);
+
+        var handler = services.GetRequiredService<IGetGamePageHandler>();
+        var result = await handler.HandleAsync(gameId, "user-1");
+
+        Assert.NotNull(result);
+        Assert.Equal(session, result!.Session);
+        Assert.Equal(1, sessionService.InitializeCalls);
+    }
+
     private static ServiceProvider CreateServices(FakeGamePersistence persistence, FakeGameSessionService sessionService)
     {
         var services = new ServiceCollection();
@@ -74,6 +123,8 @@ public sealed class GetGamePageHandlerTests
     {
         public GameLobbyView? Lobby { get; init; }
 
+        public IReadOnlyList<GameSessionParticipantView>? ActiveSessionPlayers { get; init; }
+
         public Task<Guid?> TryCreateGameAsync(CreateGamePersistenceRequest request, CancellationToken cancellationToken)
             => throw new NotSupportedException();
 
@@ -84,7 +135,7 @@ public sealed class GetGamePageHandlerTests
             => throw new NotSupportedException();
 
         public Task<IReadOnlyList<GameSessionParticipantView>?> GetActiveSessionPlayersAsync(Guid gameId, CancellationToken cancellationToken)
-            => throw new NotSupportedException();
+            => Task.FromResult(ActiveSessionPlayers);
 
         public Task<GameLobbyView?> GetLobbyAsync(Guid gameId, string userId, CancellationToken cancellationToken)
             => Task.FromResult(Lobby);
@@ -95,10 +146,24 @@ public sealed class GetGamePageHandlerTests
 
     private sealed class FakeGameSessionService : IGameSessionService
     {
-        public GameSessionView? Session { get; init; }
+        public GameSessionView? Session { get; set; }
+
+        public GameSessionView? SessionAfterInitialize { get; init; }
+
+        public int InitializeCalls { get; private set; }
+
+        public bool TryInitializeResult { get; init; } = true;
 
         public Task<bool> TryInitializeAsync(Guid gameId, IReadOnlyList<GameSessionParticipantView> players, CancellationToken cancellationToken = default)
-            => Task.FromResult(true);
+        {
+            InitializeCalls++;
+            if (TryInitializeResult)
+            {
+                Session = SessionAfterInitialize ?? Session;
+            }
+
+            return Task.FromResult(TryInitializeResult);
+        }
 
         public Task<GameSessionView?> GetSessionViewAsync(Guid gameId, string userId, CancellationToken cancellationToken = default)
             => Task.FromResult(Session);

@@ -206,14 +206,32 @@
     {
         if (firstRender)
         {
-            module = await JS.InvokeAsync<IJSObjectReference>("import", "./Components/Pages/GameTimelinePanel.razor.js");
-            dotNetReference = DotNetObjectReference.Create(this);
+            try
+            {
+                module = await JS.InvokeAsync<IJSObjectReference>("import", "./Components/Pages/GameTimelinePanel.razor.js");
+                dotNetReference = DotNetObjectReference.Create(this);
+            }
+            catch (TaskCanceledException)
+            {
+            }
+            catch (JSDisconnectedException)
+            {
+            }
         }
 
         if (!isObserverAttached && module is not null && dotNetReference is not null)
         {
-            await module.InvokeVoidAsync("setTimelineObserver", timelineContainer, timelineTopSentinel, dotNetReference);
-            isObserverAttached = true;
+            try
+            {
+                await module.InvokeVoidAsync("setTimelineObserver", timelineContainer, timelineTopSentinel, dotNetReference);
+                isObserverAttached = true;
+            }
+            catch (TaskCanceledException)
+            {
+            }
+            catch (JSDisconnectedException)
+            {
+            }
         }
     }
 
@@ -222,12 +240,46 @@
         => OnLoadOlderMessages.InvokeAsync();
 
     public async Task<TimelineScrollMetrics> GetScrollMetricsAsync()
-        => module is null
-            ? new TimelineScrollMetrics()
-            : await module.InvokeAsync<TimelineScrollMetrics>("getScrollMetrics", timelineContainer);
+    {
+        if (module is null)
+        {
+            return new TimelineScrollMetrics();
+        }
+
+        try
+        {
+            return await module.InvokeAsync<TimelineScrollMetrics>("getScrollMetrics", timelineContainer);
+        }
+        catch (TaskCanceledException)
+        {
+            return new TimelineScrollMetrics();
+        }
+        catch (JSDisconnectedException)
+        {
+            return new TimelineScrollMetrics();
+        }
+    }
 
     public async Task<bool> IsNearBottomAsync()
-        => module is null || await module.InvokeAsync<bool>("isNearBottom", timelineContainer);
+    {
+        if (module is null)
+        {
+            return true;
+        }
+
+        try
+        {
+            return await module.InvokeAsync<bool>("isNearBottom", timelineContainer);
+        }
+        catch (TaskCanceledException)
+        {
+            return true;
+        }
+        catch (JSDisconnectedException)
+        {
+            return true;
+        }
+    }
 
     public async Task RestoreScrollAfterPrependAsync(double previousScrollHeight, double previousScrollTop)
     {
@@ -236,7 +288,16 @@
             return;
         }
 
-        await module.InvokeVoidAsync("restoreScrollAfterPrepend", timelineContainer, previousScrollHeight, previousScrollTop);
+        try
+        {
+            await module.InvokeVoidAsync("restoreScrollAfterPrepend", timelineContainer, previousScrollHeight, previousScrollTop);
+        }
+        catch (TaskCanceledException)
+        {
+        }
+        catch (JSDisconnectedException)
+        {
+        }
     }
 
     public async Task ScrollToBottomAsync()
@@ -246,7 +307,16 @@
             return;
         }
 
-        await module.InvokeVoidAsync("scrollToBottom", timelineContainer);
+        try
+        {
+            await module.InvokeVoidAsync("scrollToBottom", timelineContainer);
+        }
+        catch (TaskCanceledException)
+        {
+        }
+        catch (JSDisconnectedException)
+        {
+        }
     }
 
     public async ValueTask DisposeAsync()

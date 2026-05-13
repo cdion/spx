@@ -47,7 +47,7 @@ public sealed class OrleansGameRuntimeClient(
         }
         catch (Exception exception)
         {
-            logger.LogWarning(exception, "Failed to initialize a game session for game {GameId}.", gameId);
+            logger.LogWarning(exception, "Failed to ensure a game session for game {GameId}.", gameId);
             return false;
         }
     }

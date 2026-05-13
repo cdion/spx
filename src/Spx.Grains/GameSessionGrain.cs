@@ -85,27 +85,25 @@ internal static class GameSessionEngine
             throw new InvalidOperationException("A game session requires two distinct players.");
         }
 
-        if (state.FirstPlayer is null && state.SecondPlayer is null)
+        if (state.FirstPlayer is not null
+            && state.SecondPlayer is not null
+            && HasSameRoster(state.FirstPlayer, state.SecondPlayer, command.FirstPlayer, command.SecondPlayer))
         {
             state.FirstPlayer = command.FirstPlayer;
             state.SecondPlayer = command.SecondPlayer;
             state.FirstPlayerActive = true;
             state.SecondPlayerActive = true;
-            state.RoundNumber = 1;
-            state.FirstPlayerMove = null;
-            state.SecondPlayerMove = null;
-            state.LastResolvedRound = null;
             return;
         }
 
-        if (state.FirstPlayer is not null
-            && state.SecondPlayer is not null
-            && HasSameRoster(state.FirstPlayer, state.SecondPlayer, command.FirstPlayer, command.SecondPlayer))
-        {
-            return;
-        }
-
-        throw new InvalidOperationException("The game session was already initialized with a different roster.");
+        state.FirstPlayer = command.FirstPlayer;
+        state.SecondPlayer = command.SecondPlayer;
+        state.FirstPlayerActive = true;
+        state.SecondPlayerActive = true;
+        state.RoundNumber = 1;
+        state.FirstPlayerMove = null;
+        state.SecondPlayerMove = null;
+        state.LastResolvedRound = null;
     }
 
     public static GameSessionView SubmitMove(

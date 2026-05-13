@@ -99,7 +99,7 @@ else
             }
 
             <div class="mt-6 grid gap-6 lg:grid-cols-[1.3fr_0.9fr]">
-                <GameTimelinePanel @key="lobby.GameId"
+                <GameTimelinePanel @key="GetTimelinePanelKey()"
                                    @ref="timelineComponent"
                                    CurrentUserName="@lobby.CurrentPlayerName"
                                    TimelineItems="timelineItems"
@@ -118,7 +118,7 @@ else
                                    OnRetryPendingMessage="RetryPendingMessageAsync"
                                    OnDismissPendingMessage="DismissPendingMessage" />
 
-                <GameMessageComposer @key="lobby.GameId"
+                <GameMessageComposer @key="GetMessageComposerKey()"
                                      IsCurrentUserActive="@lobby.IsCurrentUserActive"
                                      Players="@lobby.Players"
                                      @bind-Text="composerText"
@@ -724,6 +724,12 @@ else
                 recipient is not null,
                 false)
         };
+
+    private object GetTimelinePanelKey()
+        => (nameof(GameTimelinePanel), lobby?.GameId ?? Guid.Empty);
+
+    private object GetMessageComposerKey()
+        => (nameof(GameMessageComposer), lobby?.GameId ?? Guid.Empty);
 
     private static int CompareTimelineItems(TimelineEntryState left, TimelineEntryState right)
     {

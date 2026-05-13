@@ -22,11 +22,12 @@ internal static class GameFeatureTestFactory
     public static GameFeatureSet Create(
         IDbContextFactory<ApplicationDbContext> contextFactory,
         IGameLobbyEventsPublisher? notifier = null,
-        IGameMessageEventsPublisher? messagePublisher = null)
+        IGameMessageEventsPublisher? messagePublisher = null,
+        IGameSessionService? sessionService = null)
     {
         notifier ??= new FakeGameLobbyNotifier();
         messagePublisher ??= new FakeGameMessagePublisher();
-        var sessionService = new FakeGameSessionService();
+        sessionService ??= new FakeGameSessionService();
         var gamePersistence = new EfGamePersistence(contextFactory, NullLogger<EfGamePersistence>.Instance);
         var gameMessagePersistence = new EfGameMessagePersistence(contextFactory);
 
@@ -60,8 +61,10 @@ internal sealed record GameFeatureSet(
 
 internal sealed class FakeGameSessionService : IGameSessionService
 {
+    public bool TryInitializeResult { get; init; } = true;
+
     public Task<bool> TryInitializeAsync(Guid gameId, IReadOnlyList<GameSessionParticipantView> players, CancellationToken cancellationToken = default)
-        => Task.FromResult(true);
+        => Task.FromResult(TryInitializeResult);
 
     public Task<GameSessionView?> GetSessionViewAsync(Guid gameId, string userId, CancellationToken cancellationToken = default)
         => Task.FromResult<GameSessionView?>(null);
