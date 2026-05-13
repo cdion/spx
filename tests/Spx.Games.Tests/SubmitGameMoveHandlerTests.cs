@@ -27,11 +27,11 @@ public sealed class SubmitGameMoveHandlerTests
     [Fact]
     public async Task HandleAsync_returns_session_on_success()
     {
-        var session = new GameSessionPlayerView(
+        var session = new GameSessionView(
             Guid.NewGuid(),
             4,
-            new GameSessionPlayer(Guid.NewGuid(), "user-1", "Captain Red"),
-            new GameSessionPlayer(Guid.NewGuid(), "user-2", "Captain Blue"),
+            new GameSessionParticipantView(Guid.NewGuid(), "user-1", "Captain Red"),
+            new GameSessionParticipantView(Guid.NewGuid(), "user-2", "Captain Blue"),
             true,
             true,
             null);
@@ -65,23 +65,23 @@ public sealed class SubmitGameMoveHandlerTests
     {
         public InvalidOperationException? SubmitException { get; init; }
 
-        public GameSessionPlayerView SubmitResult { get; init; }
+        public GameSessionView SubmitResult { get; init; }
             = new(
                 Guid.NewGuid(),
                 1,
-                new GameSessionPlayer(Guid.NewGuid(), "user-1", "Captain Red"),
-                new GameSessionPlayer(Guid.NewGuid(), "user-2", "Captain Blue"),
+                new GameSessionParticipantView(Guid.NewGuid(), "user-1", "Captain Red"),
+                new GameSessionParticipantView(Guid.NewGuid(), "user-2", "Captain Blue"),
                 false,
                 false,
                 null);
 
-        public Task<bool> TryInitializeAsync(Guid gameId, IReadOnlyList<GameSessionPlayer> players, CancellationToken cancellationToken = default)
+        public Task<bool> TryInitializeAsync(Guid gameId, IReadOnlyList<GameSessionParticipantView> players, CancellationToken cancellationToken = default)
             => Task.FromResult(true);
 
-        public Task<GameSessionPlayerView?> GetPlayerViewAsync(Guid gameId, string userId, CancellationToken cancellationToken = default)
+        public Task<GameSessionView?> GetSessionViewAsync(Guid gameId, string userId, CancellationToken cancellationToken = default)
             => throw new NotSupportedException();
 
-        public Task<GameSessionPlayerView> SubmitMoveAsync(Guid gameId, SubmitGameMoveCommand command, CancellationToken cancellationToken = default)
+        public Task<GameSessionView> SubmitMoveAsync(Guid gameId, SubmitGameMoveCommand command, CancellationToken cancellationToken = default)
         {
             if (SubmitException is not null)
             {
@@ -91,7 +91,7 @@ public sealed class SubmitGameMoveHandlerTests
             return Task.FromResult(SubmitResult);
         }
 
-        public Task<GameSessionPlayerView> AbandonAsync(Guid gameId, string userId, CancellationToken cancellationToken = default)
+        public Task<GameSessionView> AbandonAsync(Guid gameId, string userId, CancellationToken cancellationToken = default)
             => throw new NotSupportedException();
     }
 
@@ -106,7 +106,7 @@ public sealed class SubmitGameMoveHandlerTests
         public Task<LeaveGamePersistenceResult> LeaveGameAsync(Guid gameId, string userId, CancellationToken cancellationToken)
             => throw new NotSupportedException();
 
-        public Task<IReadOnlyList<GameSessionPlayer>?> GetActiveSessionPlayersAsync(Guid gameId, CancellationToken cancellationToken)
+        public Task<IReadOnlyList<GameSessionParticipantView>?> GetActiveSessionPlayersAsync(Guid gameId, CancellationToken cancellationToken)
             => throw new NotSupportedException();
 
         public Task<GameLobbyView?> GetLobbyAsync(Guid gameId, string userId, CancellationToken cancellationToken)
@@ -130,10 +130,10 @@ public sealed class SubmitGameMoveHandlerTests
 
     private sealed class StubGameMessagePersistence : IGameMessagePersistence
     {
-        public Task<GameMessagePageView?> GetMessagesAsync(Guid gameId, string userId, Guid? beforeMessageId, int take, CancellationToken cancellationToken)
+        public Task<GameTimelinePageView?> GetMessagesAsync(Guid gameId, string userId, Guid? beforeMessageId, int take, CancellationToken cancellationToken)
             => throw new NotSupportedException();
 
-        public Task<IReadOnlyList<GameMessageView>?> GetMessageUpdatesAsync(Guid gameId, string userId, Guid? afterMessageId, int take, CancellationToken cancellationToken)
+        public Task<IReadOnlyList<GameTimelineEntryView>?> GetMessageUpdatesAsync(Guid gameId, string userId, Guid? afterMessageId, int take, CancellationToken cancellationToken)
             => throw new NotSupportedException();
 
         public Task<GameMessageCommandResult> SendPublicMessageAsync(Guid gameId, string userId, string body, CancellationToken cancellationToken)

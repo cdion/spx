@@ -1,0 +1,164 @@
+<section class="ui-surface-form space-y-6">
+    <div class="space-y-2">
+        <p class="ui-section-eyebrow">Gameplay</p>
+        <h2 class="ui-section-title">@GetHeadline()</h2>
+        <p class="text-sm leading-6 text-slate-300">@GetDescription()</p>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(GameplayError))
+    {
+        <AlertBanner>@GameplayError</AlertBanner>
+    }
+
+    @if (Session is null)
+    {
+        <div class="ui-empty-state">
+            @GetEmptyStateMessage()
+        </div>
+    }
+    else
+    {
+        <div class="grid gap-4 lg:grid-cols-2">
+            <article class="ui-panel-row items-start">
+                <div>
+                    <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Current round</p>
+                    <p class="mt-2 text-2xl font-semibold text-white">@Session.RoundNumber</p>
+                </div>
+                @if (Session.HasSubmittedMove)
+                {
+                    <span class="ui-status-badge border-amber-400/30 bg-amber-500/10 text-amber-200">
+                        Waiting
+                    </span>
+                }
+                else
+                {
+                    <span class="ui-status-badge border-sky-400/30 bg-sky-400/10 text-sky-200">
+                        Your turn
+                    </span>
+                }
+            </article>
+
+            <article class="ui-panel-row items-start">
+                <div class="space-y-1">
+                    <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Matchup</p>
+                    <p class="text-base font-semibold text-white">@Session.CurrentPlayer.DisplayName</p>
+                    <p class="text-sm text-slate-400">vs @Session.OpponentPlayer.DisplayName</p>
+                </div>
+                <span class="ui-status-badge">@GetStatusBadgeText()</span>
+            </article>
+        </div>
+
+        @if (Session.LastResolvedRound is not null)
+        {
+            <article class="rounded-3xl border border-white/10 bg-slate-950/40 p-5 text-sm leading-6 text-slate-300">
+                <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Last round</p>
+                <p class="mt-2 text-base font-semibold text-white">Round @Session.LastResolvedRound.RoundNumber</p>
+                <p class="mt-2">
+                    You played <span class="font-semibold text-white">@FormatMove(Session.LastResolvedRound.Result.CurrentPlayerMove)</span>.
+                    @Session.OpponentPlayer.DisplayName played <span class="font-semibold text-white">@FormatMove(Session.LastResolvedRound.Result.OpponentMove)</span>.
+                </p>
+                <p class="mt-2 text-sky-100">@GetOutcomeMessage(Session.LastResolvedRound.Result.Outcome)</p>
+            </article>
+        }
+
+        <div class="space-y-3">
+            <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Choose your move</p>
+            <div class="grid gap-3 sm:grid-cols-3">
+                @foreach (var move in AvailableMoves)
+                {
+                    <button class="ui-button-primary"
+                            @onclick="() => SubmitMoveAsync(move)"
+                            disabled="@(!CanSubmitMove)">
+                        @(IsSubmittingMove ? "Submitting..." : $"Play {FormatMove(move)}")
+                    </button>
+                }
+            </div>
+            @if (Session.HasSubmittedMove)
+            {
+                <p class="text-sm leading-6 text-slate-400">
+                    Your move is locked in for round @Session.RoundNumber. Results appear when @Session.OpponentPlayer.DisplayName submits.
+                </p>
+            }
+        </div>
+    }
+</section>
+
+@code {
+    private static readonly GameMove[] AvailableMoves = [GameMove.Redite, GameMove.Greenium, GameMove.Bluon];
+
+    [Parameter, EditorRequired]
+    public GameLobbyView Lobby { get; set; } = default!;
+
+    [Parameter]
+    public GameSessionView? Session { get; set; }
+
+    [Parameter]
+    public bool IsSubmittingMove { get; set; }
+
+    [Parameter]
+    public string? GameplayError { get; set; }
+
+    [Parameter]
+    public EventCallback<GameMove> OnSubmitMove { get; set; }
+
+    private bool CanSubmitMove
+        => Lobby.IsCurrentUserActive
+            && Session is not null
+            && !Session.HasSubmittedMove
+            && !IsSubmittingMove;
+
+    private string GetHeadline()
+        => Session switch
+        {
+            null when !Lobby.IsCurrentUserActive => "Archived seat",
+            null when Lobby.Players.Count < Lobby.MaxPlayers => "Waiting for an opponent",
+            null => "Session syncing",
+            { HasSubmittedMove: true } => "Move locked in",
+            _ => "Choose your move"
+        };
+
+    private string GetDescription()
+        => Session switch
+        {
+            null when !Lobby.IsCurrentUserActive => "Gameplay is only available while you still occupy an active seat in the match.",
+            null when Lobby.Players.Count < Lobby.MaxPlayers => "The match begins automatically after another player joins this lobby.",
+            null => "The match is active, but your session view is still catching up.",
+            { HasSubmittedMove: true } => $"Waiting for {Session!.OpponentPlayer.DisplayName} to submit a move for round {Session.RoundNumber}.",
+            _ => $"Round {Session!.RoundNumber} is ready. Submit one move for {Session.OpponentPlayer.DisplayName}."
+        };
+
+    private string GetEmptyStateMessage()
+        => !Lobby.IsCurrentUserActive
+            ? "You can still read the lobby timeline, but gameplay controls are disabled because you already left this game."
+            : Lobby.Players.Count < Lobby.MaxPlayers
+                ? "Share the invite code and wait for the second player to join. Gameplay will appear here as soon as the match initializes."
+                : "The game session is initializing. This panel refreshes automatically when Orleans publishes the updated state.";
+
+    private string GetStatusBadgeText()
+        => Session is null
+            ? "Unavailable"
+            : Session.HasSubmittedMove
+                ? "Waiting"
+                : "Ready";
+
+    private static string FormatMove(GameMove move)
+        => move switch
+        {
+            GameMove.Redite => "Redite",
+            GameMove.Greenium => "Greenium",
+            GameMove.Bluon => "Bluon",
+            _ => move.ToString()
+        };
+
+    private string GetOutcomeMessage(GameRoundOutcome outcome)
+        => outcome switch
+        {
+            GameRoundOutcome.Draw => "The round was a draw.",
+            GameRoundOutcome.CurrentPlayerWins => "You won the round.",
+            GameRoundOutcome.OpponentWins => $"{Session!.OpponentPlayer.DisplayName} won the round.",
+            _ => "The round resolved."
+        };
+
+    private Task SubmitMoveAsync(GameMove move)
+        => OnSubmitMove.InvokeAsync(move);
+}

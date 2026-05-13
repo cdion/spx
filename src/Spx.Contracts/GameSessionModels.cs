@@ -23,15 +23,15 @@ public sealed record GameRoundResult(
     [property: Id(2)] GameRoundOutcome Outcome);
 
 [GenerateSerializer]
-public sealed record GameSessionPlayer(
+public sealed record GameSessionParticipantView(
     [property: Id(0)] Guid PlayerId,
     [property: Id(1)] string UserId,
     [property: Id(2)] string DisplayName);
 
 [GenerateSerializer]
 public sealed record InitializeGameSessionCommand(
-    [property: Id(0)] GameSessionPlayer FirstPlayer,
-    [property: Id(1)] GameSessionPlayer SecondPlayer);
+    [property: Id(0)] GameSessionParticipantView FirstPlayer,
+    [property: Id(1)] GameSessionParticipantView SecondPlayer);
 
 [GenerateSerializer]
 public sealed record SubmitGameMoveCommand(
@@ -40,11 +40,11 @@ public sealed record SubmitGameMoveCommand(
     [property: Id(2)] GameMove Move);
 
 [GenerateSerializer]
-public sealed record GetGameSessionPlayerViewQuery(
+public sealed record GetGameSessionViewQuery(
     [property: Id(0)] string UserId);
 
 [GenerateSerializer]
-public sealed record AbandonGameSessionPlayerCommand(
+public sealed record AbandonGameSessionCommand(
     [property: Id(0)] string UserId);
 
 [GenerateSerializer]
@@ -54,11 +54,11 @@ public sealed record GameSessionRoundResult(
     [property: Id(2)] DateTime ResolvedAtUtc);
 
 [GenerateSerializer]
-public sealed record GameSessionPlayerView(
+public sealed record GameSessionView(
     [property: Id(0)] Guid GameId,
     [property: Id(1)] int RoundNumber,
-    [property: Id(2)] GameSessionPlayer CurrentPlayer,
-    [property: Id(3)] GameSessionPlayer OpponentPlayer,
+    [property: Id(2)] GameSessionParticipantView CurrentPlayer,
+    [property: Id(3)] GameSessionParticipantView OpponentPlayer,
     [property: Id(4)] bool HasSubmittedMove,
     [property: Id(5)] bool WaitingForOpponent,
     [property: Id(6)] GameSessionRoundResult? LastResolvedRound);

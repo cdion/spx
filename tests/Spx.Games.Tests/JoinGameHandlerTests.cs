@@ -37,8 +37,8 @@ public sealed class JoinGameHandlerTests
             JoinGameResult = new JoinGamePersistenceResult(GameCommandResult.Success(gameId), gameId, true),
             ActiveSessionPlayers =
             [
-                new GameSessionPlayer(Guid.NewGuid(), "user-1", "Captain Red"),
-                new GameSessionPlayer(Guid.NewGuid(), "user-2", "Captain Blue")
+                new GameSessionParticipantView(Guid.NewGuid(), "user-1", "Captain Red"),
+                new GameSessionParticipantView(Guid.NewGuid(), "user-2", "Captain Blue")
             ]
         };
         var lobbyPublisher = new FakeGameLobbyEventsPublisher();
@@ -68,8 +68,8 @@ public sealed class JoinGameHandlerTests
             JoinGameResult = new JoinGamePersistenceResult(GameCommandResult.Success(gameId), gameId, true),
             ActiveSessionPlayers =
             [
-                new GameSessionPlayer(Guid.NewGuid(), "user-1", "Captain Red"),
-                new GameSessionPlayer(Guid.NewGuid(), "user-2", "Captain Blue")
+                new GameSessionParticipantView(Guid.NewGuid(), "user-1", "Captain Red"),
+                new GameSessionParticipantView(Guid.NewGuid(), "user-2", "Captain Blue")
             ]
         };
         var lobbyPublisher = new FakeGameLobbyEventsPublisher();
@@ -138,7 +138,7 @@ public sealed class JoinGameHandlerTests
 
         public JoinGamePersistenceRequest? LastJoinRequest { get; private set; }
 
-        public IReadOnlyList<GameSessionPlayer>? ActiveSessionPlayers { get; init; }
+        public IReadOnlyList<GameSessionParticipantView>? ActiveSessionPlayers { get; init; }
 
         public Task<Guid?> TryCreateGameAsync(CreateGamePersistenceRequest request, CancellationToken cancellationToken)
             => throw new NotSupportedException();
@@ -152,7 +152,7 @@ public sealed class JoinGameHandlerTests
         public Task<LeaveGamePersistenceResult> LeaveGameAsync(Guid gameId, string userId, CancellationToken cancellationToken)
             => throw new NotSupportedException();
 
-        public Task<IReadOnlyList<GameSessionPlayer>?> GetActiveSessionPlayersAsync(Guid gameId, CancellationToken cancellationToken)
+        public Task<IReadOnlyList<GameSessionParticipantView>?> GetActiveSessionPlayersAsync(Guid gameId, CancellationToken cancellationToken)
             => Task.FromResult(ActiveSessionPlayers);
 
         public Task<GameLobbyView?> GetLobbyAsync(Guid gameId, string userId, CancellationToken cancellationToken)
@@ -190,25 +190,25 @@ public sealed class JoinGameHandlerTests
 
         public bool TryInitializeResult { get; init; } = true;
 
-        public Task<bool> TryInitializeAsync(Guid gameId, IReadOnlyList<GameSessionPlayer> players, CancellationToken cancellationToken = default)
+        public Task<bool> TryInitializeAsync(Guid gameId, IReadOnlyList<GameSessionParticipantView> players, CancellationToken cancellationToken = default)
         {
             InitializedGameIds.Add(gameId);
             return Task.FromResult(TryInitializeResult);
         }
 
-        public Task<GameSessionPlayerView?> GetPlayerViewAsync(Guid gameId, string userId, CancellationToken cancellationToken = default)
+        public Task<GameSessionView?> GetSessionViewAsync(Guid gameId, string userId, CancellationToken cancellationToken = default)
             => throw new NotSupportedException();
 
-        public Task<GameSessionPlayerView> SubmitMoveAsync(Guid gameId, SubmitGameMoveCommand command, CancellationToken cancellationToken = default)
+        public Task<GameSessionView> SubmitMoveAsync(Guid gameId, SubmitGameMoveCommand command, CancellationToken cancellationToken = default)
             => throw new NotSupportedException();
 
-        public Task<GameSessionPlayerView> AbandonAsync(Guid gameId, string userId, CancellationToken cancellationToken = default)
+        public Task<GameSessionView> AbandonAsync(Guid gameId, string userId, CancellationToken cancellationToken = default)
             => throw new NotSupportedException();
     }
 
     private sealed class FakeGameMessagePersistence : IGameMessagePersistence
     {
-        public Task<GameMessagePageView?> GetMessagesAsync(Guid gameId, string userId, Guid? beforeMessageId, int take, CancellationToken cancellationToken)
+        public Task<GameTimelinePageView?> GetMessagesAsync(Guid gameId, string userId, Guid? beforeMessageId, int take, CancellationToken cancellationToken)
             => throw new NotSupportedException();
 
         public Task<GameMessageCommandResult> SendPublicMessageAsync(Guid gameId, string userId, string body, CancellationToken cancellationToken)
@@ -217,7 +217,7 @@ public sealed class JoinGameHandlerTests
         public Task<GameMessageCommandResult> SendPrivateMessageAsync(Guid gameId, string userId, Guid recipientPlayerId, string body, CancellationToken cancellationToken)
             => throw new NotSupportedException();
 
-        public Task<IReadOnlyList<GameMessageView>?> GetMessageUpdatesAsync(Guid gameId, string userId, Guid? afterMessageId, int take, CancellationToken cancellationToken)
+        public Task<IReadOnlyList<GameTimelineEntryView>?> GetMessageUpdatesAsync(Guid gameId, string userId, Guid? afterMessageId, int take, CancellationToken cancellationToken)
             => throw new NotSupportedException();
 
         public Task<GameMessageCommandResult> EditMessageAsync(Guid gameId, string userId, Guid messageId, string body, CancellationToken cancellationToken)

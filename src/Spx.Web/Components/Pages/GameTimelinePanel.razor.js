@@ -1,10 +1,15 @@
 const timelineObservers = new WeakMap();
-const composerListeners = new WeakMap();
+
+function isObserverRoot(value) {
+    return value instanceof Element || value instanceof Document;
+}
 
 export function setTimelineObserver(container, sentinel, dotNetRef) {
-    disposeTimelineObserver(sentinel);
+    if (sentinel instanceof Element) {
+        disposeTimelineObserver(sentinel);
+    }
 
-    if (!container || !sentinel || !dotNetRef) {
+    if (!isObserverRoot(container) || !(sentinel instanceof Element) || !dotNetRef) {
         return;
     }
 
@@ -22,41 +27,17 @@ export function setTimelineObserver(container, sentinel, dotNetRef) {
 }
 
 export function disposeTimelineObserver(sentinel) {
-    const observer = sentinel ? timelineObservers.get(sentinel) : null;
+    if (!(sentinel instanceof Element)) {
+        return;
+    }
+
+    const observer = timelineObservers.get(sentinel);
     if (!observer) {
         return;
     }
 
     observer.disconnect();
     timelineObservers.delete(sentinel);
-}
-
-export function setComposerSubmit(textarea, dotNetRef) {
-    clearComposerSubmit(textarea);
-
-    if (!textarea || !dotNetRef) {
-        return;
-    }
-
-    const listener = event => {
-        if (event.key === "Enter" && !event.shiftKey) {
-            event.preventDefault();
-            dotNetRef.invokeMethodAsync("HandleComposerEnterAsync");
-        }
-    };
-
-    textarea.addEventListener("keydown", listener);
-    composerListeners.set(textarea, listener);
-}
-
-export function clearComposerSubmit(textarea) {
-    const listener = textarea ? composerListeners.get(textarea) : null;
-    if (!listener) {
-        return;
-    }
-
-    textarea.removeEventListener("keydown", listener);
-    composerListeners.delete(textarea);
 }
 
 export function getScrollMetrics(container) {

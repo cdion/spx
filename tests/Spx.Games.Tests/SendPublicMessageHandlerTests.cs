@@ -27,7 +27,7 @@ public sealed class SendPublicMessageHandlerTests
     public async Task HandleAsync_publishes_messages_changed_when_persistence_succeeds()
     {
         var gameId = Guid.NewGuid();
-        var persistedMessage = new GameMessageView(
+        var persistedMessage = new GameTimelineEntryView(
             Guid.NewGuid(),
             GameMessageKind.PlayerPublic,
             GameMessageSenderKind.Player,

@@ -8,14 +8,14 @@ namespace Spx.Games.IntegrationTests;
 public sealed class GameLobbyAccessTests(PostgresDatabaseFixture fixture) : IntegrationTestBase(fixture)
 {
     [Fact]
-    public async Task GetLobbyAsync_ReturnsLobbyForActivePlayer()
+    public async Task GetGameLobbyAsync_ReturnsLobbyForActivePlayer()
     {
         var database = Database;
         await database.AddUserAsync("user-1", "user1@example.com");
         var game = await database.AddGameAsync("user-1", "ABC123", "Alpha", "user-1", "Captain Red");
         var features = GameFeatureTestFactory.Create(database.ContextFactory);
 
-        var lobby = await features.GetLobby.HandleAsync(game.Id, "user-1");
+        var lobby = await features.GetGameLobby.HandleAsync(game.Id, "user-1");
 
         Assert.NotNull(lobby);
         Assert.True(lobby!.IsCurrentUserActive);
@@ -25,7 +25,7 @@ public sealed class GameLobbyAccessTests(PostgresDatabaseFixture fixture) : Inte
     }
 
     [Fact]
-    public async Task GetLobbyAsync_ReturnsLobbyForFormerPlayer()
+    public async Task GetGameLobbyAsync_ReturnsLobbyForFormerPlayer()
     {
         var database = Database;
         await database.AddUserAsync("user-1", "user1@example.com");
@@ -36,7 +36,7 @@ public sealed class GameLobbyAccessTests(PostgresDatabaseFixture fixture) : Inte
 
         var features = GameFeatureTestFactory.Create(database.ContextFactory);
 
-        var lobby = await features.GetLobby.HandleAsync(game.Id, "user-2");
+    var lobby = await features.GetGameLobby.HandleAsync(game.Id, "user-2");
 
         Assert.NotNull(lobby);
         Assert.False(lobby!.IsCurrentUserActive);
@@ -44,7 +44,7 @@ public sealed class GameLobbyAccessTests(PostgresDatabaseFixture fixture) : Inte
     }
 
     [Fact]
-    public async Task GetLobbyAsync_ReturnsNullForNonParticipant()
+    public async Task GetGameLobbyAsync_ReturnsNullForNonParticipant()
     {
         var database = Database;
         await database.AddUserAsync("user-1", "user1@example.com");
@@ -52,7 +52,7 @@ public sealed class GameLobbyAccessTests(PostgresDatabaseFixture fixture) : Inte
         var game = await database.AddGameAsync("user-1", "ABC123", "Alpha", "user-1", "Captain Red");
         var features = GameFeatureTestFactory.Create(database.ContextFactory);
 
-        var lobby = await features.GetLobby.HandleAsync(game.Id, "user-2");
+        var lobby = await features.GetGameLobby.HandleAsync(game.Id, "user-2");
 
         Assert.Null(lobby);
     }

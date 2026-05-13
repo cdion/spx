@@ -6,7 +6,7 @@ namespace Spx.Data;
 internal sealed class EfGameMessagePersistence(
     IDbContextFactory<ApplicationDbContext> contextFactory) : IGameMessagePersistence
 {
-    public async Task<GameMessagePageView?> GetMessagesAsync(
+    public async Task<GameTimelinePageView?> GetMessagesAsync(
         Guid gameId,
         string userId,
         Guid? beforeMessageId,
@@ -58,10 +58,10 @@ internal sealed class EfGameMessagePersistence(
             .Select(entry => GameMessageSupport.MapMessage(entry, userId, access.IsActive, now))
             .ToList();
 
-        return new GameMessagePageView(items, hasMore);
+        return new GameTimelinePageView(items, hasMore);
     }
 
-    public async Task<IReadOnlyList<GameMessageView>?> GetMessageUpdatesAsync(
+    public async Task<IReadOnlyList<GameTimelineEntryView>?> GetMessageUpdatesAsync(
         Guid gameId,
         string userId,
         Guid? afterMessageId,

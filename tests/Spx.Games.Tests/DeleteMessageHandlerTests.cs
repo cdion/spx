@@ -12,7 +12,7 @@ public sealed class DeleteMessageHandlerTests
     {
         var gameId = Guid.NewGuid();
         var messageId = Guid.NewGuid();
-        var persistedMessage = new GameMessageView(
+        var persistedMessage = new GameTimelineEntryView(
             messageId,
             GameMessageKind.PlayerPublic,
             GameMessageSenderKind.Player,

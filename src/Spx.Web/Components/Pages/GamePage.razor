@@ -1,0 +1,749 @@
+@page "/games/{GameId:guid}"
+@attribute [Authorize]
+@implements IAsyncDisposable
+@using Orleans
+@using Spx.Data
+@using System.Security.Claims
+@inject IClusterClient ClusterClient
+@inject IGetGamePageHandler GetGamePageHandler
+@inject ILeaveGameHandler LeaveGameHandler
+@inject IGetMessagesHandler GetMessagesHandler
+@inject IGetMessageUpdatesHandler GetMessageUpdatesHandler
+@inject ISendPublicMessageHandler SendPublicMessageHandler
+@inject ISendPrivateMessageHandler SendPrivateMessageHandler
+@inject IEditMessageHandler EditMessageHandler
+@inject IDeleteMessageHandler DeleteMessageHandler
+@inject ISubmitGameMoveHandler SubmitGameMoveHandler
+@inject NavigationManager Navigation
+
+<PageTitle>Game</PageTitle>
+
+@if (isLoading)
+{
+    <section class="ui-surface-empty mx-auto max-w-4xl text-slate-300">
+        Loading lobby...
+    </section>
+}
+else if (lobby is null)
+{
+    <section class="ui-surface-empty mx-auto flex max-w-3xl flex-col gap-6">
+        <PageHero Eyebrow="Lobby"
+                  Title="Game unavailable"
+                  Description="You can only open lobby pages for games where you are an active player or where you previously played."
+                  Compact />
+        <div class="ui-actions">
+            <a class="ui-button-primary" href="/games">
+                Back to my games
+            </a>
+            <a class="ui-button-secondary" href="/games/join">
+                Join another game
+            </a>
+        </div>
+    </section>
+}
+else
+{
+    <section class="ui-page max-w-6xl">
+        <header class="ui-surface-form">
+            <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+                <div class="space-y-3">
+                    <p class="ui-page-eyebrow">Lobby</p>
+                    <h1 class="ui-page-title">@lobby.Name</h1>
+                    <p class="ui-page-copy">
+                        Invite code <span class="font-semibold tracking-[0.25em] text-sky-300">@lobby.InviteCode</span>
+                    </p>
+                </div>
+
+                <div class="flex flex-wrap items-center gap-3">
+                    <span class="ui-status-badge">
+                        @lobby.Status
+                    </span>
+                    <span class="ui-status-badge border-emerald-400/30 bg-emerald-500/10 text-emerald-200">
+                        @lobby.Players.Count / @lobby.MaxPlayers players
+                    </span>
+                </div>
+            </div>
+        </header>
+
+        @if (!string.IsNullOrWhiteSpace(errorMessage))
+        {
+            <AlertBanner>@errorMessage</AlertBanner>
+        }
+
+        @if (!lobby.IsCurrentUserActive)
+        {
+            <AlertBanner Tone="warning" Role="status">
+                You are viewing this game as a former player. Timeline history is limited to the point when you left.
+            </AlertBanner>
+        }
+
+        <GameSessionPanel Lobby="@lobby"
+                  Session="@session"
+                  IsSubmittingMove="@isSubmittingMove"
+                  GameplayError="@gameplayError"
+                  OnSubmitMove="SubmitMoveAsync" />
+
+        <section class="ui-surface-form">
+            <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                <div class="space-y-2">
+                    <p class="ui-section-eyebrow">Timeline</p>
+                    <h2 class="ui-section-title">Messages and game events</h2>
+                </div>
+            </div>
+
+            @if (!string.IsNullOrWhiteSpace(messageError))
+            {
+                <div class="mt-6">
+                    <AlertBanner>@messageError</AlertBanner>
+                </div>
+            }
+
+            <div class="mt-6 grid gap-6 lg:grid-cols-[1.3fr_0.9fr]">
+                <GameTimelinePanel @key="lobby.GameId"
+                                   @ref="timelineComponent"
+                                   CurrentUserName="@lobby.CurrentPlayerName"
+                                   TimelineItems="timelineItems"
+                                   MessageError="@messageError"
+                                   IsTimelineLoading="@isTimelineLoading"
+                                   IsLoadingOlderMessages="@isLoadingOlderMessages"
+                                   HasOlderMessages="@hasOlderMessages"
+                                   EditingMessageId="@editingMessageId"
+                                   @bind-EditMessageText="editMessageText"
+                                   IsSavingEdit="@isSavingEdit"
+                                   OnLoadOlderMessages="LoadOlderMessagesAsync"
+                                   OnBeginEdit="BeginEdit"
+                                   OnCancelEdit="CancelEdit"
+                                   OnSaveEdit="SaveEditAsync"
+                                   OnDeleteMessage="DeleteMessageAsync"
+                                   OnRetryPendingMessage="RetryPendingMessageAsync"
+                                   OnDismissPendingMessage="DismissPendingMessage" />
+
+                <GameMessageComposer @key="lobby.GameId"
+                                     IsCurrentUserActive="@lobby.IsCurrentUserActive"
+                                     Players="@lobby.Players"
+                                     @bind-Text="composerText"
+                                     @bind-SelectedRecipientPlayerIdString="selectedRecipientPlayerIdString"
+                                     IsSendingMessage="@isSendingMessage"
+                                     OnSend="SendMessageAsync" />
+            </div>
+        </section>
+
+        <div class="grid gap-6 xl:grid-cols-[1.4fr_1fr]">
+            <GameRosterPanel Lobby="@lobby" />
+
+            <GameCurrentUserPanel Lobby="@lobby"
+                                  IsLeaving="@isLeaving"
+                                  OnLeave="LeaveGameAsync" />
+        </div>
+    </section>
+}
+
+@code {
+    [Parameter]
+    public Guid GameId { get; set; }
+
+    [CascadingParameter]
+    private Task<AuthenticationState> AuthenticationStateTask { get; set; } = default!;
+
+    private readonly List<TimelineEntryState> timelineItems = [];
+
+    private GameLobbyView? lobby;
+    private GameSessionView? session;
+    private string currentUserId = string.Empty;
+    private string? errorMessage;
+    private string? messageError;
+    private string? gameplayError;
+    private bool isLoading = true;
+    private bool isLeaving;
+    private bool isTimelineLoading = true;
+    private bool isLoadingOlderMessages;
+    private bool isSendingMessage;
+    private bool isSavingEdit;
+    private bool isSubmittingMove;
+    private GamePageSubscription? liveSubscription;
+    private GameTimelinePanel? timelineComponent;
+    private string composerText = string.Empty;
+    private string? selectedRecipientPlayerIdString;
+    private Guid? oldestMessageId;
+    private Guid? newestMessageId;
+    private bool hasOlderMessages;
+    private Guid? editingMessageId;
+    private string editMessageText = string.Empty;
+    private double restoreScrollHeight;
+    private double restoreScrollTop;
+    private bool shouldRestoreScrollAfterOlderLoad;
+    private bool shouldScrollTimelineToBottom;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        currentUserId = await GetUserIdAsync();
+        await LoadPageAsync();
+
+        if (lobby is null)
+        {
+            await DisposeSubscriptionsAsync();
+            ResetTimelineState();
+            return;
+        }
+
+        var isNewGame = liveSubscription?.GameId != lobby.GameId;
+        if (isNewGame)
+        {
+            await DisposeSubscriptionsAsync();
+            ResetTimelineState();
+            await LoadInitialMessagesAsync();
+            liveSubscription = new GamePageSubscription(ClusterClient, lobby.GameId, HandleLobbyChangedAsync, HandleMessagesChangedAsync);
+            await liveSubscription.SubscribeAsync();
+            shouldScrollTimelineToBottom = true;
+            return;
+        }
+
+        if (timelineItems.Count == 0)
+        {
+            await LoadInitialMessagesAsync();
+            shouldScrollTimelineToBottom = true;
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (shouldRestoreScrollAfterOlderLoad && timelineComponent is not null)
+        {
+            shouldRestoreScrollAfterOlderLoad = false;
+            await timelineComponent.RestoreScrollAfterPrependAsync(restoreScrollHeight, restoreScrollTop);
+        }
+        else if (shouldScrollTimelineToBottom && timelineComponent is not null)
+        {
+            shouldScrollTimelineToBottom = false;
+            await timelineComponent.ScrollToBottomAsync();
+        }
+    }
+
+    private async Task LoadPageAsync()
+    {
+        isLoading = true;
+        errorMessage = null;
+        gameplayError = null;
+
+        try
+        {
+            var page = await GetGamePageHandler.HandleAsync(GameId, currentUserId);
+            lobby = page?.Lobby;
+            session = page?.Session;
+        }
+        catch (Exception exception)
+        {
+            lobby = null;
+            session = null;
+            errorMessage = exception.Message;
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private Task HandleLobbyChangedAsync()
+        => InvokeAsync(async () =>
+        {
+            await LoadPageAsync();
+            StateHasChanged();
+        });
+
+    private Task HandleMessagesChangedAsync()
+        => InvokeAsync(async () =>
+        {
+            await LoadMessageUpdatesAsync();
+            StateHasChanged();
+        });
+
+    private async Task LeaveGameAsync()
+    {
+        if (isLeaving)
+        {
+            return;
+        }
+
+        isLeaving = true;
+        errorMessage = null;
+
+        try
+        {
+            var result = await LeaveGameHandler.HandleAsync(GameId, currentUserId);
+
+            if (!result.Succeeded)
+            {
+                errorMessage = result.ErrorMessage ?? "The game could not be left.";
+                return;
+            }
+
+            Navigation.NavigateTo("/games");
+        }
+        catch (Exception exception)
+        {
+            errorMessage = exception.Message;
+        }
+        finally
+        {
+            isLeaving = false;
+        }
+    }
+
+    private async Task SubmitMoveAsync(GameMove move)
+    {
+        if (lobby is null || session is null || !lobby.IsCurrentUserActive || isSubmittingMove)
+        {
+            return;
+        }
+
+        gameplayError = null;
+        isSubmittingMove = true;
+
+        try
+        {
+            var result = await SubmitGameMoveHandler.HandleAsync(lobby.GameId, currentUserId, session.RoundNumber, move);
+            if (!result.Succeeded || result.Session is null)
+            {
+                gameplayError = result.ErrorMessage ?? "The move could not be submitted.";
+                return;
+            }
+
+            session = result.Session;
+        }
+        catch (Exception exception)
+        {
+            gameplayError = exception.Message;
+        }
+        finally
+        {
+            isSubmittingMove = false;
+        }
+    }
+
+    private async Task LoadInitialMessagesAsync()
+    {
+        if (lobby is null)
+        {
+            return;
+        }
+
+        isTimelineLoading = true;
+        messageError = null;
+
+        try
+        {
+            var page = await GetMessagesHandler.HandleAsync(lobby.GameId, currentUserId);
+            timelineItems.Clear();
+
+            if (page is not null)
+            {
+                var orderedItems = page.Items.OrderBy(entry => entry.Id).ToList();
+                timelineItems.AddRange(orderedItems.Select(entry => new TimelineEntryState
+                {
+                    Key = entry.Id,
+                    Message = entry
+                }));
+
+                hasOlderMessages = page.HasMore;
+                oldestMessageId = orderedItems.FirstOrDefault()?.Id;
+                newestMessageId = orderedItems.LastOrDefault()?.Id;
+            }
+            else
+            {
+                hasOlderMessages = false;
+                oldestMessageId = null;
+                newestMessageId = null;
+            }
+        }
+        catch (Exception exception)
+        {
+            messageError = exception.Message;
+        }
+        finally
+        {
+            isTimelineLoading = false;
+        }
+    }
+
+    private async Task LoadMessageUpdatesAsync()
+    {
+        if (lobby is null)
+        {
+            return;
+        }
+
+        if (newestMessageId is null)
+        {
+            await LoadInitialMessagesAsync();
+            shouldScrollTimelineToBottom = true;
+            return;
+        }
+
+        try
+        {
+            var shouldStickToBottom = timelineComponent is null || await timelineComponent.IsNearBottomAsync();
+            var updates = await GetMessageUpdatesHandler.HandleAsync(lobby.GameId, currentUserId, newestMessageId);
+            if (updates is null || updates.Count == 0)
+            {
+                return;
+            }
+
+            UpsertPersistedMessages(updates);
+            if (shouldStickToBottom)
+            {
+                shouldScrollTimelineToBottom = true;
+            }
+        }
+        catch (Exception exception)
+        {
+            messageError = exception.Message;
+        }
+    }
+
+    private async Task LoadOlderMessagesAsync()
+    {
+        if (lobby is null || !hasOlderMessages || isLoadingOlderMessages || oldestMessageId is null)
+        {
+            return;
+        }
+
+        isLoadingOlderMessages = true;
+
+        try
+        {
+            var metrics = timelineComponent is null
+                ? new TimelineScrollMetrics()
+                : await timelineComponent.GetScrollMetricsAsync();
+            var page = await GetMessagesHandler.HandleAsync(lobby.GameId, currentUserId, oldestMessageId);
+            if (page is null)
+            {
+                return;
+            }
+
+            var existingIds = timelineItems.Where(entry => entry.Message is not null).Select(entry => entry.Message!.Id).ToHashSet();
+            var olderItems = page.Items
+                .Where(entry => !existingIds.Contains(entry.Id))
+                .OrderBy(entry => entry.Id)
+                .Select(entry => new TimelineEntryState
+                {
+                    Key = entry.Id,
+                    Message = entry
+                })
+                .ToList();
+
+            if (olderItems.Count > 0)
+            {
+                timelineItems.InsertRange(0, olderItems);
+                oldestMessageId = timelineItems.FirstOrDefault(entry => entry.Message is not null)?.Message?.Id;
+                restoreScrollHeight = metrics.ScrollHeight;
+                restoreScrollTop = metrics.ScrollTop;
+                shouldRestoreScrollAfterOlderLoad = true;
+            }
+
+            hasOlderMessages = page.HasMore;
+        }
+        catch (Exception exception)
+        {
+            messageError = exception.Message;
+        }
+        finally
+        {
+            isLoadingOlderMessages = false;
+        }
+    }
+
+    private async Task SendMessageAsync()
+    {
+        if (lobby is null || !lobby.IsCurrentUserActive || isSendingMessage)
+        {
+            return;
+        }
+
+        messageError = null;
+        var body = composerText.Trim();
+        if (string.IsNullOrWhiteSpace(body))
+        {
+            messageError = "Messages cannot be empty.";
+            return;
+        }
+
+        var recipient = GetSelectedRecipient();
+        var pendingItem = CreatePendingMessage(body, recipient);
+        timelineItems.Add(pendingItem);
+        composerText = string.Empty;
+        selectedRecipientPlayerIdString = null;
+        shouldScrollTimelineToBottom = true;
+        isSendingMessage = true;
+
+        try
+        {
+            GameMessageCommandResult result;
+            if (recipient is null)
+            {
+                result = await SendPublicMessageHandler.HandleAsync(lobby.GameId, currentUserId, new SendGameMessageRequest(body));
+            }
+            else
+            {
+                result = await SendPrivateMessageHandler.HandleAsync(lobby.GameId, currentUserId, recipient.PlayerId, new SendGameMessageRequest(body));
+            }
+
+            if (!result.Succeeded || result.Message is null)
+            {
+                pendingItem.Pending!.Failed = true;
+                messageError = result.ErrorMessage ?? "The message could not be sent.";
+                return;
+            }
+
+            ReplacePendingWithPersistedMessage(pendingItem.Key, result.Message);
+        }
+        catch (Exception exception)
+        {
+            pendingItem.Pending!.Failed = true;
+            messageError = exception.Message;
+        }
+        finally
+        {
+            isSendingMessage = false;
+        }
+    }
+
+    private async Task RetryPendingMessageAsync(Guid itemKey)
+    {
+        var item = timelineItems.SingleOrDefault(entry => entry.Key == itemKey && entry.Pending is not null);
+        if (item?.Pending is null || isSendingMessage || lobby is null)
+        {
+            return;
+        }
+
+        item.Pending.Failed = false;
+        isSendingMessage = true;
+        messageError = null;
+
+        try
+        {
+            GameMessageCommandResult result;
+            if (item.Pending.RecipientPlayerId is null)
+            {
+                result = await SendPublicMessageHandler.HandleAsync(lobby.GameId, currentUserId, new SendGameMessageRequest(item.Pending.Body));
+            }
+            else
+            {
+                result = await SendPrivateMessageHandler.HandleAsync(lobby.GameId, currentUserId, item.Pending.RecipientPlayerId.Value, new SendGameMessageRequest(item.Pending.Body));
+            }
+
+            if (!result.Succeeded || result.Message is null)
+            {
+                item.Pending.Failed = true;
+                messageError = result.ErrorMessage ?? "The message could not be sent.";
+                return;
+            }
+
+            ReplacePendingWithPersistedMessage(itemKey, result.Message);
+        }
+        catch (Exception exception)
+        {
+            item.Pending.Failed = true;
+            messageError = exception.Message;
+        }
+        finally
+        {
+            isSendingMessage = false;
+        }
+    }
+
+    private void DismissPendingMessage(Guid itemKey)
+    {
+        timelineItems.RemoveAll(entry => entry.Key == itemKey && entry.Pending is not null);
+    }
+
+    private void BeginEdit(GameTimelineEntryView message)
+    {
+        editingMessageId = message.Id;
+        editMessageText = message.Body;
+    }
+
+    private void CancelEdit()
+    {
+        editingMessageId = null;
+        editMessageText = string.Empty;
+        isSavingEdit = false;
+    }
+
+    private async Task SaveEditAsync()
+    {
+        if (lobby is null || editingMessageId is null || isSavingEdit)
+        {
+            return;
+        }
+
+        isSavingEdit = true;
+        messageError = null;
+
+        try
+        {
+            var result = await EditMessageHandler.HandleAsync(lobby.GameId, currentUserId, editingMessageId.Value, new UpdateGameMessageRequest(editMessageText));
+            if (!result.Succeeded || result.Message is null)
+            {
+                messageError = result.ErrorMessage ?? "The message could not be updated.";
+                return;
+            }
+
+            UpsertPersistedMessages([result.Message]);
+            CancelEdit();
+        }
+        catch (Exception exception)
+        {
+            messageError = exception.Message;
+        }
+        finally
+        {
+            isSavingEdit = false;
+        }
+    }
+
+    private async Task DeleteMessageAsync(Guid messageId)
+    {
+        if (lobby is null)
+        {
+            return;
+        }
+
+        messageError = null;
+
+        try
+        {
+            var result = await DeleteMessageHandler.HandleAsync(lobby.GameId, currentUserId, messageId);
+            if (!result.Succeeded || result.Message is null)
+            {
+                messageError = result.ErrorMessage ?? "The message could not be deleted.";
+                return;
+            }
+
+            UpsertPersistedMessages([result.Message]);
+            if (editingMessageId == messageId)
+            {
+                CancelEdit();
+            }
+        }
+        catch (Exception exception)
+        {
+            messageError = exception.Message;
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        await DisposeSubscriptionsAsync();
+    }
+
+    private async Task<string> GetUserIdAsync()
+    {
+        var authenticationState = await AuthenticationStateTask;
+        return authenticationState.User.FindFirstValue(ClaimTypes.NameIdentifier)
+            ?? throw new InvalidOperationException("The current user does not have an identity id claim.");
+    }
+
+    private async Task DisposeSubscriptionsAsync()
+    {
+        if (liveSubscription is not null)
+        {
+            await liveSubscription.DisposeAsync();
+            liveSubscription = null;
+        }
+    }
+
+    private void ResetTimelineState()
+    {
+        timelineItems.Clear();
+        oldestMessageId = null;
+        newestMessageId = null;
+        hasOlderMessages = false;
+        isTimelineLoading = true;
+        isLoadingOlderMessages = false;
+        messageError = null;
+        gameplayError = null;
+        composerText = string.Empty;
+        selectedRecipientPlayerIdString = null;
+        editingMessageId = null;
+        editMessageText = string.Empty;
+        restoreScrollHeight = 0;
+        restoreScrollTop = 0;
+        shouldRestoreScrollAfterOlderLoad = false;
+        shouldScrollTimelineToBottom = false;
+    }
+
+    private void UpsertPersistedMessages(IEnumerable<GameTimelineEntryView> messages)
+    {
+        foreach (var message in messages)
+        {
+            var existingItem = timelineItems.SingleOrDefault(entry => entry.Message?.Id == message.Id);
+            if (existingItem is not null)
+            {
+                existingItem.Message = message;
+                continue;
+            }
+
+            timelineItems.Add(new TimelineEntryState
+            {
+                Key = message.Id,
+                Message = message
+            });
+        }
+
+        timelineItems.Sort(static (left, right) => CompareTimelineItems(left, right));
+        oldestMessageId = timelineItems.FirstOrDefault(entry => entry.Message is not null)?.Message?.Id;
+        newestMessageId = timelineItems.LastOrDefault(entry => entry.Message is not null)?.Message?.Id;
+    }
+
+    private void ReplacePendingWithPersistedMessage(Guid itemKey, GameTimelineEntryView message)
+    {
+        timelineItems.RemoveAll(entry => entry.Key == itemKey);
+        UpsertPersistedMessages([message]);
+    }
+
+    private PendingRecipient? GetSelectedRecipient()
+    {
+        if (!Guid.TryParse(selectedRecipientPlayerIdString, out var recipientPlayerId) || lobby is null)
+        {
+            return null;
+        }
+
+        var player = lobby.Players.SingleOrDefault(entry => entry.PlayerId == recipientPlayerId);
+        return player is null ? null : new PendingRecipient(player.PlayerId, player.Name);
+    }
+
+    private TimelineEntryState CreatePendingMessage(string body, PendingRecipient? recipient)
+        => new()
+        {
+            Key = Guid.NewGuid(),
+            Pending = new PendingMessageState(
+                body,
+                recipient?.PlayerId,
+                recipient?.Name ?? string.Empty,
+                DateTime.UtcNow,
+                recipient is not null,
+                false)
+        };
+
+    private static int CompareTimelineItems(TimelineEntryState left, TimelineEntryState right)
+    {
+        if (left.Message is null && right.Message is not null)
+        {
+            return 1;
+        }
+
+        if (left.Message is not null && right.Message is null)
+        {
+            return -1;
+        }
+
+        if (left.Message is null && right.Message is null)
+        {
+            return DateTime.Compare(left.Pending?.CreatedAtUtc ?? DateTime.MinValue, right.Pending?.CreatedAtUtc ?? DateTime.MinValue);
+        }
+
+        return left.Message!.Id.CompareTo(right.Message!.Id);
+    }
+
+    private sealed record PendingRecipient(Guid PlayerId, string Name);
+}

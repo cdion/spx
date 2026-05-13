@@ -4,18 +4,18 @@ public sealed record SendGameMessageRequest(string Body);
 
 public sealed record UpdateGameMessageRequest(string Body);
 
-public sealed record GameMessageCommandResult(bool Succeeded, GameMessageView? Message, string? ErrorMessage)
+public sealed record GameMessageCommandResult(bool Succeeded, GameTimelineEntryView? Message, string? ErrorMessage)
 {
-    public static GameMessageCommandResult Success(GameMessageView message) => new(true, message, null);
+    public static GameMessageCommandResult Success(GameTimelineEntryView message) => new(true, message, null);
 
     public static GameMessageCommandResult Failure(string errorMessage) => new(false, null, errorMessage);
 }
 
-public sealed record GameMessagePageView(
-    IReadOnlyList<GameMessageView> Items,
+public sealed record GameTimelinePageView(
+    IReadOnlyList<GameTimelineEntryView> Items,
     bool HasMore);
 
-public sealed record GameMessageView(
+public sealed record GameTimelineEntryView(
     Guid Id,
     GameMessageKind Kind,
     GameMessageSenderKind SenderKind,

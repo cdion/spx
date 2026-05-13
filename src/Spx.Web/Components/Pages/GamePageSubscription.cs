@@ -3,7 +3,7 @@ using Spx.Contracts;
 
 namespace Spx.Web.Components.Pages;
 
-internal sealed class GameLobbyPageSubscription(
+internal sealed class GamePageSubscription(
     IClusterClient clusterClient,
     Guid gameId,
     Func<Task> onLobbyChanged,

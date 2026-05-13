@@ -17,7 +17,7 @@ public sealed class GameSessionGrain(
         await sessionState.WriteStateAsync();
     }
 
-    public async Task<GameSessionPlayerView> SubmitMoveAsync(SubmitGameMoveCommand command)
+    public async Task<GameSessionView> SubmitMoveAsync(SubmitGameMoveCommand command)
     {
         var view = GameSessionEngine.SubmitMove(
             sessionState.State,
@@ -30,10 +30,10 @@ public sealed class GameSessionGrain(
         return view;
     }
 
-    public Task<GameSessionPlayerView?> GetPlayerViewAsync(GetGameSessionPlayerViewQuery query)
-        => Task.FromResult(GameSessionEngine.GetPlayerView(sessionState.State, this.GetPrimaryKey(), query, roundResolver));
+    public Task<GameSessionView?> GetPlayerViewAsync(GetGameSessionViewQuery query)
+        => Task.FromResult(GameSessionEngine.GetSessionView(sessionState.State, this.GetPrimaryKey(), query, roundResolver));
 
-    public async Task<GameSessionPlayerView> AbandonAsync(AbandonGameSessionPlayerCommand command)
+    public async Task<GameSessionView> AbandonAsync(AbandonGameSessionCommand command)
     {
         var view = GameSessionEngine.AbandonPlayer(sessionState.State, this.GetPrimaryKey(), command, roundResolver);
         await sessionState.WriteStateAsync();
@@ -44,9 +44,9 @@ public sealed class GameSessionGrain(
 [GenerateSerializer]
 public sealed class GameSessionGrainState
 {
-    [Id(0)] public GameSessionPlayer? FirstPlayer { get; set; }
+    [Id(0)] public GameSessionParticipantView? FirstPlayer { get; set; }
 
-    [Id(1)] public GameSessionPlayer? SecondPlayer { get; set; }
+    [Id(1)] public GameSessionParticipantView? SecondPlayer { get; set; }
 
     [Id(2)] public bool FirstPlayerActive { get; set; }
 
@@ -108,7 +108,7 @@ internal static class GameSessionEngine
         throw new InvalidOperationException("The game session was already initialized with a different roster.");
     }
 
-    public static GameSessionPlayerView SubmitMove(
+    public static GameSessionView SubmitMove(
         GameSessionGrainState state,
         Guid gameId,
         SubmitGameMoveCommand command,
@@ -159,10 +159,10 @@ internal static class GameSessionEngine
         return CreatePlayerView(state, gameId, participant.Player.UserId, roundResolver);
     }
 
-    public static GameSessionPlayerView? GetPlayerView(
+    public static GameSessionView? GetSessionView(
         GameSessionGrainState state,
         Guid gameId,
-        GetGameSessionPlayerViewQuery query,
+        GetGameSessionViewQuery query,
         IGameRoundResolver roundResolver)
     {
         ArgumentNullException.ThrowIfNull(state);
@@ -179,10 +179,10 @@ internal static class GameSessionEngine
             : null;
     }
 
-    public static GameSessionPlayerView AbandonPlayer(
+    public static GameSessionView AbandonPlayer(
         GameSessionGrainState state,
         Guid gameId,
-        AbandonGameSessionPlayerCommand command,
+        AbandonGameSessionCommand command,
         IGameRoundResolver roundResolver)
     {
         ArgumentNullException.ThrowIfNull(state);
@@ -208,10 +208,10 @@ internal static class GameSessionEngine
     }
 
     private static bool HasSameRoster(
-        GameSessionPlayer existingFirstPlayer,
-        GameSessionPlayer existingSecondPlayer,
-        GameSessionPlayer incomingFirstPlayer,
-        GameSessionPlayer incomingSecondPlayer)
+        GameSessionParticipantView existingFirstPlayer,
+        GameSessionParticipantView existingSecondPlayer,
+        GameSessionParticipantView incomingFirstPlayer,
+        GameSessionParticipantView incomingSecondPlayer)
         => (existingFirstPlayer.PlayerId == incomingFirstPlayer.PlayerId && existingSecondPlayer.PlayerId == incomingSecondPlayer.PlayerId)
             || (existingFirstPlayer.PlayerId == incomingSecondPlayer.PlayerId && existingSecondPlayer.PlayerId == incomingFirstPlayer.PlayerId);
 
@@ -241,7 +241,7 @@ internal static class GameSessionEngine
         return null;
     }
 
-    private static GameSessionPlayerView CreatePlayerView(
+    private static GameSessionView CreatePlayerView(
         GameSessionGrainState state,
         Guid gameId,
         string userId,
@@ -252,7 +252,7 @@ internal static class GameSessionEngine
         var opponentHasSubmittedMove = participant.IsFirstPlayer ? state.SecondPlayerMove.HasValue : state.FirstPlayerMove.HasValue;
         var opponentIsActive = participant.IsFirstPlayer ? state.SecondPlayerActive : state.FirstPlayerActive;
 
-        return new GameSessionPlayerView(
+        return new GameSessionView(
             gameId,
             state.RoundNumber,
             participant.Player,
@@ -281,5 +281,5 @@ internal static class GameSessionEngine
             state.LastResolvedRound.ResolvedAtUtc);
     }
 
-    private sealed record ParticipantState(GameSessionPlayer Player, GameSessionPlayer Opponent, bool IsActive, bool IsFirstPlayer);
+    private sealed record ParticipantState(GameSessionParticipantView Player, GameSessionParticipantView Opponent, bool IsActive, bool IsFirstPlayer);
 }

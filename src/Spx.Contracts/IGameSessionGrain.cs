@@ -4,9 +4,9 @@ public interface IGameSessionGrain : IGrainWithGuidKey
 {
     Task InitializeAsync(InitializeGameSessionCommand command);
 
-    Task<GameSessionPlayerView> SubmitMoveAsync(SubmitGameMoveCommand command);
+    Task<GameSessionView> SubmitMoveAsync(SubmitGameMoveCommand command);
 
-    Task<GameSessionPlayerView?> GetPlayerViewAsync(GetGameSessionPlayerViewQuery query);
+    Task<GameSessionView?> GetPlayerViewAsync(GetGameSessionViewQuery query);
 
-    Task<GameSessionPlayerView> AbandonAsync(AbandonGameSessionPlayerCommand command);
+    Task<GameSessionView> AbandonAsync(AbandonGameSessionCommand command);
 }

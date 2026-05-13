@@ -6,9 +6,9 @@ using Spx.Games;
 using Spx.Games.Features.CreateGame;
 using Spx.Games.Features.DeleteMessage;
 using Spx.Games.Features.EditMessage;
-using Spx.Games.Features.GetLobby;
 using Spx.Games.Features.GetMessageUpdates;
 using Spx.Games.Features.GetMessages;
+using Spx.Games.Features.GetGameLobby;
 using Spx.Games.Features.GetUserGames;
 using Spx.Games.Features.JoinGame;
 using Spx.Games.Features.LeaveGame;
@@ -34,7 +34,7 @@ internal static class GameFeatureTestFactory
             new CreateGameHandler(gamePersistence, notifier, messagePublisher),
             new JoinGameHandler(gamePersistence, sessionService, notifier, messagePublisher),
             new LeaveGameHandler(gamePersistence, sessionService, notifier, messagePublisher),
-            new GetLobbyHandler(gamePersistence),
+            new GetGameLobbyHandler(gamePersistence),
             new GetUserGamesHandler(gamePersistence),
             new GetMessagesHandler(gameMessagePersistence),
             new GetMessageUpdatesHandler(gameMessagePersistence),
@@ -49,7 +49,7 @@ internal sealed record GameFeatureSet(
     ICreateGameHandler CreateGame,
     IJoinGameHandler JoinGame,
     ILeaveGameHandler LeaveGame,
-    IGetLobbyHandler GetLobby,
+    IGetGameLobbyHandler GetGameLobby,
     IGetUserGamesHandler GetUserGames,
     IGetMessagesHandler GetMessages,
     IGetMessageUpdatesHandler GetMessageUpdates,
@@ -60,15 +60,15 @@ internal sealed record GameFeatureSet(
 
 internal sealed class FakeGameSessionService : IGameSessionService
 {
-    public Task<bool> TryInitializeAsync(Guid gameId, IReadOnlyList<GameSessionPlayer> players, CancellationToken cancellationToken = default)
+    public Task<bool> TryInitializeAsync(Guid gameId, IReadOnlyList<GameSessionParticipantView> players, CancellationToken cancellationToken = default)
         => Task.FromResult(true);
 
-    public Task<GameSessionPlayerView?> GetPlayerViewAsync(Guid gameId, string userId, CancellationToken cancellationToken = default)
-        => Task.FromResult<GameSessionPlayerView?>(null);
+    public Task<GameSessionView?> GetSessionViewAsync(Guid gameId, string userId, CancellationToken cancellationToken = default)
+        => Task.FromResult<GameSessionView?>(null);
 
-    public Task<GameSessionPlayerView> SubmitMoveAsync(Guid gameId, SubmitGameMoveCommand command, CancellationToken cancellationToken = default)
+    public Task<GameSessionView> SubmitMoveAsync(Guid gameId, SubmitGameMoveCommand command, CancellationToken cancellationToken = default)
         => throw new NotSupportedException();
 
-    public Task<GameSessionPlayerView> AbandonAsync(Guid gameId, string userId, CancellationToken cancellationToken = default)
+    public Task<GameSessionView> AbandonAsync(Guid gameId, string userId, CancellationToken cancellationToken = default)
         => throw new NotSupportedException();
 }

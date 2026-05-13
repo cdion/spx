@@ -1,0 +1,48 @@
+<aside class="ui-surface-form space-y-6">
+    <div class="ui-section-header">
+        <p class="ui-section-eyebrow">You</p>
+        <h2 class="ui-section-title">@Lobby.CurrentPlayerName</h2>
+        <p class="text-sm leading-6 text-slate-300">@GetPlayerPanelMessage()</p>
+    </div>
+
+    <div class="space-y-3 text-sm leading-6 text-slate-300">
+        <p>Created @FormatDateTime(Lobby.CreatedAtUtc)</p>
+        @if (Lobby.EndedAtUtc is not null)
+        {
+            <p>Ended @FormatDateTime(Lobby.EndedAtUtc.Value)</p>
+        }
+    </div>
+
+    <div class="ui-actions">
+        @if (Lobby.IsCurrentUserActive)
+        {
+            <button class="ui-button-danger"
+                    @onclick="() => OnLeave.InvokeAsync()"
+                    disabled="@IsLeaving">
+                @(IsLeaving ? "Leaving..." : "Leave game")
+            </button>
+        }
+        <a class="ui-button-secondary" href="/games">
+            Back to my games
+        </a>
+    </div>
+</aside>
+
+@code {
+    [Parameter, EditorRequired]
+    public GameLobbyView Lobby { get; set; } = default!;
+
+    [Parameter]
+    public bool IsLeaving { get; set; }
+
+    [Parameter]
+    public EventCallback OnLeave { get; set; }
+
+    private string GetPlayerPanelMessage()
+        => Lobby.IsCurrentUserActive
+            ? "Leaving removes your active seat. If you are the last active player, the game ends."
+            : "You previously played in this game. This page remains available for archived timeline review.";
+
+    private static string FormatDateTime(DateTime value)
+        => value.ToLocalTime().ToString("g");
+}

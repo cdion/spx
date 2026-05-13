@@ -1,0 +1,364 @@
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+
+<div class="ui-panel-card-tight">
+    <div class="mb-3 flex items-center justify-between px-2 text-xs uppercase tracking-[0.2em] text-slate-400">
+        <span>History</span>
+        @if (IsLoadingOlderMessages)
+        {
+            <span>Loading older...</span>
+        }
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(MessageError))
+    {
+        <div class="mb-3 px-2">
+            <AlertBanner>@MessageError</AlertBanner>
+        </div>
+    }
+
+    <div class="ui-scroll-panel" @ref="timelineContainer">
+        <div @ref="timelineTopSentinel" class="h-px w-full"></div>
+
+        @if (IsTimelineLoading)
+        {
+            <div class="ui-panel-card text-sm text-slate-400">
+                Loading timeline...
+            </div>
+        }
+        else if (TimelineItems.Count == 0)
+        {
+            <div class="ui-empty-state">
+                No messages or events have appeared in this game yet.
+            </div>
+        }
+        else
+        {
+            <div class="space-y-3">
+                @if (HasOlderMessages)
+                {
+                    <div class="px-2 py-1 text-center text-xs uppercase tracking-[0.2em] text-slate-500">
+                        Scroll up to load older history
+                    </div>
+                }
+
+                @foreach (var item in TimelineItems)
+                {
+                    <article class="rounded-2xl border @(GetTimelineCardBorderClass(item)) bg-slate-950/60 px-4 py-4">
+                        <div class="flex items-start justify-between gap-4">
+                            <div class="space-y-2">
+                                <div class="flex flex-wrap items-center gap-2">
+                                    <p class="text-sm font-semibold text-white">@GetTimelineTitle(item)</p>
+                                    @if (IsPrivate(item))
+                                    {
+                                        <span class="ui-inline-badge border border-amber-400/30 bg-amber-500/10 text-amber-100">
+                                            @GetPrivateBadgeText(item)
+                                        </span>
+                                    }
+                                    @if (IsPending(item))
+                                    {
+                                        <span class="ui-inline-badge border border-sky-400/30 bg-sky-400/10 text-sky-200">
+                                            Pending
+                                        </span>
+                                    }
+                                    @if (IsFailed(item))
+                                    {
+                                        <span class="ui-inline-badge border border-red-400/30 bg-red-500/10 text-red-100">
+                                            Failed
+                                        </span>
+                                    }
+                                </div>
+
+                                <p class="text-sm leading-6 text-slate-200 whitespace-pre-wrap">@GetTimelineBody(item)</p>
+
+                                <div class="flex flex-wrap items-center gap-3 text-xs uppercase tracking-[0.2em] text-slate-500">
+                                    <span>@FormatDateTime(GetTimelineCreatedAt(item))</span>
+                                    @if (IsEdited(item))
+                                    {
+                                        <span>Edited</span>
+                                    }
+                                    @if (IsDeleted(item))
+                                    {
+                                        <span>Deleted</span>
+                                    }
+                                </div>
+                            </div>
+
+                            @if (item.Message is not null && EditingMessageId != item.Message.Id && (item.Message.CanEdit || item.Message.CanDelete))
+                            {
+                                <div class="flex flex-wrap gap-2">
+                                    @if (item.Message.CanEdit)
+                                    {
+                                        <button class="ui-button-compact border border-white/10 text-slate-300 hover:border-sky-300/60 hover:text-white"
+                                                @onclick="() => OnBeginEdit.InvokeAsync(item.Message)">
+                                            Edit
+                                        </button>
+                                    }
+                                    @if (item.Message.CanDelete)
+                                    {
+                                        <button class="ui-button-compact border border-rose-400/40 text-rose-100 hover:border-rose-300 hover:text-white"
+                                                @onclick="() => OnDeleteMessage.InvokeAsync(item.Message.Id)">
+                                            Delete
+                                        </button>
+                                    }
+                                </div>
+                            }
+                            else if (IsFailed(item))
+                            {
+                                <div class="flex flex-wrap gap-2">
+                                    <button class="ui-button-compact border border-sky-400/30 text-sky-200 hover:border-sky-300/60 hover:text-white"
+                                            @onclick="() => OnRetryPendingMessage.InvokeAsync(item.Key)">
+                                        Retry
+                                    </button>
+                                    <button class="ui-button-compact border border-white/10 text-slate-300 hover:border-sky-300/60 hover:text-white"
+                                            @onclick="() => OnDismissPendingMessage.InvokeAsync(item.Key)">
+                                        Dismiss
+                                    </button>
+                                </div>
+                            }
+                        </div>
+
+                        @if (item.Message is not null && EditingMessageId == item.Message.Id)
+                        {
+                            <div class="mt-4 space-y-3 rounded-2xl border border-sky-400/30 bg-sky-400/10 p-4">
+                                <textarea class="ui-textarea min-h-24"
+                                          value="@EditMessageText"
+                                          @oninput="HandleEditMessageInput"></textarea>
+                                <div class="flex flex-wrap justify-end gap-3">
+                                    <button class="ui-button-compact border border-white/10 px-4 text-slate-300 hover:border-sky-300/60 hover:text-white"
+                                            @onclick="() => OnCancelEdit.InvokeAsync()">
+                                        Cancel
+                                    </button>
+                                    <button class="ui-button-compact bg-sky-400 px-4 text-slate-950 hover:bg-sky-300 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400"
+                                            @onclick="() => OnSaveEdit.InvokeAsync()"
+                                            disabled="@IsSavingEdit">
+                                        @(IsSavingEdit ? "Saving..." : "Save")
+                                    </button>
+                                </div>
+                            </div>
+                        }
+                    </article>
+                }
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public string CurrentUserName { get; set; } = string.Empty;
+
+    [Parameter, EditorRequired]
+    public IReadOnlyList<TimelineEntryState> TimelineItems { get; set; } = [];
+
+    [Parameter]
+    public string? MessageError { get; set; }
+
+    [Parameter]
+    public bool IsTimelineLoading { get; set; }
+
+    [Parameter]
+    public bool IsLoadingOlderMessages { get; set; }
+
+    [Parameter]
+    public bool HasOlderMessages { get; set; }
+
+    [Parameter]
+    public Guid? EditingMessageId { get; set; }
+
+    [Parameter]
+    public string EditMessageText { get; set; } = string.Empty;
+
+    [Parameter]
+    public EventCallback<string> EditMessageTextChanged { get; set; }
+
+    [Parameter]
+    public bool IsSavingEdit { get; set; }
+
+    [Parameter]
+    public EventCallback OnLoadOlderMessages { get; set; }
+
+    [Parameter]
+    public EventCallback<GameTimelineEntryView> OnBeginEdit { get; set; }
+
+    [Parameter]
+    public EventCallback OnCancelEdit { get; set; }
+
+    [Parameter]
+    public EventCallback OnSaveEdit { get; set; }
+
+    [Parameter]
+    public EventCallback<Guid> OnDeleteMessage { get; set; }
+
+    [Parameter]
+    public EventCallback<Guid> OnRetryPendingMessage { get; set; }
+
+    [Parameter]
+    public EventCallback<Guid> OnDismissPendingMessage { get; set; }
+
+    private ElementReference timelineContainer;
+    private ElementReference timelineTopSentinel;
+    private IJSObjectReference? module;
+    private DotNetObjectReference<GameTimelinePanel>? dotNetReference;
+    private bool isObserverAttached;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            module = await JS.InvokeAsync<IJSObjectReference>("import", "./Components/Pages/GameTimelinePanel.razor.js");
+            dotNetReference = DotNetObjectReference.Create(this);
+        }
+
+        if (!isObserverAttached && module is not null && dotNetReference is not null)
+        {
+            await module.InvokeVoidAsync("setTimelineObserver", timelineContainer, timelineTopSentinel, dotNetReference);
+            isObserverAttached = true;
+        }
+    }
+
+    [JSInvokable]
+    public Task HandleTimelineNearTopAsync()
+        => OnLoadOlderMessages.InvokeAsync();
+
+    public async Task<TimelineScrollMetrics> GetScrollMetricsAsync()
+        => module is null
+            ? new TimelineScrollMetrics()
+            : await module.InvokeAsync<TimelineScrollMetrics>("getScrollMetrics", timelineContainer);
+
+    public async Task<bool> IsNearBottomAsync()
+        => module is null || await module.InvokeAsync<bool>("isNearBottom", timelineContainer);
+
+    public async Task RestoreScrollAfterPrependAsync(double previousScrollHeight, double previousScrollTop)
+    {
+        if (module is null)
+        {
+            return;
+        }
+
+        await module.InvokeVoidAsync("restoreScrollAfterPrepend", timelineContainer, previousScrollHeight, previousScrollTop);
+    }
+
+    public async Task ScrollToBottomAsync()
+    {
+        if (module is null)
+        {
+            return;
+        }
+
+        await module.InvokeVoidAsync("scrollToBottom", timelineContainer);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (module is not null)
+        {
+            try
+            {
+                await module.InvokeVoidAsync("disposeTimelineObserver", timelineTopSentinel);
+                await module.DisposeAsync();
+            }
+            catch (JSDisconnectedException)
+            {
+            }
+        }
+
+        dotNetReference?.Dispose();
+    }
+
+    private Task HandleEditMessageInput(ChangeEventArgs args)
+        => EditMessageTextChanged.InvokeAsync(args.Value?.ToString() ?? string.Empty);
+
+    private string GetTimelineTitle(TimelineEntryState item)
+    {
+        if (item.Message is null)
+        {
+            return CurrentUserName;
+        }
+
+        return item.Message.Kind switch
+        {
+            Spx.Games.GameMessageKind.GameCreated => "Game created",
+            Spx.Games.GameMessageKind.PlayerJoined => "Player joined",
+            Spx.Games.GameMessageKind.PlayerLeft => "Player left",
+            Spx.Games.GameMessageKind.GameEnded => "Game ended",
+            _ => item.Message.SenderDisplayName
+        };
+    }
+
+    private static string GetTimelineCardBorderClass(TimelineEntryState item)
+    {
+        if (IsFailed(item))
+        {
+            return "border-red-400/30";
+        }
+
+        if (IsPrivate(item))
+        {
+            return "border-amber-400/30";
+        }
+
+        return item.Message?.Kind switch
+        {
+            Spx.Games.GameMessageKind.GameCreated or Spx.Games.GameMessageKind.PlayerJoined or Spx.Games.GameMessageKind.PlayerLeft or Spx.Games.GameMessageKind.GameEnded => "border-emerald-400/30",
+            _ => "border-white/10"
+        };
+    }
+
+    private static string GetTimelineBody(TimelineEntryState item)
+    {
+        if (item.Message is null)
+        {
+            return item.Pending?.Body ?? string.Empty;
+        }
+
+        if (item.Message.DeletedAtUtc is not null)
+        {
+            return "Message deleted.";
+        }
+
+        return item.Message.Kind switch
+        {
+            Spx.Games.GameMessageKind.GameCreated => $"{item.Message.SenderDisplayName} created the game.",
+            Spx.Games.GameMessageKind.PlayerJoined => $"{item.Message.SenderDisplayName} joined the game.",
+            Spx.Games.GameMessageKind.PlayerLeft => $"{item.Message.SenderDisplayName} left the game.",
+            Spx.Games.GameMessageKind.GameEnded => "The game ended.",
+            _ => item.Message.Body
+        };
+    }
+
+    private static string GetPrivateBadgeText(TimelineEntryState item)
+    {
+        if (item.Message is null)
+        {
+            return item.Pending?.RecipientDisplayName is { Length: > 0 } recipientName
+                ? $"Private to {recipientName}"
+                : "Private";
+        }
+
+        return item.Message.IsCurrentUserSender && !string.IsNullOrWhiteSpace(item.Message.RecipientDisplayName)
+            ? $"Private to {item.Message.RecipientDisplayName}"
+            : "Private";
+    }
+
+    private static bool IsPrivate(TimelineEntryState item)
+        => item.Message?.IsPrivate == true || item.Pending?.IsPrivate == true;
+
+    private static bool IsPending(TimelineEntryState item)
+        => item.Pending is not null && !item.Pending.Failed;
+
+    private static bool IsFailed(TimelineEntryState item)
+        => item.Pending?.Failed == true;
+
+    private static bool IsEdited(TimelineEntryState item)
+        => item.Message?.EditedAtUtc is not null;
+
+    private static bool IsDeleted(TimelineEntryState item)
+        => item.Message?.DeletedAtUtc is not null;
+
+    private static DateTime GetTimelineCreatedAt(TimelineEntryState item)
+        => item.Message?.CreatedAtUtc ?? item.Pending?.CreatedAtUtc ?? DateTime.UtcNow;
+
+    private static string FormatDateTime(DateTime value)
+        => value.ToLocalTime().ToString("g");
+}

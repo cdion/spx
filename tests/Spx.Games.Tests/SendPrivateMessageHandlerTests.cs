@@ -28,7 +28,7 @@ public sealed class SendPrivateMessageHandlerTests
     {
         var gameId = Guid.NewGuid();
         var recipientPlayerId = Guid.NewGuid();
-        var persistedMessage = new GameMessageView(
+        var persistedMessage = new GameTimelineEntryView(
             Guid.NewGuid(),
             GameMessageKind.PlayerPrivate,
             GameMessageSenderKind.Player,

@@ -2,14 +2,14 @@ namespace Spx.Games;
 
 public interface IGameMessagePersistence
 {
-    Task<GameMessagePageView?> GetMessagesAsync(
+    Task<GameTimelinePageView?> GetMessagesAsync(
         Guid gameId,
         string userId,
         Guid? beforeMessageId,
         int take,
         CancellationToken cancellationToken);
 
-    Task<IReadOnlyList<GameMessageView>?> GetMessageUpdatesAsync(
+    Task<IReadOnlyList<GameTimelineEntryView>?> GetMessageUpdatesAsync(
         Guid gameId,
         string userId,
         Guid? afterMessageId,

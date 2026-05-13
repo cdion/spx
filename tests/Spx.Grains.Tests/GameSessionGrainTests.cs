@@ -8,8 +8,8 @@ namespace Spx.Grains.Tests;
 public sealed class GameSessionGrainTests
 {
     private static readonly Guid GameId = Guid.Parse("6FD75A29-6B90-43AA-B97A-80A0C5210D73");
-    private static readonly GameSessionPlayer FirstPlayer = new(Guid.Parse("0C8999C0-D4D2-46B5-B287-5D211CC99A40"), "user-1", "Red Captain");
-    private static readonly GameSessionPlayer SecondPlayer = new(Guid.Parse("92C6775C-95F1-4C3B-9025-8E37D126CD4B"), "user-2", "Blue Captain");
+    private static readonly GameSessionParticipantView FirstPlayer = new(Guid.Parse("0C8999C0-D4D2-46B5-B287-5D211CC99A40"), "user-1", "Red Captain");
+    private static readonly GameSessionParticipantView SecondPlayer = new(Guid.Parse("92C6775C-95F1-4C3B-9025-8E37D126CD4B"), "user-2", "Blue Captain");
     private static readonly IGameRoundResolver RoundResolver = new GameRoundResolver();
 
     [Fact]
@@ -32,7 +32,7 @@ public sealed class GameSessionGrainTests
         var state = new GameSessionGrainState();
         GameSessionEngine.Initialize(state, new InitializeGameSessionCommand(FirstPlayer, SecondPlayer));
 
-        var replacementPlayer = new GameSessionPlayer(Guid.NewGuid(), "user-3", "Green Captain");
+        var replacementPlayer = new GameSessionParticipantView(Guid.NewGuid(), "user-3", "Green Captain");
 
         var exception = Assert.Throws<InvalidOperationException>(() =>
             GameSessionEngine.Initialize(state, new InitializeGameSessionCommand(FirstPlayer, replacementPlayer)));
@@ -80,10 +80,10 @@ public sealed class GameSessionGrainTests
             RoundResolver,
             resolvedAtUtc);
 
-        var firstPlayerView = GameSessionEngine.GetPlayerView(
+        var firstPlayerView = GameSessionEngine.GetSessionView(
             state,
             GameId,
-            new GetGameSessionPlayerViewQuery(FirstPlayer.UserId),
+            new GetGameSessionViewQuery(FirstPlayer.UserId),
             RoundResolver);
 
         Assert.NotNull(firstPlayerView);
@@ -124,10 +124,10 @@ public sealed class GameSessionGrainTests
             RoundResolver,
             DateTime.UtcNow);
 
-        var updatedFirstPlayerView = GameSessionEngine.GetPlayerView(
+        var updatedFirstPlayerView = GameSessionEngine.GetSessionView(
             state,
             GameId,
-            new GetGameSessionPlayerViewQuery(FirstPlayer.UserId),
+            new GetGameSessionViewQuery(FirstPlayer.UserId),
             RoundResolver);
 
         Assert.NotNull(updatedFirstPlayerView);

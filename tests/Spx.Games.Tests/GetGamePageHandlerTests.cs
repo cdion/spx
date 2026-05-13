@@ -37,11 +37,11 @@ public sealed class GetGamePageHandlerTests
             [new GamePlayerView(Guid.NewGuid(), "Captain Red", DateTime.UtcNow, true), new GamePlayerView(Guid.NewGuid(), "Captain Blue", DateTime.UtcNow, false)],
             true);
 
-        var session = new GameSessionPlayerView(
+        var session = new GameSessionView(
             gameId,
             3,
-            new GameSessionPlayer(Guid.NewGuid(), "user-1", "Captain Red"),
-            new GameSessionPlayer(Guid.NewGuid(), "user-2", "Captain Blue"),
+            new GameSessionParticipantView(Guid.NewGuid(), "user-1", "Captain Red"),
+            new GameSessionParticipantView(Guid.NewGuid(), "user-2", "Captain Blue"),
             true,
             true,
             null);
@@ -83,7 +83,7 @@ public sealed class GetGamePageHandlerTests
         public Task<LeaveGamePersistenceResult> LeaveGameAsync(Guid gameId, string userId, CancellationToken cancellationToken)
             => throw new NotSupportedException();
 
-        public Task<IReadOnlyList<GameSessionPlayer>?> GetActiveSessionPlayersAsync(Guid gameId, CancellationToken cancellationToken)
+        public Task<IReadOnlyList<GameSessionParticipantView>?> GetActiveSessionPlayersAsync(Guid gameId, CancellationToken cancellationToken)
             => throw new NotSupportedException();
 
         public Task<GameLobbyView?> GetLobbyAsync(Guid gameId, string userId, CancellationToken cancellationToken)
@@ -95,18 +95,18 @@ public sealed class GetGamePageHandlerTests
 
     private sealed class FakeGameSessionService : IGameSessionService
     {
-        public GameSessionPlayerView? Session { get; init; }
+        public GameSessionView? Session { get; init; }
 
-        public Task<bool> TryInitializeAsync(Guid gameId, IReadOnlyList<GameSessionPlayer> players, CancellationToken cancellationToken = default)
+        public Task<bool> TryInitializeAsync(Guid gameId, IReadOnlyList<GameSessionParticipantView> players, CancellationToken cancellationToken = default)
             => Task.FromResult(true);
 
-        public Task<GameSessionPlayerView?> GetPlayerViewAsync(Guid gameId, string userId, CancellationToken cancellationToken = default)
+        public Task<GameSessionView?> GetSessionViewAsync(Guid gameId, string userId, CancellationToken cancellationToken = default)
             => Task.FromResult(Session);
 
-        public Task<GameSessionPlayerView> SubmitMoveAsync(Guid gameId, SubmitGameMoveCommand command, CancellationToken cancellationToken = default)
+        public Task<GameSessionView> SubmitMoveAsync(Guid gameId, SubmitGameMoveCommand command, CancellationToken cancellationToken = default)
             => throw new NotSupportedException();
 
-        public Task<GameSessionPlayerView> AbandonAsync(Guid gameId, string userId, CancellationToken cancellationToken = default)
+        public Task<GameSessionView> AbandonAsync(Guid gameId, string userId, CancellationToken cancellationToken = default)
             => throw new NotSupportedException();
     }
 
@@ -124,10 +124,10 @@ public sealed class GetGamePageHandlerTests
 
     private sealed class StubGameMessagePersistence : IGameMessagePersistence
     {
-        public Task<GameMessagePageView?> GetMessagesAsync(Guid gameId, string userId, Guid? beforeMessageId, int take, CancellationToken cancellationToken)
+        public Task<GameTimelinePageView?> GetMessagesAsync(Guid gameId, string userId, Guid? beforeMessageId, int take, CancellationToken cancellationToken)
             => throw new NotSupportedException();
 
-        public Task<IReadOnlyList<GameMessageView>?> GetMessageUpdatesAsync(Guid gameId, string userId, Guid? afterMessageId, int take, CancellationToken cancellationToken)
+        public Task<IReadOnlyList<GameTimelineEntryView>?> GetMessageUpdatesAsync(Guid gameId, string userId, Guid? afterMessageId, int take, CancellationToken cancellationToken)
             => throw new NotSupportedException();
 
         public Task<GameMessageCommandResult> SendPublicMessageAsync(Guid gameId, string userId, string body, CancellationToken cancellationToken)

@@ -205,14 +205,14 @@ internal sealed class EfGamePersistence(
         }, cancellationToken);
     }
 
-    public async Task<IReadOnlyList<GameSessionPlayer>?> GetActiveSessionPlayersAsync(Guid gameId, CancellationToken cancellationToken)
+    public async Task<IReadOnlyList<GameSessionParticipantView>?> GetActiveSessionPlayersAsync(Guid gameId, CancellationToken cancellationToken)
     {
         await using var dbContext = await contextFactory.CreateDbContextAsync(cancellationToken);
         var players = await dbContext.GamePlayers
             .AsNoTracking()
             .Where(entry => entry.GameId == gameId && entry.LeftAtUtc == null)
             .OrderBy(entry => entry.JoinedAtUtc)
-            .Select(entry => new GameSessionPlayer(entry.Id, entry.UserId, entry.Name))
+            .Select(entry => new GameSessionParticipantView(entry.Id, entry.UserId, entry.Name))
             .ToListAsync(cancellationToken);
 
         return players.Count == 0 ? null : players;

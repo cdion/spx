@@ -4,14 +4,14 @@ namespace Spx.Games;
 
 public sealed record GamePageView(
     GameLobbyView Lobby,
-    GameSessionPlayerView? Session);
+    GameSessionView? Session);
 
 public sealed record SubmitGameMoveResult(
     bool Succeeded,
-    GameSessionPlayerView? Session,
+    GameSessionView? Session,
     string? ErrorMessage)
 {
-    public static SubmitGameMoveResult Success(GameSessionPlayerView session)
+    public static SubmitGameMoveResult Success(GameSessionView session)
         => new(true, session, null);
 
     public static SubmitGameMoveResult Failure(string errorMessage)

@@ -33,7 +33,7 @@ public sealed class OrleansGameRuntimeClient(
         }
     }
 
-    public async Task<bool> TryInitializeAsync(Guid gameId, IReadOnlyList<GameSessionPlayer> players, CancellationToken cancellationToken = default)
+    public async Task<bool> TryInitializeAsync(Guid gameId, IReadOnlyList<GameSessionParticipantView> players, CancellationToken cancellationToken = default)
     {
         if (players.Count != 2)
         {
@@ -52,11 +52,11 @@ public sealed class OrleansGameRuntimeClient(
         }
     }
 
-    public async Task<GameSessionPlayerView?> GetPlayerViewAsync(Guid gameId, string userId, CancellationToken cancellationToken = default)
+    public async Task<GameSessionView?> GetSessionViewAsync(Guid gameId, string userId, CancellationToken cancellationToken = default)
     {
         try
         {
-            return await clusterClient.GetGrain<IGameSessionGrain>(gameId).GetPlayerViewAsync(new GetGameSessionPlayerViewQuery(userId));
+            return await clusterClient.GetGrain<IGameSessionGrain>(gameId).GetPlayerViewAsync(new GetGameSessionViewQuery(userId));
         }
         catch (Exception exception)
         {
@@ -65,7 +65,7 @@ public sealed class OrleansGameRuntimeClient(
         }
     }
 
-    public async Task<GameSessionPlayerView> SubmitMoveAsync(Guid gameId, SubmitGameMoveCommand command, CancellationToken cancellationToken = default)
+    public async Task<GameSessionView> SubmitMoveAsync(Guid gameId, SubmitGameMoveCommand command, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -78,6 +78,6 @@ public sealed class OrleansGameRuntimeClient(
         }
     }
 
-    public Task<GameSessionPlayerView> AbandonAsync(Guid gameId, string userId, CancellationToken cancellationToken = default)
-        => clusterClient.GetGrain<IGameSessionGrain>(gameId).AbandonAsync(new AbandonGameSessionPlayerCommand(userId));
+    public Task<GameSessionView> AbandonAsync(Guid gameId, string userId, CancellationToken cancellationToken = default)
+        => clusterClient.GetGrain<IGameSessionGrain>(gameId).AbandonAsync(new AbandonGameSessionCommand(userId));
 }

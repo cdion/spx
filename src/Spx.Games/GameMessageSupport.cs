@@ -9,7 +9,7 @@ public static class GameMessageSupport
     public static int NormalizeTake(int take)
         => Math.Clamp(take <= 0 ? DefaultPageSize : take, 1, MaxPageSize);
 
-    public static GameMessageView MapMessage(GameMessageSnapshot message, string userId, bool canMutate, DateTime now)
+    public static GameTimelineEntryView MapMessage(GameMessageSnapshot message, string userId, bool canMutate, DateTime now)
     {
         var isCurrentUserSender = string.Equals(message.SenderUserId, userId, StringComparison.Ordinal);
         var isPlayerMessage = message.Kind == GameMessageKind.PlayerPublic || message.Kind == GameMessageKind.PlayerPrivate;
@@ -17,7 +17,7 @@ public static class GameMessageSupport
         var canEdit = canMutate && isCurrentUserSender && isPlayerMessage && message.DeletedAtUtc is null && isWithinMutationWindow;
         var canDelete = canMutate && isCurrentUserSender && isPlayerMessage && message.DeletedAtUtc is null && isWithinMutationWindow;
 
-        return new GameMessageView(
+        return new GameTimelineEntryView(
             message.Id,
             message.Kind,
             message.SenderKind,
