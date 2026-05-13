@@ -16,6 +16,14 @@ var builder = WebApplication.CreateBuilder(args);
 builder.AddServiceDefaults();
 builder.AddKeyedRedisClient("orleans-redis");
 builder.AddNpgsqlDbContext<ApplicationDbContext>("appdb");
+builder.Services.AddDbContextFactory<ApplicationDbContext>(options =>
+{
+    var connectionString = builder.Configuration.GetConnectionString("appdb")
+        ?? builder.Configuration["APPDB_URI"]
+        ?? throw new InvalidOperationException("The appdb connection string was not configured.");
+
+    options.UseNpgsql(connectionString);
+});
 builder.UseOrleansClient();
 builder.Services.Configure<ResendOptions>(builder.Configuration.GetSection(ResendOptions.SectionName));
 
