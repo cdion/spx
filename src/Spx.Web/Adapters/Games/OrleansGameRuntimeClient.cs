@@ -7,13 +7,18 @@ namespace Spx.Web.Adapters.Games;
 public sealed class OrleansGameRuntimeClient(
     IClusterClient clusterClient,
     ILogger<OrleansGameRuntimeClient> logger)
-    : IGameLobbyEventsPublisher, IGameMessageEventsPublisher, IGameSessionService
+    : IGameLobbyInvalidationPublisher,
+      IGameSessionInvalidationPublisher,
+      IGameMessageInvalidationPublisher,
+      IGamePresenceInvalidationPublisher,
+            IGamePresenceService,
+      IGameSessionService
 {
-    public async Task PublishLobbyChangedAsync(Guid gameId, CancellationToken cancellationToken = default)
+    public async Task PublishLobbyInvalidatedAsync(Guid gameId, CancellationToken cancellationToken = default)
     {
         try
         {
-            await clusterClient.GetGrain<IGameLobbyEventsGrain>(gameId).PublishLobbyChanged();
+            await clusterClient.GetGrain<IGameInvalidationGrain>(gameId).PublishLobbyInvalidated();
         }
         catch (Exception exception)
         {
@@ -21,17 +26,61 @@ public sealed class OrleansGameRuntimeClient(
         }
     }
 
-    public async Task PublishMessagesChangedAsync(Guid gameId, CancellationToken cancellationToken = default)
+    public async Task PublishSessionInvalidatedAsync(Guid gameId, CancellationToken cancellationToken = default)
     {
         try
         {
-            await clusterClient.GetGrain<IGameLobbyEventsGrain>(gameId).PublishMessagesChanged();
+            await clusterClient.GetGrain<IGameInvalidationGrain>(gameId).PublishSessionInvalidated();
+        }
+        catch (Exception exception)
+        {
+            logger.LogWarning(exception, "Failed to publish session update for game {GameId}.", gameId);
+        }
+    }
+
+    public async Task PublishMessagesInvalidatedAsync(Guid gameId, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            await clusterClient.GetGrain<IGameInvalidationGrain>(gameId).PublishMessagesInvalidated();
         }
         catch (Exception exception)
         {
             logger.LogWarning(exception, "Failed to publish message update for game {GameId}.", gameId);
         }
     }
+
+    public async Task PublishPresenceInvalidatedAsync(Guid gameId, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            await clusterClient.GetGrain<IGameInvalidationGrain>(gameId).PublishPresenceInvalidated();
+        }
+        catch (Exception exception)
+        {
+            logger.LogWarning(exception, "Failed to publish presence update for game {GameId}.", gameId);
+        }
+    }
+
+    public async Task<GamePresenceView> GetPresenceAsync(Guid gameId, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var snapshot = await clusterClient.GetGrain<IGamePresenceGrain>(gameId).GetSnapshotAsync();
+            return new GamePresenceView(snapshot.OnlinePlayerIds);
+        }
+        catch (Exception exception)
+        {
+            logger.LogWarning(exception, "Failed to fetch presence for game {GameId}.", gameId);
+            return GamePresenceView.Empty;
+        }
+    }
+
+    public Task UpsertPresenceLeaseAsync(Guid gameId, Guid playerId, Guid connectionId, DateTime expiresAtUtc, CancellationToken cancellationToken = default)
+        => clusterClient.GetGrain<IGamePresenceGrain>(gameId).UpsertLeaseAsync(new UpsertGamePresenceLeaseCommand(playerId, connectionId, expiresAtUtc));
+
+    public Task RemovePresenceLeaseAsync(Guid gameId, Guid playerId, Guid connectionId, CancellationToken cancellationToken = default)
+        => clusterClient.GetGrain<IGamePresenceGrain>(gameId).RemoveLeaseAsync(new RemoveGamePresenceLeaseCommand(playerId, connectionId));
 
     public async Task<bool> EnsureSessionAsync(Guid gameId, IReadOnlyList<GameSessionParticipantView> players, CancellationToken cancellationToken = default)
     {

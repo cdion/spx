@@ -2,7 +2,8 @@ namespace Spx.Game.Application.Features.GetGamePage;
 
 internal sealed class GetGamePageHandler(
     IGamePersistence gamePersistence,
-    IGameSessionService gameSessionService) : IGetGamePageHandler
+    IGameSessionService gameSessionService,
+    IGamePresenceService gamePresenceService) : IGetGamePageHandler
 {
     public async Task<GamePageView?> HandleAsync(Guid gameId, string userId, CancellationToken cancellationToken = default)
     {
@@ -24,6 +25,8 @@ internal sealed class GetGamePageHandler(
             }
         }
 
-        return new GamePageView(lobby, session);
+        var presence = await gamePresenceService.GetPresenceAsync(gameId, cancellationToken);
+
+        return new GamePageView(lobby, session, presence);
     }
 }

@@ -7,18 +7,35 @@
     <div class="mt-6 space-y-4">
         @foreach (var player in Lobby.Players)
         {
+            var isOnline = Presence.OnlinePlayerIds.Contains(player.PlayerId);
+
             <article class="ui-panel-row">
                 <div>
                     <p class="text-base font-semibold text-white">@player.Name</p>
                     <p class="text-sm text-slate-400">Joined @FormatDateTime(player.JoinedAtUtc)</p>
                 </div>
 
-                @if (player.IsCurrentUser)
-                {
-                    <span class="ui-status-badge border-sky-400/30 bg-sky-400/10 text-sky-200">
-                        You
-                    </span>
-                }
+                <div class="flex flex-wrap items-center gap-2">
+                    @if (isOnline)
+                    {
+                        <span class="ui-status-badge border-emerald-400/30 bg-emerald-500/10 text-emerald-200">
+                            Online
+                        </span>
+                    }
+                    else
+                    {
+                        <span class="ui-status-badge border-slate-500/30 bg-slate-500/10 text-slate-300">
+                            Offline
+                        </span>
+                    }
+
+                    @if (player.IsCurrentUser)
+                    {
+                        <span class="ui-status-badge border-sky-400/30 bg-sky-400/10 text-sky-200">
+                            You
+                        </span>
+                    }
+                </div>
             </article>
         }
 
@@ -34,6 +51,9 @@
 @code {
     [Parameter, EditorRequired]
     public GameLobbyView Lobby { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public GamePresenceView Presence { get; set; } = default!;
 
     private static string FormatDateTime(DateTime value)
         => value.ToLocalTime().ToString("g");

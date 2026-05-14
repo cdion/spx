@@ -5,8 +5,8 @@ namespace Spx.Game.Application.Features.JoinGame;
 internal sealed class JoinGameHandler(
     IGamePersistence gamePersistence,
     IGameSessionService gameSessionService,
-    IGameLobbyEventsPublisher gameLobbyEventsPublisher,
-    IGameMessageEventsPublisher gameMessageEventsPublisher)
+    IGameLobbyInvalidationPublisher gameLobbyInvalidationPublisher,
+    IGameMessageInvalidationPublisher gameMessageInvalidationPublisher)
     : IJoinGameHandler
 {
     public async Task<GameCommandOutcome> HandleAsync(string userId, JoinGameRequest request, CancellationToken cancellationToken = default)
@@ -38,10 +38,10 @@ internal sealed class JoinGameHandler(
                 }
             }
 
-            await gameLobbyEventsPublisher.PublishLobbyChangedAsync(gameId, cancellationToken);
+            await gameLobbyInvalidationPublisher.PublishLobbyInvalidatedAsync(gameId, cancellationToken);
             if (joinResult.PublishMessagesChanged)
             {
-                await gameMessageEventsPublisher.PublishMessagesChangedAsync(gameId, cancellationToken);
+                await gameMessageInvalidationPublisher.PublishMessagesInvalidatedAsync(gameId, cancellationToken);
             }
         }
 

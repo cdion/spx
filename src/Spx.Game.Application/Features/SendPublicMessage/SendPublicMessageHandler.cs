@@ -1,7 +1,7 @@
 namespace Spx.Game.Application.Features.SendPublicMessage;
 
 internal sealed class SendPublicMessageHandler(
-    IGameMessageEventsPublisher gameMessageEventsPublisher,
+    IGameMessageInvalidationPublisher gameMessageInvalidationPublisher,
     IGameMessagePersistence gameMessagePersistence) : ISendPublicMessageHandler
 {
     public async Task<GameMessageCommandOutcome> HandleAsync(Guid gameId, string userId, SendGameMessageRequest request, CancellationToken cancellationToken = default)
@@ -14,7 +14,7 @@ internal sealed class SendPublicMessageHandler(
         var result = await gameMessagePersistence.SendPublicMessageAsync(gameId, userId, body, cancellationToken);
         if (result is GameMessageCommandSucceeded)
         {
-            await gameMessageEventsPublisher.PublishMessagesChangedAsync(gameId, cancellationToken);
+            await gameMessageInvalidationPublisher.PublishMessagesInvalidatedAsync(gameId, cancellationToken);
         }
 
         return result;

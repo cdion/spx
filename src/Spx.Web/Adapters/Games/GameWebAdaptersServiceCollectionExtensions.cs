@@ -9,9 +9,15 @@ public static class GameWebAdaptersServiceCollectionExtensions
     public static IServiceCollection AddGameWebAdapters(this IServiceCollection services)
     {
         services.AddSingleton<OrleansGameRuntimeClient>();
-        services.AddSingleton<IGameLobbyEventsPublisher>(serviceProvider =>
+        services.AddSingleton<IGameLobbyInvalidationPublisher>(serviceProvider =>
             serviceProvider.GetRequiredService<OrleansGameRuntimeClient>());
-        services.AddSingleton<IGameMessageEventsPublisher>(serviceProvider =>
+        services.AddSingleton<IGameSessionInvalidationPublisher>(serviceProvider =>
+            serviceProvider.GetRequiredService<OrleansGameRuntimeClient>());
+        services.AddSingleton<IGameMessageInvalidationPublisher>(serviceProvider =>
+            serviceProvider.GetRequiredService<OrleansGameRuntimeClient>());
+        services.AddSingleton<IGamePresenceInvalidationPublisher>(serviceProvider =>
+            serviceProvider.GetRequiredService<OrleansGameRuntimeClient>());
+        services.AddSingleton<IGamePresenceService>(serviceProvider =>
             serviceProvider.GetRequiredService<OrleansGameRuntimeClient>());
         services.AddSingleton<IGameSessionService>(serviceProvider =>
             serviceProvider.GetRequiredService<OrleansGameRuntimeClient>());

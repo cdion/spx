@@ -28,6 +28,7 @@ public sealed class GetGamePageHandlerTests
     public async Task HandleAsync_returns_lobby_and_session_when_available()
     {
         var gameId = Guid.NewGuid();
+        var presence = new GamePresenceView([CurrentPlayerId]);
         var lobby = new GameLobbyView(
             gameId,
             "Arena",
@@ -51,7 +52,8 @@ public sealed class GetGamePageHandlerTests
 
         var persistence = new FakeGamePersistence { Lobby = lobby };
         var sessionService = new FakeGameSessionService { Session = session };
-        using var services = CreateServices(persistence, sessionService);
+        var presenceService = new FakeGamePresenceService { Presence = presence };
+        using var services = CreateServices(persistence, sessionService, presenceService);
 
         var handler = services.GetRequiredService<IGetGamePageHandler>();
         var result = await handler.HandleAsync(gameId, "user-1");
@@ -59,6 +61,7 @@ public sealed class GetGamePageHandlerTests
         Assert.NotNull(result);
         Assert.Equal(lobby, result!.Lobby);
         Assert.Equal(session, result.Session);
+        Assert.Equal(presence, result.Presence);
     }
 
     [Fact]
@@ -85,6 +88,7 @@ public sealed class GetGamePageHandlerTests
             false,
             false,
             null);
+        var presence = new GamePresenceView([OpponentPlayerId]);
 
         var persistence = new FakeGamePersistence
         {
@@ -100,24 +104,28 @@ public sealed class GetGamePageHandlerTests
             Session = null,
             SessionAfterInitialize = session
         };
-        using var services = CreateServices(persistence, sessionService);
+        var presenceService = new FakeGamePresenceService { Presence = presence };
+        using var services = CreateServices(persistence, sessionService, presenceService);
 
         var handler = services.GetRequiredService<IGetGamePageHandler>();
         var result = await handler.HandleAsync(gameId, "user-1");
 
         Assert.NotNull(result);
         Assert.Equal(session, result!.Session);
+        Assert.Equal(presence, result.Presence);
         Assert.Equal(1, sessionService.InitializeCalls);
     }
 
-    private static ServiceProvider CreateServices(FakeGamePersistence persistence, FakeGameSessionService sessionService)
+    private static ServiceProvider CreateServices(FakeGamePersistence persistence, FakeGameSessionService sessionService, FakeGamePresenceService? presenceService = null)
     {
         var services = new ServiceCollection();
         services.AddGameApplication();
         services.AddSingleton<IGamePersistence>(persistence);
         services.AddSingleton<IGameSessionService>(sessionService);
-        services.AddSingleton<IGameLobbyEventsPublisher, StubGameLobbyEventsPublisher>();
-        services.AddSingleton<IGameMessageEventsPublisher, StubGameMessageEventsPublisher>();
+        services.AddSingleton<IGamePresenceService>(presenceService ?? new FakeGamePresenceService());
+        services.AddSingleton<IGameLobbyInvalidationPublisher, StubGameLobbyEventsPublisher>();
+        services.AddSingleton<IGameSessionInvalidationPublisher, StubGameSessionInvalidationPublisher>();
+        services.AddSingleton<IGameMessageInvalidationPublisher, StubGameMessageEventsPublisher>();
         services.AddSingleton<IGameMessagePersistence, StubGameMessagePersistence>();
         return services.BuildServiceProvider();
     }
@@ -178,15 +186,35 @@ public sealed class GetGamePageHandlerTests
             => throw new NotSupportedException();
     }
 
-    private sealed class StubGameLobbyEventsPublisher : IGameLobbyEventsPublisher
+    private sealed class FakeGamePresenceService : IGamePresenceService
     {
-        public Task PublishLobbyChangedAsync(Guid gameId, CancellationToken cancellationToken = default)
+        public GamePresenceView Presence { get; init; } = GamePresenceView.Empty;
+
+        public Task<GamePresenceView> GetPresenceAsync(Guid gameId, CancellationToken cancellationToken = default)
+            => Task.FromResult(Presence);
+
+        public Task UpsertPresenceLeaseAsync(Guid gameId, Guid playerId, Guid connectionId, DateTime expiresAtUtc, CancellationToken cancellationToken = default)
+            => throw new NotSupportedException();
+
+        public Task RemovePresenceLeaseAsync(Guid gameId, Guid playerId, Guid connectionId, CancellationToken cancellationToken = default)
+            => throw new NotSupportedException();
+    }
+
+    private sealed class StubGameLobbyEventsPublisher : IGameLobbyInvalidationPublisher
+    {
+        public Task PublishLobbyInvalidatedAsync(Guid gameId, CancellationToken cancellationToken = default)
             => Task.CompletedTask;
     }
 
-    private sealed class StubGameMessageEventsPublisher : IGameMessageEventsPublisher
+    private sealed class StubGameSessionInvalidationPublisher : IGameSessionInvalidationPublisher
     {
-        public Task PublishMessagesChangedAsync(Guid gameId, CancellationToken cancellationToken = default)
+        public Task PublishSessionInvalidatedAsync(Guid gameId, CancellationToken cancellationToken = default)
+            => Task.CompletedTask;
+    }
+
+    private sealed class StubGameMessageEventsPublisher : IGameMessageInvalidationPublisher
+    {
+        public Task PublishMessagesInvalidatedAsync(Guid gameId, CancellationToken cancellationToken = default)
             => Task.CompletedTask;
     }
 

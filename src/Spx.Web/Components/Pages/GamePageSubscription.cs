@@ -6,11 +6,13 @@ namespace Spx.Web.Components.Pages;
 internal sealed class GamePageSubscription(
     IClusterClient clusterClient,
     Guid gameId,
-    Func<Task> onLobbyChanged,
-    Func<Task> onMessagesChanged)
-    : IGameLobbyObserver, IAsyncDisposable
+    Func<Task> onLobbyInvalidated,
+    Func<Task> onSessionInvalidated,
+    Func<Task> onMessagesInvalidated,
+    Func<Task> onPresenceInvalidated)
+    : IGameInvalidationObserver, IAsyncDisposable
 {
-    private IGameLobbyObserver? observerReference;
+    private IGameInvalidationObserver? observerReference;
     private bool isSubscribed;
 
     public Guid GameId { get; } = gameId;
@@ -22,39 +24,59 @@ internal sealed class GamePageSubscription(
             return;
         }
 
-        observerReference = clusterClient.CreateObjectReference<IGameLobbyObserver>(this);
+        observerReference = clusterClient.CreateObjectReference<IGameInvalidationObserver>(this);
 
         try
         {
-            await clusterClient.GetGrain<IGameLobbyEventsGrain>(GameId).Subscribe(observerReference);
+            await clusterClient.GetGrain<IGameInvalidationGrain>(GameId).Subscribe(observerReference);
             isSubscribed = true;
         }
         catch
         {
-            clusterClient.DeleteObjectReference<IGameLobbyObserver>(observerReference);
+            clusterClient.DeleteObjectReference<IGameInvalidationObserver>(observerReference);
             observerReference = null;
             throw;
         }
     }
 
-    public void OnLobbyChanged(Guid changedGameId)
+    public void OnLobbyInvalidated(Guid changedGameId)
     {
         if (changedGameId != GameId || !isSubscribed)
         {
             return;
         }
 
-        _ = onLobbyChanged();
+        _ = onLobbyInvalidated();
     }
 
-    public void OnMessagesChanged(Guid changedGameId)
+    public void OnSessionInvalidated(Guid changedGameId)
     {
         if (changedGameId != GameId || !isSubscribed)
         {
             return;
         }
 
-        _ = onMessagesChanged();
+        _ = onSessionInvalidated();
+    }
+
+    public void OnMessagesInvalidated(Guid changedGameId)
+    {
+        if (changedGameId != GameId || !isSubscribed)
+        {
+            return;
+        }
+
+        _ = onMessagesInvalidated();
+    }
+
+    public void OnPresenceInvalidated(Guid changedGameId)
+    {
+        if (changedGameId != GameId || !isSubscribed)
+        {
+            return;
+        }
+
+        _ = onPresenceInvalidated();
     }
 
     public async ValueTask DisposeAsync()
@@ -66,11 +88,11 @@ internal sealed class GamePageSubscription(
 
         try
         {
-            await clusterClient.GetGrain<IGameLobbyEventsGrain>(GameId).Unsubscribe(observerReference);
+            await clusterClient.GetGrain<IGameInvalidationGrain>(GameId).Unsubscribe(observerReference);
         }
         finally
         {
-            clusterClient.DeleteObjectReference<IGameLobbyObserver>(observerReference);
+            clusterClient.DeleteObjectReference<IGameInvalidationObserver>(observerReference);
             observerReference = null;
             isSubscribed = false;
         }

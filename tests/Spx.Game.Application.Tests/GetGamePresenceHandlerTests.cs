@@ -1,90 +1,63 @@
 using Microsoft.Extensions.DependencyInjection;
 using Spx.Contracts;
 using Spx.Game.Application;
-using Spx.Game.Application.Features.SubmitGameMove;
+using Spx.Game.Application.Features.GetGamePresence;
 using Xunit;
 
 namespace Spx.Game.Application.Tests;
 
-public sealed class SubmitGameMoveHandlerTests
+public sealed class GetGamePresenceHandlerTests
 {
     [Fact]
-    public async Task HandleAsync_returns_failure_when_session_service_rejects_move()
+    public async Task HandleAsync_returns_presence_from_service()
     {
-        var sessionService = new FakeGameSessionService
-        {
-            SubmitResult = new SubmitGameMoveFailed("The submitted move does not match the current round.")
-        };
-        using var services = CreateServices(sessionService);
+        var presence = new GamePresenceView([Guid.NewGuid()]);
+        using var services = CreateServices(new FakeGamePresenceService { Presence = presence });
 
-        var handler = services.GetRequiredService<ISubmitGameMoveHandler>();
-        var result = await handler.HandleAsync(Guid.NewGuid(), "user-1", 2, GameMove.Bluon);
+        var handler = services.GetRequiredService<IGetGamePresenceHandler>();
+        var result = await handler.HandleAsync(Guid.NewGuid());
 
-        var failed = Assert.IsType<SubmitGameMoveFailed>(result);
-        Assert.Equal("The submitted move does not match the current round.", failed.ErrorMessage);
+        Assert.Equal(presence, result);
     }
 
-    [Fact]
-    public async Task HandleAsync_returns_session_on_success()
-    {
-        var session = new GameSessionView(
-            Guid.NewGuid(),
-            4,
-            new GameSessionParticipantView(Guid.NewGuid(), "user-1"),
-            new GameSessionParticipantView(Guid.NewGuid(), "user-2"),
-            true,
-            true,
-            null);
-
-        var sessionService = new FakeGameSessionService
-        {
-            SubmitResult = new SubmitGameMoveSucceeded(session)
-        };
-        var sessionInvalidationPublisher = new FakeGameSessionInvalidationPublisher();
-        using var services = CreateServices(sessionService, sessionInvalidationPublisher);
-
-        var handler = services.GetRequiredService<ISubmitGameMoveHandler>();
-        var result = await handler.HandleAsync(session.GameId, "user-1", expectedRoundNumber: 4, GameMove.Redite);
-
-        var succeeded = Assert.IsType<SubmitGameMoveSucceeded>(result);
-        Assert.Equal(session, succeeded.Session);
-        Assert.Equal(session.GameId, sessionInvalidationPublisher.PublishedGameId);
-    }
-
-    private static ServiceProvider CreateServices(FakeGameSessionService sessionService, FakeGameSessionInvalidationPublisher? sessionInvalidationPublisher = null)
+    private static ServiceProvider CreateServices(FakeGamePresenceService presenceService)
     {
         var services = new ServiceCollection();
         services.AddGameApplication();
-        services.AddSingleton<IGameSessionService>(sessionService);
+        services.AddSingleton<IGamePresenceService>(presenceService);
+        services.AddSingleton<IGameSessionService, StubGameSessionService>();
         services.AddSingleton<IGamePersistence, StubGamePersistence>();
-        services.AddSingleton<IGameLobbyInvalidationPublisher, StubGameLobbyEventsPublisher>();
-        services.AddSingleton<IGameSessionInvalidationPublisher>(sessionInvalidationPublisher ?? new FakeGameSessionInvalidationPublisher());
-        services.AddSingleton<IGameMessageInvalidationPublisher, StubGameMessageEventsPublisher>();
+        services.AddSingleton<IGameLobbyInvalidationPublisher, StubGameLobbyInvalidationPublisher>();
+        services.AddSingleton<IGameSessionInvalidationPublisher, StubGameSessionInvalidationPublisher>();
+        services.AddSingleton<IGameMessageInvalidationPublisher, StubGameMessageInvalidationPublisher>();
         services.AddSingleton<IGameMessagePersistence, StubGameMessagePersistence>();
         return services.BuildServiceProvider();
     }
 
-    private sealed class FakeGameSessionService : IGameSessionService
+    private sealed class FakeGamePresenceService : IGamePresenceService
     {
-        public SubmitGameMoveOutcome SubmitResult { get; init; }
-            = new SubmitGameMoveSucceeded(
-                new GameSessionView(
-                    Guid.NewGuid(),
-                    1,
-                    new GameSessionParticipantView(Guid.NewGuid(), "user-1"),
-                    new GameSessionParticipantView(Guid.NewGuid(), "user-2"),
-                    false,
-                    false,
-                    null));
+        public GamePresenceView Presence { get; init; } = GamePresenceView.Empty;
 
+        public Task<GamePresenceView> GetPresenceAsync(Guid gameId, CancellationToken cancellationToken = default)
+            => Task.FromResult(Presence);
+
+        public Task UpsertPresenceLeaseAsync(Guid gameId, Guid playerId, Guid connectionId, DateTime expiresAtUtc, CancellationToken cancellationToken = default)
+            => throw new NotSupportedException();
+
+        public Task RemovePresenceLeaseAsync(Guid gameId, Guid playerId, Guid connectionId, CancellationToken cancellationToken = default)
+            => throw new NotSupportedException();
+    }
+
+    private sealed class StubGameSessionService : IGameSessionService
+    {
         public Task<bool> EnsureSessionAsync(Guid gameId, IReadOnlyList<GameSessionParticipantView> players, CancellationToken cancellationToken = default)
-            => Task.FromResult(true);
+            => throw new NotSupportedException();
 
         public Task<GameSessionView?> GetSessionViewAsync(Guid gameId, string userId, CancellationToken cancellationToken = default)
             => throw new NotSupportedException();
 
         public Task<SubmitGameMoveOutcome> SubmitMoveAsync(Guid gameId, SubmitGameMoveCommand command, CancellationToken cancellationToken = default)
-            => Task.FromResult(SubmitResult);
+            => throw new NotSupportedException();
 
         public Task<GameSessionView> AbandonAsync(Guid gameId, string userId, CancellationToken cancellationToken = default)
             => throw new NotSupportedException();
@@ -111,24 +84,19 @@ public sealed class SubmitGameMoveHandlerTests
             => throw new NotSupportedException();
     }
 
-    private sealed class StubGameLobbyEventsPublisher : IGameLobbyInvalidationPublisher
+    private sealed class StubGameLobbyInvalidationPublisher : IGameLobbyInvalidationPublisher
     {
         public Task PublishLobbyInvalidatedAsync(Guid gameId, CancellationToken cancellationToken = default)
             => Task.CompletedTask;
     }
 
-    private sealed class FakeGameSessionInvalidationPublisher : IGameSessionInvalidationPublisher
+    private sealed class StubGameSessionInvalidationPublisher : IGameSessionInvalidationPublisher
     {
-        public Guid? PublishedGameId { get; private set; }
-
         public Task PublishSessionInvalidatedAsync(Guid gameId, CancellationToken cancellationToken = default)
-        {
-            PublishedGameId = gameId;
-            return Task.CompletedTask;
-        }
+            => Task.CompletedTask;
     }
 
-    private sealed class StubGameMessageEventsPublisher : IGameMessageInvalidationPublisher
+    private sealed class StubGameMessageInvalidationPublisher : IGameMessageInvalidationPublisher
     {
         public Task PublishMessagesInvalidatedAsync(Guid gameId, CancellationToken cancellationToken = default)
             => Task.CompletedTask;

@@ -4,6 +4,8 @@ using Spx.Game.Application.Features.CreateGame;
 using Spx.Game.Application.Features.DeleteMessage;
 using Spx.Game.Application.Features.EditMessage;
 using Spx.Game.Application.Features.GetGamePage;
+using Spx.Game.Application.Features.GetGamePresence;
+using Spx.Game.Application.Features.GetGameSession;
 using Spx.Game.Application.Features.GetGameLobby;
 using Spx.Game.Application.Features.GetMessageUpdates;
 using Spx.Game.Application.Features.GetMessages;
@@ -25,6 +27,8 @@ public static class GameApplicationServiceCollectionExtensions
         services.AddScoped<ILeaveGameHandler, LeaveGameHandler>();
         services.AddScoped<IGetGameLobbyHandler, GetGameLobbyHandler>();
         services.AddScoped<IGetGamePageHandler, GetGamePageHandler>();
+        services.AddScoped<IGetGamePresenceHandler, GetGamePresenceHandler>();
+        services.AddScoped<IGetGameSessionHandler, GetGameSessionHandler>();
         services.AddScoped<IGetUserGamesHandler, GetUserGamesHandler>();
         services.AddScoped<ISubmitGameMoveHandler, SubmitGameMoveHandler>();
 

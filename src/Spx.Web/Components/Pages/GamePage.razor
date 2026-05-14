@@ -6,6 +6,9 @@
 @using System.Security.Claims
 @inject IClusterClient ClusterClient
 @inject IGetGamePageHandler GetGamePageHandler
+@inject IGetGamePresenceHandler GetGamePresenceHandler
+@inject IGetGameSessionHandler GetGameSessionHandler
+@inject IGamePresenceService GamePresenceService
 @inject ILeaveGameHandler LeaveGameHandler
 @inject IGetMessagesHandler GetMessagesHandler
 @inject IGetMessageUpdatesHandler GetMessageUpdatesHandler
@@ -130,7 +133,7 @@ else
         </section>
 
         <div class="grid gap-6 xl:grid-cols-[1.4fr_1fr]">
-            <GameRosterPanel Lobby="@lobby" />
+            <GameRosterPanel Lobby="@lobby" Presence="@presence" />
 
             <GameCurrentUserPanel Lobby="@lobby"
                                   IsLeaving="@isLeaving"
@@ -147,9 +150,12 @@ else
     private Task<AuthenticationState> AuthenticationStateTask { get; set; } = default!;
 
     private readonly List<TimelineEntryState> timelineItems = [];
+    private const int PresenceLeaseSeconds = 10;
+    private const int PresenceRenewalSeconds = 5;
 
     private GameLobbyView? lobby;
     private GameSessionView? session;
+    private GamePresenceView presence = GamePresenceView.Empty;
     private string currentUserId = string.Empty;
     private string? errorMessage;
     private string? messageError;
@@ -174,6 +180,12 @@ else
     private double restoreScrollTop;
     private bool shouldRestoreScrollAfterOlderLoad;
     private bool shouldScrollTimelineToBottom;
+    private Guid? trackedPresenceGameId;
+    private Guid? trackedPresencePlayerId;
+    private Guid? presenceConnectionId;
+    private CancellationTokenSource? presenceRenewalCts;
+    private PeriodicTimer? presenceRenewalTimer;
+    private Task? presenceRenewalTask;
 
     protected override async Task OnParametersSetAsync()
     {
@@ -182,6 +194,7 @@ else
 
         if (lobby is null)
         {
+            await StopPresenceTrackingAsync();
             await DisposeSubscriptionsAsync();
             ResetTimelineState();
             return;
@@ -190,14 +203,24 @@ else
         var isNewGame = liveSubscription?.GameId != lobby.GameId;
         if (isNewGame)
         {
+            await StopPresenceTrackingAsync();
             await DisposeSubscriptionsAsync();
             ResetTimelineState();
             await LoadInitialMessagesAsync();
-            liveSubscription = new GamePageSubscription(ClusterClient, lobby.GameId, HandleLobbyChangedAsync, HandleMessagesChangedAsync);
+            liveSubscription = new GamePageSubscription(
+                ClusterClient,
+                lobby.GameId,
+                HandleLobbyInvalidatedAsync,
+                HandleSessionInvalidatedAsync,
+                HandleMessagesInvalidatedAsync,
+                HandlePresenceInvalidatedAsync);
             await liveSubscription.SubscribeAsync();
+            await EnsurePresenceTrackingAsync();
             shouldScrollTimelineToBottom = true;
             return;
         }
+
+        await EnsurePresenceTrackingAsync();
 
         if (timelineItems.Count == 0)
         {
@@ -231,11 +254,13 @@ else
             var page = await GetGamePageHandler.HandleAsync(GameId, currentUserId);
             lobby = page?.Lobby;
             session = page?.Session;
+            presence = page?.Presence ?? GamePresenceView.Empty;
         }
         catch (Exception exception)
         {
             lobby = null;
             session = null;
+            presence = GamePresenceView.Empty;
             Logger.LogError(exception, "Failed to load game page {GameId} for user {UserId}.", GameId, currentUserId);
             errorMessage = "We couldn't load this game right now. Refresh and try again.";
         }
@@ -245,17 +270,69 @@ else
         }
     }
 
-    private Task HandleLobbyChangedAsync()
+    private async Task LoadPresenceAsync()
+    {
+        if (lobby is null)
+        {
+            presence = GamePresenceView.Empty;
+            return;
+        }
+
+        try
+        {
+            presence = await GetGamePresenceHandler.HandleAsync(lobby.GameId);
+        }
+        catch (Exception exception)
+        {
+            Logger.LogError(exception, "Failed to refresh presence for game {GameId} user {UserId}.", lobby.GameId, currentUserId);
+        }
+    }
+
+    private async Task LoadSessionAsync()
+    {
+        if (lobby is null)
+        {
+            session = null;
+            return;
+        }
+
+        try
+        {
+            session = await GetGameSessionHandler.HandleAsync(lobby.GameId, currentUserId);
+        }
+        catch (Exception exception)
+        {
+            Logger.LogError(exception, "Failed to refresh session state for game {GameId} user {UserId}.", lobby.GameId, currentUserId);
+            gameplayError ??= "We couldn't refresh the game state right now. Please try again.";
+        }
+    }
+
+    private Task HandleLobbyInvalidatedAsync()
         => InvokeAsync(async () =>
         {
             await LoadPageAsync();
+            await EnsurePresenceTrackingAsync();
             StateHasChanged();
         });
 
-    private Task HandleMessagesChangedAsync()
+    private Task HandleSessionInvalidatedAsync()
+        => InvokeAsync(async () =>
+        {
+            await LoadSessionAsync();
+            StateHasChanged();
+        });
+
+    private Task HandleMessagesInvalidatedAsync()
         => InvokeAsync(async () =>
         {
             await LoadMessageUpdatesAsync();
+            StateHasChanged();
+        });
+
+    private Task HandlePresenceInvalidatedAsync()
+        => InvokeAsync(async () =>
+        {
+            await LoadPresenceAsync();
             StateHasChanged();
         });
 
@@ -644,6 +721,7 @@ else
 
     public async ValueTask DisposeAsync()
     {
+        await StopPresenceTrackingAsync();
         await DisposeSubscriptionsAsync();
     }
 
@@ -681,6 +759,128 @@ else
         restoreScrollTop = 0;
         shouldRestoreScrollAfterOlderLoad = false;
         shouldScrollTimelineToBottom = false;
+    }
+
+    private async Task EnsurePresenceTrackingAsync()
+    {
+        if (lobby is null || !lobby.IsCurrentUserActive)
+        {
+            await StopPresenceTrackingAsync();
+            return;
+        }
+
+        var currentPlayerId = lobby.Players.SingleOrDefault(player => player.IsCurrentUser)?.PlayerId;
+        if (!currentPlayerId.HasValue)
+        {
+            await StopPresenceTrackingAsync();
+            return;
+        }
+
+        if (trackedPresenceGameId == lobby.GameId
+            && trackedPresencePlayerId == currentPlayerId
+            && presenceConnectionId.HasValue
+            && presenceRenewalTask is not null)
+        {
+            return;
+        }
+
+        await StopPresenceTrackingAsync();
+
+        trackedPresenceGameId = lobby.GameId;
+        trackedPresencePlayerId = currentPlayerId;
+        presenceConnectionId = Guid.NewGuid();
+        presenceRenewalCts = new CancellationTokenSource();
+        presenceRenewalTimer = new PeriodicTimer(TimeSpan.FromSeconds(PresenceRenewalSeconds));
+
+        await PublishPresenceLeaseAsync(lobby.GameId, currentPlayerId.Value, presenceConnectionId.Value, presenceRenewalCts.Token);
+        await LoadPresenceAsync();
+        presenceRenewalTask = RenewPresenceAsync(lobby.GameId, currentPlayerId.Value, presenceConnectionId.Value, presenceRenewalCts.Token);
+    }
+
+    private async Task RenewPresenceAsync(Guid gameId, Guid playerId, Guid connectionId, CancellationToken cancellationToken)
+    {
+        if (presenceRenewalTimer is null)
+        {
+            return;
+        }
+
+        try
+        {
+            while (await presenceRenewalTimer.WaitForNextTickAsync(cancellationToken))
+            {
+                await PublishPresenceLeaseAsync(gameId, playerId, connectionId, cancellationToken);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
+    }
+
+    private async Task PublishPresenceLeaseAsync(Guid gameId, Guid playerId, Guid connectionId, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await GamePresenceService.UpsertPresenceLeaseAsync(
+                gameId,
+                playerId,
+                connectionId,
+                DateTime.UtcNow.AddSeconds(PresenceLeaseSeconds),
+                cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (Exception exception)
+        {
+            Logger.LogWarning(exception, "Failed to renew presence for game {GameId} player {PlayerId}.", gameId, playerId);
+        }
+    }
+
+    private async Task StopPresenceTrackingAsync()
+    {
+        var gameId = trackedPresenceGameId;
+        var playerId = trackedPresencePlayerId;
+        var connectionId = presenceConnectionId;
+        var timer = presenceRenewalTimer;
+        var cancellationSource = presenceRenewalCts;
+        var renewalTask = presenceRenewalTask;
+
+        trackedPresenceGameId = null;
+        trackedPresencePlayerId = null;
+        presenceConnectionId = null;
+        presenceRenewalTimer = null;
+        presenceRenewalCts = null;
+        presenceRenewalTask = null;
+
+        cancellationSource?.Cancel();
+
+        if (renewalTask is not null)
+        {
+            try
+            {
+                await renewalTask;
+            }
+            catch (OperationCanceledException)
+            {
+            }
+        }
+
+        timer?.Dispose();
+        cancellationSource?.Dispose();
+
+        if (!gameId.HasValue || !playerId.HasValue || !connectionId.HasValue)
+        {
+            return;
+        }
+
+        try
+        {
+            await GamePresenceService.RemovePresenceLeaseAsync(gameId.Value, playerId.Value, connectionId.Value);
+        }
+        catch (Exception exception)
+        {
+            Logger.LogWarning(exception, "Failed to remove presence lease for game {GameId} player {PlayerId}.", gameId.Value, playerId.Value);
+        }
     }
 
     private void UpsertPersistedMessages(IEnumerable<GameTimelineEntryView> messages)

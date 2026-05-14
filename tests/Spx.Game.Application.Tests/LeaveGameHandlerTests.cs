@@ -65,8 +65,9 @@ public sealed class LeaveGameHandlerTests
         services.AddGameApplication();
         services.AddSingleton<IGamePersistence>(persistence);
         services.AddSingleton<IGameSessionService>(sessionService);
-        services.AddSingleton<IGameLobbyEventsPublisher>(lobbyPublisher);
-        services.AddSingleton<IGameMessageEventsPublisher>(messagePublisher);
+        services.AddSingleton<IGameLobbyInvalidationPublisher>(lobbyPublisher);
+        services.AddSingleton<IGameSessionInvalidationPublisher, StubGameSessionInvalidationPublisher>();
+        services.AddSingleton<IGameMessageInvalidationPublisher>(messagePublisher);
         services.AddSingleton<IGameMessagePersistence, FakeGameMessagePersistence>();
         return services.BuildServiceProvider();
     }
@@ -103,26 +104,32 @@ public sealed class LeaveGameHandlerTests
             => throw new NotSupportedException();
     }
 
-    private sealed class FakeGameLobbyEventsPublisher : IGameLobbyEventsPublisher
+    private sealed class FakeGameLobbyEventsPublisher : IGameLobbyInvalidationPublisher
     {
         public List<Guid> PublishedGameIds { get; } = [];
 
-        public Task PublishLobbyChangedAsync(Guid gameId, CancellationToken cancellationToken = default)
+        public Task PublishLobbyInvalidatedAsync(Guid gameId, CancellationToken cancellationToken = default)
         {
             PublishedGameIds.Add(gameId);
             return Task.CompletedTask;
         }
     }
 
-    private sealed class FakeGameMessageEventsPublisher : IGameMessageEventsPublisher
+    private sealed class FakeGameMessageEventsPublisher : IGameMessageInvalidationPublisher
     {
         public List<Guid> PublishedGameIds { get; } = [];
 
-        public Task PublishMessagesChangedAsync(Guid gameId, CancellationToken cancellationToken = default)
+        public Task PublishMessagesInvalidatedAsync(Guid gameId, CancellationToken cancellationToken = default)
         {
             PublishedGameIds.Add(gameId);
             return Task.CompletedTask;
         }
+    }
+
+    private sealed class StubGameSessionInvalidationPublisher : IGameSessionInvalidationPublisher
+    {
+        public Task PublishSessionInvalidatedAsync(Guid gameId, CancellationToken cancellationToken = default)
+            => Task.CompletedTask;
     }
 
     private sealed class FakeGameMessagePersistence : IGameMessagePersistence

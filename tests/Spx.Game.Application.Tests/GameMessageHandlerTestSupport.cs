@@ -11,18 +11,19 @@ internal static class GameMessageHandlerTestServices
         var services = new ServiceCollection();
         services.AddGameApplication();
         services.AddSingleton<IGamePersistence, StubGamePersistence>();
-        services.AddSingleton<IGameLobbyEventsPublisher, StubGameLobbyEventsPublisher>();
-        services.AddSingleton<IGameMessageEventsPublisher>(publisher);
+        services.AddSingleton<IGameLobbyInvalidationPublisher, StubGameLobbyEventsPublisher>();
+        services.AddSingleton<IGameSessionInvalidationPublisher, StubGameSessionInvalidationPublisher>();
+        services.AddSingleton<IGameMessageInvalidationPublisher>(publisher);
         services.AddSingleton<IGameMessagePersistence>(persistence);
         return services.BuildServiceProvider();
     }
 }
 
-internal sealed class FakeGameMessageEventsPublisher : IGameMessageEventsPublisher
+internal sealed class FakeGameMessageEventsPublisher : IGameMessageInvalidationPublisher
 {
     public List<Guid> PublishedGameIds { get; } = [];
 
-    public Task PublishMessagesChangedAsync(Guid gameId, CancellationToken cancellationToken = default)
+    public Task PublishMessagesInvalidatedAsync(Guid gameId, CancellationToken cancellationToken = default)
     {
         PublishedGameIds.Add(gameId);
         return Task.CompletedTask;
@@ -121,8 +122,14 @@ internal sealed class StubGamePersistence : IGamePersistence
         => throw new NotSupportedException();
 }
 
-internal sealed class StubGameLobbyEventsPublisher : IGameLobbyEventsPublisher
+internal sealed class StubGameLobbyEventsPublisher : IGameLobbyInvalidationPublisher
 {
-    public Task PublishLobbyChangedAsync(Guid gameId, CancellationToken cancellationToken = default)
+    public Task PublishLobbyInvalidatedAsync(Guid gameId, CancellationToken cancellationToken = default)
+        => Task.CompletedTask;
+}
+
+internal sealed class StubGameSessionInvalidationPublisher : IGameSessionInvalidationPublisher
+{
+    public Task PublishSessionInvalidatedAsync(Guid gameId, CancellationToken cancellationToken = default)
         => Task.CompletedTask;
 }

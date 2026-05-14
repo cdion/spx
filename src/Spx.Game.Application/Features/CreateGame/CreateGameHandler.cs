@@ -2,8 +2,8 @@ namespace Spx.Game.Application.Features.CreateGame;
 
 internal sealed class CreateGameHandler(
     IGamePersistence gamePersistence,
-    IGameLobbyEventsPublisher gameLobbyEventsPublisher,
-    IGameMessageEventsPublisher gameMessageEventsPublisher)
+    IGameLobbyInvalidationPublisher gameLobbyInvalidationPublisher,
+    IGameMessageInvalidationPublisher gameMessageInvalidationPublisher)
     : ICreateGameHandler
 {
     private const int MaxCreateAttempts = 10;
@@ -28,8 +28,8 @@ internal sealed class CreateGameHandler(
 
             if (gameId.HasValue)
             {
-                await gameLobbyEventsPublisher.PublishLobbyChangedAsync(gameId.Value, cancellationToken);
-                await gameMessageEventsPublisher.PublishMessagesChangedAsync(gameId.Value, cancellationToken);
+                await gameLobbyInvalidationPublisher.PublishLobbyInvalidatedAsync(gameId.Value, cancellationToken);
+                await gameMessageInvalidationPublisher.PublishMessagesInvalidatedAsync(gameId.Value, cancellationToken);
                 return new GameCommandSucceeded(gameId.Value);
             }
         }

@@ -1,7 +1,7 @@
 namespace Spx.Game.Application.Features.EditMessage;
 
 internal sealed class EditMessageHandler(
-    IGameMessageEventsPublisher gameMessageEventsPublisher,
+    IGameMessageInvalidationPublisher gameMessageInvalidationPublisher,
     IGameMessagePersistence gameMessagePersistence) : IEditMessageHandler
 {
     public async Task<GameMessageCommandOutcome> HandleAsync(Guid gameId, string userId, Guid messageId, UpdateGameMessageRequest request, CancellationToken cancellationToken = default)
@@ -14,7 +14,7 @@ internal sealed class EditMessageHandler(
         var result = await gameMessagePersistence.EditMessageAsync(gameId, userId, messageId, body, cancellationToken);
         if (result is GameMessageCommandSucceeded)
         {
-            await gameMessageEventsPublisher.PublishMessagesChangedAsync(gameId, cancellationToken);
+            await gameMessageInvalidationPublisher.PublishMessagesInvalidatedAsync(gameId, cancellationToken);
         }
 
         return result;

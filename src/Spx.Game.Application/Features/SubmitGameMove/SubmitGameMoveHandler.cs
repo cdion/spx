@@ -4,7 +4,7 @@ namespace Spx.Game.Application.Features.SubmitGameMove;
 
 internal sealed class SubmitGameMoveHandler(
     IGameSessionService gameSessionService,
-    IGameLobbyEventsPublisher gameLobbyEventsPublisher) : ISubmitGameMoveHandler
+    IGameSessionInvalidationPublisher gameSessionInvalidationPublisher) : ISubmitGameMoveHandler
 {
     public async Task<SubmitGameMoveOutcome> HandleAsync(
         Guid gameId,
@@ -23,7 +23,7 @@ internal sealed class SubmitGameMoveHandler(
             // Publish state change so opponent client sees progression promptly
             try
             {
-                await gameLobbyEventsPublisher.PublishLobbyChangedAsync(gameId, cancellationToken);
+                await gameSessionInvalidationPublisher.PublishSessionInvalidatedAsync(gameId, cancellationToken);
             }
             catch
             {
