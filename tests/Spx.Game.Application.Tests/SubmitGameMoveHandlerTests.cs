@@ -13,7 +13,7 @@ public sealed class SubmitGameMoveHandlerTests
     {
         var sessionService = new FakeGameSessionService
         {
-            SubmitException = new InvalidOperationException("The submitted move does not match the current round.")
+            SubmitResult = new SubmitGameMoveFailed("The submitted move does not match the current round.")
         };
         using var services = CreateServices(sessionService);
 
@@ -30,15 +30,15 @@ public sealed class SubmitGameMoveHandlerTests
         var session = new GameSessionView(
             Guid.NewGuid(),
             4,
-            new GameSessionParticipantView(Guid.NewGuid(), "user-1", "Captain Red"),
-            new GameSessionParticipantView(Guid.NewGuid(), "user-2", "Captain Blue"),
+            new GameSessionParticipantView(Guid.NewGuid(), "user-1"),
+            new GameSessionParticipantView(Guid.NewGuid(), "user-2"),
             true,
             true,
             null);
 
         var sessionService = new FakeGameSessionService
         {
-            SubmitResult = session
+            SubmitResult = new SubmitGameMoveSucceeded(session)
         };
         using var services = CreateServices(sessionService);
 
@@ -63,17 +63,16 @@ public sealed class SubmitGameMoveHandlerTests
 
     private sealed class FakeGameSessionService : IGameSessionService
     {
-        public InvalidOperationException? SubmitException { get; init; }
-
-        public GameSessionView SubmitResult { get; init; }
-            = new(
-                Guid.NewGuid(),
-                1,
-                new GameSessionParticipantView(Guid.NewGuid(), "user-1", "Captain Red"),
-                new GameSessionParticipantView(Guid.NewGuid(), "user-2", "Captain Blue"),
-                false,
-                false,
-                null);
+        public SubmitGameMoveOutcome SubmitResult { get; init; }
+            = new SubmitGameMoveSucceeded(
+                new GameSessionView(
+                    Guid.NewGuid(),
+                    1,
+                    new GameSessionParticipantView(Guid.NewGuid(), "user-1"),
+                    new GameSessionParticipantView(Guid.NewGuid(), "user-2"),
+                    false,
+                    false,
+                    null));
 
         public Task<bool> EnsureSessionAsync(Guid gameId, IReadOnlyList<GameSessionParticipantView> players, CancellationToken cancellationToken = default)
             => Task.FromResult(true);
@@ -81,15 +80,8 @@ public sealed class SubmitGameMoveHandlerTests
         public Task<GameSessionView?> GetSessionViewAsync(Guid gameId, string userId, CancellationToken cancellationToken = default)
             => throw new NotSupportedException();
 
-        public Task<GameSessionView> SubmitMoveAsync(Guid gameId, SubmitGameMoveCommand command, CancellationToken cancellationToken = default)
-        {
-            if (SubmitException is not null)
-            {
-                throw SubmitException;
-            }
-
-            return Task.FromResult(SubmitResult);
-        }
+        public Task<SubmitGameMoveOutcome> SubmitMoveAsync(Guid gameId, SubmitGameMoveCommand command, CancellationToken cancellationToken = default)
+            => Task.FromResult(SubmitResult);
 
         public Task<GameSessionView> AbandonAsync(Guid gameId, string userId, CancellationToken cancellationToken = default)
             => throw new NotSupportedException();

@@ -8,6 +8,7 @@ public static class AccountWebServiceCollectionExtensions
 {
     public static IServiceCollection AddAccountWebAdapters(this IServiceCollection services)
     {
+        services.AddSingleton<AccountLinkBuilder>();
         services.AddScoped<IAccountIdentity, IdentityAccountIdentityAdapter>();
 
         return services;

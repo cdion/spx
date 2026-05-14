@@ -25,6 +25,7 @@ builder.Services.AddDbContextFactory<ApplicationDbContext>(options =>
     options.UseNpgsql(connectionString);
 });
 builder.UseOrleansClient();
+builder.Services.Configure<AppUrlOptions>(builder.Configuration.GetSection(AppUrlOptions.SectionName));
 builder.Services.Configure<ResendOptions>(builder.Configuration.GetSection(ResendOptions.SectionName));
 
 // Add services to the container.
@@ -43,7 +44,6 @@ builder.Services.ConfigureApplicationCookie(options =>
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
 {
     options.ForwardedHeaders = ForwardedHeaders.XForwardedFor
-        | ForwardedHeaders.XForwardedHost
         | ForwardedHeaders.XForwardedProto;
     options.KnownIPNetworks.Clear();
     options.KnownProxies.Clear();

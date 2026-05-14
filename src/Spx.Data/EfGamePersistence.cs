@@ -212,7 +212,7 @@ internal sealed class EfGamePersistence(
             .AsNoTracking()
             .Where(entry => entry.GameId == gameId && entry.LeftAtUtc == null)
             .OrderBy(entry => entry.JoinedAtUtc)
-            .Select(entry => new GameSessionParticipantView(entry.Id, entry.UserId, entry.Name))
+            .Select(entry => new GameSessionParticipantView(entry.Id, entry.UserId))
             .ToListAsync(cancellationToken);
 
         return players.Count == 0 ? null : players;

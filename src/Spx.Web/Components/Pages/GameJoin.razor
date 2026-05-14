@@ -2,6 +2,7 @@
 @attribute [Authorize]
 @using System.Security.Claims
 @inject IJoinGameHandler JoinGameHandler
+@inject ILogger<GameJoin> Logger
 @inject NavigationManager Navigation
 
 <PageTitle>Join Game</PageTitle>
@@ -84,7 +85,8 @@
         }
         catch (Exception exception)
         {
-            errorMessage = exception.Message;
+            Logger.LogError(exception, "Failed to join a game for the current user.");
+            errorMessage = "We couldn't join that game right now. Please try again.";
         }
         finally
         {

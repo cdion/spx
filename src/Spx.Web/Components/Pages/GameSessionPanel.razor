@@ -41,8 +41,8 @@
             <article class="ui-panel-row items-start">
                 <div class="space-y-1">
                     <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Matchup</p>
-                    <p class="text-base font-semibold text-white">@Session.CurrentPlayer.DisplayName</p>
-                    <p class="text-sm text-slate-400">vs @Session.OpponentPlayer.DisplayName</p>
+                    <p class="text-base font-semibold text-white">@CurrentPlayerName</p>
+                    <p class="text-sm text-slate-400">vs @OpponentPlayerName</p>
                 </div>
                 <span class="ui-status-badge">@GetStatusBadgeText()</span>
             </article>
@@ -55,7 +55,7 @@
                 <p class="mt-2 text-base font-semibold text-white">Round @Session.LastResolvedRound.RoundNumber</p>
                 <p class="mt-2">
                     You played <span class="font-semibold text-white">@FormatMove(Session.LastResolvedRound.Result.CurrentPlayerMove)</span>.
-                    @Session.OpponentPlayer.DisplayName played <span class="font-semibold text-white">@FormatMove(Session.LastResolvedRound.Result.OpponentMove)</span>.
+                    @OpponentPlayerName played <span class="font-semibold text-white">@FormatMove(Session.LastResolvedRound.Result.OpponentMove)</span>.
                 </p>
                 <p class="mt-2 text-sky-100">@GetOutcomeMessage(Session.LastResolvedRound.Result.Outcome)</p>
             </article>
@@ -76,7 +76,7 @@
             @if (Session.HasSubmittedMove)
             {
                 <p class="text-sm leading-6 text-slate-400">
-                    Your move is locked in for round @Session.RoundNumber. Results appear when @Session.OpponentPlayer.DisplayName submits.
+                    Your move is locked in for round @Session.RoundNumber. Results appear when @OpponentPlayerName submits.
                 </p>
             }
         </div>
@@ -107,6 +107,14 @@
             && !Session.HasSubmittedMove
             && !IsSubmittingMove;
 
+    private string CurrentPlayerName
+        => ResolvePlayerName(Session?.CurrentPlayer.PlayerId) ?? Lobby.CurrentPlayerName;
+
+    private string OpponentPlayerName
+        => ResolvePlayerName(Session?.OpponentPlayer.PlayerId)
+            ?? Lobby.Players.FirstOrDefault(player => !player.IsCurrentUser)?.Name
+            ?? "your opponent";
+
     private string GetHeadline()
         => Session switch
         {
@@ -123,8 +131,8 @@
             null when !Lobby.IsCurrentUserActive => "Gameplay is only available while you still occupy an active seat in the match.",
             null when Lobby.Players.Count < Lobby.MaxPlayers => "The match begins automatically after another player joins this lobby.",
             null => "The match is active, but your session view is still catching up.",
-            { HasSubmittedMove: true } => $"Waiting for {Session!.OpponentPlayer.DisplayName} to submit a move for round {Session.RoundNumber}.",
-            _ => $"Round {Session!.RoundNumber} is ready. Submit one move for {Session.OpponentPlayer.DisplayName}."
+            { HasSubmittedMove: true } => $"Waiting for {OpponentPlayerName} to submit a move for round {Session.RoundNumber}.",
+            _ => $"Round {Session!.RoundNumber} is ready. Submit one move for {OpponentPlayerName}."
         };
 
     private string GetEmptyStateMessage()
@@ -141,6 +149,24 @@
                 ? "Waiting"
                 : "Ready";
 
+    private string? ResolvePlayerName(Guid? playerId)
+    {
+        if (!playerId.HasValue)
+        {
+            return null;
+        }
+
+        foreach (var player in Lobby.Players)
+        {
+            if (player.PlayerId == playerId.Value)
+            {
+                return player.Name;
+            }
+        }
+
+        return null;
+    }
+
     private static string FormatMove(GameMove move)
         => move switch
         {
@@ -155,7 +181,7 @@
         {
             GameRoundOutcome.Draw => "The round was a draw.",
             GameRoundOutcome.CurrentPlayerWins => "You won the round.",
-            GameRoundOutcome.OpponentWins => $"{Session!.OpponentPlayer.DisplayName} won the round.",
+            GameRoundOutcome.OpponentWins => $"{OpponentPlayerName} won the round.",
             _ => "The round resolved."
         };
 

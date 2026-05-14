@@ -1,10 +1,12 @@
+using Microsoft.Extensions.Logging;
 using Spx.Account;
 
 namespace Spx.Account.Features.ResendConfirmation;
 
 internal sealed class ResendConfirmationHandler(
     IAccountIdentity accountIdentity,
-    IAccountEmailSender emailSender) : IResendConfirmationHandler
+    IAccountEmailSender emailSender,
+    ILogger<ResendConfirmationHandler> logger) : IResendConfirmationHandler
 {
     public async Task<ResendConfirmationOutcome> HandleAsync(string email, CancellationToken cancellationToken = default)
     {
@@ -19,7 +21,14 @@ internal sealed class ResendConfirmationHandler(
             var code = await accountIdentity.GenerateEmailConfirmationTokenAsync(user);
             if (!string.IsNullOrWhiteSpace(code))
             {
-                await emailSender.SendConfirmationEmailAsync(email, user.Id, code, cancellationToken);
+                try
+                {
+                    await emailSender.SendConfirmationEmailAsync(email, user.Id, code, cancellationToken);
+                }
+                catch (Exception exception)
+                {
+                    logger.LogWarning(exception, "Failed to resend confirmation email for {Email}.", email);
+                }
             }
         }
 

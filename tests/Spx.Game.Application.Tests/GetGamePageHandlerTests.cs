@@ -8,6 +8,9 @@ namespace Spx.Game.Application.Tests;
 
 public sealed class GetGamePageHandlerTests
 {
+    private static readonly Guid CurrentPlayerId = Guid.NewGuid();
+    private static readonly Guid OpponentPlayerId = Guid.NewGuid();
+
     [Fact]
     public async Task HandleAsync_returns_null_when_lobby_not_found()
     {
@@ -34,14 +37,14 @@ public sealed class GetGamePageHandlerTests
             DateTime.UtcNow,
             null,
             "Captain Red",
-            [new GamePlayerView(Guid.NewGuid(), "Captain Red", DateTime.UtcNow, true), new GamePlayerView(Guid.NewGuid(), "Captain Blue", DateTime.UtcNow, false)],
+            [new GamePlayerView(CurrentPlayerId, "Captain Red", DateTime.UtcNow, true), new GamePlayerView(OpponentPlayerId, "Captain Blue", DateTime.UtcNow, false)],
             true);
 
         var session = new GameSessionView(
             gameId,
             3,
-            new GameSessionParticipantView(Guid.NewGuid(), "user-1", "Captain Red"),
-            new GameSessionParticipantView(Guid.NewGuid(), "user-2", "Captain Blue"),
+            new GameSessionParticipantView(CurrentPlayerId, "user-1"),
+            new GameSessionParticipantView(OpponentPlayerId, "user-2"),
             true,
             true,
             null);
@@ -71,14 +74,14 @@ public sealed class GetGamePageHandlerTests
             DateTime.UtcNow,
             null,
             "Captain Red",
-            [new GamePlayerView(Guid.NewGuid(), "Captain Red", DateTime.UtcNow, true), new GamePlayerView(Guid.NewGuid(), "Captain Blue", DateTime.UtcNow, false)],
+            [new GamePlayerView(CurrentPlayerId, "Captain Red", DateTime.UtcNow, true), new GamePlayerView(OpponentPlayerId, "Captain Blue", DateTime.UtcNow, false)],
             true);
 
         var session = new GameSessionView(
             gameId,
             1,
-            new GameSessionParticipantView(Guid.NewGuid(), "user-1", "Captain Red"),
-            new GameSessionParticipantView(Guid.NewGuid(), "user-2", "Captain Blue"),
+            new GameSessionParticipantView(CurrentPlayerId, "user-1"),
+            new GameSessionParticipantView(OpponentPlayerId, "user-2"),
             false,
             false,
             null);
@@ -88,8 +91,8 @@ public sealed class GetGamePageHandlerTests
             Lobby = lobby,
             ActiveSessionPlayers =
             [
-                new GameSessionParticipantView(Guid.NewGuid(), "user-1", "Captain Red"),
-                new GameSessionParticipantView(Guid.NewGuid(), "user-2", "Captain Blue")
+                new GameSessionParticipantView(CurrentPlayerId, "user-1"),
+                new GameSessionParticipantView(OpponentPlayerId, "user-2")
             ]
         };
         var sessionService = new FakeGameSessionService
@@ -168,7 +171,7 @@ public sealed class GetGamePageHandlerTests
         public Task<GameSessionView?> GetSessionViewAsync(Guid gameId, string userId, CancellationToken cancellationToken = default)
             => Task.FromResult(Session);
 
-        public Task<GameSessionView> SubmitMoveAsync(Guid gameId, SubmitGameMoveCommand command, CancellationToken cancellationToken = default)
+        public Task<SubmitGameMoveOutcome> SubmitMoveAsync(Guid gameId, SubmitGameMoveCommand command, CancellationToken cancellationToken = default)
             => throw new NotSupportedException();
 
         public Task<GameSessionView> AbandonAsync(Guid gameId, string userId, CancellationToken cancellationToken = default)

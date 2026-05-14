@@ -1,6 +1,5 @@
 using System.Net.Http.Json;
 using System.Text.Json.Serialization;
-using Microsoft.AspNetCore.Http.Extensions;
 using Microsoft.Extensions.Options;
 using Spx.Account;
 using Spx.Web.Options;
@@ -10,38 +9,22 @@ namespace Spx.Web.Adapters.Account;
 public sealed class ResendAccountEmailSender(
     HttpClient httpClient,
     IOptions<ResendOptions> options,
-    IHttpContextAccessor httpContextAccessor) : IAccountEmailSender
+    AccountLinkBuilder accountLinkBuilder) : IAccountEmailSender
 {
     private readonly ResendOptions resendOptions = options.Value;
 
     public Task SendConfirmationEmailAsync(string email, string userId, string code, CancellationToken cancellationToken = default)
     {
-        var confirmationLink = BuildAbsoluteUri("/account/confirm-email", ("userId", userId), ("code", code));
+        var confirmationLink = accountLinkBuilder.BuildConfirmationLink(userId, code);
         var html = $"<p>Confirm your account by <a href=\"{confirmationLink}\">clicking here</a>.</p>";
         return SendEmailAsync(email, "Confirm your email", html, cancellationToken);
     }
 
     public Task SendPasswordResetEmailAsync(string email, string code, CancellationToken cancellationToken = default)
     {
-        var resetLink = BuildAbsoluteUri("/reset-password", ("email", email), ("code", code));
+        var resetLink = accountLinkBuilder.BuildPasswordResetLink(email, code);
         var html = $"<p>Reset your password by <a href=\"{resetLink}\">clicking here</a>.</p>";
         return SendEmailAsync(email, "Reset your password", html, cancellationToken);
-    }
-
-    private string BuildAbsoluteUri(string path, params (string Key, string? Value)[] values)
-    {
-        var httpContext = httpContextAccessor.HttpContext ?? throw new InvalidOperationException("No current HTTP request is available for building account links.");
-        var query = new QueryBuilder();
-
-        foreach (var (key, value) in values)
-        {
-            if (!string.IsNullOrWhiteSpace(value))
-            {
-                query.Add(key, value);
-            }
-        }
-
-        return $"{httpContext.Request.Scheme}://{httpContext.Request.Host}{path}{query}";
     }
 
     private async Task SendEmailAsync(string email, string subject, string html, CancellationToken cancellationToken)

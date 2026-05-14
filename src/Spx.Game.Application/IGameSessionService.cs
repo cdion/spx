@@ -8,7 +8,7 @@ public interface IGameSessionService
 
     Task<GameSessionView?> GetSessionViewAsync(Guid gameId, string userId, CancellationToken cancellationToken = default);
 
-    Task<GameSessionView> SubmitMoveAsync(Guid gameId, SubmitGameMoveCommand command, CancellationToken cancellationToken = default);
+    Task<SubmitGameMoveOutcome> SubmitMoveAsync(Guid gameId, SubmitGameMoveCommand command, CancellationToken cancellationToken = default);
 
     Task<GameSessionView> AbandonAsync(Guid gameId, string userId, CancellationToken cancellationToken = default);
 }

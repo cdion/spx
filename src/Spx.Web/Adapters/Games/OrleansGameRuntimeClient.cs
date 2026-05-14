@@ -65,11 +65,17 @@ public sealed class OrleansGameRuntimeClient(
         }
     }
 
-    public async Task<GameSessionView> SubmitMoveAsync(Guid gameId, SubmitGameMoveCommand command, CancellationToken cancellationToken = default)
+    public async Task<SubmitGameMoveOutcome> SubmitMoveAsync(Guid gameId, SubmitGameMoveCommand command, CancellationToken cancellationToken = default)
     {
         try
         {
-            return await clusterClient.GetGrain<IGameSessionGrain>(gameId).SubmitMoveAsync(command);
+            var session = await clusterClient.GetGrain<IGameSessionGrain>(gameId).SubmitMoveAsync(command);
+            return new SubmitGameMoveSucceeded(session);
+        }
+        catch (InvalidOperationException exception)
+        {
+            logger.LogInformation(exception, "Move submission was rejected for game {GameId} user {UserId}.", gameId, command.UserId);
+            return new SubmitGameMoveFailed(exception.Message);
         }
         catch (Exception exception)
         {

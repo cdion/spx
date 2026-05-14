@@ -1,4 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Spx.Account;
 
 namespace Spx.Account.Tests;
@@ -11,6 +13,7 @@ internal static class AccountHandlerTestServices
         services.AddAccountApplication();
         services.AddSingleton<IAccountIdentity>(identity);
         services.AddSingleton<IAccountEmailSender>(emailSender ?? new FakeAccountEmailSender());
+        services.AddSingleton(typeof(ILogger<>), typeof(NullLogger<>));
         return services.BuildServiceProvider();
     }
 }
@@ -75,6 +78,8 @@ internal sealed class FakeAccountEmailSender : IAccountEmailSender
 {
     public Exception? SendConfirmationException { get; init; }
 
+    public Exception? SendPasswordResetException { get; init; }
+
     public bool ConfirmationEmailSent { get; private set; }
 
     public bool PasswordResetEmailSent { get; private set; }
@@ -105,6 +110,11 @@ internal sealed class FakeAccountEmailSender : IAccountEmailSender
 
     public Task SendPasswordResetEmailAsync(string email, string code, CancellationToken cancellationToken = default)
     {
+        if (SendPasswordResetException is not null)
+        {
+            throw SendPasswordResetException;
+        }
+
         PasswordResetEmailSent = true;
         LastPasswordResetEmail = email;
         LastPasswordResetCode = code;

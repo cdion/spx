@@ -90,4 +90,26 @@ public sealed class ResendConfirmationHandlerTests
         Assert.Equal(ResendConfirmationOutcomeStatus.Completed, outcome.Status);
         Assert.False(emailSender.ConfirmationEmailSent);
     }
+
+    [Fact]
+    public async Task HandleAsync_completes_when_email_sender_fails()
+    {
+        var identity = new FakeAccountIdentity
+        {
+            FindByEmailResult = new AccountUser("user-1", "user@example.com"),
+            IsEmailConfirmedResult = false,
+            EmailConfirmationToken = "confirm-token"
+        };
+        var emailSender = new FakeAccountEmailSender
+        {
+            SendConfirmationException = new InvalidOperationException("mail failed")
+        };
+        using var services = AccountHandlerTestServices.Create(identity, emailSender);
+
+        var handler = services.GetRequiredService<IResendConfirmationHandler>();
+        var outcome = await handler.HandleAsync("user@example.com");
+
+        Assert.Equal(ResendConfirmationOutcomeStatus.Completed, outcome.Status);
+        Assert.False(emailSender.ConfirmationEmailSent);
+    }
 }

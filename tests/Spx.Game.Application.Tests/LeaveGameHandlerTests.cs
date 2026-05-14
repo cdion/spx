@@ -154,8 +154,8 @@ public sealed class LeaveGameHandlerTests
             = new(
                 Guid.NewGuid(),
                 1,
-                new GameSessionParticipantView(Guid.NewGuid(), "user-1", "Captain Red"),
-                new GameSessionParticipantView(Guid.NewGuid(), "user-2", "Captain Blue"),
+                new GameSessionParticipantView(Guid.NewGuid(), "user-1"),
+                new GameSessionParticipantView(Guid.NewGuid(), "user-2"),
                 false,
                 false,
                 null);
@@ -166,7 +166,7 @@ public sealed class LeaveGameHandlerTests
         public Task<GameSessionView?> GetSessionViewAsync(Guid gameId, string userId, CancellationToken cancellationToken = default)
             => Task.FromResult(ActiveSessionView is null ? null : ActiveSessionView with { GameId = gameId });
 
-        public Task<GameSessionView> SubmitMoveAsync(Guid gameId, SubmitGameMoveCommand command, CancellationToken cancellationToken = default)
+        public Task<SubmitGameMoveOutcome> SubmitMoveAsync(Guid gameId, SubmitGameMoveCommand command, CancellationToken cancellationToken = default)
             => throw new NotSupportedException();
 
         public Task<GameSessionView> AbandonAsync(Guid gameId, string userId, CancellationToken cancellationToken = default)

@@ -1,10 +1,12 @@
+using Microsoft.Extensions.Logging;
 using Spx.Account;
 
 namespace Spx.Account.Features.ForgotPassword;
 
 internal sealed class ForgotPasswordHandler(
     IAccountIdentity accountIdentity,
-    IAccountEmailSender emailSender) : IForgotPasswordHandler
+    IAccountEmailSender emailSender,
+    ILogger<ForgotPasswordHandler> logger) : IForgotPasswordHandler
 {
     public async Task<ForgotPasswordOutcome> HandleAsync(string email, CancellationToken cancellationToken = default)
     {
@@ -19,7 +21,14 @@ internal sealed class ForgotPasswordHandler(
             var code = await accountIdentity.GeneratePasswordResetTokenAsync(user);
             if (!string.IsNullOrWhiteSpace(code))
             {
-                await emailSender.SendPasswordResetEmailAsync(email, code, cancellationToken);
+                try
+                {
+                    await emailSender.SendPasswordResetEmailAsync(email, code, cancellationToken);
+                }
+                catch (Exception exception)
+                {
+                    logger.LogWarning(exception, "Failed to send password reset email for {Email}.", email);
+                }
             }
         }
 

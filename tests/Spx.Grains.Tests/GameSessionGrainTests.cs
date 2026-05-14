@@ -8,9 +8,9 @@ namespace Spx.Grains.Tests;
 public sealed class GameSessionGrainTests
 {
     private static readonly Guid GameId = Guid.Parse("6FD75A29-6B90-43AA-B97A-80A0C5210D73");
-    private static readonly GameSessionParticipantView FirstPlayer = new(Guid.Parse("0C8999C0-D4D2-46B5-B287-5D211CC99A40"), "user-1", "Red Captain");
-    private static readonly GameSessionParticipantView SecondPlayer = new(Guid.Parse("92C6775C-95F1-4C3B-9025-8E37D126CD4B"), "user-2", "Blue Captain");
-    private static readonly GameSessionParticipantView ReplacementPlayer = new(Guid.Parse("D5985582-CF06-447D-A5AD-2F85B86B0AB7"), "user-3", "Green Captain");
+    private static readonly GameSessionParticipantView FirstPlayer = new(Guid.Parse("0C8999C0-D4D2-46B5-B287-5D211CC99A40"), "user-1");
+    private static readonly GameSessionParticipantView SecondPlayer = new(Guid.Parse("92C6775C-95F1-4C3B-9025-8E37D126CD4B"), "user-2");
+    private static readonly GameSessionParticipantView ReplacementPlayer = new(Guid.Parse("D5985582-CF06-447D-A5AD-2F85B86B0AB7"), "user-3");
     private static readonly IGameRoundResolver RoundResolver = new GameRoundResolver();
 
     [Fact]

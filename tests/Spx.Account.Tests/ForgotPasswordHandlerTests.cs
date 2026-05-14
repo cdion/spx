@@ -78,6 +78,28 @@ public sealed class ForgotPasswordHandlerTests
     }
 
     [Fact]
+    public async Task HandleAsync_completes_when_email_sender_fails()
+    {
+        var identity = new FakeAccountIdentity
+        {
+            FindByEmailResult = new AccountUser("user-1", "user@example.com"),
+            IsEmailConfirmedResult = true,
+            PasswordResetToken = "reset-token"
+        };
+        var emailSender = new FakeAccountEmailSender
+        {
+            SendPasswordResetException = new InvalidOperationException("mail failed")
+        };
+        using var services = AccountHandlerTestServices.Create(identity, emailSender);
+
+        var handler = services.GetRequiredService<IForgotPasswordHandler>();
+        var outcome = await handler.HandleAsync("user@example.com");
+
+        Assert.Equal(ForgotPasswordOutcomeStatus.Completed, outcome.Status);
+        Assert.False(emailSender.PasswordResetEmailSent);
+    }
+
+    [Fact]
     public async Task HandleAsync_completes_without_sending_for_unknown_user()
     {
         var identity = new FakeAccountIdentity();

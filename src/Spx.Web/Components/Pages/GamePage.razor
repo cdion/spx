@@ -14,6 +14,7 @@
 @inject IEditMessageHandler EditMessageHandler
 @inject IDeleteMessageHandler DeleteMessageHandler
 @inject ISubmitGameMoveHandler SubmitGameMoveHandler
+@inject ILogger<GamePage> Logger
 @inject NavigationManager Navigation
 
 <PageTitle>Game</PageTitle>
@@ -235,7 +236,8 @@ else
         {
             lobby = null;
             session = null;
-            errorMessage = exception.Message;
+            Logger.LogError(exception, "Failed to load game page {GameId} for user {UserId}.", GameId, currentUserId);
+            errorMessage = "We couldn't load this game right now. Refresh and try again.";
         }
         finally
         {
@@ -281,7 +283,8 @@ else
         }
         catch (Exception exception)
         {
-            errorMessage = exception.Message;
+            Logger.LogError(exception, "Failed to leave game {GameId} for user {UserId}.", GameId, currentUserId);
+            errorMessage = "We couldn't leave the game right now. Please try again.";
         }
         finally
         {
@@ -312,7 +315,8 @@ else
         }
         catch (Exception exception)
         {
-            gameplayError = exception.Message;
+            Logger.LogError(exception, "Failed to submit a move for game {GameId} user {UserId}.", GameId, currentUserId);
+            gameplayError = "We couldn't submit your move right now. Please try again.";
         }
         finally
         {
@@ -357,7 +361,8 @@ else
         }
         catch (Exception exception)
         {
-            messageError = exception.Message;
+            Logger.LogError(exception, "Failed to load initial messages for game {GameId} user {UserId}.", GameId, currentUserId);
+            messageError = "We couldn't load messages right now. Please try again.";
         }
         finally
         {
@@ -396,7 +401,8 @@ else
         }
         catch (Exception exception)
         {
-            messageError = exception.Message;
+            Logger.LogError(exception, "Failed to load message updates for game {GameId} user {UserId}.", GameId, currentUserId);
+            messageError = "We couldn't refresh messages right now. Please try again.";
         }
     }
 
@@ -444,7 +450,8 @@ else
         }
         catch (Exception exception)
         {
-            messageError = exception.Message;
+            Logger.LogError(exception, "Failed to load older messages for game {GameId} user {UserId}.", GameId, currentUserId);
+            messageError = "We couldn't load older messages right now. Please try again.";
         }
         finally
         {
@@ -499,7 +506,8 @@ else
         catch (Exception exception)
         {
             pendingItem.Pending!.Failed = true;
-            messageError = exception.Message;
+            Logger.LogError(exception, "Failed to send a message for game {GameId} user {UserId}.", GameId, currentUserId);
+            messageError = "We couldn't send that message right now. Please try again.";
         }
         finally
         {
@@ -543,7 +551,8 @@ else
         catch (Exception exception)
         {
             item.Pending.Failed = true;
-            messageError = exception.Message;
+            Logger.LogError(exception, "Failed to retry a message for game {GameId} user {UserId}.", GameId, currentUserId);
+            messageError = "We couldn't resend that message right now. Please try again.";
         }
         finally
         {
@@ -593,7 +602,8 @@ else
         }
         catch (Exception exception)
         {
-            messageError = exception.Message;
+            Logger.LogError(exception, "Failed to save a message edit for game {GameId} user {UserId}.", GameId, currentUserId);
+            messageError = "We couldn't save that message right now. Please try again.";
         }
         finally
         {
@@ -627,7 +637,8 @@ else
         }
         catch (Exception exception)
         {
-            messageError = exception.Message;
+            Logger.LogError(exception, "Failed to delete a message for game {GameId} user {UserId}.", GameId, currentUserId);
+            messageError = "We couldn't delete that message right now. Please try again.";
         }
     }
 

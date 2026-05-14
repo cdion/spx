@@ -13,13 +13,13 @@ internal sealed class SubmitGameMoveHandler(
         GameMove move,
         CancellationToken cancellationToken = default)
     {
-        try
-        {
-            var session = await gameSessionService.SubmitMoveAsync(
-                gameId,
-                new SubmitGameMoveCommand(userId, expectedRoundNumber, move),
-                cancellationToken);
+        var result = await gameSessionService.SubmitMoveAsync(
+            gameId,
+            new SubmitGameMoveCommand(userId, expectedRoundNumber, move),
+            cancellationToken);
 
+        if (result is SubmitGameMoveSucceeded)
+        {
             // Publish state change so opponent client sees progression promptly
             try
             {
@@ -29,12 +29,8 @@ internal sealed class SubmitGameMoveHandler(
             {
                 // Log but don't fail—publish is best-effort for UI updates
             }
+        }
 
-            return new SubmitGameMoveSucceeded(session);
-        }
-        catch (InvalidOperationException exception)
-        {
-            return new SubmitGameMoveFailed(exception.Message);
-        }
+        return result;
     }
 }

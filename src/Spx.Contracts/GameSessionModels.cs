@@ -25,8 +25,7 @@ public sealed record GameRoundResult(
 [GenerateSerializer]
 public sealed record GameSessionParticipantView(
     [property: Id(0)] Guid PlayerId,
-    [property: Id(1)] string UserId,
-    [property: Id(2)] string DisplayName);
+    [property: Id(1)] string UserId);
 
 [GenerateSerializer]
 public sealed record InitializeGameSessionCommand(

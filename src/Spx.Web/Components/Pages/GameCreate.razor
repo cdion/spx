@@ -2,6 +2,7 @@
 @attribute [Authorize]
 @using System.Security.Claims
 @inject ICreateGameHandler CreateGameHandler
+@inject ILogger<GameCreate> Logger
 @inject NavigationManager Navigation
 
 <PageTitle>Create Game</PageTitle>
@@ -84,7 +85,8 @@
         }
         catch (Exception exception)
         {
-            errorMessage = exception.Message;
+            Logger.LogError(exception, "Failed to create a game for the current user.");
+            errorMessage = "We couldn't create a game right now. Please try again.";
         }
         finally
         {

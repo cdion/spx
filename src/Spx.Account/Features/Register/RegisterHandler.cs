@@ -1,10 +1,12 @@
+using Microsoft.Extensions.Logging;
 using Spx.Account;
 
 namespace Spx.Account.Features.Register;
 
 internal sealed class RegisterHandler(
     IAccountIdentity accountIdentity,
-    IAccountEmailSender emailSender) : IRegisterHandler
+    IAccountEmailSender emailSender,
+    ILogger<RegisterHandler> logger) : IRegisterHandler
 {
     private const string ConfirmationResendRequiredMessage = "Your account was created, but we could not send a confirmation email. Request a new one below.";
 
@@ -38,8 +40,9 @@ internal sealed class RegisterHandler(
         {
             await emailSender.SendConfirmationEmailAsync(email, user.Id, code, cancellationToken);
         }
-        catch
+        catch (Exception exception)
         {
+            logger.LogWarning(exception, "Failed to send registration confirmation email for {Email}.", email);
             return new RegisterOutcome(RegisterOutcomeStatus.ConfirmationResendRequired, email, [ConfirmationResendRequiredMessage]);
         }
 
