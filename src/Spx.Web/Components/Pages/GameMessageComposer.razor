@@ -98,8 +98,17 @@
     {
         if (firstRender)
         {
-            module = await JS.InvokeAsync<IJSObjectReference>("import", "./Components/Pages/GameMessageComposer.razor.js");
-            dotNetReference = DotNetObjectReference.Create(this);
+            try
+            {
+                module = await JS.InvokeAsync<IJSObjectReference>("import", "./Components/Pages/GameMessageComposer.razor.js");
+                dotNetReference = DotNetObjectReference.Create(this);
+            }
+            catch (TaskCanceledException)
+            {
+            }
+            catch (JSDisconnectedException)
+            {
+            }
         }
 
         if (module is null || dotNetReference is null)
