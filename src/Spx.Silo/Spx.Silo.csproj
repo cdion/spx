@@ -7,11 +7,11 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Aspire.Npgsql" Version="13.3.0" />
+    <PackageReference Include="Aspire.Npgsql" Version="13.3.2" />
     <PackageReference Include="Microsoft.Orleans.Server" Version="10.1.0" />
     <PackageReference Include="Microsoft.Orleans.Clustering.Redis" Version="10.1.0" />
     <PackageReference Include="Microsoft.Orleans.Persistence.AdoNet" Version="10.1.0" />
-    <PackageReference Include="Aspire.StackExchange.Redis" Version="13.3.0" />
+    <PackageReference Include="Aspire.StackExchange.Redis" Version="13.3.2" />
   </ItemGroup>
 
   <ItemGroup>
