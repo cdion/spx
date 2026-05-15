@@ -328,6 +328,9 @@
                 await module.InvokeVoidAsync("disposeTimelineObserver", timelineTopSentinel);
                 await module.DisposeAsync();
             }
+            catch (TaskCanceledException)
+            {
+            }
             catch (JSDisconnectedException)
             {
             }

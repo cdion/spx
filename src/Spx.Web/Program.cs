@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.AspNetCore.Components.Server.Circuits;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -7,6 +8,7 @@ using Spx.Game.Application;
 using Spx.Web.Adapters.Account;
 using Spx.Web.Adapters.Games;
 using Spx.Web.Components;
+using Spx.Web.Circuits;
 using Spx.Data;
 using Spx.Web.Endpoints;
 using Spx.Web.Options;
@@ -31,6 +33,8 @@ builder.Services.Configure<ResendOptions>(builder.Configuration.GetSection(Resen
 // Add services to the container.
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
+builder.Services.AddScoped<CircuitConnectionEvents>();
+builder.Services.AddScoped<CircuitHandler, CircuitConnectionHandler>();
 builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddAuthentication(IdentityConstants.ApplicationScheme)

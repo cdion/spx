@@ -9,6 +9,7 @@
 @inject IGetGamePresenceHandler GetGamePresenceHandler
 @inject IGetGameSessionHandler GetGameSessionHandler
 @inject IGamePresenceService GamePresenceService
+@inject Spx.Web.Circuits.CircuitConnectionEvents CircuitConnectionEvents
 @inject ILeaveGameHandler LeaveGameHandler
 @inject IGetMessagesHandler GetMessagesHandler
 @inject IGetMessageUpdatesHandler GetMessageUpdatesHandler
@@ -186,6 +187,12 @@ else
     private CancellationTokenSource? presenceRenewalCts;
     private PeriodicTimer? presenceRenewalTimer;
     private Task? presenceRenewalTask;
+
+    protected override void OnInitialized()
+    {
+        CircuitConnectionEvents.ConnectionDown += HandleCircuitConnectionDownAsync;
+        CircuitConnectionEvents.ConnectionUp += HandleCircuitConnectionUpAsync;
+    }
 
     protected override async Task OnParametersSetAsync()
     {
@@ -721,6 +728,8 @@ else
 
     public async ValueTask DisposeAsync()
     {
+        CircuitConnectionEvents.ConnectionDown -= HandleCircuitConnectionDownAsync;
+        CircuitConnectionEvents.ConnectionUp -= HandleCircuitConnectionUpAsync;
         await StopPresenceTrackingAsync();
         await DisposeSubscriptionsAsync();
     }
@@ -778,9 +787,14 @@ else
 
         if (trackedPresenceGameId == lobby.GameId
             && trackedPresencePlayerId == currentPlayerId
-            && presenceConnectionId.HasValue
-            && presenceRenewalTask is not null)
+            && presenceConnectionId.HasValue)
         {
+            if (presenceRenewalTask is not null)
+            {
+                return;
+            }
+
+            await ResumePresenceTrackingAsync(lobby.GameId, currentPlayerId.Value, presenceConnectionId.Value);
             return;
         }
 
@@ -796,6 +810,16 @@ else
         await LoadPresenceAsync();
         presenceRenewalTask = RenewPresenceAsync(lobby.GameId, currentPlayerId.Value, presenceConnectionId.Value, presenceRenewalCts.Token);
     }
+
+    private Task HandleCircuitConnectionDownAsync()
+        => InvokeAsync(PausePresenceTrackingAsync);
+
+    private Task HandleCircuitConnectionUpAsync()
+        => InvokeAsync(async () =>
+        {
+            await EnsurePresenceTrackingAsync();
+            StateHasChanged();
+        });
 
     private async Task RenewPresenceAsync(Guid gameId, Guid playerId, Guid connectionId, CancellationToken cancellationToken)
     {
@@ -836,18 +860,22 @@ else
         }
     }
 
-    private async Task StopPresenceTrackingAsync()
+    private async Task ResumePresenceTrackingAsync(Guid gameId, Guid playerId, Guid connectionId)
     {
-        var gameId = trackedPresenceGameId;
-        var playerId = trackedPresencePlayerId;
-        var connectionId = presenceConnectionId;
+        presenceRenewalCts = new CancellationTokenSource();
+        presenceRenewalTimer = new PeriodicTimer(TimeSpan.FromSeconds(PresenceRenewalSeconds));
+
+        await PublishPresenceLeaseAsync(gameId, playerId, connectionId, presenceRenewalCts.Token);
+        await LoadPresenceAsync();
+        presenceRenewalTask = RenewPresenceAsync(gameId, playerId, connectionId, presenceRenewalCts.Token);
+    }
+
+    private async Task PausePresenceTrackingAsync()
+    {
         var timer = presenceRenewalTimer;
         var cancellationSource = presenceRenewalCts;
         var renewalTask = presenceRenewalTask;
 
-        trackedPresenceGameId = null;
-        trackedPresencePlayerId = null;
-        presenceConnectionId = null;
         presenceRenewalTimer = null;
         presenceRenewalCts = null;
         presenceRenewalTask = null;
@@ -867,6 +895,19 @@ else
 
         timer?.Dispose();
         cancellationSource?.Dispose();
+    }
+
+    private async Task StopPresenceTrackingAsync()
+    {
+        var gameId = trackedPresenceGameId;
+        var playerId = trackedPresencePlayerId;
+        var connectionId = presenceConnectionId;
+
+        trackedPresenceGameId = null;
+        trackedPresencePlayerId = null;
+        presenceConnectionId = null;
+
+        await PausePresenceTrackingAsync();
 
         if (!gameId.HasValue || !playerId.HasValue || !connectionId.HasValue)
         {
