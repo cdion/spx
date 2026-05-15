@@ -291,12 +291,34 @@
       }
     },
     {
+      "label": "apphost: watch",
+      "type": "shell",
+      "command": "${workspaceFolder}/tools/dev/run-apphost-watch-and-open-dashboard.sh",
+      "isBackground": true,
+      "problemMatcher": {
+        "owner": "apphost-watch",
+        "pattern": {
+          "regexp": ".+"
+        },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": ".*dotnet watch.*|.*Distributed application starting\\..*",
+          "endsPattern": ".*Distributed application started\\. Press Ctrl\\+C to shut down\\..*"
+        }
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      }
+    },
+    {
       "label": "dev: apphost + tailwind",
       "dependsOn": [
         "tailwind: watch css",
-        "apphost: run"
+        "apphost: watch"
       ],
-      "dependsOrder": "parallel"
+      "dependsOrder": "parallel",
+      "problemMatcher": []
     }
   ]
 }

@@ -1,4 +1,6 @@
-<section class="ui-surface-form space-y-6">
+@using Microsoft.AspNetCore.Components.Rendering
+
+<section class="ui-surface-form space-y-5 p-5 sm:p-6 lg:p-7">
     <div class="space-y-2">
         <p class="ui-section-eyebrow">Gameplay</p>
         <h2 class="ui-section-title">@GetHeadline()</h2>
@@ -18,24 +20,13 @@
     }
     else
     {
-        <div class="grid gap-4 lg:grid-cols-2">
+        <div class="grid gap-3 lg:grid-cols-3">
             <article class="ui-panel-row items-start">
                 <div>
-                    <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Current round</p>
+                    <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Round</p>
                     <p class="mt-2 text-2xl font-semibold text-white">@Session.RoundNumber</p>
                 </div>
-                @if (Session.HasSubmittedMove)
-                {
-                    <span class="ui-status-badge border-amber-400/30 bg-amber-500/10 text-amber-200">
-                        Waiting
-                    </span>
-                }
-                else
-                {
-                    <span class="ui-status-badge border-sky-400/30 bg-sky-400/10 text-sky-200">
-                        Your turn
-                    </span>
-                }
+                <span class="ui-status-badge">@Session.Phase</span>
             </article>
 
             <article class="ui-panel-row items-start">
@@ -46,45 +37,242 @@
                 </div>
                 <span class="ui-status-badge">@GetStatusBadgeText()</span>
             </article>
+
+            <article class="ui-panel-row items-start">
+                <div>
+                    <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Market deck</p>
+                    <p class="mt-2 text-2xl font-semibold text-white">@Session.MarketDeckCount</p>
+                </div>
+                <span class="ui-status-badge border-emerald-400/30 bg-emerald-500/10 text-emerald-200">
+                    @Session.VisibleMarketCards.Count visible
+                </span>
+            </article>
         </div>
 
-        @if (Session.LastResolvedRound is not null)
+        @if (Session.Completion is not null)
         {
-            <article class="rounded-3xl border border-white/10 bg-slate-950/40 p-5 text-sm leading-6 text-slate-300">
-                <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Last round</p>
-                <p class="mt-2 text-base font-semibold text-white">Round @Session.LastResolvedRound.RoundNumber</p>
-                <p class="mt-2">
-                    You played <span class="font-semibold text-white">@FormatMove(Session.LastResolvedRound.Result.CurrentPlayerMove)</span>.
-                    @OpponentPlayerName played <span class="font-semibold text-white">@FormatMove(Session.LastResolvedRound.Result.OpponentMove)</span>.
-                </p>
-                <p class="mt-2 text-sky-100">@GetOutcomeMessage(Session.LastResolvedRound.Result.Outcome)</p>
-            </article>
+            <AlertBanner Tone="success" Role="status">
+                @GetCompletionMessage()
+            </AlertBanner>
         }
 
-        <div class="space-y-3">
-            <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Choose your move</p>
-            <div class="grid gap-3 sm:grid-cols-3">
-                @foreach (var move in AvailableMoves)
+        <section class="rounded-3xl border border-white/10 bg-slate-950/40 p-4 space-y-4 lg:p-5">
+            <div class="flex items-center justify-between gap-3">
+                <div>
+                    <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Shared market</p>
+                    <p class="mt-1 text-sm text-slate-300">Acquire one visible action card when it is your turn.</p>
+                </div>
+                @if (Session.CanAcquireCard)
                 {
-                    <button class="ui-button-primary"
-                            @onclick="() => SubmitMoveAsync(move)"
-                            disabled="@(!CanSubmitMove)">
-                        @(IsSubmittingMove ? "Submitting..." : $"Play {FormatMove(move)}")
+                    <span class="ui-status-badge border-sky-400/30 bg-sky-400/10 text-sky-200">Your acquire</span>
+                }
+            </div>
+
+            <div class="grid gap-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
+                @foreach (var marketCard in Session.VisibleMarketCards)
+                {
+                    <button class="min-w-0 rounded-2xl border border-white/10 bg-slate-900/70 p-3 text-left transition hover:border-sky-400/40 hover:bg-slate-900 disabled:cursor-not-allowed disabled:opacity-60 xl:p-3.5"
+                            @onclick="() => AcquireCardAsync(marketCard.CardInstanceId)"
+                            disabled="@(!CanAcquireCard(marketCard.CardInstanceId))">
+                        <p class="truncate text-sm font-semibold text-white">@marketCard.DisplayName</p>
+                        <p class="mt-1.5 text-[0.7rem] uppercase tracking-[0.2em] text-slate-400">@marketCard.Category</p>
+                        @if (Session.CanAcquireCard)
+                        {
+                            <p class="mt-2 text-sm text-sky-200">@(IsSubmittingAction ? "Locking..." : "Take card")</p>
+                        }
                     </button>
                 }
             </div>
-            @if (Session.HasSubmittedMove)
+
+            @if (!Session.CanAcquireCard && Session.Phase == GamePhase.Acquire)
             {
                 <p class="text-sm leading-6 text-slate-400">
-                    Your move is locked in for round @Session.RoundNumber. Results appear when @OpponentPlayerName submits.
+                    @if (Session.WaitingForOpponent)
+                    {
+                        <span>Waiting for @OpponentPlayerName to finish the acquire phase.</span>
+                    }
+                    else if (Session.VisibleMarketCards.Count == 0)
+                    {
+                        <span>The market is empty. The round proceeds with the cards already in hand.</span>
+                    }
                 </p>
             }
-        </div>
+        </section>
+
+        <section class="rounded-3xl border border-white/10 bg-slate-950/40 p-4 space-y-4 lg:p-5">
+            <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Initiative</p>
+            <div class="grid gap-4 text-sm leading-6 text-slate-300 md:grid-cols-2">
+                <article class="rounded-2xl border border-white/10 bg-slate-900/60 p-4">
+                    <p class="font-semibold text-white">@CurrentPlayerName</p>
+                    <p>Score @Session.CurrentPlayer.InitiativeScore</p>
+                    <p>@GetAcquirePriorityText(Session.CurrentPlayer)</p>
+                </article>
+                <article class="rounded-2xl border border-white/10 bg-slate-900/60 p-4">
+                    <p class="font-semibold text-white">@OpponentPlayerName</p>
+                    <p>Score @Session.OpponentPlayer.InitiativeScore</p>
+                    <p>@GetAcquirePriorityText(Session.OpponentPlayer)</p>
+                </article>
+            </div>
+        </section>
+
+        <section class="rounded-3xl border border-white/10 bg-slate-950/40 p-4 space-y-4 lg:p-5">
+            <div>
+                <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Hands</p>
+                <p class="mt-1 text-sm text-slate-300">Current player on the left, opponent on the right.</p>
+            </div>
+
+            <div class="grid gap-4 lg:grid-cols-2">
+                <article class="space-y-4 rounded-2xl border border-white/10 bg-slate-900/60 p-4">
+                    <div class="flex items-center justify-between gap-3">
+                        <div>
+                            <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Your hand</p>
+                            <p class="mt-1 text-sm text-slate-300">@Session.CurrentPlayer.Hand.Count cards</p>
+                        </div>
+                        @if (Session.CurrentPlayer.HasLockedBatch)
+                        {
+                            <span class="ui-status-badge border-amber-400/30 bg-amber-500/10 text-amber-200">Batch locked</span>
+                        }
+                    </div>
+                    <div class="flex flex-wrap gap-2">
+                        @foreach (var card in Session.CurrentPlayer.Hand)
+                        {
+                            <span class="rounded-full border border-white/10 px-3 py-1 text-sm text-slate-200">@card.DisplayName</span>
+                        }
+                    </div>
+                </article>
+
+                <article class="space-y-4 rounded-2xl border border-white/10 bg-slate-900/60 p-4">
+                    <div class="flex items-center justify-between gap-3">
+                        <div>
+                            <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">@OpponentPlayerName's hand</p>
+                            <p class="mt-1 text-sm text-slate-300">@Session.OpponentPlayer.Hand.Count cards</p>
+                        </div>
+                        @if (Session.OpponentPlayer.HasLockedBatch)
+                        {
+                            <span class="ui-status-badge border-amber-400/30 bg-amber-500/10 text-amber-200">Batch locked</span>
+                        }
+                    </div>
+                    <div class="flex flex-wrap gap-2">
+                        @foreach (var card in Session.OpponentPlayer.Hand)
+                        {
+                            <span class="rounded-full border border-white/10 px-3 py-1 text-sm text-slate-200">@card.DisplayName</span>
+                        }
+                    </div>
+                </article>
+            </div>
+        </section>
+
+        @if (Session.CurrentPlayer.VisibleLockedCards.Count > 0)
+        {
+            <section class="rounded-3xl border border-white/10 bg-slate-950/40 p-5 space-y-3">
+                <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Locked batch</p>
+                <div class="grid gap-3 lg:grid-cols-3">
+                    @foreach (var lockedCard in Session.CurrentPlayer.VisibleLockedCards)
+                    {
+                        <article class="rounded-2xl border border-white/10 bg-slate-900/60 p-4">
+                            <p class="text-sm font-semibold text-white">@lockedCard.Card.DisplayName</p>
+                            <p class="mt-2 text-xs text-slate-400">@DescribeSelection(lockedCard)</p>
+                        </article>
+                    }
+                </div>
+            </section>
+        }
+
+        @if (Session.LastResolvedBatch is not null)
+        {
+            <section class="rounded-3xl border border-white/10 bg-slate-950/40 p-5 space-y-4">
+                <div>
+                    <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Last resolution</p>
+                    <p class="mt-1 text-sm text-slate-300">Round @Session.LastResolvedBatch.RoundNumber</p>
+                </div>
+                <div class="grid gap-4 md:grid-cols-2">
+                    @foreach (var playerBatch in GetResolvedPlayersInDisplayOrder())
+                    {
+                        <article class="rounded-2xl border border-white/10 bg-slate-900/60 p-4">
+                            <p class="text-sm font-semibold text-white">@ResolvePlayerName(playerBatch.Participant.PlayerId)</p>
+                            <p class="mt-2 text-sm text-slate-300">Played @string.Join(", ", playerBatch.PlayedCards.Select(card => card.Card.DisplayName))</p>
+                            @if (playerBatch.ProducedVictory)
+                            {
+                                <p class="mt-2 text-sm text-emerald-200">Produced Victory</p>
+                            }
+                        </article>
+                    }
+                </div>
+            </section>
+        }
+
+        @if (ShowPlayEditor)
+        {
+            <section class="rounded-3xl border border-white/10 bg-slate-950/40 p-5 space-y-5">
+                <div class="flex items-center justify-between gap-3">
+                    <div>
+                        <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Play phase</p>
+                        <p class="mt-1 text-sm text-slate-300">Lock up to @Session.MaxBatchSize action or effect cards. Resources stay in hand and are referenced as inputs.</p>
+                    </div>
+                    <span class="ui-status-badge border-sky-400/30 bg-sky-400/10 text-sky-200">Your turn</span>
+                </div>
+
+                <div class="grid gap-3 lg:grid-cols-3">
+                    @foreach (var card in GetPlayableCards())
+                    {
+                        var isSelected = IsCardSelected(card.CardInstanceId);
+                        <article class="rounded-2xl border border-white/10 bg-slate-900/60 p-4 space-y-3">
+                            <div class="flex items-start justify-between gap-3">
+                                <div>
+                                    <p class="text-sm font-semibold text-white">@card.DisplayName</p>
+                                    <p class="mt-1 text-xs uppercase tracking-[0.2em] text-slate-400">@card.Category</p>
+                                </div>
+                                <button class="ui-button-secondary"
+                                        @onclick="() => ToggleCardSelection(card.CardInstanceId)"
+                                        disabled="@(!CanToggleCard(card.CardInstanceId))">
+                                    @(isSelected ? "Remove" : "Select")
+                                </button>
+                            </div>
+
+                            @if (isSelected)
+                            {
+                                <div class="space-y-4 border-t border-white/10 pt-4">
+                                    @RenderEditor(card)
+                                </div>
+                            }
+                        </article>
+                    }
+                </div>
+
+                <div class="flex flex-wrap gap-3">
+                    <button class="ui-button-primary"
+                            @onclick="LockBatchAsync"
+                            disabled="@IsSubmittingAction">
+                        @(IsSubmittingAction ? "Locking batch..." : "Lock play batch")
+                    </button>
+                    <button class="ui-button-secondary"
+                            @onclick="PassPlayAsync"
+                            disabled="@IsSubmittingAction">
+                        @(IsSubmittingAction ? "Submitting..." : "Pass play phase")
+                    </button>
+                </div>
+            </section>
+        }
+        else if (Session.Phase == GamePhase.Play)
+        {
+            <p class="text-sm leading-6 text-slate-400">
+                @if (Session.WaitingForOpponent)
+                {
+                    <span>Your batch is locked. Waiting for @OpponentPlayerName to lock a batch.</span>
+                }
+                else
+                {
+                    <span>Play controls are unavailable right now.</span>
+                }
+            </p>
+        }
     }
 </section>
 
 @code {
-    private static readonly GameMove[] AvailableMoves = [GameMove.Redite, GameMove.Greenium, GameMove.Bluon];
+    private readonly Dictionary<Guid, EditableBatchCardState> batchEditors = [];
+    private int? editorRoundNumber;
+    private GamePhase? editorPhase;
 
     [Parameter, EditorRequired]
     public GameLobbyView Lobby { get; set; } = default!;
@@ -93,27 +281,73 @@
     public GameSessionView? Session { get; set; }
 
     [Parameter]
-    public bool IsSubmittingMove { get; set; }
+    public bool IsSubmittingAction { get; set; }
 
     [Parameter]
     public string? GameplayError { get; set; }
 
     [Parameter]
-    public EventCallback<GameMove> OnSubmitMove { get; set; }
+    public EventCallback<Guid> OnAcquireCard { get; set; }
 
-    private bool CanSubmitMove
+    [Parameter]
+    public EventCallback<IReadOnlyList<GameBatchCardCommand>> OnLockBatch { get; set; }
+
+    protected override void OnParametersSet()
+    {
+        if (Session is null)
+        {
+            batchEditors.Clear();
+            editorRoundNumber = null;
+            editorPhase = null;
+            return;
+        }
+
+        if (editorRoundNumber != Session.RoundNumber || editorPhase != Session.Phase || !Session.CanLockBatch)
+        {
+            batchEditors.Clear();
+        }
+
+        editorRoundNumber = Session.RoundNumber;
+        editorPhase = Session.Phase;
+
+        var playableCardIds = GetPlayableCards().Select(card => card.CardInstanceId).ToHashSet();
+        foreach (var cardId in batchEditors.Keys.Where(cardId => !playableCardIds.Contains(cardId)).ToArray())
+        {
+            batchEditors.Remove(cardId);
+        }
+
+        foreach (var card in GetPlayableCards())
+        {
+            if (!batchEditors.ContainsKey(card.CardInstanceId))
+            {
+                batchEditors[card.CardInstanceId] = new EditableBatchCardState();
+            }
+        }
+    }
+
+    private bool ShowPlayEditor
         => Lobby.IsCurrentUserActive
             && Session is not null
-            && !Session.HasSubmittedMove
-            && !IsSubmittingMove;
+            && Session.Phase == GamePhase.Play
+            && Session.CanLockBatch
+            && Session.Completion is null;
 
     private string CurrentPlayerName
-        => ResolvePlayerName(Session?.CurrentPlayer.PlayerId) ?? Lobby.CurrentPlayerName;
+        => ResolvePlayerName(Session?.CurrentPlayer.Participant.PlayerId) ?? Lobby.CurrentPlayerName;
 
     private string OpponentPlayerName
-        => ResolvePlayerName(Session?.OpponentPlayer.PlayerId)
+        => ResolvePlayerName(Session?.OpponentPlayer.Participant.PlayerId)
             ?? Lobby.Players.FirstOrDefault(player => !player.IsCurrentUser)?.Name
             ?? "your opponent";
+
+    private IEnumerable<GameCardInstanceView> GetPlayableCards()
+        => Session?.CurrentPlayer.Hand.Where(card => GameCardCatalog.IsPlayable(card.Definition)) ?? [];
+
+    private IEnumerable<GameResolvedPlayerBatchView> GetResolvedPlayersInDisplayOrder()
+        => Session?.LastResolvedBatch?.Players
+            .OrderBy(playerBatch => playerBatch.Participant.PlayerId == Session.CurrentPlayer.Participant.PlayerId ? 0 : 1)
+            .ToArray()
+            ?? [];
 
     private string GetHeadline()
         => Session switch
@@ -121,8 +355,12 @@
             null when !Lobby.IsCurrentUserActive => "Archived seat",
             null when Lobby.Players.Count < Lobby.MaxPlayers => "Waiting for an opponent",
             null => "Session syncing",
-            { HasSubmittedMove: true } => "Move locked in",
-            _ => "Choose your move"
+            { Completion: not null } => "Match complete",
+            { Phase: GamePhase.Acquire, CanAcquireCard: true } => "Choose a market card",
+            { Phase: GamePhase.Acquire } => "Acquire phase",
+            { Phase: GamePhase.Play, CanLockBatch: true } => "Lock your play batch",
+            { Phase: GamePhase.Play } => "Waiting for the batch to resolve",
+            _ => "Gameplay"
         };
 
     private string GetDescription()
@@ -131,8 +369,12 @@
             null when !Lobby.IsCurrentUserActive => "Gameplay is only available while you still occupy an active seat in the match.",
             null when Lobby.Players.Count < Lobby.MaxPlayers => "The match begins automatically after another player joins this lobby.",
             null => "The match is active, but your session view is still catching up.",
-            { HasSubmittedMove: true } => $"Waiting for {OpponentPlayerName} to submit a move for round {Session.RoundNumber}.",
-            _ => $"Round {Session!.RoundNumber} is ready. Submit one move for {OpponentPlayerName}."
+            { Completion: not null } => GetCompletionMessage(),
+            { Phase: GamePhase.Acquire, CanAcquireCard: true } => "Pick one visible market card for this acquire round. Acquire order is determined once per acquire phase unless Scout overrides it.",
+            { Phase: GamePhase.Acquire } => $"Waiting for {OpponentPlayerName} to finish the acquire phase.",
+            { Phase: GamePhase.Play, CanLockBatch: true } => "Choose up to three action or effect cards and declare all required inputs before locking the batch.",
+            { Phase: GamePhase.Play } => $"Waiting for {OpponentPlayerName} to lock a play batch.",
+            _ => "Gameplay state is resolving."
         };
 
     private string GetEmptyStateMessage()
@@ -143,11 +385,39 @@
                 : "The game session is initializing. This panel refreshes automatically when Orleans publishes the updated state.";
 
     private string GetStatusBadgeText()
-        => Session is null
-            ? "Unavailable"
-            : Session.HasSubmittedMove
-                ? "Waiting"
-                : "Ready";
+        => Session switch
+        {
+            null => "Unavailable",
+            { Completion: not null } => "Finished",
+            { CanAcquireCard: true } => "Act now",
+            { CanLockBatch: true } => "Act now",
+            { WaitingForOpponent: true } => "Waiting",
+            _ => Session.Phase.ToString()
+        };
+
+    private string GetCompletionMessage()
+    {
+        if (Session?.Completion is null)
+        {
+            return string.Empty;
+        }
+
+        return Session.Completion.Reason switch
+        {
+            GameCompletionReason.Victory when Session.Completion.Winner is not null && Session.Completion.Winner.PlayerId == Session.CurrentPlayer.Participant.PlayerId => "You won by producing Victory.",
+            GameCompletionReason.Victory when Session.Completion.Winner is not null => $"{ResolvePlayerName(Session.Completion.Winner.PlayerId)} won by producing Victory.",
+            GameCompletionReason.Abandoned when Session.Completion.Winner is not null && Session.Completion.Winner.PlayerId == Session.CurrentPlayer.Participant.PlayerId => "Your opponent abandoned the match. You win.",
+            GameCompletionReason.Abandoned when Session.Completion.Winner is not null => $"{ResolvePlayerName(Session.Completion.Winner.PlayerId)} wins because the other player abandoned the match.",
+            _ => "The match ended in a draw."
+        };
+    }
+
+    private string GetAcquirePriorityText(GamePlayerStateView player)
+        => player.HasScoutOverride
+            ? "Scout will override initiative on the next acquire phase."
+            : player.PicksFirstInAcquirePhase
+                ? "Scheduled to pick first in the current acquire phase."
+                : "Scheduled to pick second in the current acquire phase.";
 
     private string? ResolvePlayerName(Guid? playerId)
     {
@@ -167,24 +437,440 @@
         return null;
     }
 
-    private static string FormatMove(GameMove move)
-        => move switch
-        {
-            GameMove.Redite => "Redite",
-            GameMove.Greenium => "Greenium",
-            GameMove.Bluon => "Bluon",
-            _ => move.ToString()
-        };
+    private bool CanAcquireCard(Guid marketCardInstanceId)
+        => Session is not null
+            && Session.CanAcquireCard
+            && Lobby.IsCurrentUserActive
+            && !IsSubmittingAction;
 
-    private string GetOutcomeMessage(GameRoundOutcome outcome)
-        => outcome switch
-        {
-            GameRoundOutcome.Draw => "The round was a draw.",
-            GameRoundOutcome.CurrentPlayerWins => "You won the round.",
-            GameRoundOutcome.OpponentWins => $"{OpponentPlayerName} won the round.",
-            _ => "The round resolved."
-        };
+    private Task AcquireCardAsync(Guid marketCardInstanceId)
+        => OnAcquireCard.InvokeAsync(marketCardInstanceId);
 
-    private Task SubmitMoveAsync(GameMove move)
-        => OnSubmitMove.InvokeAsync(move);
+    private bool IsCardSelected(Guid cardInstanceId)
+        => batchEditors.TryGetValue(cardInstanceId, out var editor) && editor.IsSelected;
+
+    private bool CanToggleCard(Guid cardInstanceId)
+        => IsCardSelected(cardInstanceId) || SelectedCardCount < (Session?.MaxBatchSize ?? GameCardCatalog.MaxBatchSize);
+
+    private int SelectedCardCount
+        => batchEditors.Values.Count(editor => editor.IsSelected);
+
+    private void ToggleCardSelection(Guid cardInstanceId)
+    {
+        if (!batchEditors.TryGetValue(cardInstanceId, out var editor))
+        {
+            return;
+        }
+
+        if (editor.IsSelected)
+        {
+            editor.Reset();
+            return;
+        }
+
+        if (SelectedCardCount >= (Session?.MaxBatchSize ?? GameCardCatalog.MaxBatchSize))
+        {
+            return;
+        }
+
+        editor.IsSelected = true;
+    }
+
+    private RenderFragment RenderEditor(GameCardInstanceView card) => builder =>
+    {
+        if (!batchEditors.TryGetValue(card.CardInstanceId, out var editor))
+        {
+            return;
+        }
+
+        var sequence = 0;
+
+        switch (card.Definition)
+        {
+            case GameCardDefinition.Extract:
+                builder.OpenElement(sequence++, "label");
+                builder.AddAttribute(sequence++, "class", "block text-sm text-slate-300");
+                builder.AddContent(sequence++, "Chosen resource");
+                builder.OpenElement(sequence++, "select");
+                builder.AddAttribute(sequence++, "class", "mt-2 w-full rounded-2xl border border-white/10 bg-slate-950/80 px-3 py-2 text-sm text-slate-100");
+                builder.AddAttribute(sequence++, "value", editor.ChosenResourceColor);
+                builder.AddAttribute(sequence++, "onchange", EventCallback.Factory.Create<ChangeEventArgs>(this, args => editor.ChosenResourceColor = args.Value?.ToString() ?? string.Empty));
+                AppendSelectOption(builder, ref sequence, string.Empty, "Choose a base color");
+                AppendSelectOption(builder, ref sequence, nameof(GameResourceColor.Red), "Red");
+                AppendSelectOption(builder, ref sequence, nameof(GameResourceColor.Yellow), "Yellow");
+                AppendSelectOption(builder, ref sequence, nameof(GameResourceColor.Blue), "Blue");
+                builder.CloseElement();
+                builder.CloseElement();
+                break;
+            case GameCardDefinition.Refine:
+                RenderConsumeEditor(builder, ref sequence, card, editor, "Select two base resources or Extract outputs", GetConsumedOptions(card));
+                break;
+            case GameCardDefinition.Produce:
+                builder.OpenElement(sequence++, "label");
+                builder.AddAttribute(sequence++, "class", "block text-sm text-slate-300");
+                builder.AddContent(sequence++, "Craft");
+                builder.OpenElement(sequence++, "select");
+                builder.AddAttribute(sequence++, "class", "mt-2 w-full rounded-2xl border border-white/10 bg-slate-950/80 px-3 py-2 text-sm text-slate-100");
+                builder.AddAttribute(sequence++, "value", editor.CraftedCardDefinition);
+                builder.AddAttribute(sequence++, "onchange", EventCallback.Factory.Create<ChangeEventArgs>(this, args => editor.CraftedCardDefinition = args.Value?.ToString() ?? string.Empty));
+                AppendSelectOption(builder, ref sequence, string.Empty, "Choose an output");
+                foreach (var option in ProduceOptions)
+                {
+                    AppendSelectOption(builder, ref sequence, option.Value, option.Label);
+                }
+                builder.CloseElement();
+                builder.CloseElement();
+                RenderConsumeEditor(builder, ref sequence, card, editor, "Select recipe inputs from hand or earlier batch outputs", GetConsumedOptions(card));
+                break;
+            case GameCardDefinition.Sabotage:
+                RenderTargetCardEditor(builder, ref sequence, editor, GetOpponentHandOptions(GameCardCatalog.IsBaseResource), "Choose a base resource in the opponent hand");
+                break;
+            case GameCardDefinition.Replicate:
+                RenderTargetCardEditor(builder, ref sequence, editor, GetCurrentHandOptions(GameCardCatalog.IsBaseResource), "Choose a base resource in your hand");
+                break;
+            case GameCardDefinition.Catalyst:
+                RenderTargetCardEditor(builder, ref sequence, editor, GetCurrentHandOptions(GameCardCatalog.IsBaseResource), "Choose a base resource in your hand");
+                builder.OpenElement(sequence++, "label");
+                builder.AddAttribute(sequence++, "class", "block text-sm text-slate-300");
+                builder.AddContent(sequence++, "Convert into");
+                builder.OpenElement(sequence++, "select");
+                builder.AddAttribute(sequence++, "class", "mt-2 w-full rounded-2xl border border-white/10 bg-slate-950/80 px-3 py-2 text-sm text-slate-100");
+                builder.AddAttribute(sequence++, "value", editor.TargetResourceColor);
+                builder.AddAttribute(sequence++, "onchange", EventCallback.Factory.Create<ChangeEventArgs>(this, args => editor.TargetResourceColor = args.Value?.ToString() ?? string.Empty));
+                AppendSelectOption(builder, ref sequence, string.Empty, "Choose a base color");
+                AppendSelectOption(builder, ref sequence, nameof(GameResourceColor.Red), "Red");
+                AppendSelectOption(builder, ref sequence, nameof(GameResourceColor.Yellow), "Yellow");
+                AppendSelectOption(builder, ref sequence, nameof(GameResourceColor.Blue), "Blue");
+                builder.CloseElement();
+                builder.CloseElement();
+                break;
+            case GameCardDefinition.Corrupt:
+                RenderTargetCardEditor(builder, ref sequence, editor, GetOpponentHandOptions(GameCardCatalog.IsRefinedResource), "Choose a refined resource in the opponent hand");
+                break;
+            case GameCardDefinition.Reclaim:
+                RenderTargetCardEditor(builder, ref sequence, editor, GetReclaimOptions(card.CardInstanceId), "Choose another selected action card from this batch");
+                break;
+            case GameCardDefinition.Scout:
+                builder.OpenElement(sequence++, "p");
+                builder.AddAttribute(sequence++, "class", "text-sm leading-6 text-slate-300");
+                builder.AddContent(sequence++, "Scout has no additional choices. If both players craft Scout before the next acquire phase, the overrides cancel out.");
+                builder.CloseElement();
+                break;
+        }
+    };
+
+    private void RenderConsumeEditor(RenderTreeBuilder builder, ref int sequence, GameCardInstanceView card, EditableBatchCardState editor, string label, IReadOnlyList<CardReferenceOption> options)
+    {
+        builder.OpenElement(sequence++, "div");
+        builder.AddAttribute(sequence++, "class", "space-y-2 text-sm text-slate-300");
+        builder.OpenElement(sequence++, "p");
+        builder.AddContent(sequence++, label);
+        builder.CloseElement();
+
+        foreach (var option in options)
+        {
+            builder.OpenElement(sequence++, "label");
+            builder.AddAttribute(sequence++, "class", "flex items-center gap-3 rounded-2xl border border-white/10 bg-slate-950/70 px-3 py-2");
+            builder.OpenElement(sequence++, "input");
+            builder.AddAttribute(sequence++, "type", "checkbox");
+            builder.AddAttribute(sequence++, "checked", editor.ConsumedKeys.Contains(option.Key));
+            builder.AddAttribute(sequence++, "onchange", EventCallback.Factory.Create<ChangeEventArgs>(this, args => ToggleConsumedSelection(card.CardInstanceId, option.Key, args.Value)));
+            builder.CloseElement();
+            builder.OpenElement(sequence++, "span");
+            builder.AddContent(sequence++, option.Label);
+            builder.CloseElement();
+            builder.CloseElement();
+        }
+
+        builder.CloseElement();
+    }
+
+    private void RenderTargetCardEditor(RenderTreeBuilder builder, ref int sequence, EditableBatchCardState editor, IReadOnlyList<SelectOption> options, string label)
+    {
+        builder.OpenElement(sequence++, "label");
+        builder.AddAttribute(sequence++, "class", "block text-sm text-slate-300");
+        builder.AddContent(sequence++, label);
+        builder.OpenElement(sequence++, "select");
+        builder.AddAttribute(sequence++, "class", "mt-2 w-full rounded-2xl border border-white/10 bg-slate-950/80 px-3 py-2 text-sm text-slate-100");
+        builder.AddAttribute(sequence++, "value", editor.TargetCardInstanceId);
+        builder.AddAttribute(sequence++, "onchange", EventCallback.Factory.Create<ChangeEventArgs>(this, args => editor.TargetCardInstanceId = args.Value?.ToString() ?? string.Empty));
+        AppendSelectOption(builder, ref sequence, string.Empty, "Choose a card");
+        foreach (var option in options)
+        {
+            AppendSelectOption(builder, ref sequence, option.Value, option.Label);
+        }
+        builder.CloseElement();
+        builder.CloseElement();
+    }
+
+    private static void AppendSelectOption(RenderTreeBuilder builder, ref int sequence, string value, string label)
+    {
+        builder.OpenElement(sequence++, "option");
+        builder.AddAttribute(sequence++, "value", value);
+        builder.AddContent(sequence++, label);
+        builder.CloseElement();
+    }
+
+    private IReadOnlyList<SelectOption> GetCurrentHandOptions(Func<GameCardDefinition, bool> predicate)
+        => Session is null
+            ? []
+            : Session.CurrentPlayer.Hand
+                .Where(card => predicate(card.Definition))
+                .Select(card => new SelectOption(card.CardInstanceId.ToString(), card.DisplayName))
+                .ToArray();
+
+    private IReadOnlyList<SelectOption> GetOpponentHandOptions(Func<GameCardDefinition, bool> predicate)
+        => Session is null
+            ? []
+            : Session.OpponentPlayer.Hand
+                .Where(card => predicate(card.Definition))
+                .Select(card => new SelectOption(card.CardInstanceId.ToString(), card.DisplayName))
+                .ToArray();
+
+    private IReadOnlyList<SelectOption> GetReclaimOptions(Guid currentCardId)
+        => Session is null
+            ? []
+            : GetPlayableCards()
+                .Where(card => card.CardInstanceId != currentCardId && GameCardCatalog.IsMarketCard(card.Definition) && IsCardSelected(card.CardInstanceId))
+                .Select(card => new SelectOption(card.CardInstanceId.ToString(), card.DisplayName))
+                .ToArray();
+
+    private IReadOnlyList<CardReferenceOption> GetConsumedOptions(GameCardInstanceView card)
+    {
+        if (Session is null)
+        {
+            return [];
+        }
+
+        var options = Session.CurrentPlayer.Hand
+            .Where(resource => resource.Category == GameCardCategory.Resource)
+            .Select(resource => new CardReferenceOption($"hand:{resource.CardInstanceId}", $"Hand: {resource.DisplayName}"))
+            .ToList();
+
+        var currentStep = GameCardCatalog.GetResolutionStep(card.Definition);
+        foreach (var sourceCard in GetPlayableCards().Where(sourceCard => sourceCard.CardInstanceId != card.CardInstanceId && IsCardSelected(sourceCard.CardInstanceId)))
+        {
+            if (GameCardCatalog.GetResolutionStep(sourceCard.Definition) >= currentStep || !TryGetProducedDefinition(sourceCard, out var producedDefinition))
+            {
+                continue;
+            }
+
+            options.Add(new CardReferenceOption($"produced:{sourceCard.CardInstanceId}", $"Batch: {sourceCard.DisplayName} -> {producedDefinition}"));
+        }
+
+        return options;
+    }
+
+    private bool TryGetProducedDefinition(GameCardInstanceView sourceCard, out GameCardDefinition producedDefinition)
+    {
+        producedDefinition = default;
+        if (!batchEditors.TryGetValue(sourceCard.CardInstanceId, out var editor))
+        {
+            return false;
+        }
+
+        switch (sourceCard.Definition)
+        {
+            case GameCardDefinition.Extract:
+                return Enum.TryParse<GameResourceColor>(editor.ChosenResourceColor, out var chosenColor)
+                    && GameCardCatalog.TryGetBaseDefinition(chosenColor, out producedDefinition);
+            case GameCardDefinition.Refine:
+                {
+                    var definitions = ResolveSelectedReferenceDefinitions(editor.ConsumedKeys).ToArray();
+                    if (definitions.Length == 2 && GameCardCatalog.TryGetRefineOutput(definitions[0], definitions[1]) is { } refineOutput)
+                    {
+                        producedDefinition = refineOutput;
+                        return true;
+                    }
+
+                    return false;
+                }
+            default:
+                return false;
+        }
+    }
+
+    private IEnumerable<GameCardDefinition> ResolveSelectedReferenceDefinitions(IEnumerable<string> keys)
+    {
+        if (Session is null)
+        {
+            yield break;
+        }
+
+        foreach (var key in keys)
+        {
+            if (TryCreateReferenceCommand(key, out var referenceCommand))
+            {
+                if (referenceCommand.CardInstanceId is { } cardInstanceId)
+                {
+                    var handCard = Session.CurrentPlayer.Hand.FirstOrDefault(card => card.CardInstanceId == cardInstanceId);
+                    if (handCard is not null)
+                    {
+                        yield return handCard.Definition;
+                    }
+                }
+                else if (referenceCommand.ProducedByCardInstanceId is { } producedByCardInstanceId)
+                {
+                    var sourceCard = GetPlayableCards().FirstOrDefault(card => card.CardInstanceId == producedByCardInstanceId);
+                    if (sourceCard is not null && TryGetProducedDefinition(sourceCard, out var producedDefinition))
+                    {
+                        yield return producedDefinition;
+                    }
+                }
+            }
+        }
+    }
+
+    private static readonly SelectOption[] ProduceOptions =
+    [
+        new(nameof(GameCardDefinition.Sabotage), "Sabotage"),
+        new(nameof(GameCardDefinition.Replicate), "Replicate"),
+        new(nameof(GameCardDefinition.Catalyst), "Catalyst"),
+        new(nameof(GameCardDefinition.Corrupt), "Corrupt"),
+        new(nameof(GameCardDefinition.Reclaim), "Reclaim"),
+        new(nameof(GameCardDefinition.Scout), "Scout"),
+        new(nameof(GameCardDefinition.Victory), "Victory")
+    ];
+
+    private void ToggleConsumedSelection(Guid cardInstanceId, string key, object? value)
+    {
+        if (!batchEditors.TryGetValue(cardInstanceId, out var editor))
+        {
+            return;
+        }
+
+        if (value is bool isChecked && isChecked)
+        {
+            editor.ConsumedKeys.Add(key);
+            return;
+        }
+
+        editor.ConsumedKeys.Remove(key);
+    }
+
+    private async Task LockBatchAsync()
+    {
+        if (Session is null)
+        {
+            return;
+        }
+
+        var selectedCards = GetPlayableCards()
+            .Where(card => IsCardSelected(card.CardInstanceId))
+            .Select(BuildBatchCommand)
+            .ToArray();
+
+        await OnLockBatch.InvokeAsync(selectedCards);
+    }
+
+    private Task PassPlayAsync()
+        => OnLockBatch.InvokeAsync(Array.Empty<GameBatchCardCommand>());
+
+    private GameBatchCardCommand BuildBatchCommand(GameCardInstanceView card)
+    {
+        var editor = batchEditors[card.CardInstanceId];
+        return new GameBatchCardCommand(
+            card.CardInstanceId,
+            ParseEnum<GameResourceColor>(editor.ChosenResourceColor),
+            ParseEnum<GameCardDefinition>(editor.CraftedCardDefinition),
+            ParseEnum<GameResourceColor>(editor.TargetResourceColor),
+            ParseGuid(editor.TargetCardInstanceId),
+            editor.ConsumedKeys.Select(BuildReferenceCommand).ToArray());
+    }
+
+    private GameCardReferenceCommand BuildReferenceCommand(string key)
+        => TryCreateReferenceCommand(key, out var reference)
+            ? reference
+            : new GameCardReferenceCommand(null, null, null);
+
+    private bool TryCreateReferenceCommand(string key, out GameCardReferenceCommand reference)
+    {
+        reference = new GameCardReferenceCommand(null, null, null);
+
+        if (key.StartsWith("hand:", StringComparison.Ordinal) && Guid.TryParse(key[5..], out var handCardId))
+        {
+            reference = new GameCardReferenceCommand(handCardId, null, null);
+            return true;
+        }
+
+        if (key.StartsWith("produced:", StringComparison.Ordinal) && Guid.TryParse(key[9..], out var producedByCardId))
+        {
+            var sourceCard = GetPlayableCards().FirstOrDefault(card => card.CardInstanceId == producedByCardId);
+            if (sourceCard is not null && TryGetProducedDefinition(sourceCard, out var producedDefinition))
+            {
+                reference = new GameCardReferenceCommand(null, producedByCardId, producedDefinition);
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static TEnum? ParseEnum<TEnum>(string value)
+        where TEnum : struct, Enum
+        => Enum.TryParse<TEnum>(value, out var parsedValue) ? parsedValue : null;
+
+    private static Guid? ParseGuid(string value)
+        => Guid.TryParse(value, out var parsedValue) ? parsedValue : null;
+
+    private string DescribeSelection(GameBatchCardView card)
+    {
+        var details = new List<string>();
+
+        if (card.ChosenResourceColor is not null)
+        {
+            details.Add($"chooses {card.ChosenResourceColor}");
+        }
+
+        if (card.CraftedCardDefinition is not null)
+        {
+            details.Add($"crafts {card.CraftedCardDefinition}");
+        }
+
+        if (card.TargetResourceColor is not null)
+        {
+            details.Add($"targets {card.TargetResourceColor}");
+        }
+
+        if (card.TargetCardInstanceId is not null)
+        {
+            details.Add("declares a target card");
+        }
+
+        if (card.ConsumedCards.Count > 0)
+        {
+            details.Add($"uses {card.ConsumedCards.Count} input(s)");
+        }
+
+        return details.Count == 0 ? "No extra choices." : string.Join(", ", details);
+    }
+
+    private sealed class EditableBatchCardState
+    {
+        public bool IsSelected { get; set; }
+
+        public string ChosenResourceColor { get; set; } = string.Empty;
+
+        public string CraftedCardDefinition { get; set; } = string.Empty;
+
+        public string TargetResourceColor { get; set; } = string.Empty;
+
+        public string TargetCardInstanceId { get; set; } = string.Empty;
+
+        public HashSet<string> ConsumedKeys { get; } = [];
+
+        public void Reset()
+        {
+            IsSelected = false;
+            ChosenResourceColor = string.Empty;
+            CraftedCardDefinition = string.Empty;
+            TargetResourceColor = string.Empty;
+            TargetCardInstanceId = string.Empty;
+            ConsumedKeys.Clear();
+        }
+    }
+
+    private sealed record SelectOption(string Value, string Label);
+
+    private sealed record CardReferenceOption(string Key, string Label);
 }

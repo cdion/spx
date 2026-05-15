@@ -17,8 +17,10 @@
 @inject ISendPrivateMessageHandler SendPrivateMessageHandler
 @inject IEditMessageHandler EditMessageHandler
 @inject IDeleteMessageHandler DeleteMessageHandler
-@inject ISubmitGameMoveHandler SubmitGameMoveHandler
+@inject ISubmitAcquireCardHandler SubmitAcquireCardHandler
+@inject ISubmitPlayBatchHandler SubmitPlayBatchHandler
 @inject ILogger<GamePage> Logger
+@inject ILogger<GamePageSubscription> SubscriptionLogger
 @inject NavigationManager Navigation
 
 <PageTitle>Game</PageTitle>
@@ -48,10 +50,10 @@ else if (lobby is null)
 }
 else
 {
-    <section class="ui-page max-w-6xl">
-        <header class="ui-surface-form">
-            <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-                <div class="space-y-3">
+    <section class="ui-page max-w-6xl gap-6 lg:gap-7">
+        <header class="ui-surface-form p-5 sm:p-6 lg:p-7">
+            <div class="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+                <div class="space-y-2">
                     <p class="ui-page-eyebrow">Lobby</p>
                     <h1 class="ui-page-title">@lobby.Name</h1>
                     <p class="ui-page-copy">
@@ -59,7 +61,7 @@ else
                     </p>
                 </div>
 
-                <div class="flex flex-wrap items-center gap-3">
+                <div class="flex flex-wrap items-center gap-2">
                     <span class="ui-status-badge">
                         @lobby.Status
                     </span>
@@ -84,13 +86,14 @@ else
 
         <GameSessionPanel Lobby="@lobby"
                   Session="@session"
-                  IsSubmittingMove="@isSubmittingMove"
+                  IsSubmittingAction="@isSubmittingGameplayAction"
                   GameplayError="@gameplayError"
-                  OnSubmitMove="SubmitMoveAsync" />
+                  OnAcquireCard="AcquireCardAsync"
+                  OnLockBatch="LockBatchAsync" />
 
-        <section class="ui-surface-form">
-            <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-                <div class="space-y-2">
+        <section class="ui-surface-form p-5 sm:p-6 lg:p-7">
+            <div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                <div class="space-y-1">
                     <p class="ui-section-eyebrow">Timeline</p>
                     <h2 class="ui-section-title">Messages and game events</h2>
                 </div>
@@ -98,12 +101,12 @@ else
 
             @if (!string.IsNullOrWhiteSpace(messageError))
             {
-                <div class="mt-6">
+                <div class="mt-4">
                     <AlertBanner>@messageError</AlertBanner>
                 </div>
             }
 
-            <div class="mt-6 grid gap-6 lg:grid-cols-[1.3fr_0.9fr]">
+            <div class="mt-4 grid gap-4 lg:grid-cols-[1.35fr_0.85fr] lg:gap-5">
                 <GameTimelinePanel @key="GetTimelinePanelKey()"
                                    @ref="timelineComponent"
                                    CurrentUserName="@lobby.CurrentPlayerName"
@@ -133,7 +136,7 @@ else
             </div>
         </section>
 
-        <div class="grid gap-6 xl:grid-cols-[1.4fr_1fr]">
+        <div class="grid gap-4 xl:grid-cols-[1.4fr_1fr] xl:gap-5">
             <GameRosterPanel Lobby="@lobby" Presence="@presence" />
 
             <GameCurrentUserPanel Lobby="@lobby"
@@ -167,7 +170,7 @@ else
     private bool isLoadingOlderMessages;
     private bool isSendingMessage;
     private bool isSavingEdit;
-    private bool isSubmittingMove;
+    private bool isSubmittingGameplayAction;
     private GamePageSubscription? liveSubscription;
     private GameTimelinePanel? timelineComponent;
     private string composerText = string.Empty;
@@ -216,6 +219,7 @@ else
             await LoadInitialMessagesAsync();
             liveSubscription = new GamePageSubscription(
                 ClusterClient,
+                SubscriptionLogger,
                 lobby.GameId,
                 HandleLobbyInvalidatedAsync,
                 HandleSessionInvalidatedAsync,
@@ -376,22 +380,22 @@ else
         }
     }
 
-    private async Task SubmitMoveAsync(GameMove move)
+    private async Task AcquireCardAsync(Guid marketCardInstanceId)
     {
-        if (lobby is null || session is null || !lobby.IsCurrentUserActive || isSubmittingMove)
+        if (lobby is null || session is null || !lobby.IsCurrentUserActive || isSubmittingGameplayAction)
         {
             return;
         }
 
         gameplayError = null;
-        isSubmittingMove = true;
+        isSubmittingGameplayAction = true;
 
         try
         {
-            var result = await SubmitGameMoveHandler.HandleAsync(lobby.GameId, currentUserId, session.RoundNumber, move);
-            if (result is not SubmitGameMoveSucceeded succeeded)
+            var result = await SubmitAcquireCardHandler.HandleAsync(lobby.GameId, currentUserId, session.RoundNumber, marketCardInstanceId);
+            if (result is not GameSessionCommandSucceeded succeeded)
             {
-                gameplayError = ((SubmitGameMoveFailed)result).ErrorMessage;
+                gameplayError = ((GameSessionCommandFailed)result).ErrorMessage;
                 return;
             }
 
@@ -399,12 +403,44 @@ else
         }
         catch (Exception exception)
         {
-            Logger.LogError(exception, "Failed to submit a move for game {GameId} user {UserId}.", GameId, currentUserId);
-            gameplayError = "We couldn't submit your move right now. Please try again.";
+            Logger.LogError(exception, "Failed to submit an acquire choice for game {GameId} user {UserId}.", GameId, currentUserId);
+            gameplayError = "We couldn't lock your acquire choice right now. Please try again.";
         }
         finally
         {
-            isSubmittingMove = false;
+            isSubmittingGameplayAction = false;
+        }
+    }
+
+    private async Task LockBatchAsync(IReadOnlyList<GameBatchCardCommand> cards)
+    {
+        if (lobby is null || session is null || !lobby.IsCurrentUserActive || isSubmittingGameplayAction)
+        {
+            return;
+        }
+
+        gameplayError = null;
+        isSubmittingGameplayAction = true;
+
+        try
+        {
+            var result = await SubmitPlayBatchHandler.HandleAsync(lobby.GameId, currentUserId, session.RoundNumber, cards);
+            if (result is not GameSessionCommandSucceeded succeeded)
+            {
+                gameplayError = ((GameSessionCommandFailed)result).ErrorMessage;
+                return;
+            }
+
+            session = succeeded.Session;
+        }
+        catch (Exception exception)
+        {
+            Logger.LogError(exception, "Failed to submit a play batch for game {GameId} user {UserId}.", GameId, currentUserId);
+            gameplayError = "We couldn't lock your play batch right now. Please try again.";
+        }
+        finally
+        {
+            isSubmittingGameplayAction = false;
         }
     }
 
@@ -835,8 +871,9 @@ else
                 await PublishPresenceLeaseAsync(gameId, playerId, connectionId, cancellationToken);
             }
         }
-        catch (OperationCanceledException)
+        catch (OperationCanceledException exception)
         {
+            Logger.LogDebug(exception, "Presence renewal loop stopped for game {GameId} player {PlayerId} because tracking was canceled.", gameId, playerId);
         }
     }
 
@@ -851,8 +888,9 @@ else
                 DateTime.UtcNow.AddSeconds(PresenceLeaseSeconds),
                 cancellationToken);
         }
-        catch (OperationCanceledException)
+        catch (OperationCanceledException exception)
         {
+            Logger.LogDebug(exception, "Ignoring canceled presence lease renewal for game {GameId} player {PlayerId}.", gameId, playerId);
         }
         catch (Exception exception)
         {
@@ -888,8 +926,9 @@ else
             {
                 await renewalTask;
             }
-            catch (OperationCanceledException)
+            catch (OperationCanceledException exception)
             {
+                Logger.LogDebug(exception, "Presence renewal task finished after cancellation.");
             }
         }
 

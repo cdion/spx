@@ -67,7 +67,9 @@ In VS Code, the main development task is:
 
 - `dev: apphost + tailwind`
 
-That runs the Tailwind watcher and AppHost together.
+That runs the Tailwind watcher and the AppHost under `dotnet watch` together.
+
+For normal UI and Razor iteration, prefer that task over the debug launch configuration. Keep the debug launch for cases where you actually need breakpoints or debugger state.
 
 Useful single-purpose tasks are also checked in:
 
@@ -76,6 +78,7 @@ Useful single-purpose tasks are also checked in:
 - `build: apphost`
 - `tailwind: build css`
 - `tailwind: watch css`
+- `apphost: watch`
 - `apphost: run`
 
 ## Application Behavior
