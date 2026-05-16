@@ -1,4 +1,5 @@
 using Orleans;
+using Orleans.Runtime;
 using Spx.Contracts;
 using Spx.Game.Application;
 
@@ -20,7 +21,11 @@ public sealed class OrleansGameRuntimeClient(
         {
             await clusterClient.GetGrain<IGameInvalidationGrain>(gameId).PublishLobbyInvalidated();
         }
-        catch (Exception exception)
+        catch (OrleansException exception)
+        {
+            logger.LogWarning(exception, "Failed to publish lobby update for game {GameId}.", gameId);
+        }
+        catch (TimeoutException exception)
         {
             logger.LogWarning(exception, "Failed to publish lobby update for game {GameId}.", gameId);
         }
@@ -32,7 +37,11 @@ public sealed class OrleansGameRuntimeClient(
         {
             await clusterClient.GetGrain<IGameInvalidationGrain>(gameId).PublishSessionInvalidated();
         }
-        catch (Exception exception)
+        catch (OrleansException exception)
+        {
+            logger.LogWarning(exception, "Failed to publish session update for game {GameId}.", gameId);
+        }
+        catch (TimeoutException exception)
         {
             logger.LogWarning(exception, "Failed to publish session update for game {GameId}.", gameId);
         }
@@ -44,7 +53,11 @@ public sealed class OrleansGameRuntimeClient(
         {
             await clusterClient.GetGrain<IGameInvalidationGrain>(gameId).PublishMessagesInvalidated();
         }
-        catch (Exception exception)
+        catch (OrleansException exception)
+        {
+            logger.LogWarning(exception, "Failed to publish message update for game {GameId}.", gameId);
+        }
+        catch (TimeoutException exception)
         {
             logger.LogWarning(exception, "Failed to publish message update for game {GameId}.", gameId);
         }
@@ -56,7 +69,11 @@ public sealed class OrleansGameRuntimeClient(
         {
             await clusterClient.GetGrain<IGameInvalidationGrain>(gameId).PublishPresenceInvalidated();
         }
-        catch (Exception exception)
+        catch (OrleansException exception)
+        {
+            logger.LogWarning(exception, "Failed to publish presence update for game {GameId}.", gameId);
+        }
+        catch (TimeoutException exception)
         {
             logger.LogWarning(exception, "Failed to publish presence update for game {GameId}.", gameId);
         }
@@ -69,7 +86,12 @@ public sealed class OrleansGameRuntimeClient(
             var snapshot = await clusterClient.GetGrain<IGamePresenceGrain>(gameId).GetSnapshotAsync();
             return new GamePresenceView(snapshot.OnlinePlayerIds);
         }
-        catch (Exception exception)
+        catch (OrleansException exception)
+        {
+            logger.LogWarning(exception, "Failed to fetch presence for game {GameId}.", gameId);
+            return GamePresenceView.Empty;
+        }
+        catch (TimeoutException exception)
         {
             logger.LogWarning(exception, "Failed to fetch presence for game {GameId}.", gameId);
             return GamePresenceView.Empty;
@@ -94,7 +116,12 @@ public sealed class OrleansGameRuntimeClient(
             await clusterClient.GetGrain<IGameSessionGrain>(gameId).InitializeAsync(new InitializeGameSessionCommand(players[0], players[1]));
             return true;
         }
-        catch (Exception exception)
+        catch (OrleansException exception)
+        {
+            logger.LogWarning(exception, "Failed to ensure a game session for game {GameId}.", gameId);
+            return false;
+        }
+        catch (TimeoutException exception)
         {
             logger.LogWarning(exception, "Failed to ensure a game session for game {GameId}.", gameId);
             return false;
@@ -107,28 +134,62 @@ public sealed class OrleansGameRuntimeClient(
         {
             return await clusterClient.GetGrain<IGameSessionGrain>(gameId).GetPlayerViewAsync(new GetGameSessionViewQuery(userId));
         }
-        catch (Exception exception)
+        catch (OrleansException exception)
+        {
+            logger.LogWarning(exception, "Failed to fetch player view for game {GameId} user {UserId}. Session data unavailable.", gameId, userId);
+            return null;
+        }
+        catch (TimeoutException exception)
         {
             logger.LogWarning(exception, "Failed to fetch player view for game {GameId} user {UserId}. Session data unavailable.", gameId, userId);
             return null;
         }
     }
 
-    public async Task<SubmitGameMoveOutcome> SubmitMoveAsync(Guid gameId, SubmitGameMoveCommand command, CancellationToken cancellationToken = default)
+    public async Task<GameSessionCommandOutcome> SubmitAcquireAsync(Guid gameId, SubmitAcquireCardCommand command, CancellationToken cancellationToken = default)
     {
         try
         {
-            var session = await clusterClient.GetGrain<IGameSessionGrain>(gameId).SubmitMoveAsync(command);
-            return new SubmitGameMoveSucceeded(session);
+            var session = await clusterClient.GetGrain<IGameSessionGrain>(gameId).SubmitAcquireAsync(command);
+            return new GameSessionCommandSucceeded(session);
         }
         catch (InvalidOperationException exception)
         {
-            logger.LogInformation(exception, "Move submission was rejected for game {GameId} user {UserId}.", gameId, command.UserId);
-            return new SubmitGameMoveFailed(exception.Message);
+            logger.LogInformation(exception, "Acquire submission was rejected for game {GameId} user {UserId}.", gameId, command.UserId);
+            return new GameSessionCommandFailed(exception.Message);
         }
-        catch (Exception exception)
+        catch (OrleansException exception)
         {
-            logger.LogWarning(exception, "Failed to submit move for game {GameId} user {UserId}.", gameId, command.UserId);
+            logger.LogWarning(exception, "Failed to submit acquire choice for game {GameId} user {UserId}.", gameId, command.UserId);
+            throw;
+        }
+        catch (TimeoutException exception)
+        {
+            logger.LogWarning(exception, "Failed to submit acquire choice for game {GameId} user {UserId}.", gameId, command.UserId);
+            throw;
+        }
+    }
+
+    public async Task<GameSessionCommandOutcome> SubmitPlayBatchAsync(Guid gameId, SubmitPlayBatchCommand command, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var result = await clusterClient.GetGrain<IGameSessionGrain>(gameId).SubmitPlayBatchAsync(command);
+            return new GameSessionCommandSucceeded(result.Session, result.GameplayEvents);
+        }
+        catch (InvalidOperationException exception)
+        {
+            logger.LogInformation(exception, "Play batch submission was rejected for game {GameId} user {UserId}.", gameId, command.UserId);
+            return new GameSessionCommandFailed(exception.Message);
+        }
+        catch (OrleansException exception)
+        {
+            logger.LogWarning(exception, "Failed to submit play batch for game {GameId} user {UserId}.", gameId, command.UserId);
+            throw;
+        }
+        catch (TimeoutException exception)
+        {
+            logger.LogWarning(exception, "Failed to submit play batch for game {GameId} user {UserId}.", gameId, command.UserId);
             throw;
         }
     }

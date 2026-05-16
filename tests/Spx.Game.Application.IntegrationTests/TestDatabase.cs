@@ -168,22 +168,22 @@ public sealed class TestDatabase : IAsyncDisposable
     }
 }
 
-internal sealed class FakeGameLobbyNotifier : IGameLobbyEventsPublisher
+internal sealed class FakeGameLobbyNotifier : IGameLobbyInvalidationPublisher
 {
     public List<Guid> PublishedGameIds { get; } = [];
 
-    public Task PublishLobbyChangedAsync(Guid gameId, CancellationToken cancellationToken = default)
+    public Task PublishLobbyInvalidatedAsync(Guid gameId, CancellationToken cancellationToken = default)
     {
         PublishedGameIds.Add(gameId);
         return Task.CompletedTask;
     }
 }
 
-internal sealed class FakeGameMessagePublisher : IGameMessageEventsPublisher
+internal sealed class FakeGameMessagePublisher : IGameMessageInvalidationPublisher
 {
     public List<Guid> PublishedGameIds { get; } = [];
 
-    public Task PublishMessagesChangedAsync(Guid gameId, CancellationToken cancellationToken = default)
+    public Task PublishMessagesInvalidatedAsync(Guid gameId, CancellationToken cancellationToken = default)
     {
         PublishedGameIds.Add(gameId);
         return Task.CompletedTask;

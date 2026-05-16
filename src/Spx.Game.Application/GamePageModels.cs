@@ -12,8 +12,15 @@ public sealed record GamePresenceView(IReadOnlyList<Guid> OnlinePlayerIds)
     public static GamePresenceView Empty { get; } = new(Array.Empty<Guid>());
 }
 
-public abstract record SubmitGameMoveOutcome;
+public abstract record GameSessionCommandOutcome;
 
-public sealed record SubmitGameMoveSucceeded(GameSessionView Session) : SubmitGameMoveOutcome;
+public sealed record GameSessionCommandSucceeded(
+    GameSessionView Session,
+    IReadOnlyList<string> GameplayEvents) : GameSessionCommandOutcome
+{
+    public GameSessionCommandSucceeded(GameSessionView Session) : this(Session, [])
+    {
+    }
+}
 
-public sealed record SubmitGameMoveFailed(string ErrorMessage) : SubmitGameMoveOutcome;
+public sealed record GameSessionCommandFailed(string ErrorMessage) : GameSessionCommandOutcome;

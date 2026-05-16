@@ -10,6 +10,7 @@ public static class GameDataAdaptersServiceCollectionExtensions
     {
         services.AddScoped<IGamePersistence, EfGamePersistence>();
         services.AddScoped<IGameMessagePersistence, EfGameMessagePersistence>();
+        services.AddScoped<IGameplayEventMessageWriter, EfGameplayEventMessageWriter>();
 
         return services;
     }

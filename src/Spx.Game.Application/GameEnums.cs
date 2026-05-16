@@ -19,5 +19,6 @@ public enum GameMessageKind
     GameCreated = 2,
     PlayerJoined = 3,
     PlayerLeft = 4,
-    GameEnded = 5
+    GameEnded = 5,
+    GameplayEvent = 6
 }

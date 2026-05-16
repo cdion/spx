@@ -1,13 +1,22 @@
+using Orleans.Configuration;
 using Orleans.Hosting;
 using Spx.Silo.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
+var orleansClusterId = builder.Configuration["Orleans:ClusterId"] ?? "spx-local-cluster";
+var orleansServiceId = builder.Configuration["Orleans:ServiceId"] ?? "spx-local-service";
 
 builder.AddServiceDefaults();
 builder.AddKeyedNpgsqlDataSource("orleansdb");
 builder.AddKeyedRedisClient("orleans-redis");
 builder.UseOrleans(siloBuilder =>
 {
+	siloBuilder.Configure<ClusterOptions>(options =>
+	{
+		options.ClusterId = orleansClusterId;
+		options.ServiceId = orleansServiceId;
+	});
+
 	siloBuilder.AddAdoNetGrainStorage("Default", options =>
 	{
 		options.Invariant = "Npgsql";

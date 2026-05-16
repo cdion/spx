@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Spx.Contracts;
 using Spx.Data;
 using Spx.Game.Application;
 using Xunit;
@@ -8,6 +9,35 @@ namespace Spx.Game.Application.IntegrationTests;
 [Collection(IntegrationTestCollection.Name)]
 public sealed class GameMessagingServiceTests(PostgresDatabaseFixture fixture) : IntegrationTestBase(fixture)
 {
+    [Fact]
+    public async Task PersistResolvedBatchAsync_CreatesPublicGameplayMessagesOncePerResolution()
+    {
+        var database = Database;
+        await database.AddUserAsync("user-1", "user1@example.com");
+        await database.AddUserAsync("user-2", "user2@example.com");
+        var game = await database.AddGameAsync("user-1", "ABC123", "Alpha", "user-1", "Captain Red");
+        var firstPlayer = await database.Context.GamePlayers.SingleAsync(entry => entry.GameId == game.Id && entry.UserId == "user-1");
+        var secondPlayer = await database.AddGamePlayerAsync(game.Id, "user-2", "Captain Blue");
+        var writer = new EfGameplayEventMessageWriter(database.ContextFactory);
+        var resolvedAtUtc = DateTime.UtcNow;
+        var gameplayEvents = new[] { "user-1 produced Victory.", "user-2 passed." };
+
+        var persistedCount = await writer.PersistResolvedBatchAsync(CreateResolvedSession(game.Id, firstPlayer.Id, secondPlayer.Id, resolvedAtUtc), gameplayEvents);
+        var persistedCountOnRetry = await writer.PersistResolvedBatchAsync(CreateResolvedSession(game.Id, firstPlayer.Id, secondPlayer.Id, resolvedAtUtc), gameplayEvents);
+
+        Assert.Equal(2, persistedCount);
+        Assert.Equal(0, persistedCountOnRetry);
+
+        var messages = await database.Context.GameMessages
+            .Where(entry => entry.Kind == GameMessageKind.GameplayEvent)
+            .OrderBy(entry => entry.Body)
+            .ToListAsync();
+
+        Assert.Equal(2, messages.Count);
+        Assert.Contains(messages, entry => entry.Body.Contains("Round 4 resolved.", StringComparison.Ordinal));
+        Assert.Contains(messages, entry => entry.Body.Contains("Captain Red won by producing Victory.", StringComparison.Ordinal));
+    }
+
     [Fact]
     public async Task SendPublicMessageAsync_CreatesMessageAndReturnsMappedView()
     {
@@ -206,4 +236,42 @@ public sealed class GameMessagingServiceTests(PostgresDatabaseFixture fixture) :
         var failed = Assert.IsType<GameMessageCommandFailed>(result);
         Assert.Equal("That message has already been deleted.", failed.ErrorMessage);
     }
+
+    private static GameSessionView CreateResolvedSession(Guid gameId, Guid firstPlayerId, Guid secondPlayerId, DateTime resolvedAtUtc)
+    {
+        var firstPlayer = new GameSessionParticipantView(firstPlayerId, "user-1");
+        var secondPlayer = new GameSessionParticipantView(secondPlayerId, "user-2");
+
+        return new GameSessionView(
+            gameId,
+            4,
+            GamePhase.Completed,
+            new GamePlayerStateView(firstPlayer, [], false, 0, 0, false, false, []),
+            new GamePlayerStateView(secondPlayer, [], false, 0, 0, false, false, []),
+            [],
+            0,
+            false,
+            false,
+            false,
+            GameCardCatalog.MaxBatchSize,
+            new GameResolvedBatchView(
+                4,
+                [
+                    new GameResolvedPlayerBatchView(
+                        firstPlayer,
+                        [new GameBatchCardView(CreateCard(Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"), GameCardDefinition.Produce), null, GameCardDefinition.Victory, null, null, [])],
+                        true),
+                    new GameResolvedPlayerBatchView(secondPlayer, [], false)
+                ],
+                resolvedAtUtc),
+            new GameCompletionView(GameCompletionReason.Victory, firstPlayer, resolvedAtUtc));
+    }
+
+    private static GameCardInstanceView CreateCard(Guid cardInstanceId, GameCardDefinition definition)
+        => new(
+            cardInstanceId,
+            definition,
+            definition.ToString(),
+            GameCardCatalog.GetCategory(definition),
+            GameCardCatalog.GetResourceColor(definition));
 }

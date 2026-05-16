@@ -14,7 +14,8 @@ using Spx.Game.Application.Features.JoinGame;
 using Spx.Game.Application.Features.LeaveGame;
 using Spx.Game.Application.Features.SendPrivateMessage;
 using Spx.Game.Application.Features.SendPublicMessage;
-using Spx.Game.Application.Features.SubmitGameMove;
+using Spx.Game.Application.Features.SubmitAcquireCard;
+using Spx.Game.Application.Features.SubmitPlayBatch;
 
 namespace Microsoft.Extensions.DependencyInjection;
 
@@ -30,7 +31,8 @@ public static class GameApplicationServiceCollectionExtensions
         services.AddScoped<IGetGamePresenceHandler, GetGamePresenceHandler>();
         services.AddScoped<IGetGameSessionHandler, GetGameSessionHandler>();
         services.AddScoped<IGetUserGamesHandler, GetUserGamesHandler>();
-        services.AddScoped<ISubmitGameMoveHandler, SubmitGameMoveHandler>();
+        services.AddScoped<ISubmitAcquireCardHandler, SubmitAcquireCardHandler>();
+        services.AddScoped<ISubmitPlayBatchHandler, SubmitPlayBatchHandler>();
 
         services.AddScoped<IGetMessagesHandler, GetMessagesHandler>();
         services.AddScoped<IGetMessageUpdatesHandler, GetMessageUpdatesHandler>();

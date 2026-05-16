@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Components.Server.Circuits;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Orleans.Configuration;
 using Spx.Account;
 using Spx.Game.Application;
 using Spx.Web.Adapters.Account;
@@ -14,6 +15,8 @@ using Spx.Web.Endpoints;
 using Spx.Web.Options;
 
 var builder = WebApplication.CreateBuilder(args);
+var orleansClusterId = builder.Configuration["Orleans:ClusterId"] ?? "spx-local-cluster";
+var orleansServiceId = builder.Configuration["Orleans:ServiceId"] ?? "spx-local-service";
 
 builder.AddServiceDefaults();
 builder.AddKeyedRedisClient("orleans-redis");
@@ -26,7 +29,14 @@ builder.Services.AddDbContextFactory<ApplicationDbContext>(options =>
 
     options.UseNpgsql(connectionString);
 });
-builder.UseOrleansClient();
+builder.UseOrleansClient(clientBuilder =>
+{
+    clientBuilder.Configure<ClusterOptions>(options =>
+    {
+        options.ClusterId = orleansClusterId;
+        options.ServiceId = orleansServiceId;
+    });
+});
 builder.Services.Configure<AppUrlOptions>(builder.Configuration.GetSection(AppUrlOptions.SectionName));
 builder.Services.Configure<ResendOptions>(builder.Configuration.GetSection(ResendOptions.SectionName));
 

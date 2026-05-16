@@ -10,6 +10,21 @@ internal static class GameMessageFactory
     public static GameMessage CreatePrivatePlayerMessage(Guid gameId, GamePlayer sender, GamePlayer recipient, string body, DateTime createdAtUtc)
         => CreatePlayerMessage(gameId, sender, recipient, GameMessageKind.PlayerPrivate, body, createdAtUtc);
 
+    public static GameMessage CreateGameplayEvent(Guid gameId, string body, DateTime createdAtUtc)
+        => new()
+        {
+            Id = Guid.CreateVersion7(),
+            GameId = gameId,
+            SenderKind = GameMessageSenderKind.Game,
+            SenderPlayerId = null,
+            RecipientPlayerId = null,
+            Kind = GameMessageKind.GameplayEvent,
+            Body = body,
+            SenderDisplayName = "Game",
+            RecipientDisplayName = string.Empty,
+            CreatedAtUtc = createdAtUtc
+        };
+
     public static GameMessage CreateSystemEvent(Guid gameId, GameMessageKind kind, DateTime createdAtUtc, GamePlayer? actor = null)
         => new()
         {

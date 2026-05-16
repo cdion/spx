@@ -62,6 +62,7 @@ public sealed class LeaveGameHandlerTests
         FakeGameMessageEventsPublisher messagePublisher)
     {
         var services = new ServiceCollection();
+        services.AddLogging();
         services.AddGameApplication();
         services.AddSingleton<IGamePersistence>(persistence);
         services.AddSingleton<IGameSessionService>(sessionService);
@@ -158,14 +159,7 @@ public sealed class LeaveGameHandlerTests
         public List<Guid> AbandonedGameIds { get; } = [];
 
         public GameSessionView? ActiveSessionView { get; init; }
-            = new(
-                Guid.NewGuid(),
-                1,
-                new GameSessionParticipantView(Guid.NewGuid(), "user-1"),
-                new GameSessionParticipantView(Guid.NewGuid(), "user-2"),
-                false,
-                false,
-                null);
+            = CreateSessionView();
 
         public Task<bool> EnsureSessionAsync(Guid gameId, IReadOnlyList<GameSessionParticipantView> players, CancellationToken cancellationToken = default)
             => Task.FromResult(true);
@@ -173,13 +167,37 @@ public sealed class LeaveGameHandlerTests
         public Task<GameSessionView?> GetSessionViewAsync(Guid gameId, string userId, CancellationToken cancellationToken = default)
             => Task.FromResult(ActiveSessionView is null ? null : ActiveSessionView with { GameId = gameId });
 
-        public Task<SubmitGameMoveOutcome> SubmitMoveAsync(Guid gameId, SubmitGameMoveCommand command, CancellationToken cancellationToken = default)
+        public Task<GameSessionCommandOutcome> SubmitAcquireAsync(Guid gameId, SubmitAcquireCardCommand command, CancellationToken cancellationToken = default)
+            => throw new NotSupportedException();
+
+        public Task<GameSessionCommandOutcome> SubmitPlayBatchAsync(Guid gameId, SubmitPlayBatchCommand command, CancellationToken cancellationToken = default)
             => throw new NotSupportedException();
 
         public Task<GameSessionView> AbandonAsync(Guid gameId, string userId, CancellationToken cancellationToken = default)
         {
             AbandonedGameIds.Add(gameId);
             return Task.FromResult(ActiveSessionView ?? throw new InvalidOperationException("No active session view was configured for this test."));
+        }
+
+        private static GameSessionView CreateSessionView()
+        {
+            var currentPlayer = new GameSessionParticipantView(Guid.NewGuid(), "user-1");
+            var opponentPlayer = new GameSessionParticipantView(Guid.NewGuid(), "user-2");
+
+            return new GameSessionView(
+                Guid.NewGuid(),
+                1,
+                GamePhase.Play,
+                new GamePlayerStateView(currentPlayer, [], false, 0, 0, false, false, []),
+                new GamePlayerStateView(opponentPlayer, [], false, 0, 0, false, true, []),
+                [],
+                0,
+                false,
+                false,
+                false,
+                GameCardCatalog.MaxBatchSize,
+                null,
+                null);
         }
     }
 }

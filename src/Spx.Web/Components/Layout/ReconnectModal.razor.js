@@ -41,6 +41,7 @@ async function retry() {
         }
     } catch (err) {
         // We got an exception, server is currently unavailable
+        console.debug("Blazor reconnect retry failed; waiting for the document to become visible before trying again.", err);
         document.addEventListener("visibilitychange", retryWhenDocumentBecomesVisible);
     }
 }
@@ -51,7 +52,8 @@ async function resume() {
         if (!successful) {
             location.reload();
         }
-    } catch {
+    } catch (err) {
+        console.debug("Blazor circuit resume failed; leaving the reconnect modal in the resume failed state.", err);
         reconnectModal.classList.replace("components-reconnect-paused", "components-reconnect-resume-failed");
     }
 }

@@ -41,14 +41,7 @@ public sealed class GetGamePageHandlerTests
             [new GamePlayerView(CurrentPlayerId, "Captain Red", DateTime.UtcNow, true), new GamePlayerView(OpponentPlayerId, "Captain Blue", DateTime.UtcNow, false)],
             true);
 
-        var session = new GameSessionView(
-            gameId,
-            3,
-            new GameSessionParticipantView(CurrentPlayerId, "user-1"),
-            new GameSessionParticipantView(OpponentPlayerId, "user-2"),
-            true,
-            true,
-            null);
+        var session = CreateSession(gameId, 3, waitingForOpponent: true);
 
         var persistence = new FakeGamePersistence { Lobby = lobby };
         var sessionService = new FakeGameSessionService { Session = session };
@@ -80,14 +73,7 @@ public sealed class GetGamePageHandlerTests
             [new GamePlayerView(CurrentPlayerId, "Captain Red", DateTime.UtcNow, true), new GamePlayerView(OpponentPlayerId, "Captain Blue", DateTime.UtcNow, false)],
             true);
 
-        var session = new GameSessionView(
-            gameId,
-            1,
-            new GameSessionParticipantView(CurrentPlayerId, "user-1"),
-            new GameSessionParticipantView(OpponentPlayerId, "user-2"),
-            false,
-            false,
-            null);
+        var session = CreateSession(gameId, 1, waitingForOpponent: false);
         var presence = new GamePresenceView([OpponentPlayerId]);
 
         var persistence = new FakeGamePersistence
@@ -128,6 +114,27 @@ public sealed class GetGamePageHandlerTests
         services.AddSingleton<IGameMessageInvalidationPublisher, StubGameMessageEventsPublisher>();
         services.AddSingleton<IGameMessagePersistence, StubGameMessagePersistence>();
         return services.BuildServiceProvider();
+    }
+
+    private static GameSessionView CreateSession(Guid gameId, int roundNumber, bool waitingForOpponent)
+    {
+        var currentPlayer = new GameSessionParticipantView(CurrentPlayerId, "user-1");
+        var opponentPlayer = new GameSessionParticipantView(OpponentPlayerId, "user-2");
+
+        return new GameSessionView(
+            gameId,
+            roundNumber,
+            GamePhase.Play,
+            new GamePlayerStateView(currentPlayer, [], false, 0, 0, false, false, []),
+            new GamePlayerStateView(opponentPlayer, [], false, 0, 0, false, true, []),
+            [],
+            0,
+            waitingForOpponent,
+            false,
+            false,
+            GameCardCatalog.MaxBatchSize,
+            null,
+            null);
     }
 
     private sealed class FakeGamePersistence : IGamePersistence
@@ -179,7 +186,10 @@ public sealed class GetGamePageHandlerTests
         public Task<GameSessionView?> GetSessionViewAsync(Guid gameId, string userId, CancellationToken cancellationToken = default)
             => Task.FromResult(Session);
 
-        public Task<SubmitGameMoveOutcome> SubmitMoveAsync(Guid gameId, SubmitGameMoveCommand command, CancellationToken cancellationToken = default)
+        public Task<GameSessionCommandOutcome> SubmitAcquireAsync(Guid gameId, SubmitAcquireCardCommand command, CancellationToken cancellationToken = default)
+            => throw new NotSupportedException();
+
+        public Task<GameSessionCommandOutcome> SubmitPlayBatchAsync(Guid gameId, SubmitPlayBatchCommand command, CancellationToken cancellationToken = default)
             => throw new NotSupportedException();
 
         public Task<GameSessionView> AbandonAsync(Guid gameId, string userId, CancellationToken cancellationToken = default)

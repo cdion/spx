@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using Spx.Contracts;
 
 namespace Spx.Game.Application.Features.LeaveGame;
@@ -6,7 +7,8 @@ internal sealed class LeaveGameHandler(
     IGamePersistence gamePersistence,
     IGameSessionService gameSessionService,
     IGameLobbyInvalidationPublisher gameLobbyInvalidationPublisher,
-    IGameMessageInvalidationPublisher gameMessageInvalidationPublisher)
+    IGameMessageInvalidationPublisher gameMessageInvalidationPublisher,
+    ILogger<LeaveGameHandler> logger)
     : ILeaveGameHandler
 {
     public async Task<GameCommandOutcome> HandleAsync(Guid gameId, string userId, CancellationToken cancellationToken = default)
@@ -21,10 +23,9 @@ internal sealed class LeaveGameHandler(
             {
                 await gameSessionService.AbandonAsync(gameId, userId, cancellationToken);
             }
-            catch
+            catch (Exception exception)
             {
-                // Log but don't fail—Orleans state cleanup is secondary to SQL persistence
-                // Future refinement: implement compensating transaction or background cleanup
+                logger.LogWarning(exception, "Failed to abandon Orleans session after leave for game {GameId} user {UserId}.", gameId, userId);
             }
 
             await gameLobbyInvalidationPublisher.PublishLobbyInvalidatedAsync(gameId, cancellationToken);

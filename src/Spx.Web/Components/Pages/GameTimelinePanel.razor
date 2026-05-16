@@ -1,5 +1,6 @@
 @implements IAsyncDisposable
 @inject IJSRuntime JS
+@inject ILogger<GameTimelinePanel> Logger
 
 <div class="ui-panel-card-tight">
     <div class="mb-3 flex items-center justify-between px-2 text-xs uppercase tracking-[0.2em] text-slate-400">
@@ -211,11 +212,13 @@
                 module = await JS.InvokeAsync<IJSObjectReference>("import", "./Components/Pages/GameTimelinePanel.razor.js");
                 dotNetReference = DotNetObjectReference.Create(this);
             }
-            catch (TaskCanceledException)
+            catch (TaskCanceledException exception)
             {
+                LogIgnoredInteropException(exception, "importing the timeline module");
             }
-            catch (JSDisconnectedException)
+            catch (JSDisconnectedException exception)
             {
+                LogIgnoredInteropException(exception, "importing the timeline module");
             }
         }
 
@@ -226,11 +229,13 @@
                 await module.InvokeVoidAsync("setTimelineObserver", timelineContainer, timelineTopSentinel, dotNetReference);
                 isObserverAttached = true;
             }
-            catch (TaskCanceledException)
+            catch (TaskCanceledException exception)
             {
+                LogIgnoredInteropException(exception, "attaching the timeline observer");
             }
-            catch (JSDisconnectedException)
+            catch (JSDisconnectedException exception)
             {
+                LogIgnoredInteropException(exception, "attaching the timeline observer");
             }
         }
     }
@@ -250,12 +255,14 @@
         {
             return await module.InvokeAsync<TimelineScrollMetrics>("getScrollMetrics", timelineContainer);
         }
-        catch (TaskCanceledException)
+        catch (TaskCanceledException exception)
         {
+            LogIgnoredInteropException(exception, "getting timeline scroll metrics");
             return new TimelineScrollMetrics();
         }
-        catch (JSDisconnectedException)
+        catch (JSDisconnectedException exception)
         {
+            LogIgnoredInteropException(exception, "getting timeline scroll metrics");
             return new TimelineScrollMetrics();
         }
     }
@@ -271,12 +278,14 @@
         {
             return await module.InvokeAsync<bool>("isNearBottom", timelineContainer);
         }
-        catch (TaskCanceledException)
+        catch (TaskCanceledException exception)
         {
+            LogIgnoredInteropException(exception, "checking whether the timeline is near the bottom");
             return true;
         }
-        catch (JSDisconnectedException)
+        catch (JSDisconnectedException exception)
         {
+            LogIgnoredInteropException(exception, "checking whether the timeline is near the bottom");
             return true;
         }
     }
@@ -292,11 +301,13 @@
         {
             await module.InvokeVoidAsync("restoreScrollAfterPrepend", timelineContainer, previousScrollHeight, previousScrollTop);
         }
-        catch (TaskCanceledException)
+        catch (TaskCanceledException exception)
         {
+            LogIgnoredInteropException(exception, "restoring timeline scroll after prepending messages");
         }
-        catch (JSDisconnectedException)
+        catch (JSDisconnectedException exception)
         {
+            LogIgnoredInteropException(exception, "restoring timeline scroll after prepending messages");
         }
     }
 
@@ -311,11 +322,13 @@
         {
             await module.InvokeVoidAsync("scrollToBottom", timelineContainer);
         }
-        catch (TaskCanceledException)
+        catch (TaskCanceledException exception)
         {
+            LogIgnoredInteropException(exception, "scrolling the timeline to the bottom");
         }
-        catch (JSDisconnectedException)
+        catch (JSDisconnectedException exception)
         {
+            LogIgnoredInteropException(exception, "scrolling the timeline to the bottom");
         }
     }
 
@@ -328,16 +341,21 @@
                 await module.InvokeVoidAsync("disposeTimelineObserver", timelineTopSentinel);
                 await module.DisposeAsync();
             }
-            catch (TaskCanceledException)
+            catch (TaskCanceledException exception)
             {
+                LogIgnoredInteropException(exception, "disposing the timeline observer");
             }
-            catch (JSDisconnectedException)
+            catch (JSDisconnectedException exception)
             {
+                LogIgnoredInteropException(exception, "disposing the timeline observer");
             }
         }
 
         dotNetReference?.Dispose();
     }
+
+    private void LogIgnoredInteropException(Exception exception, string operation)
+        => Logger.LogDebug(exception, "Ignoring expected JS interop interruption while {Operation}.", operation);
 
     private Task HandleEditMessageInput(ChangeEventArgs args)
         => EditMessageTextChanged.InvokeAsync(args.Value?.ToString() ?? string.Empty);
@@ -355,6 +373,7 @@
             Spx.Game.Application.GameMessageKind.PlayerJoined => "Player joined",
             Spx.Game.Application.GameMessageKind.PlayerLeft => "Player left",
             Spx.Game.Application.GameMessageKind.GameEnded => "Game ended",
+            Spx.Game.Application.GameMessageKind.GameplayEvent => "Gameplay",
             _ => item.Message.SenderDisplayName
         };
     }
@@ -374,6 +393,7 @@
         return item.Message?.Kind switch
         {
             Spx.Game.Application.GameMessageKind.GameCreated or Spx.Game.Application.GameMessageKind.PlayerJoined or Spx.Game.Application.GameMessageKind.PlayerLeft or Spx.Game.Application.GameMessageKind.GameEnded => "border-emerald-400/30",
+            Spx.Game.Application.GameMessageKind.GameplayEvent => "border-sky-400/30",
             _ => "border-white/10"
         };
     }
@@ -396,6 +416,7 @@
             Spx.Game.Application.GameMessageKind.PlayerJoined => $"{item.Message.SenderDisplayName} joined the game.",
             Spx.Game.Application.GameMessageKind.PlayerLeft => $"{item.Message.SenderDisplayName} left the game.",
             Spx.Game.Application.GameMessageKind.GameEnded => "The game ended.",
+            Spx.Game.Application.GameMessageKind.GameplayEvent => item.Message.Body,
             _ => item.Message.Body
         };
     }

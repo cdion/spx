@@ -1,10 +1,13 @@
+using Microsoft.Extensions.Logging;
 using Orleans;
+using Orleans.Runtime;
 using Spx.Contracts;
 
 namespace Spx.Web.Components.Pages;
 
 internal sealed class GamePageSubscription(
     IClusterClient clusterClient,
+    ILogger<GamePageSubscription> logger,
     Guid gameId,
     Func<Task> onLobbyInvalidated,
     Func<Task> onSessionInvalidated,
@@ -31,11 +34,23 @@ internal sealed class GamePageSubscription(
             await clusterClient.GetGrain<IGameInvalidationGrain>(GameId).Subscribe(observerReference);
             isSubscribed = true;
         }
-        catch
+        catch (OrleansException exception)
         {
-            clusterClient.DeleteObjectReference<IGameInvalidationObserver>(observerReference);
-            observerReference = null;
+            logger.LogWarning(exception, "Failed to subscribe to live game invalidation events for game {GameId}.", GameId);
             throw;
+        }
+        catch (TimeoutException exception)
+        {
+            logger.LogWarning(exception, "Failed to subscribe to live game invalidation events for game {GameId}.", GameId);
+            throw;
+        }
+        finally
+        {
+            if (!isSubscribed && observerReference is not null)
+            {
+                clusterClient.DeleteObjectReference<IGameInvalidationObserver>(observerReference);
+                observerReference = null;
+            }
         }
     }
 

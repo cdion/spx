@@ -1,43 +1,32 @@
 using Spx.Contracts;
-using Spx.Game.Domain;
 using Xunit;
 
 namespace Spx.Game.Application.Tests;
 
-public sealed class GameRoundResolverTests
+public sealed class GameCardCatalogTests
 {
-    private readonly GameRoundResolver resolver = new();
-
-    [Theory]
-    [InlineData(GameMove.Redite, GameMove.Redite)]
-    [InlineData(GameMove.Greenium, GameMove.Greenium)]
-    [InlineData(GameMove.Bluon, GameMove.Bluon)]
-    public void Resolve_returns_draw_for_matching_moves(GameMove firstPlayerMove, GameMove secondPlayerMove)
+    [Fact]
+    public void IsPlayable_returns_true_for_actions_and_effects_only()
     {
-        var result = resolver.Resolve(firstPlayerMove, secondPlayerMove);
-
-        Assert.Equal(GameRoundOutcome.Draw, result.Outcome);
+        Assert.True(GameCardCatalog.IsPlayable(GameCardDefinition.Extract));
+        Assert.True(GameCardCatalog.IsPlayable(GameCardDefinition.Corrupt));
+        Assert.False(GameCardCatalog.IsPlayable(GameCardDefinition.Red));
+        Assert.False(GameCardCatalog.IsPlayable(GameCardDefinition.Victory));
     }
 
-    [Theory]
-    [InlineData(GameMove.Redite, GameMove.Greenium)]
-    [InlineData(GameMove.Greenium, GameMove.Bluon)]
-    [InlineData(GameMove.Bluon, GameMove.Redite)]
-    public void Resolve_returns_first_player_win_for_winning_cycle(GameMove firstPlayerMove, GameMove secondPlayerMove)
+    [Fact]
+    public void GetInitiativeWeight_matches_spec_weights()
     {
-        var result = resolver.Resolve(firstPlayerMove, secondPlayerMove);
-
-        Assert.Equal(GameRoundOutcome.CurrentPlayerWins, result.Outcome);
+        Assert.Equal(1, GameCardCatalog.GetInitiativeWeight(GameCardDefinition.Extract));
+        Assert.Equal(1, GameCardCatalog.GetInitiativeWeight(GameCardDefinition.Blue));
+        Assert.Equal(2, GameCardCatalog.GetInitiativeWeight(GameCardDefinition.Green));
+        Assert.Equal(3, GameCardCatalog.GetInitiativeWeight(GameCardDefinition.Scout));
     }
 
-    [Theory]
-    [InlineData(GameMove.Greenium, GameMove.Redite)]
-    [InlineData(GameMove.Bluon, GameMove.Greenium)]
-    [InlineData(GameMove.Redite, GameMove.Bluon)]
-    public void Resolve_returns_second_player_win_for_losing_cycle(GameMove firstPlayerMove, GameMove secondPlayerMove)
+    [Fact]
+    public void GetCategory_distinguishes_victory_from_regular_resources()
     {
-        var result = resolver.Resolve(firstPlayerMove, secondPlayerMove);
-
-        Assert.Equal(GameRoundOutcome.OpponentWins, result.Outcome);
+        Assert.Equal(GameCardCategory.Resource, GameCardCatalog.GetCategory(GameCardDefinition.Purple));
+        Assert.Equal(GameCardCategory.Victory, GameCardCatalog.GetCategory(GameCardDefinition.Victory));
     }
 }

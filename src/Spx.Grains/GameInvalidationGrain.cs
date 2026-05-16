@@ -1,9 +1,10 @@
+using Microsoft.Extensions.Logging;
 using Orleans;
 using Spx.Contracts;
 
 namespace Spx.Grains;
 
-public sealed class GameInvalidationGrain : Grain, IGameInvalidationGrain
+public sealed class GameInvalidationGrain(ILogger<GameInvalidationGrain> logger) : Grain, IGameInvalidationGrain
 {
     private readonly HashSet<IGameInvalidationObserver> observers = [];
 
@@ -21,41 +22,45 @@ public sealed class GameInvalidationGrain : Grain, IGameInvalidationGrain
 
     public Task PublishLobbyInvalidated()
     {
-        NotifyLobbyObservers(this.GetPrimaryKey(), observers);
+        NotifyLobbyObservers(this.GetPrimaryKey(), observers, logger);
         return Task.CompletedTask;
     }
 
     public Task PublishSessionInvalidated()
     {
-        NotifySessionObservers(this.GetPrimaryKey(), observers);
+        NotifySessionObservers(this.GetPrimaryKey(), observers, logger);
         return Task.CompletedTask;
     }
 
     public Task PublishMessagesInvalidated()
     {
-        NotifyMessageObservers(this.GetPrimaryKey(), observers);
+        NotifyMessageObservers(this.GetPrimaryKey(), observers, logger);
         return Task.CompletedTask;
     }
 
     public Task PublishPresenceInvalidated()
     {
-        NotifyPresenceObservers(this.GetPrimaryKey(), observers);
+        NotifyPresenceObservers(this.GetPrimaryKey(), observers, logger);
         return Task.CompletedTask;
     }
 
-    internal static void NotifyLobbyObservers(Guid gameId, ICollection<IGameInvalidationObserver> observers)
-        => NotifyObservers(gameId, observers, static (observer, targetGameId) => observer.OnLobbyInvalidated(targetGameId));
+    internal static void NotifyLobbyObservers(Guid gameId, ICollection<IGameInvalidationObserver> observers, ILogger<GameInvalidationGrain>? logger = null)
+        => NotifyObservers(gameId, observers, static (observer, targetGameId) => observer.OnLobbyInvalidated(targetGameId), logger);
 
-    internal static void NotifySessionObservers(Guid gameId, ICollection<IGameInvalidationObserver> observers)
-        => NotifyObservers(gameId, observers, static (observer, targetGameId) => observer.OnSessionInvalidated(targetGameId));
+    internal static void NotifySessionObservers(Guid gameId, ICollection<IGameInvalidationObserver> observers, ILogger<GameInvalidationGrain>? logger = null)
+        => NotifyObservers(gameId, observers, static (observer, targetGameId) => observer.OnSessionInvalidated(targetGameId), logger);
 
-    internal static void NotifyMessageObservers(Guid gameId, ICollection<IGameInvalidationObserver> observers)
-        => NotifyObservers(gameId, observers, static (observer, targetGameId) => observer.OnMessagesInvalidated(targetGameId));
+    internal static void NotifyMessageObservers(Guid gameId, ICollection<IGameInvalidationObserver> observers, ILogger<GameInvalidationGrain>? logger = null)
+        => NotifyObservers(gameId, observers, static (observer, targetGameId) => observer.OnMessagesInvalidated(targetGameId), logger);
 
-    internal static void NotifyPresenceObservers(Guid gameId, ICollection<IGameInvalidationObserver> observers)
-        => NotifyObservers(gameId, observers, static (observer, targetGameId) => observer.OnPresenceInvalidated(targetGameId));
+    internal static void NotifyPresenceObservers(Guid gameId, ICollection<IGameInvalidationObserver> observers, ILogger<GameInvalidationGrain>? logger = null)
+        => NotifyObservers(gameId, observers, static (observer, targetGameId) => observer.OnPresenceInvalidated(targetGameId), logger);
 
-    private static void NotifyObservers(Guid gameId, ICollection<IGameInvalidationObserver> observers, Action<IGameInvalidationObserver, Guid> notifyObserver)
+    private static void NotifyObservers(
+        Guid gameId,
+        ICollection<IGameInvalidationObserver> observers,
+        Action<IGameInvalidationObserver, Guid> notifyObserver,
+        ILogger<GameInvalidationGrain>? logger)
     {
         List<IGameInvalidationObserver>? disconnectedObservers = null;
 
@@ -65,8 +70,9 @@ public sealed class GameInvalidationGrain : Grain, IGameInvalidationGrain
             {
                 notifyObserver(observer, gameId);
             }
-            catch
+            catch (Exception exception)
             {
+                logger?.LogDebug(exception, "Removing a disconnected game invalidation observer for game {GameId}.", gameId);
                 disconnectedObservers ??= [];
                 disconnectedObservers.Add(observer);
             }

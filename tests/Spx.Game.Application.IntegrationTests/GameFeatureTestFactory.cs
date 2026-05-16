@@ -21,8 +21,8 @@ internal static class GameFeatureTestFactory
 {
     public static GameFeatureSet Create(
         IDbContextFactory<ApplicationDbContext> contextFactory,
-        IGameLobbyEventsPublisher? notifier = null,
-        IGameMessageEventsPublisher? messagePublisher = null,
+        IGameLobbyInvalidationPublisher? notifier = null,
+        IGameMessageInvalidationPublisher? messagePublisher = null,
         IGameSessionService? sessionService = null)
     {
         notifier ??= new FakeGameLobbyNotifier();
@@ -34,7 +34,7 @@ internal static class GameFeatureTestFactory
         return new GameFeatureSet(
             new CreateGameHandler(gamePersistence, notifier, messagePublisher),
             new JoinGameHandler(gamePersistence, sessionService, notifier, messagePublisher),
-            new LeaveGameHandler(gamePersistence, sessionService, notifier, messagePublisher),
+            new LeaveGameHandler(gamePersistence, sessionService, notifier, messagePublisher, NullLogger<LeaveGameHandler>.Instance),
             new GetGameLobbyHandler(gamePersistence),
             new GetUserGamesHandler(gamePersistence),
             new GetMessagesHandler(gameMessagePersistence),
@@ -69,8 +69,11 @@ internal sealed class FakeGameSessionService : IGameSessionService
     public Task<GameSessionView?> GetSessionViewAsync(Guid gameId, string userId, CancellationToken cancellationToken = default)
         => Task.FromResult<GameSessionView?>(null);
 
-    public Task<SubmitGameMoveOutcome> SubmitMoveAsync(Guid gameId, SubmitGameMoveCommand command, CancellationToken cancellationToken = default)
-        => throw new NotSupportedException();
+    public Task<GameSessionCommandOutcome> SubmitAcquireAsync(Guid gameId, SubmitAcquireCardCommand command, CancellationToken cancellationToken = default)
+        => Task.FromResult<GameSessionCommandOutcome>(new GameSessionCommandFailed("Not implemented in integration test factory."));
+
+    public Task<GameSessionCommandOutcome> SubmitPlayBatchAsync(Guid gameId, SubmitPlayBatchCommand command, CancellationToken cancellationToken = default)
+        => Task.FromResult<GameSessionCommandOutcome>(new GameSessionCommandFailed("Not implemented in integration test factory."));
 
     public Task<GameSessionView> AbandonAsync(Guid gameId, string userId, CancellationToken cancellationToken = default)
         => throw new NotSupportedException();

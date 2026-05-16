@@ -11,14 +11,7 @@ public sealed class GetGameSessionHandlerTests
     [Fact]
     public async Task HandleAsync_returns_session_when_available()
     {
-        var session = new GameSessionView(
-            Guid.NewGuid(),
-            2,
-            new GameSessionParticipantView(Guid.NewGuid(), "user-1"),
-            new GameSessionParticipantView(Guid.NewGuid(), "user-2"),
-            false,
-            true,
-            null);
+        var session = CreateSession(Guid.NewGuid(), 2, waitingForOpponent: true);
 
         var sessionService = new FakeGameSessionService { Session = session };
         using var services = CreateServices(sessionService);
@@ -53,6 +46,27 @@ public sealed class GetGameSessionHandlerTests
         return services.BuildServiceProvider();
     }
 
+    private static GameSessionView CreateSession(Guid gameId, int roundNumber, bool waitingForOpponent)
+    {
+        var currentPlayer = new GameSessionParticipantView(Guid.NewGuid(), "user-1");
+        var opponentPlayer = new GameSessionParticipantView(Guid.NewGuid(), "user-2");
+
+        return new GameSessionView(
+            gameId,
+            roundNumber,
+            GamePhase.Play,
+            new GamePlayerStateView(currentPlayer, [], false, 0, 0, false, false, []),
+            new GamePlayerStateView(opponentPlayer, [], false, 0, 0, false, true, []),
+            [],
+            0,
+            waitingForOpponent,
+            false,
+            false,
+            GameCardCatalog.MaxBatchSize,
+            null,
+            null);
+    }
+
     private sealed class FakeGameSessionService : IGameSessionService
     {
         public GameSessionView? Session { get; init; }
@@ -63,7 +77,10 @@ public sealed class GetGameSessionHandlerTests
         public Task<GameSessionView?> GetSessionViewAsync(Guid gameId, string userId, CancellationToken cancellationToken = default)
             => Task.FromResult(Session);
 
-        public Task<SubmitGameMoveOutcome> SubmitMoveAsync(Guid gameId, SubmitGameMoveCommand command, CancellationToken cancellationToken = default)
+        public Task<GameSessionCommandOutcome> SubmitAcquireAsync(Guid gameId, SubmitAcquireCardCommand command, CancellationToken cancellationToken = default)
+            => throw new NotSupportedException();
+
+        public Task<GameSessionCommandOutcome> SubmitPlayBatchAsync(Guid gameId, SubmitPlayBatchCommand command, CancellationToken cancellationToken = default)
             => throw new NotSupportedException();
 
         public Task<GameSessionView> AbandonAsync(Guid gameId, string userId, CancellationToken cancellationToken = default)
