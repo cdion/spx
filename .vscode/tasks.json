@@ -90,6 +90,17 @@
       "group": "test"
     },
     {
+      "label": "tests: run grains integration",
+      "type": "shell",
+      "command": "dotnet",
+      "args": [
+        "test",
+        "${workspaceFolder}/tests/Spx.Grains.IntegrationTests/Spx.Grains.IntegrationTests.csproj"
+      ],
+      "problemMatcher": [],
+      "group": "test"
+    },
+    {
       "label": "tests: run web",
       "type": "shell",
       "command": "dotnet",
@@ -107,6 +118,7 @@
         "tests: run games unit",
         "tests: run games",
         "tests: run grains",
+        "tests: run grains integration",
         "tests: run web"
       ],
       "dependsOrder": "sequence",
@@ -179,6 +191,20 @@
       "group": "test"
     },
     {
+      "label": "tests: collect coverage grains integration",
+      "type": "shell",
+      "command": "dotnet",
+      "args": [
+        "test",
+        "${workspaceFolder}/tests/Spx.Grains.IntegrationTests/Spx.Grains.IntegrationTests.csproj",
+        "--collect:XPlat Code Coverage",
+        "--results-directory",
+        "${workspaceFolder}/coverage/testresults"
+      ],
+      "problemMatcher": [],
+      "group": "test"
+    },
+    {
       "label": "tests: collect coverage web",
       "type": "shell",
       "command": "dotnet",
@@ -199,6 +225,7 @@
         "tests: collect coverage games unit",
         "tests: collect coverage games",
         "tests: collect coverage grains",
+        "tests: collect coverage grains integration",
         "tests: collect coverage web"
       ],
       "dependsOrder": "sequence",

@@ -1,12 +1,15 @@
 using Orleans;
+using Orleans.Runtime;
 using Spx.Contracts;
 
 namespace Spx.Grains;
 
 public sealed class GamePresenceGrain : Grain, IGamePresenceGrain
 {
+    private static readonly TimeSpan ExpiryTimerInterval = TimeSpan.FromSeconds(5);
+
     private readonly Dictionary<Guid, Dictionary<Guid, DateTime>> leasesByPlayerId = [];
-    private IDisposable? expiryTimer;
+    private IGrainTimer? expiryTimer;
 
     public Task UpsertLeaseAsync(UpsertGamePresenceLeaseCommand command)
         => ApplyMutationAsync(nowUtc => GamePresenceTracker.UpsertLease(leasesByPlayerId, command.PlayerId, command.ConnectionId, command.ExpiresAtUtc, nowUtc));
@@ -16,8 +19,9 @@ public sealed class GamePresenceGrain : Grain, IGamePresenceGrain
 
     public Task<GamePresenceSnapshot> GetSnapshotAsync()
     {
-        GamePresenceTracker.PruneExpiredLeases(leasesByPlayerId, DateTime.UtcNow);
-        EnsureExpiryTimer();
+        var nowUtc = DateTime.UtcNow;
+        GamePresenceTracker.PruneExpiredLeases(leasesByPlayerId, nowUtc);
+        EnsureExpiryTimer(nowUtc);
         return Task.FromResult(GamePresenceTracker.CreateSnapshot(leasesByPlayerId));
     }
 
@@ -32,7 +36,7 @@ public sealed class GamePresenceGrain : Grain, IGamePresenceGrain
     {
         var nowUtc = DateTime.UtcNow;
         var changed = mutate(nowUtc);
-        EnsureExpiryTimer();
+        EnsureExpiryTimer(nowUtc);
 
         if (!changed)
         {
@@ -42,29 +46,41 @@ public sealed class GamePresenceGrain : Grain, IGamePresenceGrain
         await GrainFactory.GetGrain<IGameInvalidationGrain>(this.GetPrimaryKey()).PublishPresenceInvalidated();
     }
 
-    private void EnsureExpiryTimer()
+    private void EnsureExpiryTimer(DateTime nowUtc)
     {
         if (leasesByPlayerId.Count == 0)
         {
             expiryTimer?.Dispose();
             expiryTimer = null;
+            DelayDeactivation(TimeSpan.FromSeconds(-1));
             return;
         }
 
-#pragma warning disable CS0618
-        expiryTimer ??= RegisterTimer(
-            _ => PruneExpiredLeasesAsync(),
-            state: null,
-            dueTime: TimeSpan.FromSeconds(5),
-            period: TimeSpan.FromSeconds(5));
-#pragma warning restore CS0618
+        var latestExpiryUtc = leasesByPlayerId
+            .Values
+            .SelectMany(leases => leases.Values)
+            .Max();
+        var minimumLifetime = latestExpiryUtc - nowUtc + ExpiryTimerInterval;
+        DelayDeactivation(minimumLifetime > TimeSpan.Zero ? minimumLifetime : ExpiryTimerInterval);
+
+        expiryTimer ??= this.RegisterGrainTimer(
+            static (state, cancellationToken) => state.PruneExpiredLeasesAsync(cancellationToken),
+            this,
+            new GrainTimerCreationOptions
+            {
+                DueTime = ExpiryTimerInterval,
+                Period = ExpiryTimerInterval,
+                KeepAlive = true
+            });
     }
 
-    private async Task PruneExpiredLeasesAsync()
+    private async Task PruneExpiredLeasesAsync(CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
+
         var nowUtc = DateTime.UtcNow;
         var changed = GamePresenceTracker.PruneExpiredLeases(leasesByPlayerId, nowUtc);
-        EnsureExpiryTimer();
+        EnsureExpiryTimer(nowUtc);
 
         if (!changed)
         {

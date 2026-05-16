@@ -118,6 +118,12 @@ Purpose: focused tests for grain behavior and Orleans-specific edges.
 
 Keep this project small and targeted. Prefer direct grain behavior tests over broad host-level tests unless the Orleans runtime wiring itself is the risk being validated.
 
+### `tests/Spx.Grains.IntegrationTests`
+
+Purpose: focused Orleans runtime integration tests.
+
+Use this project for the small number of cases where the risk depends on Orleans activation lifetime, timers, observers, or other runtime semantics that are not meaningfully proved by direct grain tests.
+
 ## What Should Be Unit Tested vs Integrated
 
 ### Unit tests by default
@@ -155,6 +161,7 @@ In particular:
 - `tests/Spx.Game.Application.IntegrationTests` should stay focused on EF-backed scenarios and avoid becoming the default home for new games behavior tests
 - `tests/Spx.Web.Tests` is in a good place and should remain small and adapter-focused
 - `tests/Spx.Grains.Tests` is already relatively small and focused
+- `tests/Spx.Grains.IntegrationTests` should stay small and cover runtime-owned seams only
 
 ## Practical Rules For New Tests
 
@@ -173,4 +180,5 @@ When adding a new test, ask:
 2. Add new `Spx.Game.Application` handler and helper tests to `tests/Spx.Game.Application.Tests` by default.
 3. Keep `tests/Spx.Game.Application.IntegrationTests` limited to EF-backed scenarios that need a real database path.
 4. Keep `tests/Spx.Web.Tests` limited to web adapters and endpoint wiring.
-5. Treat integration tests as a thin proving layer, not the default place for new behavior coverage.
+5. Keep `tests/Spx.Grains.IntegrationTests` limited to Orleans runtime semantics.
+6. Treat integration tests as a thin proving layer, not the default place for new behavior coverage.

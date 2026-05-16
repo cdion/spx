@@ -30,6 +30,7 @@ The current app is no longer a starter template. It includes account flows, invi
 - `tests/Spx.Account.Tests`: account-focused tests
 - `tests/Spx.Game.Application.Tests`: games unit tests
 - `tests/Spx.Game.Application.IntegrationTests`: EF-backed games integration tests
+- `tests/Spx.Grains.IntegrationTests`: Orleans runtime integration tests
 - `tests/Spx.Grains.Tests`: Orleans grain behavior tests
 - `tests/Spx.Web.Tests`: web and adapter integration tests
 - `tools/tailwind`: repo-local Tailwind CLI binary
@@ -163,6 +164,7 @@ dotnet test tests/Spx.Account.Tests/Spx.Account.Tests.csproj
 dotnet test tests/Spx.Game.Application.Tests/Spx.Game.Application.Tests.csproj
 dotnet test tests/Spx.Game.Application.IntegrationTests/Spx.Game.Application.IntegrationTests.csproj
 dotnet test tests/Spx.Grains.Tests/Spx.Grains.Tests.csproj
+dotnet test tests/Spx.Grains.IntegrationTests/Spx.Grains.IntegrationTests.csproj
 dotnet test tests/Spx.Web.Tests/Spx.Web.Tests.csproj
 ```
 
