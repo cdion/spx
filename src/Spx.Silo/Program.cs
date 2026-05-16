@@ -17,7 +17,7 @@ builder.UseOrleans(siloBuilder =>
 		options.ServiceId = orleansServiceId;
 	});
 
-	siloBuilder.AddAdoNetGrainStorage("Default", options =>
+	siloBuilder.AddAdoNetGrainStorageAsDefault(options =>
 	{
 		options.Invariant = "Npgsql";
 		options.ConnectionString = builder.Configuration.GetConnectionString("orleansdb")

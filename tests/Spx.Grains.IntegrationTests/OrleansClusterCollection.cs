@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Orleans.Configuration;
+using Orleans.Hosting;
 using Orleans.TestingHost;
 using Spx.Grains;
 using Xunit;
@@ -16,10 +17,13 @@ public sealed class OrleansClusterFixture : IAsyncLifetime
 
         builder.ConfigureSilo((_, siloBuilder) =>
         {
+            siloBuilder.AddMemoryGrainStorageAsDefault();
+
             siloBuilder.Configure<GrainCollectionOptions>(options =>
             {
                 options.CollectionQuantum = TimeSpan.FromSeconds(1);
                 options.ClassSpecificCollectionAge[typeof(GamePresenceGrain).FullName!] = TimeSpan.FromSeconds(2);
+                options.ClassSpecificCollectionAge[typeof(GameSessionGrain).FullName!] = TimeSpan.FromSeconds(2);
             });
         });
 
