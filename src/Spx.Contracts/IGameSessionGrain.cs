@@ -2,13 +2,17 @@ namespace Spx.Contracts;
 
 public interface IGameSessionGrain : IGrainWithGuidKey
 {
-    Task InitializeAsync(InitializeGameSessionCommand command);
+    Task InitializeAsync(InitializeGameSessionGrainCommand command);
 
-    Task<GameSessionView> SubmitAcquireAsync(SubmitAcquireCardCommand command);
+    Task<GameSessionGrainCommandResult> SubmitAcquireAsync(SubmitAcquireGrainCommand command);
 
-    Task<SubmitPlayBatchResult> SubmitPlayBatchAsync(SubmitPlayBatchCommand command);
+    Task<GameSessionGrainCommandResult> SubmitPlayBatchAsync(SubmitPlayBatchGrainCommand command);
 
-    Task<GameSessionView?> GetPlayerViewAsync(GetGameSessionViewQuery query);
+    Task<GameSessionGrainView?> GetPlayerViewAsync(GetGameSessionGrainQuery query);
 
-    Task<GameSessionView> AbandonAsync(AbandonGameSessionCommand command);
+    Task<IReadOnlyList<PendingGameplayEventBatchGrainView>> GetPendingGameplayEventBatchesAsync();
+
+    Task AcknowledgeGameplayEventBatchesAsync(AcknowledgeGameplayEventBatchesGrainCommand command);
+
+    Task<GameSessionGrainView> AbandonAsync(AbandonGameSessionGrainCommand command);
 }

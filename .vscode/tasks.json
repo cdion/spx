@@ -68,6 +68,17 @@
       "group": "test"
     },
     {
+      "label": "tests: run game domain unit",
+      "type": "shell",
+      "command": "dotnet",
+      "args": [
+        "test",
+        "${workspaceFolder}/tests/Spx.Game.Domain.Tests/Spx.Game.Domain.Tests.csproj"
+      ],
+      "problemMatcher": [],
+      "group": "test"
+    },
+    {
       "label": "tests: run game application integration",
       "type": "shell",
       "command": "dotnet",
@@ -115,6 +126,7 @@
       "label": "tests: run all",
       "dependsOn": [
         "tests: run account unit",
+        "tests: run game domain unit",
         "tests: run game application unit",
         "tests: run game application integration",
         "tests: run grains unit",
@@ -155,6 +167,20 @@
       "args": [
         "test",
         "${workspaceFolder}/tests/Spx.Game.Application.Tests/Spx.Game.Application.Tests.csproj",
+        "--collect:XPlat Code Coverage",
+        "--results-directory",
+        "${workspaceFolder}/coverage/testresults"
+      ],
+      "problemMatcher": [],
+      "group": "test"
+    },
+    {
+      "label": "tests: collect coverage game domain unit",
+      "type": "shell",
+      "command": "dotnet",
+      "args": [
+        "test",
+        "${workspaceFolder}/tests/Spx.Game.Domain.Tests/Spx.Game.Domain.Tests.csproj",
         "--collect:XPlat Code Coverage",
         "--results-directory",
         "${workspaceFolder}/coverage/testresults"
@@ -222,6 +248,7 @@
       "label": "tests: collect coverage all",
       "dependsOn": [
         "tests: collect coverage account unit",
+        "tests: collect coverage game domain unit",
         "tests: collect coverage game application unit",
         "tests: collect coverage game application integration",
         "tests: collect coverage grains unit",

@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Spx.Contracts;
+using Spx.Game.Domain;
 using Spx.Game.Application;
 using Spx.Game.Application.Features.GetGameSession;
 using Xunit;
@@ -46,17 +47,17 @@ public sealed class GetGameSessionHandlerTests
         return services.BuildServiceProvider();
     }
 
-    private static GameSessionView CreateSession(Guid gameId, int roundNumber, bool waitingForOpponent)
+    private static GameSessionSnapshot CreateSession(Guid gameId, int roundNumber, bool waitingForOpponent)
     {
-        var currentPlayer = new GameSessionParticipantView(Guid.NewGuid(), "user-1");
-        var opponentPlayer = new GameSessionParticipantView(Guid.NewGuid(), "user-2");
+        var currentPlayer = new GameSessionParticipant(Guid.NewGuid(), "user-1");
+        var opponentPlayer = new GameSessionParticipant(Guid.NewGuid(), "user-2");
 
-        return new GameSessionView(
+        return new GameSessionSnapshot(
             gameId,
             roundNumber,
             GamePhase.Play,
-            new GamePlayerStateView(currentPlayer, [], false, 0, 0, false, false, []),
-            new GamePlayerStateView(opponentPlayer, [], false, 0, 0, false, true, []),
+            new GamePlayerSnapshot(currentPlayer, [], false, 0, 0, false, false, []),
+            new GamePlayerSnapshot(opponentPlayer, [], false, 0, 0, false, true, []),
             [],
             0,
             waitingForOpponent,
@@ -69,21 +70,24 @@ public sealed class GetGameSessionHandlerTests
 
     private sealed class FakeGameSessionService : IGameSessionService
     {
-        public GameSessionView? Session { get; init; }
+        public GameSessionSnapshot? Session { get; init; }
 
-        public Task<bool> EnsureSessionAsync(Guid gameId, IReadOnlyList<GameSessionParticipantView> players, CancellationToken cancellationToken = default)
+        public Task<bool> EnsureSessionAsync(Guid gameId, IReadOnlyList<GameSessionParticipant> players, CancellationToken cancellationToken = default)
             => throw new NotSupportedException();
 
-        public Task<GameSessionView?> GetSessionViewAsync(Guid gameId, string userId, CancellationToken cancellationToken = default)
+        public Task AcknowledgeGameplayEventBatchAsync(Guid gameId, Guid gameplayEventBatchId, CancellationToken cancellationToken = default)
+            => throw new NotSupportedException();
+
+        public Task<GameSessionSnapshot?> GetSessionAsync(Guid gameId, string userId, CancellationToken cancellationToken = default)
             => Task.FromResult(Session);
 
-        public Task<GameSessionCommandOutcome> SubmitAcquireAsync(Guid gameId, SubmitAcquireCardCommand command, CancellationToken cancellationToken = default)
+        public Task<GameSessionCommandOutcome> SubmitAcquireAsync(Guid gameId, SubmitAcquireRequest request, CancellationToken cancellationToken = default)
             => throw new NotSupportedException();
 
-        public Task<GameSessionCommandOutcome> SubmitPlayBatchAsync(Guid gameId, SubmitPlayBatchCommand command, CancellationToken cancellationToken = default)
+        public Task<GameSessionCommandOutcome> SubmitPlayBatchAsync(Guid gameId, SubmitPlayBatchRequest request, CancellationToken cancellationToken = default)
             => throw new NotSupportedException();
 
-        public Task<GameSessionView> AbandonAsync(Guid gameId, string userId, CancellationToken cancellationToken = default)
+        public Task<GameSessionSnapshot> AbandonAsync(Guid gameId, string userId, CancellationToken cancellationToken = default)
             => throw new NotSupportedException();
     }
 
@@ -98,7 +102,7 @@ public sealed class GetGameSessionHandlerTests
         public Task<LeaveGamePersistenceResult> LeaveGameAsync(Guid gameId, string userId, CancellationToken cancellationToken)
             => throw new NotSupportedException();
 
-        public Task<IReadOnlyList<GameSessionParticipantView>?> GetActiveSessionPlayersAsync(Guid gameId, CancellationToken cancellationToken)
+        public Task<IReadOnlyList<GameSessionParticipant>?> GetActiveSessionPlayersAsync(Guid gameId, CancellationToken cancellationToken)
             => throw new NotSupportedException();
 
         public Task<GameLobbyView?> GetLobbyAsync(Guid gameId, string userId, CancellationToken cancellationToken)

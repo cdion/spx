@@ -1,5 +1,3 @@
-using Spx.Contracts;
-
 namespace Spx.Game.Application.Features.SubmitPlayBatch;
 
 public interface ISubmitPlayBatchHandler
@@ -8,6 +6,6 @@ public interface ISubmitPlayBatchHandler
         Guid gameId,
         string userId,
         int expectedRoundNumber,
-        IReadOnlyList<GameBatchCardCommand> cards,
+    IReadOnlyList<GameBatchCardSelection> cards,
         CancellationToken cancellationToken = default);
 }

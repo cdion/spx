@@ -364,6 +364,11 @@
     {
         if (item.Message is null)
         {
+            if (item.Local is not null)
+            {
+                return item.Local.Title;
+            }
+
             return CurrentUserName;
         }
 
@@ -390,7 +395,7 @@
             return "border-amber-400/30";
         }
 
-        return item.Message?.Kind switch
+        return (item.Message?.Kind ?? item.Local?.Kind) switch
         {
             Spx.Game.Application.GameMessageKind.GameCreated or Spx.Game.Application.GameMessageKind.PlayerJoined or Spx.Game.Application.GameMessageKind.PlayerLeft or Spx.Game.Application.GameMessageKind.GameEnded => "border-emerald-400/30",
             Spx.Game.Application.GameMessageKind.GameplayEvent => "border-sky-400/30",
@@ -402,6 +407,11 @@
     {
         if (item.Message is null)
         {
+            if (item.Local is not null)
+            {
+                return item.Local.Body;
+            }
+
             return item.Pending?.Body ?? string.Empty;
         }
 
@@ -451,7 +461,7 @@
         => item.Message?.DeletedAtUtc is not null;
 
     private static DateTime GetTimelineCreatedAt(TimelineEntryState item)
-        => item.Message?.CreatedAtUtc ?? item.Pending?.CreatedAtUtc ?? DateTime.UtcNow;
+        => item.Message?.CreatedAtUtc ?? item.Local?.CreatedAtUtc ?? item.Pending?.CreatedAtUtc ?? DateTime.UtcNow;
 
     private static string FormatDateTime(DateTime value)
         => value.ToLocalTime().ToString("g");

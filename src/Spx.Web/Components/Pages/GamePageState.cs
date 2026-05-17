@@ -8,8 +8,16 @@ public sealed class TimelineEntryState
 
     public GameTimelineEntryView? Message { get; set; }
 
+    public LocalTimelineMessageState? Local { get; set; }
+
     public PendingMessageState? Pending { get; set; }
 }
+
+public sealed record LocalTimelineMessageState(
+    string Title,
+    string Body,
+    DateTime CreatedAtUtc,
+    GameMessageKind Kind);
 
 public sealed record PendingMessageState(
     string Body,

@@ -1,4 +1,5 @@
 @using Microsoft.AspNetCore.Components.Rendering
+@using Spx.Game.Domain
 
 <section class="ui-surface-form space-y-5 p-5 sm:p-6 lg:p-7">
     <div class="space-y-2">
@@ -284,7 +285,7 @@
     public GameLobbyView Lobby { get; set; } = default!;
 
     [Parameter]
-    public GameSessionView? Session { get; set; }
+    public GameSessionSnapshot? Session { get; set; }
 
     [Parameter]
     public bool IsSubmittingAction { get; set; }
@@ -296,7 +297,7 @@
     public EventCallback<Guid> OnAcquireCard { get; set; }
 
     [Parameter]
-    public EventCallback<IReadOnlyList<GameBatchCardCommand>> OnLockBatch { get; set; }
+    public EventCallback<IReadOnlyList<GameBatchCardSelection>> OnLockBatch { get; set; }
 
     protected override void OnParametersSet()
     {
@@ -346,10 +347,10 @@
             ?? Lobby.Players.FirstOrDefault(player => !player.IsCurrentUser)?.Name
             ?? "your opponent";
 
-    private IEnumerable<GameCardInstanceView> GetPlayableCards()
+    private IEnumerable<GameCardSnapshot> GetPlayableCards()
         => Session?.CurrentPlayer.Hand.Where(card => GameCardCatalog.IsPlayable(card.Definition)) ?? [];
 
-    private IEnumerable<GameResolvedPlayerBatchView> GetResolvedPlayersInDisplayOrder()
+    private IEnumerable<GameResolvedPlayerBatchSnapshot> GetResolvedPlayersInDisplayOrder()
         => Session?.LastResolvedBatch?.Players
             .OrderBy(playerBatch => playerBatch.Participant.PlayerId == Session.CurrentPlayer.Participant.PlayerId ? 0 : 1)
             .ToArray()
@@ -418,7 +419,7 @@
         };
     }
 
-    private bool ShowCurrentAcquireBadge(GamePlayerStateView player)
+    private bool ShowCurrentAcquireBadge(GamePlayerSnapshot player)
         => Session is not null
             && Session.Phase == GamePhase.Acquire
             && Session.VisibleMarketCards.Count > 0
@@ -484,7 +485,7 @@
         editor.IsSelected = true;
     }
 
-    private RenderFragment RenderEditor(GameCardInstanceView card) => builder =>
+    private RenderFragment RenderEditor(GameCardSnapshot card) => builder =>
     {
         if (!batchEditors.TryGetValue(card.CardInstanceId, out var editor))
         {
@@ -512,6 +513,7 @@
                 break;
             case GameCardDefinition.Refine:
                 RenderConsumeEditor(builder, ref sequence, card, editor, "Select two base resources or Extract outputs", GetConsumedOptions(card));
+                RenderProducedCardPreview(builder, ref sequence, card, "Result");
                 break;
             case GameCardDefinition.Produce:
                 builder.OpenElement(sequence++, "label");
@@ -520,7 +522,7 @@
                 builder.OpenElement(sequence++, "select");
                 builder.AddAttribute(sequence++, "class", "mt-2 w-full rounded-2xl border border-white/10 bg-slate-950/80 px-3 py-2 text-sm text-slate-100");
                 builder.AddAttribute(sequence++, "value", editor.CraftedCardDefinition);
-                builder.AddAttribute(sequence++, "onchange", EventCallback.Factory.Create<ChangeEventArgs>(this, args => editor.CraftedCardDefinition = args.Value?.ToString() ?? string.Empty));
+                builder.AddAttribute(sequence++, "onchange", EventCallback.Factory.Create<ChangeEventArgs>(this, args => UpdateCraftedCardDefinition(card.CardInstanceId, args.Value?.ToString() ?? string.Empty)));
                 AppendSelectOption(builder, ref sequence, string.Empty, "Choose an output");
                 foreach (var option in ProduceOptions)
                 {
@@ -528,6 +530,7 @@
                 }
                 builder.CloseElement();
                 builder.CloseElement();
+                RenderProducedCardPreview(builder, ref sequence, card, "Result");
                 RenderConsumeEditor(builder, ref sequence, card, editor, "Select recipe inputs from hand or earlier batch outputs", GetConsumedOptions(card));
                 break;
             case GameCardDefinition.Sabotage:
@@ -567,7 +570,7 @@
         }
     };
 
-    private void RenderConsumeEditor(RenderTreeBuilder builder, ref int sequence, GameCardInstanceView card, EditableBatchCardState editor, string label, IReadOnlyList<CardReferenceOption> options)
+    private void RenderConsumeEditor(RenderTreeBuilder builder, ref int sequence, GameCardSnapshot card, EditableBatchCardState editor, string label, IReadOnlyList<CardReferenceOption> options)
     {
         builder.OpenElement(sequence++, "div");
         builder.AddAttribute(sequence++, "class", "space-y-2 text-sm text-slate-300");
@@ -577,11 +580,13 @@
 
         foreach (var option in options)
         {
+            var isDisabled = IsConsumedOptionDisabled(card, editor, option);
             builder.OpenElement(sequence++, "label");
-            builder.AddAttribute(sequence++, "class", "flex items-center gap-3 rounded-2xl border border-white/10 bg-slate-950/70 px-3 py-2");
+            builder.AddAttribute(sequence++, "class", $"flex items-center gap-3 rounded-2xl border border-white/10 bg-slate-950/70 px-3 py-2{(isDisabled ? " opacity-60" : string.Empty)}");
             builder.OpenElement(sequence++, "input");
             builder.AddAttribute(sequence++, "type", "checkbox");
             builder.AddAttribute(sequence++, "checked", editor.ConsumedKeys.Contains(option.Key));
+            builder.AddAttribute(sequence++, "disabled", isDisabled);
             builder.AddAttribute(sequence++, "onchange", EventCallback.Factory.Create<ChangeEventArgs>(this, args => ToggleConsumedSelection(card.CardInstanceId, option.Key, args.Value)));
             builder.CloseElement();
             builder.OpenElement(sequence++, "span");
@@ -590,6 +595,26 @@
             builder.CloseElement();
         }
 
+        builder.CloseElement();
+    }
+
+    private void RenderProducedCardPreview(RenderTreeBuilder builder, ref int sequence, GameCardSnapshot card, string label)
+    {
+        if (!TryGetConfiguredOutputDefinition(card, out var producedDefinition))
+        {
+            return;
+        }
+
+        builder.OpenElement(sequence++, "div");
+        builder.AddAttribute(sequence++, "class", "rounded-2xl border border-emerald-400/20 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-100");
+        builder.OpenElement(sequence++, "p");
+        builder.AddAttribute(sequence++, "class", "text-[0.7rem] uppercase tracking-[0.2em] text-emerald-200/80");
+        builder.AddContent(sequence++, label);
+        builder.CloseElement();
+        builder.OpenElement(sequence++, "p");
+        builder.AddAttribute(sequence++, "class", "mt-1 font-semibold");
+        builder.AddContent(sequence++, GetCardDisplayName(producedDefinition));
+        builder.CloseElement();
         builder.CloseElement();
     }
 
@@ -643,16 +668,28 @@
                 .Select(card => new SelectOption(card.CardInstanceId.ToString(), card.DisplayName))
                 .ToArray();
 
-    private IReadOnlyList<CardReferenceOption> GetConsumedOptions(GameCardInstanceView card)
+    private IReadOnlyList<CardReferenceOption> GetConsumedOptions(GameCardSnapshot card)
     {
         if (Session is null)
         {
             return [];
         }
 
+        var requiresBaseResources = card.Definition == GameCardDefinition.Refine;
+        GameCardDefinition? selectedProduceDefinition = card.Definition == GameCardDefinition.Produce && TryGetSelectedProduceDefinition(card.CardInstanceId, out var craftedDefinition)
+            ? craftedDefinition
+            : null;
+
+        if (card.Definition == GameCardDefinition.Produce && selectedProduceDefinition is null)
+        {
+            return [];
+        }
+
         var options = Session.CurrentPlayer.Hand
-            .Where(resource => resource.Category == GameCardCategory.Resource)
-            .Select(resource => new CardReferenceOption($"hand:{resource.CardInstanceId}", $"Hand: {resource.DisplayName}"))
+            .Where(resource => resource.Category == GameCardCategory.Resource
+                && (!requiresBaseResources || GameCraftingRules.IsValidRefineInput(resource.Definition))
+                && (selectedProduceDefinition is null || GameCraftingRules.IsValidProduceInput(selectedProduceDefinition.Value, resource.Definition)))
+            .Select(resource => new CardReferenceOption($"hand:{resource.CardInstanceId}", $"Hand: {resource.DisplayName}", resource.Definition))
             .ToList();
 
         var currentStep = GameCardCatalog.GetResolutionStep(card.Definition);
@@ -663,13 +700,49 @@
                 continue;
             }
 
-            options.Add(new CardReferenceOption($"produced:{sourceCard.CardInstanceId}", $"Batch: {sourceCard.DisplayName} -> {producedDefinition}"));
+            if (requiresBaseResources && !GameCraftingRules.IsValidRefineInput(producedDefinition))
+            {
+                continue;
+            }
+
+            if (selectedProduceDefinition is not null && !GameCraftingRules.IsValidProduceInput(selectedProduceDefinition.Value, producedDefinition))
+            {
+                continue;
+            }
+
+            options.Add(new CardReferenceOption($"produced:{sourceCard.CardInstanceId}", $"Batch: {sourceCard.DisplayName} -> {producedDefinition}", producedDefinition));
         }
 
         return options;
     }
 
-    private bool TryGetProducedDefinition(GameCardInstanceView sourceCard, out GameCardDefinition producedDefinition)
+    private bool IsConsumedOptionDisabled(GameCardSnapshot card, EditableBatchCardState editor, CardReferenceOption option)
+    {
+        if (editor.ConsumedKeys.Contains(option.Key))
+        {
+            return false;
+        }
+
+        return card.Definition switch
+        {
+            GameCardDefinition.Refine => editor.ConsumedKeys.Count >= 2,
+            GameCardDefinition.Produce => IsProduceConsumedOptionDisabled(card, editor, option),
+            _ => false
+        };
+    }
+
+    private bool IsProduceConsumedOptionDisabled(GameCardSnapshot card, EditableBatchCardState editor, CardReferenceOption option)
+    {
+        if (!TryGetSelectedProduceDefinition(card.CardInstanceId, out var craftedDefinition))
+        {
+            return true;
+        }
+
+        var selectedDefinitions = ResolveSelectedReferenceDefinitions(editor.ConsumedKeys).ToArray();
+        return !GameCraftingRules.CanAddProduceInput(craftedDefinition, selectedDefinitions, option.Definition);
+    }
+
+    private bool TryGetProducedDefinition(GameCardSnapshot sourceCard, out GameCardDefinition producedDefinition)
     {
         producedDefinition = default;
         if (!batchEditors.TryGetValue(sourceCard.CardInstanceId, out var editor))
@@ -685,7 +758,7 @@
             case GameCardDefinition.Refine:
                 {
                     var definitions = ResolveSelectedReferenceDefinitions(editor.ConsumedKeys).ToArray();
-                    if (definitions.Length == 2 && GameCardCatalog.TryGetRefineOutput(definitions[0], definitions[1]) is { } refineOutput)
+                    if (GameCraftingRules.TryGetRefineResult(definitions, out var refineOutput))
                     {
                         producedDefinition = refineOutput;
                         return true;
@@ -693,10 +766,39 @@
 
                     return false;
                 }
+            case GameCardDefinition.Produce:
+                return GameCraftingRules.TryGetProduceResult(ParseEnum<GameCardDefinition>(editor.CraftedCardDefinition), out producedDefinition);
             default:
                 return false;
         }
     }
+
+    private bool TryGetConfiguredOutputDefinition(GameCardSnapshot card, out GameCardDefinition producedDefinition)
+    {
+        producedDefinition = default;
+        if (!batchEditors.TryGetValue(card.CardInstanceId, out var editor))
+        {
+            return false;
+        }
+
+        return card.Definition switch
+        {
+            GameCardDefinition.Refine => GameCraftingRules.TryGetRefineResult(ResolveSelectedReferenceDefinitions(editor.ConsumedKeys).ToArray(), out producedDefinition),
+            GameCardDefinition.Produce => GameCraftingRules.TryGetProduceResult(ParseEnum<GameCardDefinition>(editor.CraftedCardDefinition), out producedDefinition),
+            _ => false
+        };
+    }
+
+    private bool TryGetSelectedProduceDefinition(Guid cardInstanceId, out GameCardDefinition craftedDefinition)
+    {
+        craftedDefinition = default;
+        return batchEditors.TryGetValue(cardInstanceId, out var editor)
+            && GameCraftingRules.TryGetProduceResult(ParseEnum<GameCardDefinition>(editor.CraftedCardDefinition), out craftedDefinition);
+    }
+
+    private string GetCardDisplayName(GameCardDefinition definition)
+        => ProduceOptions.FirstOrDefault(option => string.Equals(option.Value, definition.ToString(), StringComparison.Ordinal))?.Label
+            ?? definition.ToString();
 
     private IEnumerable<GameCardDefinition> ResolveSelectedReferenceDefinitions(IEnumerable<string> keys)
     {
@@ -747,13 +849,42 @@
             return;
         }
 
+        var card = GetPlayableCards().FirstOrDefault(candidate => candidate.CardInstanceId == cardInstanceId);
+        if (card is null)
+        {
+            return;
+        }
+
         if (value is bool isChecked && isChecked)
         {
+            var option = GetConsumedOptions(card).FirstOrDefault(candidate => candidate.Key == key);
+            if (option is null || IsConsumedOptionDisabled(card, editor, option))
+            {
+                return;
+            }
+
             editor.ConsumedKeys.Add(key);
             return;
         }
 
         editor.ConsumedKeys.Remove(key);
+    }
+
+    private void UpdateCraftedCardDefinition(Guid cardInstanceId, string value)
+    {
+        if (!batchEditors.TryGetValue(cardInstanceId, out var editor))
+        {
+            return;
+        }
+
+        if (!string.Equals(editor.CraftedCardDefinition, value, StringComparison.Ordinal))
+        {
+            editor.CraftedCardDefinition = value;
+            editor.ConsumedKeys.Clear();
+            return;
+        }
+
+        editor.CraftedCardDefinition = value;
     }
 
     private async Task LockBatchAsync()
@@ -772,12 +903,12 @@
     }
 
     private Task PassPlayAsync()
-        => OnLockBatch.InvokeAsync(Array.Empty<GameBatchCardCommand>());
+        => OnLockBatch.InvokeAsync(Array.Empty<GameBatchCardSelection>());
 
-    private GameBatchCardCommand BuildBatchCommand(GameCardInstanceView card)
+    private GameBatchCardSelection BuildBatchCommand(GameCardSnapshot card)
     {
         var editor = batchEditors[card.CardInstanceId];
-        return new GameBatchCardCommand(
+        return new GameBatchCardSelection(
             card.CardInstanceId,
             ParseEnum<GameResourceColor>(editor.ChosenResourceColor),
             ParseEnum<GameCardDefinition>(editor.CraftedCardDefinition),
@@ -786,18 +917,18 @@
             editor.ConsumedKeys.Select(BuildReferenceCommand).ToArray());
     }
 
-    private GameCardReferenceCommand BuildReferenceCommand(string key)
+    private GameCardReferenceSelection BuildReferenceCommand(string key)
         => TryCreateReferenceCommand(key, out var reference)
             ? reference
-            : new GameCardReferenceCommand(null, null, null);
+            : new GameCardReferenceSelection(null, null, null);
 
-    private bool TryCreateReferenceCommand(string key, out GameCardReferenceCommand reference)
+    private bool TryCreateReferenceCommand(string key, out GameCardReferenceSelection reference)
     {
-        reference = new GameCardReferenceCommand(null, null, null);
+        reference = new GameCardReferenceSelection(null, null, null);
 
         if (key.StartsWith("hand:", StringComparison.Ordinal) && Guid.TryParse(key[5..], out var handCardId))
         {
-            reference = new GameCardReferenceCommand(handCardId, null, null);
+            reference = new GameCardReferenceSelection(handCardId, null, null);
             return true;
         }
 
@@ -806,7 +937,7 @@
             var sourceCard = GetPlayableCards().FirstOrDefault(card => card.CardInstanceId == producedByCardId);
             if (sourceCard is not null && TryGetProducedDefinition(sourceCard, out var producedDefinition))
             {
-                reference = new GameCardReferenceCommand(null, producedByCardId, producedDefinition);
+                reference = new GameCardReferenceSelection(null, producedByCardId, producedDefinition);
                 return true;
             }
         }
@@ -821,7 +952,7 @@
     private static Guid? ParseGuid(string value)
         => Guid.TryParse(value, out var parsedValue) ? parsedValue : null;
 
-    private string DescribeSelection(GameBatchCardView card)
+    private string DescribeSelection(GameBatchCardSnapshot card)
     {
         var details = new List<string>();
 
@@ -880,5 +1011,5 @@
 
     private sealed record SelectOption(string Value, string Label);
 
-    private sealed record CardReferenceOption(string Key, string Label);
+    private sealed record CardReferenceOption(string Key, string Label, GameCardDefinition Definition);
 }

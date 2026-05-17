@@ -15,6 +15,7 @@ applyTo:
 ## Test Project Map
 
 - `tests/Spx.Account.Tests`: pure account handlers.
+- `tests/Spx.Game.Domain.Tests`: pure game rule helpers.
 - `tests/Spx.Game.Application.Tests`: pure game application handlers and helpers.
 - `tests/Spx.Game.Application.IntegrationTests`: EF-backed game persistence and query behavior.
 - `tests/Spx.Web.Tests`: endpoint mapping, redirect/query behavior, Identity-backed adapters, and other web-owned seams.
@@ -29,6 +30,7 @@ applyTo:
 ## Common Commands
 
 - `dotnet test tests/Spx.Account.Tests/Spx.Account.Tests.csproj`
+- `dotnet test tests/Spx.Game.Domain.Tests/Spx.Game.Domain.Tests.csproj`
 - `dotnet test tests/Spx.Game.Application.Tests/Spx.Game.Application.Tests.csproj`
 - `dotnet test tests/Spx.Game.Application.IntegrationTests/Spx.Game.Application.IntegrationTests.csproj`
 - `dotnet test tests/Spx.Web.Tests/Spx.Web.Tests.csproj`

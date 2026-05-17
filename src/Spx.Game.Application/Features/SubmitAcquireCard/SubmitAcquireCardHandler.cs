@@ -1,5 +1,4 @@
 using Microsoft.Extensions.Logging;
-using Spx.Contracts;
 
 namespace Spx.Game.Application.Features.SubmitAcquireCard;
 
@@ -17,7 +16,7 @@ internal sealed class SubmitAcquireCardHandler(
     {
         var result = await gameSessionService.SubmitAcquireAsync(
             gameId,
-            new SubmitAcquireCardCommand(userId, expectedRoundNumber, marketCardInstanceId),
+            new SubmitAcquireRequest(userId, expectedRoundNumber, marketCardInstanceId),
             cancellationToken);
 
         if (result is GameSessionCommandSucceeded)

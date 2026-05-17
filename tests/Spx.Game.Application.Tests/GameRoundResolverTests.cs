@@ -1,4 +1,5 @@
 using Spx.Contracts;
+using Spx.Game.Domain;
 using Xunit;
 
 namespace Spx.Game.Application.Tests;
@@ -28,5 +29,21 @@ public sealed class GameCardCatalogTests
     {
         Assert.Equal(GameCardCategory.Resource, GameCardCatalog.GetCategory(GameCardDefinition.Purple));
         Assert.Equal(GameCardCategory.Victory, GameCardCatalog.GetCategory(GameCardDefinition.Victory));
+    }
+
+    [Fact]
+    public void TryGetRefineResult_rejects_non_base_inputs()
+    {
+        var succeeded = GameCraftingRules.TryGetRefineResult([GameCardDefinition.Orange, GameCardDefinition.Blue], out _);
+
+        Assert.False(succeeded);
+    }
+
+    [Fact]
+    public void CanAddProduceInput_enforces_recipe_membership_and_counts()
+    {
+        Assert.True(GameCraftingRules.CanAddProduceInput(GameCardDefinition.Sabotage, [], GameCardDefinition.Red));
+        Assert.False(GameCraftingRules.CanAddProduceInput(GameCardDefinition.Sabotage, [GameCardDefinition.Red], GameCardDefinition.Red));
+        Assert.False(GameCraftingRules.CanAddProduceInput(GameCardDefinition.Sabotage, [], GameCardDefinition.Blue));
     }
 }

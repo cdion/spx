@@ -11,6 +11,7 @@ The default rule is:
 That fits the current architecture:
 
 - `Spx.Account` and `Spx.Game.Application` contain application use cases and should carry most of the test volume
+- `Spx.Game.Domain` contains pure game rules and should carry unit tests for reusable card and crafting logic
 - `Spx.Data`, `Spx.Web`, and Orleans integration points should have a smaller number of focused integration tests where wiring and framework behavior matter
 
 ## Current Test Project Layout
@@ -80,6 +81,22 @@ Examples:
 - message body validation and ownership checks
 - message update filtering logic
 - lobby result shaping for allowed and denied access
+
+### `tests/Spx.Game.Domain.Tests`
+
+Purpose: fast unit tests for pure game rule helpers.
+
+This project is the home for tests covering:
+
+- `GameCardCatalog`
+- `GameCraftingRules`
+- other pure rule helpers that only depend on game enums, card definitions, and deterministic rule evaluation
+
+These tests should assert:
+
+- card classification and initiative weights
+- refine and produce recipe/result rules
+- reusable rule helpers that are consumed by multiple layers
 
 ### `tests/Spx.Game.Application.IntegrationTests`
 
@@ -158,6 +175,7 @@ In particular:
 
 - `tests/Spx.Account.Tests` exists and should remain the default place for pure account handler behavior
 - `tests/Spx.Game.Application.Tests` exists and should remain the default place for pure games handler and helper behavior
+- `tests/Spx.Game.Domain.Tests` should be the default place for pure reusable game rule helpers
 - `tests/Spx.Game.Application.IntegrationTests` should stay focused on EF-backed scenarios and avoid becoming the default home for new games behavior tests
 - `tests/Spx.Web.Tests` is in a good place and should remain small and adapter-focused
 - `tests/Spx.Grains.Tests` is already relatively small and focused
@@ -178,7 +196,8 @@ When adding a new test, ask:
 
 1. Add new `Spx.Account` behavior tests to `tests/Spx.Account.Tests` by default.
 2. Add new `Spx.Game.Application` handler and helper tests to `tests/Spx.Game.Application.Tests` by default.
-3. Keep `tests/Spx.Game.Application.IntegrationTests` limited to EF-backed scenarios that need a real database path.
-4. Keep `tests/Spx.Web.Tests` limited to web adapters and endpoint wiring.
-5. Keep `tests/Spx.Grains.IntegrationTests` limited to Orleans runtime semantics.
-6. Treat integration tests as a thin proving layer, not the default place for new behavior coverage.
+3. Add pure reusable game rule tests to `tests/Spx.Game.Domain.Tests`.
+4. Keep `tests/Spx.Game.Application.IntegrationTests` limited to EF-backed scenarios that need a real database path.
+5. Keep `tests/Spx.Web.Tests` limited to web adapters and endpoint wiring.
+6. Keep `tests/Spx.Grains.IntegrationTests` limited to Orleans runtime semantics.
+7. Treat integration tests as a thin proving layer, not the default place for new behavior coverage.

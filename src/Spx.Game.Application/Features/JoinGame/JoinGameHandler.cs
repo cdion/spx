@@ -1,10 +1,11 @@
 using Spx.Contracts;
+using Spx.Game.Application.Features.EnsureGameSession;
 
 namespace Spx.Game.Application.Features.JoinGame;
 
 internal sealed class JoinGameHandler(
     IGamePersistence gamePersistence,
-    IGameSessionService gameSessionService,
+    IEnsureGameSessionHandler ensureGameSessionHandler,
     IGameLobbyInvalidationPublisher gameLobbyInvalidationPublisher,
     IGameMessageInvalidationPublisher gameMessageInvalidationPublisher)
     : IJoinGameHandler
@@ -31,11 +32,7 @@ internal sealed class JoinGameHandler(
             var gameId = joinResult.GameIdToPublish.Value;
             if (joinResult.PublishMessagesChanged)
             {
-                var activePlayers = await gamePersistence.GetActiveSessionPlayersAsync(gameId, cancellationToken);
-                if (activePlayers is { Count: 2 })
-                {
-                    await gameSessionService.EnsureSessionAsync(gameId, activePlayers, cancellationToken);
-                }
+                await ensureGameSessionHandler.HandleAsync(gameId, cancellationToken);
             }
 
             await gameLobbyInvalidationPublisher.PublishLobbyInvalidatedAsync(gameId, cancellationToken);

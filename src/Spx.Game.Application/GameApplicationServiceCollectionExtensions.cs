@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Spx.Game.Application;
 using Spx.Game.Application.Features.CreateGame;
 using Spx.Game.Application.Features.DeleteMessage;
+using Spx.Game.Application.Features.EnsureGameSession;
 using Spx.Game.Application.Features.EditMessage;
 using Spx.Game.Application.Features.GetGamePage;
 using Spx.Game.Application.Features.GetGamePresence;
@@ -23,7 +24,10 @@ public static class GameApplicationServiceCollectionExtensions
 {
     public static IServiceCollection AddGameApplication(this IServiceCollection services)
     {
+        services.AddSingleton<IGameplayEventMessageFormatter, GameplayEventMessageFormatter>();
+
         services.AddScoped<ICreateGameHandler, CreateGameHandler>();
+        services.AddScoped<IEnsureGameSessionHandler, EnsureGameSessionHandler>();
         services.AddScoped<IJoinGameHandler, JoinGameHandler>();
         services.AddScoped<ILeaveGameHandler, LeaveGameHandler>();
         services.AddScoped<IGetGameLobbyHandler, GetGameLobbyHandler>();

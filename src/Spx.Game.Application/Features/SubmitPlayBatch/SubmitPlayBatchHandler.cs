@@ -1,5 +1,4 @@
 using Microsoft.Extensions.Logging;
-using Spx.Contracts;
 
 namespace Spx.Game.Application.Features.SubmitPlayBatch;
 
@@ -14,25 +13,39 @@ internal sealed class SubmitPlayBatchHandler(
         Guid gameId,
         string userId,
         int expectedRoundNumber,
-        IReadOnlyList<GameBatchCardCommand> cards,
+        IReadOnlyList<GameBatchCardSelection> cards,
         CancellationToken cancellationToken = default)
     {
         var result = await gameSessionService.SubmitPlayBatchAsync(
             gameId,
-            new SubmitPlayBatchCommand(userId, expectedRoundNumber, cards),
+            new SubmitPlayBatchRequest(userId, expectedRoundNumber, cards),
             cancellationToken);
 
         if (result is GameSessionCommandSucceeded succeeded)
         {
             var persistedGameplayMessageCount = 0;
+            var persistedGameplayEvents = false;
 
             try
             {
                 persistedGameplayMessageCount = await gameplayEventMessageWriter.PersistResolvedBatchAsync(succeeded.Session, succeeded.GameplayEvents, cancellationToken);
+                persistedGameplayEvents = true;
             }
             catch (Exception exception)
             {
                 logger.LogWarning(exception, "Failed to persist gameplay event messages after play batch submission for game {GameId} user {UserId}.", gameId, userId);
+            }
+
+            if (persistedGameplayEvents && succeeded.PendingGameplayEventBatchId is Guid pendingGameplayEventBatchId)
+            {
+                try
+                {
+                    await gameSessionService.AcknowledgeGameplayEventBatchAsync(gameId, pendingGameplayEventBatchId, cancellationToken);
+                }
+                catch (Exception exception)
+                {
+                    logger.LogWarning(exception, "Failed to acknowledge persisted gameplay event batch {BatchId} after play batch submission for game {GameId} user {UserId}.", pendingGameplayEventBatchId, gameId, userId);
+                }
             }
 
             try

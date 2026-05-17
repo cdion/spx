@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Spx.Contracts;
+using Spx.Game.Domain;
 using Spx.Data;
 using Spx.Game.Application;
 using Xunit;
@@ -18,9 +19,13 @@ public sealed class GameMessagingServiceTests(PostgresDatabaseFixture fixture) :
         var game = await database.AddGameAsync("user-1", "ABC123", "Alpha", "user-1", "Captain Red");
         var firstPlayer = await database.Context.GamePlayers.SingleAsync(entry => entry.GameId == game.Id && entry.UserId == "user-1");
         var secondPlayer = await database.AddGamePlayerAsync(game.Id, "user-2", "Captain Blue");
-        var writer = new EfGameplayEventMessageWriter(database.ContextFactory);
+        var writer = new EfGameplayEventMessageWriter(database.ContextFactory, new GameplayEventMessageFormatter());
         var resolvedAtUtc = DateTime.UtcNow;
-        var gameplayEvents = new[] { "user-1 produced Victory.", "user-2 passed." };
+        var gameplayEvents = new GameplayEvent[]
+        {
+            new(GameplayEventKind.CreatedCard, "user-1", GameCardDefinition.Produce, null, null, GameCardDefinition.Victory),
+            new(GameplayEventKind.Resolved, "user-2", GameCardDefinition.Scout, null, null, null)
+        };
 
         var persistedCount = await writer.PersistResolvedBatchAsync(CreateResolvedSession(game.Id, firstPlayer.Id, secondPlayer.Id, resolvedAtUtc), gameplayEvents);
         var persistedCountOnRetry = await writer.PersistResolvedBatchAsync(CreateResolvedSession(game.Id, firstPlayer.Id, secondPlayer.Id, resolvedAtUtc), gameplayEvents);
@@ -237,37 +242,37 @@ public sealed class GameMessagingServiceTests(PostgresDatabaseFixture fixture) :
         Assert.Equal("That message has already been deleted.", failed.ErrorMessage);
     }
 
-    private static GameSessionView CreateResolvedSession(Guid gameId, Guid firstPlayerId, Guid secondPlayerId, DateTime resolvedAtUtc)
+    private static GameSessionSnapshot CreateResolvedSession(Guid gameId, Guid firstPlayerId, Guid secondPlayerId, DateTime resolvedAtUtc)
     {
-        var firstPlayer = new GameSessionParticipantView(firstPlayerId, "user-1");
-        var secondPlayer = new GameSessionParticipantView(secondPlayerId, "user-2");
+        var firstPlayer = new GameSessionParticipant(firstPlayerId, "user-1");
+        var secondPlayer = new GameSessionParticipant(secondPlayerId, "user-2");
 
-        return new GameSessionView(
+        return new GameSessionSnapshot(
             gameId,
             4,
             GamePhase.Completed,
-            new GamePlayerStateView(firstPlayer, [], false, 0, 0, false, false, []),
-            new GamePlayerStateView(secondPlayer, [], false, 0, 0, false, false, []),
+            new GamePlayerSnapshot(firstPlayer, [], false, 0, 0, false, false, []),
+            new GamePlayerSnapshot(secondPlayer, [], false, 0, 0, false, false, []),
             [],
             0,
             false,
             false,
             false,
             GameCardCatalog.MaxBatchSize,
-            new GameResolvedBatchView(
+            new GameResolvedBatchSnapshot(
                 4,
                 [
-                    new GameResolvedPlayerBatchView(
+                    new GameResolvedPlayerBatchSnapshot(
                         firstPlayer,
-                        [new GameBatchCardView(CreateCard(Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"), GameCardDefinition.Produce), null, GameCardDefinition.Victory, null, null, [])],
+                        [new GameBatchCardSnapshot(CreateCard(Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"), GameCardDefinition.Produce), null, GameCardDefinition.Victory, null, null, [])],
                         true),
-                    new GameResolvedPlayerBatchView(secondPlayer, [], false)
+                    new GameResolvedPlayerBatchSnapshot(secondPlayer, [], false)
                 ],
                 resolvedAtUtc),
-            new GameCompletionView(GameCompletionReason.Victory, firstPlayer, resolvedAtUtc));
+            new GameCompletionSnapshot(GameCompletionReason.Victory, firstPlayer, resolvedAtUtc));
     }
 
-    private static GameCardInstanceView CreateCard(Guid cardInstanceId, GameCardDefinition definition)
+    private static GameCardSnapshot CreateCard(Guid cardInstanceId, GameCardDefinition definition)
         => new(
             cardInstanceId,
             definition,

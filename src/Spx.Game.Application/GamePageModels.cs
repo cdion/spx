@@ -4,7 +4,7 @@ namespace Spx.Game.Application;
 
 public sealed record GamePageView(
     GameLobbyView Lobby,
-    GameSessionView? Session,
+    GameSessionSnapshot? Session,
     GamePresenceView Presence);
 
 public sealed record GamePresenceView(IReadOnlyList<Guid> OnlinePlayerIds)
@@ -15,10 +15,11 @@ public sealed record GamePresenceView(IReadOnlyList<Guid> OnlinePlayerIds)
 public abstract record GameSessionCommandOutcome;
 
 public sealed record GameSessionCommandSucceeded(
-    GameSessionView Session,
-    IReadOnlyList<string> GameplayEvents) : GameSessionCommandOutcome
+    GameSessionSnapshot Session,
+    IReadOnlyList<GameplayEvent> GameplayEvents,
+    Guid? PendingGameplayEventBatchId = null) : GameSessionCommandOutcome
 {
-    public GameSessionCommandSucceeded(GameSessionView Session) : this(Session, [])
+    public GameSessionCommandSucceeded(GameSessionSnapshot Session) : this(Session, [])
     {
     }
 }
