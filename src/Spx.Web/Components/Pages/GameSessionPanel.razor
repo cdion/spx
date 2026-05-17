@@ -57,68 +57,8 @@
         }
 
         <section class="rounded-3xl border border-white/10 bg-slate-950/40 p-4 space-y-4 lg:p-5">
-            <div class="flex items-center justify-between gap-3">
-                <div>
-                    <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Shared market</p>
-                    <p class="mt-1 text-sm text-slate-300">Acquire one visible action card when it is your turn.</p>
-                </div>
-                @if (Session.CanAcquireCard)
-                {
-                    <span class="ui-status-badge border-sky-400/30 bg-sky-400/10 text-sky-200">Your acquire</span>
-                }
-            </div>
-
-            <div class="grid gap-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
-                @foreach (var marketCard in Session.VisibleMarketCards)
-                {
-                    <button class="min-w-0 rounded-2xl border border-white/10 bg-slate-900/70 p-3 text-left transition hover:border-sky-400/40 hover:bg-slate-900 disabled:cursor-not-allowed disabled:opacity-60 xl:p-3.5"
-                            @onclick="() => AcquireCardAsync(marketCard.CardInstanceId)"
-                            disabled="@(!CanAcquireCard(marketCard.CardInstanceId))">
-                        <p class="truncate text-sm font-semibold text-white">@marketCard.DisplayName</p>
-                        <p class="mt-1.5 text-[0.7rem] uppercase tracking-[0.2em] text-slate-400">@marketCard.Category</p>
-                        @if (Session.CanAcquireCard)
-                        {
-                            <p class="mt-2 text-sm text-sky-200">@(IsSubmittingAction ? "Locking..." : "Take card")</p>
-                        }
-                    </button>
-                }
-            </div>
-
-            @if (!Session.CanAcquireCard && Session.Phase == GamePhase.Acquire)
-            {
-                <p class="text-sm leading-6 text-slate-400">
-                    @if (Session.WaitingForOpponent)
-                    {
-                        <span>Waiting for @OpponentPlayerName to finish the acquire phase.</span>
-                    }
-                    else if (Session.VisibleMarketCards.Count == 0)
-                    {
-                        <span>The market is empty. The round proceeds with the cards already in hand.</span>
-                    }
-                </p>
-            }
-        </section>
-
-        <section class="rounded-3xl border border-white/10 bg-slate-950/40 p-4 space-y-4 lg:p-5">
-            <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Initiative</p>
-            <div class="grid gap-4 text-sm leading-6 text-slate-300 md:grid-cols-2">
-                <article class="rounded-2xl border border-white/10 bg-slate-900/60 p-4">
-                    <p class="font-semibold text-white">@CurrentPlayerName</p>
-                    <p>Score @Session.CurrentPlayer.InitiativeScore</p>
-                    <p>@GetAcquirePriorityText(Session.CurrentPlayer)</p>
-                </article>
-                <article class="rounded-2xl border border-white/10 bg-slate-900/60 p-4">
-                    <p class="font-semibold text-white">@OpponentPlayerName</p>
-                    <p>Score @Session.OpponentPlayer.InitiativeScore</p>
-                    <p>@GetAcquirePriorityText(Session.OpponentPlayer)</p>
-                </article>
-            </div>
-        </section>
-
-        <section class="rounded-3xl border border-white/10 bg-slate-950/40 p-4 space-y-4 lg:p-5">
             <div>
                 <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Hands</p>
-                <p class="mt-1 text-sm text-slate-300">Current player on the left, opponent on the right.</p>
             </div>
 
             <div class="grid gap-4 lg:grid-cols-2">
@@ -128,10 +68,16 @@
                             <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Your hand</p>
                             <p class="mt-1 text-sm text-slate-300">@Session.CurrentPlayer.Hand.Count cards</p>
                         </div>
-                        @if (Session.CurrentPlayer.HasLockedBatch)
-                        {
-                            <span class="ui-status-badge border-amber-400/30 bg-amber-500/10 text-amber-200">Batch locked</span>
-                        }
+                        <div class="flex flex-wrap justify-end gap-2">
+                            @if (ShowCurrentAcquireBadge(Session.CurrentPlayer))
+                            {
+                                <span class="ui-status-badge border-sky-400/30 bg-sky-400/10 text-sky-200">Current pick</span>
+                            }
+                            @if (Session.CurrentPlayer.HasLockedBatch)
+                            {
+                                <span class="ui-status-badge border-amber-400/30 bg-amber-500/10 text-amber-200">Batch locked</span>
+                            }
+                        </div>
                     </div>
                     <div class="flex flex-wrap gap-2">
                         @foreach (var card in Session.CurrentPlayer.Hand)
@@ -147,10 +93,16 @@
                             <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">@OpponentPlayerName's hand</p>
                             <p class="mt-1 text-sm text-slate-300">@Session.OpponentPlayer.Hand.Count cards</p>
                         </div>
-                        @if (Session.OpponentPlayer.HasLockedBatch)
-                        {
-                            <span class="ui-status-badge border-amber-400/30 bg-amber-500/10 text-amber-200">Batch locked</span>
-                        }
+                        <div class="flex flex-wrap justify-end gap-2">
+                            @if (ShowCurrentAcquireBadge(Session.OpponentPlayer))
+                            {
+                                <span class="ui-status-badge border-sky-400/30 bg-sky-400/10 text-sky-200">Current pick</span>
+                            }
+                            @if (Session.OpponentPlayer.HasLockedBatch)
+                            {
+                                <span class="ui-status-badge border-amber-400/30 bg-amber-500/10 text-amber-200">Batch locked</span>
+                            }
+                        </div>
                     </div>
                     <div class="flex flex-wrap gap-2">
                         @foreach (var card in Session.OpponentPlayer.Hand)
@@ -161,6 +113,125 @@
                 </article>
             </div>
         </section>
+
+        @if (Session.Phase == GamePhase.Acquire)
+        {
+            <section class="rounded-3xl border border-white/10 bg-slate-950/40 p-4 space-y-4 lg:p-5">
+                <div class="flex items-center justify-between gap-3">
+                    <div>
+                        <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Shared market</p>
+                        <p class="mt-1 text-sm text-slate-300">Acquire one visible action card when it is your turn.</p>
+                    </div>
+                    @if (Session.CanAcquireCard)
+                    {
+                        <span class="ui-status-badge border-sky-400/30 bg-sky-400/10 text-sky-200">Your acquire</span>
+                    }
+                </div>
+
+                <div class="grid gap-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
+                    @foreach (var marketCard in Session.VisibleMarketCards)
+                    {
+                        <button class="min-w-0 rounded-2xl border border-white/10 bg-slate-900/70 p-3 text-left transition hover:border-sky-400/40 hover:bg-slate-900 disabled:cursor-not-allowed disabled:opacity-60 xl:p-3.5"
+                                @onclick="() => AcquireCardAsync(marketCard.CardInstanceId)"
+                                disabled="@(!CanAcquireCard(marketCard.CardInstanceId))">
+                            <p class="truncate text-sm font-semibold text-white">@marketCard.DisplayName</p>
+                            <p class="mt-1.5 text-[0.7rem] uppercase tracking-[0.2em] text-slate-400">@marketCard.Category</p>
+                            @if (Session.CanAcquireCard)
+                            {
+                                <p class="mt-2 text-sm text-sky-200">@(IsSubmittingAction ? "Locking..." : "Take card")</p>
+                            }
+                        </button>
+                    }
+                </div>
+
+                @if (!Session.CanAcquireCard)
+                {
+                    <p class="text-sm leading-6 text-slate-400">
+                        @if (Session.WaitingForOpponent)
+                        {
+                            <span>Waiting for @OpponentPlayerName to finish the acquire phase.</span>
+                        }
+                        else if (Session.VisibleMarketCards.Count == 0)
+                        {
+                            <span>The market is empty. The round proceeds with the cards already in hand.</span>
+                        }
+                    </p>
+                }
+            </section>
+        }
+        else if (Session.Phase == GamePhase.Play)
+        {
+            <section class="rounded-3xl border border-white/10 bg-slate-950/40 p-5 space-y-5">
+                @if (ShowPlayEditor)
+                {
+                    <div class="flex items-center justify-between gap-3">
+                        <div>
+                            <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Play phase</p>
+                            <p class="mt-1 text-sm text-slate-300">Lock up to @Session.MaxBatchSize action or effect cards. Resources stay in hand and are referenced as inputs.</p>
+                        </div>
+                        <span class="ui-status-badge border-sky-400/30 bg-sky-400/10 text-sky-200">Your turn</span>
+                    </div>
+
+                    <div class="grid gap-3 lg:grid-cols-3">
+                        @foreach (var card in GetPlayableCards())
+                        {
+                            var isSelected = IsCardSelected(card.CardInstanceId);
+                            <article class="rounded-2xl border border-white/10 bg-slate-900/60 p-4 space-y-3">
+                                <div class="flex items-start justify-between gap-3">
+                                    <div>
+                                        <p class="text-sm font-semibold text-white">@card.DisplayName</p>
+                                        <p class="mt-1 text-xs uppercase tracking-[0.2em] text-slate-400">@card.Category</p>
+                                    </div>
+                                    <button class="ui-button-secondary"
+                                            @onclick="() => ToggleCardSelection(card.CardInstanceId)"
+                                            disabled="@(!CanToggleCard(card.CardInstanceId))">
+                                        @(isSelected ? "Remove" : "Select")
+                                    </button>
+                                </div>
+
+                                @if (isSelected)
+                                {
+                                    <div class="space-y-4 border-t border-white/10 pt-4">
+                                        @RenderEditor(card)
+                                    </div>
+                                }
+                            </article>
+                        }
+                    </div>
+
+                    <div class="flex flex-wrap gap-3">
+                        <button class="ui-button-primary"
+                                @onclick="LockBatchAsync"
+                                disabled="@IsSubmittingAction">
+                            @(IsSubmittingAction ? "Locking batch..." : "Lock play batch")
+                        </button>
+                        <button class="ui-button-secondary"
+                                @onclick="PassPlayAsync"
+                                disabled="@IsSubmittingAction">
+                            @(IsSubmittingAction ? "Submitting..." : "Pass play phase")
+                        </button>
+                    </div>
+                }
+                else
+                {
+                    <div>
+                        <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Play phase</p>
+                        <p class="mt-1 text-sm text-slate-300">Play controls are unavailable while the current batches are being locked and resolved.</p>
+                    </div>
+
+                    <p class="text-sm leading-6 text-slate-400">
+                        @if (Session.WaitingForOpponent)
+                        {
+                            <span>Your batch is locked. Waiting for @OpponentPlayerName to lock a batch.</span>
+                        }
+                        else
+                        {
+                            <span>Play controls are unavailable right now.</span>
+                        }
+                    </p>
+                }
+            </section>
+        }
 
         @if (Session.CurrentPlayer.VisibleLockedCards.Count > 0)
         {
@@ -201,71 +272,6 @@
             </section>
         }
 
-        @if (ShowPlayEditor)
-        {
-            <section class="rounded-3xl border border-white/10 bg-slate-950/40 p-5 space-y-5">
-                <div class="flex items-center justify-between gap-3">
-                    <div>
-                        <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Play phase</p>
-                        <p class="mt-1 text-sm text-slate-300">Lock up to @Session.MaxBatchSize action or effect cards. Resources stay in hand and are referenced as inputs.</p>
-                    </div>
-                    <span class="ui-status-badge border-sky-400/30 bg-sky-400/10 text-sky-200">Your turn</span>
-                </div>
-
-                <div class="grid gap-3 lg:grid-cols-3">
-                    @foreach (var card in GetPlayableCards())
-                    {
-                        var isSelected = IsCardSelected(card.CardInstanceId);
-                        <article class="rounded-2xl border border-white/10 bg-slate-900/60 p-4 space-y-3">
-                            <div class="flex items-start justify-between gap-3">
-                                <div>
-                                    <p class="text-sm font-semibold text-white">@card.DisplayName</p>
-                                    <p class="mt-1 text-xs uppercase tracking-[0.2em] text-slate-400">@card.Category</p>
-                                </div>
-                                <button class="ui-button-secondary"
-                                        @onclick="() => ToggleCardSelection(card.CardInstanceId)"
-                                        disabled="@(!CanToggleCard(card.CardInstanceId))">
-                                    @(isSelected ? "Remove" : "Select")
-                                </button>
-                            </div>
-
-                            @if (isSelected)
-                            {
-                                <div class="space-y-4 border-t border-white/10 pt-4">
-                                    @RenderEditor(card)
-                                </div>
-                            }
-                        </article>
-                    }
-                </div>
-
-                <div class="flex flex-wrap gap-3">
-                    <button class="ui-button-primary"
-                            @onclick="LockBatchAsync"
-                            disabled="@IsSubmittingAction">
-                        @(IsSubmittingAction ? "Locking batch..." : "Lock play batch")
-                    </button>
-                    <button class="ui-button-secondary"
-                            @onclick="PassPlayAsync"
-                            disabled="@IsSubmittingAction">
-                        @(IsSubmittingAction ? "Submitting..." : "Pass play phase")
-                    </button>
-                </div>
-            </section>
-        }
-        else if (Session.Phase == GamePhase.Play)
-        {
-            <p class="text-sm leading-6 text-slate-400">
-                @if (Session.WaitingForOpponent)
-                {
-                    <span>Your batch is locked. Waiting for @OpponentPlayerName to lock a batch.</span>
-                }
-                else
-                {
-                    <span>Play controls are unavailable right now.</span>
-                }
-            </p>
-        }
     }
 </section>
 
@@ -412,12 +418,14 @@
         };
     }
 
-    private string GetAcquirePriorityText(GamePlayerStateView player)
-        => player.HasScoutOverride
-            ? "Scout will override initiative on the next acquire phase."
-            : player.PicksFirstInAcquirePhase
-                ? "Scheduled to pick first in the current acquire phase."
-                : "Scheduled to pick second in the current acquire phase.";
+    private bool ShowCurrentAcquireBadge(GamePlayerStateView player)
+        => Session is not null
+            && Session.Phase == GamePhase.Acquire
+            && Session.VisibleMarketCards.Count > 0
+            && ((player.Participant.PlayerId == Session.CurrentPlayer.Participant.PlayerId && Session.CanAcquireCard)
+                || (player.Participant.PlayerId == Session.OpponentPlayer.Participant.PlayerId
+                    && !Session.CanAcquireCard
+                    && Session.WaitingForOpponent));
 
     private string? ResolvePlayerName(Guid? playerId)
     {
