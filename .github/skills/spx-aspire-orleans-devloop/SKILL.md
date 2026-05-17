@@ -13,7 +13,7 @@ Use this skill when the task involves local orchestration, startup order, or val
 The normal local entry point is the AppHost:
 
 - `dotnet run --project src/Spx.AppHost/Spx.AppHost.csproj`
-- VS Code task: `dev: apphost + tailwind`
+- VS Code task: `dev: watch apphost + tailwind`
 
 This should start the web app, silo, Redis, PostgreSQL, and the Aspire dashboard.
 

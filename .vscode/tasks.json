@@ -2,7 +2,7 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "build: web",
+      "label": "web: build",
       "type": "shell",
       "command": "dotnet",
       "args": [
@@ -13,7 +13,7 @@
       "group": "build"
     },
     {
-      "label": "build: silo",
+      "label": "silo: build",
       "type": "shell",
       "command": "dotnet",
       "args": [
@@ -24,7 +24,7 @@
       "group": "build"
     },
     {
-      "label": "build: apphost",
+      "label": "apphost: build",
       "type": "shell",
       "command": "dotnet",
       "args": [
@@ -46,7 +46,7 @@
       "group": "test"
     },
     {
-      "label": "tests: run account",
+      "label": "tests: run account unit",
       "type": "shell",
       "command": "dotnet",
       "args": [
@@ -57,7 +57,7 @@
       "group": "test"
     },
     {
-      "label": "tests: run games unit",
+      "label": "tests: run game application unit",
       "type": "shell",
       "command": "dotnet",
       "args": [
@@ -68,7 +68,7 @@
       "group": "test"
     },
     {
-      "label": "tests: run games",
+      "label": "tests: run game application integration",
       "type": "shell",
       "command": "dotnet",
       "args": [
@@ -79,7 +79,7 @@
       "group": "test"
     },
     {
-      "label": "tests: run grains",
+      "label": "tests: run grains unit",
       "type": "shell",
       "command": "dotnet",
       "args": [
@@ -101,7 +101,7 @@
       "group": "test"
     },
     {
-      "label": "tests: run web",
+      "label": "tests: run web unit",
       "type": "shell",
       "command": "dotnet",
       "args": [
@@ -112,14 +112,14 @@
       "group": "test"
     },
     {
-      "label": "tests: run",
+      "label": "tests: run all",
       "dependsOn": [
-        "tests: run account",
-        "tests: run games unit",
-        "tests: run games",
-        "tests: run grains",
+        "tests: run account unit",
+        "tests: run game application unit",
+        "tests: run game application integration",
+        "tests: run grains unit",
         "tests: run grains integration",
-        "tests: run web"
+        "tests: run web unit"
       ],
       "dependsOrder": "sequence",
       "group": "test"
@@ -135,7 +135,7 @@
       "problemMatcher": []
     },
     {
-      "label": "tests: collect coverage account",
+      "label": "tests: collect coverage account unit",
       "type": "shell",
       "command": "dotnet",
       "args": [
@@ -149,7 +149,7 @@
       "group": "test"
     },
     {
-      "label": "tests: collect coverage games unit",
+      "label": "tests: collect coverage game application unit",
       "type": "shell",
       "command": "dotnet",
       "args": [
@@ -163,7 +163,7 @@
       "group": "test"
     },
     {
-      "label": "tests: collect coverage games",
+      "label": "tests: collect coverage game application integration",
       "type": "shell",
       "command": "dotnet",
       "args": [
@@ -177,7 +177,7 @@
       "group": "test"
     },
     {
-      "label": "tests: collect coverage grains",
+      "label": "tests: collect coverage grains unit",
       "type": "shell",
       "command": "dotnet",
       "args": [
@@ -205,7 +205,7 @@
       "group": "test"
     },
     {
-      "label": "tests: collect coverage web",
+      "label": "tests: collect coverage web unit",
       "type": "shell",
       "command": "dotnet",
       "args": [
@@ -219,32 +219,32 @@
       "group": "test"
     },
     {
-      "label": "tests: collect coverage",
+      "label": "tests: collect coverage all",
       "dependsOn": [
-        "tests: collect coverage account",
-        "tests: collect coverage games unit",
-        "tests: collect coverage games",
-        "tests: collect coverage grains",
+        "tests: collect coverage account unit",
+        "tests: collect coverage game application unit",
+        "tests: collect coverage game application integration",
+        "tests: collect coverage grains unit",
         "tests: collect coverage grains integration",
-        "tests: collect coverage web"
+        "tests: collect coverage web unit"
       ],
       "dependsOrder": "sequence",
       "group": "test"
     },
     {
-      "label": "tests: report html",
+      "label": "tests: report coverage html",
       "type": "shell",
       "command": "dotnet tool run reportgenerator -- '-reports:${workspaceFolder}/coverage/testresults/**/coverage.cobertura.xml' '-targetdir:${workspaceFolder}/coverage/html' '-reporttypes:Html'",
       "problemMatcher": [],
       "group": "test"
     },
     {
-      "label": "tests: coverage html",
+      "label": "tests: generate coverage html",
       "dependsOn": [
         "tests: restore tools",
         "tests: clean coverage",
-        "tests: collect coverage",
-        "tests: report html"
+        "tests: collect coverage all",
+        "tests: report coverage html"
       ],
       "dependsOrder": "sequence",
       "group": "test"
@@ -339,7 +339,7 @@
       }
     },
     {
-      "label": "dev: apphost + tailwind",
+      "label": "dev: watch apphost + tailwind",
       "dependsOn": [
         "tailwind: watch css",
         "apphost: watch"

@@ -66,7 +66,7 @@ Use the URLs printed by the AppHost or shown in the Aspire dashboard. The dashbo
 
 In VS Code, the main development task is:
 
-- `dev: apphost + tailwind`
+- `dev: watch apphost + tailwind`
 
 That runs the Tailwind watcher and the AppHost under `dotnet watch` together.
 
@@ -74,9 +74,9 @@ For normal UI and Razor iteration, prefer that task over the debug launch config
 
 Useful single-purpose tasks are also checked in:
 
-- `build: web`
-- `build: silo`
-- `build: apphost`
+- `web: build`
+- `silo: build`
+- `apphost: build`
 - `tailwind: build css`
 - `tailwind: watch css`
 - `apphost: watch`
@@ -170,7 +170,7 @@ dotnet test tests/Spx.Web.Tests/Spx.Web.Tests.csproj
 
 The VS Code task file also includes:
 
-- `tests: run`
-- `tests: coverage html`
+- `tests: run all`
+- `tests: generate coverage html`
 
 The coverage task writes HTML output under `coverage/html`.

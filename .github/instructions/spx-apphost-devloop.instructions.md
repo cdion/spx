@@ -14,7 +14,7 @@ applyTo:
 
 ## Repo Notes
 
-- The main VS Code development task is `dev: apphost + tailwind`.
+- The main VS Code development task is `dev: watch apphost + tailwind`.
 - Blazor route validation should use GET requests rather than HEAD requests.
 - Clean restarts may require stopping stale AppHost or DCP processes that still hold ports.
 

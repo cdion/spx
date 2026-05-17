@@ -5,7 +5,7 @@
       "name": ".NET Launch AppHost",
       "type": "dotnet",
       "request": "launch",
-      "preLaunchTask": "build: apphost",
+      "preLaunchTask": "apphost: build",
       "projectPath": "${workspaceFolder}/src/Spx.AppHost/Spx.AppHost.csproj"
     },
   ]
