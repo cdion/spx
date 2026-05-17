@@ -1,12 +1,14 @@
 var builder = DistributedApplication.CreateBuilder(args);
 
-var redis = builder.AddRedis("orleans-redis");
+var redis = builder.AddRedis("orleans-redis")
+    .WithLifetime(Aspire.Hosting.ApplicationModel.ContainerLifetime.Persistent);
 var postgresPassword = builder.AddParameter(
     "postgres-password",
     () => builder.Configuration["Parameters:postgres-password"] ?? "spx-local-postgres-password",
     secret: true);
 
 var postgres = builder.AddPostgres("postgres", password: postgresPassword)
+    .WithLifetime(Aspire.Hosting.ApplicationModel.ContainerLifetime.Persistent)
     .WithDataVolume("spx-postgres-data");
 var appDb = postgres.AddDatabase("appdb");
 var orleansDb = postgres.AddDatabase("orleansdb");
