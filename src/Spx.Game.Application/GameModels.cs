@@ -10,7 +10,7 @@ public sealed record GameCommandSucceeded(Guid GameId) : GameCommandOutcome;
 
 public sealed record GameCommandFailed(string ErrorMessage) : GameCommandOutcome;
 
-public sealed record GamePlayerView(Guid PlayerId, string Name, DateTime JoinedAtUtc, bool IsCurrentUser);
+public sealed record GamePlayerView(Guid PlayerId, string Name, DateTime JoinedAtUtc);
 
 public sealed record GameLobbyView(
     Guid GameId,
@@ -21,6 +21,7 @@ public sealed record GameLobbyView(
     DateTime CreatedAtUtc,
     DateTime? EndedAtUtc,
     string CurrentPlayerName,
+    Guid CurrentPlayerId,
     IReadOnlyList<GamePlayerView> Players,
     bool IsCurrentUserActive);
 

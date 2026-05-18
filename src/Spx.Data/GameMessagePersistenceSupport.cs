@@ -5,14 +5,14 @@ namespace Spx.Data;
 
 internal sealed class GameMessagePersistenceSupport(ApplicationDbContext dbContext)
 {
-    public IQueryable<GameMessage> BuildVisibleMessagesQuery(Guid gameId, string userId, MessageReadAccess access)
+    public IQueryable<GameMessage> BuildVisibleMessagesQuery(Guid gameId, Guid playerId, MessageReadAccess access)
     {
         var query = dbContext.GameMessages
             .AsNoTracking()
             .Where(entry => entry.GameId == gameId)
             .Where(entry => entry.RecipientPlayerId == null
-                || (entry.SenderPlayer != null && entry.SenderPlayer.UserId == userId)
-                || (entry.RecipientPlayer != null && entry.RecipientPlayer.UserId == userId));
+                || entry.SenderPlayerId == playerId
+                || entry.RecipientPlayerId == playerId);
 
         if (access.VisibleThroughMessageId.HasValue)
         {
@@ -26,19 +26,19 @@ internal sealed class GameMessagePersistenceSupport(ApplicationDbContext dbConte
         return query;
     }
 
-    public async Task<GamePlayer?> GetActivePlayerAsync(Guid gameId, string userId, CancellationToken cancellationToken)
+    public async Task<GamePlayer?> GetActivePlayerAsync(Guid gameId, Guid playerId, CancellationToken cancellationToken)
         => await dbContext.GamePlayers
-            .SingleOrDefaultAsync(entry => entry.GameId == gameId && entry.UserId == userId && entry.LeftAtUtc == null, cancellationToken);
+            .SingleOrDefaultAsync(entry => entry.GameId == gameId && entry.Id == playerId && entry.LeftAtUtc == null, cancellationToken);
 
-    public async Task<bool> IsActivePlayerAsync(Guid gameId, string userId, CancellationToken cancellationToken)
+    public async Task<bool> IsActivePlayerAsync(Guid gameId, Guid playerId, CancellationToken cancellationToken)
         => await dbContext.GamePlayers
-            .AnyAsync(entry => entry.GameId == gameId && entry.UserId == userId && entry.LeftAtUtc == null, cancellationToken);
+            .AnyAsync(entry => entry.GameId == gameId && entry.Id == playerId && entry.LeftAtUtc == null, cancellationToken);
 
-    public async Task<MessageReadAccess?> GetReadAccessAsync(Guid gameId, string userId, CancellationToken cancellationToken)
+    public async Task<MessageReadAccess?> GetReadAccessAsync(Guid gameId, Guid playerId, CancellationToken cancellationToken)
     {
         var activePlayer = await dbContext.GamePlayers
             .AsNoTracking()
-            .SingleOrDefaultAsync(entry => entry.GameId == gameId && entry.UserId == userId && entry.LeftAtUtc == null, cancellationToken);
+            .SingleOrDefaultAsync(entry => entry.GameId == gameId && entry.Id == playerId && entry.LeftAtUtc == null, cancellationToken);
 
         if (activePlayer is not null)
         {
@@ -47,7 +47,7 @@ internal sealed class GameMessagePersistenceSupport(ApplicationDbContext dbConte
 
         var formerPlayer = await dbContext.GamePlayers
             .AsNoTracking()
-            .Where(entry => entry.GameId == gameId && entry.UserId == userId && entry.LeftAtUtc != null)
+            .Where(entry => entry.GameId == gameId && entry.Id == playerId && entry.LeftAtUtc != null)
             .OrderByDescending(entry => entry.LeftAtUtc)
             .FirstOrDefaultAsync(cancellationToken);
 

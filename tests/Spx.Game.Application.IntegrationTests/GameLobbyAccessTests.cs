@@ -15,13 +15,13 @@ public sealed class GameLobbyAccessTests(PostgresDatabaseFixture fixture) : Inte
         var game = await database.AddGameAsync("user-1", "ABC123", "Alpha", "user-1", "Captain Red");
         var features = GameFeatureTestFactory.Create(database.ContextFactory);
 
-        var lobby = await features.GetGameLobby.HandleAsync(game.Id, "user-1");
+        var lobby = await features.Persistence.GetLobbyAsync(game.Id, "user-1", CancellationToken.None);
 
         Assert.NotNull(lobby);
         Assert.True(lobby!.IsCurrentUserActive);
         Assert.Equal("Captain Red", lobby.CurrentPlayerName);
         Assert.Single(lobby.Players);
-        Assert.True(lobby.Players[0].IsCurrentUser);
+        Assert.Equal(lobby.CurrentPlayerId, lobby.Players[0].PlayerId);
     }
 
     [Fact]
@@ -36,7 +36,7 @@ public sealed class GameLobbyAccessTests(PostgresDatabaseFixture fixture) : Inte
 
         var features = GameFeatureTestFactory.Create(database.ContextFactory);
 
-    var lobby = await features.GetGameLobby.HandleAsync(game.Id, "user-2");
+    var lobby = await features.Persistence.GetLobbyAsync(game.Id, "user-2", CancellationToken.None);
 
         Assert.NotNull(lobby);
         Assert.False(lobby!.IsCurrentUserActive);
@@ -52,7 +52,7 @@ public sealed class GameLobbyAccessTests(PostgresDatabaseFixture fixture) : Inte
         var game = await database.AddGameAsync("user-1", "ABC123", "Alpha", "user-1", "Captain Red");
         var features = GameFeatureTestFactory.Create(database.ContextFactory);
 
-        var lobby = await features.GetGameLobby.HandleAsync(game.Id, "user-2");
+        var lobby = await features.Persistence.GetLobbyAsync(game.Id, "user-2", CancellationToken.None);
 
         Assert.Null(lobby);
     }

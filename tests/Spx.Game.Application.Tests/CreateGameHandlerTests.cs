@@ -1,5 +1,4 @@
 using Microsoft.Extensions.DependencyInjection;
-using Spx.Contracts;
 using Spx.Game.Application;
 using Spx.Game.Application.Features.CreateGame;
 using Xunit;
@@ -11,9 +10,9 @@ public sealed class CreateGameHandlerTests
     [Fact]
     public async Task HandleAsync_returns_validation_failure_for_short_game_name()
     {
-        var persistence = new FakeGamePersistence();
-        var lobbyPublisher = new FakeGameLobbyEventsPublisher();
-        var messagePublisher = new FakeGameMessageEventsPublisher();
+        var persistence = Substitute.For<IGamePersistence>();
+        var lobbyPublisher = Substitute.For<IGameLobbyInvalidationPublisher>();
+        var messagePublisher = Substitute.For<IGameMessageInvalidationPublisher>();
         using var services = CreateServices(persistence, lobbyPublisher, messagePublisher);
 
         var handler = services.GetRequiredService<ICreateGameHandler>();
@@ -21,18 +20,20 @@ public sealed class CreateGameHandlerTests
 
         var failed = Assert.IsType<GameCommandFailed>(result);
         Assert.Equal("Game names must be at least 2 characters long.", failed.ErrorMessage);
-        Assert.Empty(persistence.CreateRequests);
-        Assert.Empty(lobbyPublisher.PublishedGameIds);
-        Assert.Empty(messagePublisher.PublishedGameIds);
+        await persistence.DidNotReceive().TryCreateGameAsync(Arg.Any<CreateGamePersistenceRequest>(), Arg.Any<CancellationToken>());
+        await lobbyPublisher.DidNotReceive().PublishLobbyInvalidatedAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+        await messagePublisher.DidNotReceive().PublishMessagesInvalidatedAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
     public async Task HandleAsync_publishes_events_when_game_is_created()
     {
         var gameId = Guid.NewGuid();
-        var persistence = new FakeGamePersistence(gameId);
-        var lobbyPublisher = new FakeGameLobbyEventsPublisher();
-        var messagePublisher = new FakeGameMessageEventsPublisher();
+        var persistence = Substitute.For<IGamePersistence>();
+        persistence.TryCreateGameAsync(Arg.Any<CreateGamePersistenceRequest>(), Arg.Any<CancellationToken>())
+            .Returns((Guid?)gameId);
+        var lobbyPublisher = Substitute.For<IGameLobbyInvalidationPublisher>();
+        var messagePublisher = Substitute.For<IGameMessageInvalidationPublisher>();
         using var services = CreateServices(persistence, lobbyPublisher, messagePublisher);
 
         var handler = services.GetRequiredService<ICreateGameHandler>();
@@ -40,123 +41,26 @@ public sealed class CreateGameHandlerTests
 
         var succeeded = Assert.IsType<GameCommandSucceeded>(result);
         Assert.Equal(gameId, succeeded.GameId);
-        Assert.Single(persistence.CreateRequests);
-        Assert.Equal("Weekend Match", persistence.CreateRequests[0].GameName);
-        Assert.Equal("Captain Red", persistence.CreateRequests[0].PlayerName);
-        Assert.Equal("CAPTAIN RED", persistence.CreateRequests[0].PlayerNameLookup);
-        Assert.Equal([gameId], lobbyPublisher.PublishedGameIds);
-        Assert.Equal([gameId], messagePublisher.PublishedGameIds);
+        await persistence.Received(1).TryCreateGameAsync(
+            Arg.Is<CreateGamePersistenceRequest>(r => r.GameName == "Weekend Match" && r.PlayerName == "Captain Red" && r.PlayerNameLookup == "CAPTAIN RED"),
+            Arg.Any<CancellationToken>());
+        await lobbyPublisher.Received(1).PublishLobbyInvalidatedAsync(gameId, Arg.Any<CancellationToken>());
+        await messagePublisher.Received(1).PublishMessagesInvalidatedAsync(gameId, Arg.Any<CancellationToken>());
     }
 
     private static ServiceProvider CreateServices(
-        FakeGamePersistence persistence,
-        FakeGameLobbyEventsPublisher lobbyPublisher,
-        FakeGameMessageEventsPublisher messagePublisher)
+        IGamePersistence persistence,
+        IGameLobbyInvalidationPublisher lobbyPublisher,
+        IGameMessageInvalidationPublisher messagePublisher)
     {
         var services = new ServiceCollection();
         services.AddGameApplication();
-        services.AddSingleton<IGamePersistence>(persistence);
-        services.AddSingleton<IGameSessionService, FakeGameSessionService>();
-        services.AddSingleton<IGameLobbyInvalidationPublisher>(lobbyPublisher);
-        services.AddSingleton<IGameSessionInvalidationPublisher, StubGameSessionInvalidationPublisher>();
-        services.AddSingleton<IGameMessageInvalidationPublisher>(messagePublisher);
-        services.AddSingleton<IGameMessagePersistence, FakeGameMessagePersistence>();
+        services.AddSingleton(persistence);
+        services.AddSingleton(Substitute.For<IGameSessionService>());
+        services.AddSingleton(lobbyPublisher);
+        services.AddSingleton(Substitute.For<IGameSessionInvalidationPublisher>());
+        services.AddSingleton(messagePublisher);
+        services.AddSingleton(Substitute.For<IGameMessagePersistence>());
         return services.BuildServiceProvider();
-    }
-
-    private sealed class FakeGamePersistence(Guid? gameId = null) : IGamePersistence
-    {
-        public List<CreateGamePersistenceRequest> CreateRequests { get; } = [];
-
-        public Task<Guid?> TryCreateGameAsync(CreateGamePersistenceRequest request, CancellationToken cancellationToken)
-        {
-            CreateRequests.Add(request);
-            return Task.FromResult(gameId);
-        }
-
-        public Task<JoinGamePersistenceResult> JoinGameAsync(JoinGamePersistenceRequest request, CancellationToken cancellationToken)
-            => throw new NotSupportedException();
-
-        public Task<LeaveGamePersistenceResult> LeaveGameAsync(Guid gameId, string userId, CancellationToken cancellationToken)
-            => throw new NotSupportedException();
-
-        public Task<IReadOnlyList<GameSessionParticipant>?> GetActiveSessionPlayersAsync(Guid gameId, CancellationToken cancellationToken)
-            => throw new NotSupportedException();
-
-        public Task<GameLobbyView?> GetLobbyAsync(Guid gameId, string userId, CancellationToken cancellationToken)
-            => throw new NotSupportedException();
-
-        public Task<UserGamesView> GetUserGamesAsync(string userId, CancellationToken cancellationToken)
-            => throw new NotSupportedException();
-    }
-
-    private sealed class FakeGameLobbyEventsPublisher : IGameLobbyInvalidationPublisher
-    {
-        public List<Guid> PublishedGameIds { get; } = [];
-
-        public Task PublishLobbyInvalidatedAsync(Guid gameId, CancellationToken cancellationToken = default)
-        {
-            PublishedGameIds.Add(gameId);
-            return Task.CompletedTask;
-        }
-    }
-
-    private sealed class FakeGameMessageEventsPublisher : IGameMessageInvalidationPublisher
-    {
-        public List<Guid> PublishedGameIds { get; } = [];
-
-        public Task PublishMessagesInvalidatedAsync(Guid gameId, CancellationToken cancellationToken = default)
-        {
-            PublishedGameIds.Add(gameId);
-            return Task.CompletedTask;
-        }
-    }
-
-    private sealed class StubGameSessionInvalidationPublisher : IGameSessionInvalidationPublisher
-    {
-        public Task PublishSessionInvalidatedAsync(Guid gameId, CancellationToken cancellationToken = default)
-            => Task.CompletedTask;
-    }
-
-    private sealed class FakeGameMessagePersistence : IGameMessagePersistence
-    {
-        public Task<GameTimelinePageView?> GetMessagesAsync(Guid gameId, string userId, Guid? beforeMessageId, int take, CancellationToken cancellationToken)
-            => throw new NotSupportedException();
-
-        public Task<GameMessageCommandOutcome> SendPublicMessageAsync(Guid gameId, string userId, string body, CancellationToken cancellationToken)
-            => throw new NotSupportedException();
-
-        public Task<GameMessageCommandOutcome> SendPrivateMessageAsync(Guid gameId, string userId, Guid recipientPlayerId, string body, CancellationToken cancellationToken)
-            => throw new NotSupportedException();
-
-        public Task<IReadOnlyList<GameTimelineEntryView>?> GetMessageUpdatesAsync(Guid gameId, string userId, Guid? afterMessageId, int take, CancellationToken cancellationToken)
-            => throw new NotSupportedException();
-
-        public Task<GameMessageCommandOutcome> EditMessageAsync(Guid gameId, string userId, Guid messageId, string body, CancellationToken cancellationToken)
-            => throw new NotSupportedException();
-
-        public Task<GameMessageCommandOutcome> DeleteMessageAsync(Guid gameId, string userId, Guid messageId, CancellationToken cancellationToken)
-            => throw new NotSupportedException();
-    }
-
-    private sealed class FakeGameSessionService : IGameSessionService
-    {
-        public Task<bool> EnsureSessionAsync(Guid gameId, IReadOnlyList<GameSessionParticipant> players, CancellationToken cancellationToken = default)
-            => Task.FromResult(true);
-
-        public Task AcknowledgeGameplayEventBatchAsync(Guid gameId, Guid gameplayEventBatchId, CancellationToken cancellationToken = default)
-            => Task.CompletedTask;
-
-        public Task<GameSessionSnapshot?> GetSessionAsync(Guid gameId, string userId, CancellationToken cancellationToken = default)
-            => Task.FromResult<GameSessionSnapshot?>(null);
-
-        public Task<GameSessionCommandOutcome> SubmitAcquireAsync(Guid gameId, SubmitAcquireRequest request, CancellationToken cancellationToken = default)
-            => throw new NotSupportedException();
-
-        public Task<GameSessionCommandOutcome> SubmitPlayBatchAsync(Guid gameId, SubmitPlayBatchRequest request, CancellationToken cancellationToken = default)
-            => throw new NotSupportedException();
-
-        public Task<GameSessionSnapshot> AbandonAsync(Guid gameId, string userId, CancellationToken cancellationToken = default)
-            => throw new NotSupportedException();
     }
 }

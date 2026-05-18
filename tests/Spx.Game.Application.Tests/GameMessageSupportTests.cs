@@ -37,21 +37,21 @@ public sealed class GameMessageSupportTests
     [Fact]
     public void MapMessage_clears_deleted_body_and_disables_mutation_flags()
     {
+        var playerId = Guid.NewGuid();
         var snapshot = new GameMessageSupport.GameMessageSnapshot(
             Guid.NewGuid(),
             GameMessageKind.PlayerPublic,
             GameMessageSenderKind.Player,
-            Guid.NewGuid(),
+            playerId,
             "Captain Red",
             null,
             string.Empty,
             "Original",
             DateTime.UtcNow.AddMinutes(-1),
             null,
-            DateTime.UtcNow,
-            "user-1");
+            DateTime.UtcNow);
 
-        var message = GameMessageSupport.MapMessage(snapshot, "user-1", canMutate: true, DateTime.UtcNow);
+        var message = GameMessageSupport.MapMessage(snapshot, playerId, canMutate: true, DateTime.UtcNow);
 
         Assert.Equal(string.Empty, message.Body);
         Assert.False(message.CanEdit);
@@ -61,22 +61,22 @@ public sealed class GameMessageSupportTests
     [Fact]
     public void MapMessage_disables_mutation_outside_mutation_window()
     {
+        var playerId = Guid.NewGuid();
         var createdAtUtc = DateTime.UtcNow.Subtract(GameMessageSupport.MessageMutationWindow).AddSeconds(-1);
         var snapshot = new GameMessageSupport.GameMessageSnapshot(
             Guid.NewGuid(),
             GameMessageKind.PlayerPrivate,
             GameMessageSenderKind.Player,
-            Guid.NewGuid(),
+            playerId,
             "Captain Red",
             Guid.NewGuid(),
             "Captain Blue",
             "Secret",
             createdAtUtc,
             null,
-            null,
-            "user-1");
+            null);
 
-        var message = GameMessageSupport.MapMessage(snapshot, "user-1", canMutate: true, DateTime.UtcNow);
+        var message = GameMessageSupport.MapMessage(snapshot, playerId, canMutate: true, DateTime.UtcNow);
 
         Assert.True(message.IsPrivate);
         Assert.False(message.CanEdit);

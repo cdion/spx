@@ -1,5 +1,3 @@
-using Spx.Contracts;
-
 namespace Spx.Game.Application;
 
 public interface IGamePersistence
@@ -32,9 +30,9 @@ public sealed record JoinGamePersistenceRequest(
 
 public sealed record JoinGamePersistenceResult(
     GameCommandOutcome Result,
-    Guid? GameIdToPublish,
-    bool PublishMessagesChanged);
+    Guid? LobbyGameId = null,
+    Guid? MessagesGameId = null);
 
 public sealed record LeaveGamePersistenceResult(
     GameCommandOutcome Result,
-    bool Changed);
+    Guid? PlayerId = null);

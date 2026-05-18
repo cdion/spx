@@ -132,6 +132,7 @@ else
 
                 <GameMessageComposer @key="GetMessageComposerKey()"
                                      IsCurrentUserActive="@lobby.IsCurrentUserActive"
+                                     CurrentPlayerId="@lobby.CurrentPlayerId"
                                      Players="@lobby.Players"
                                      @bind-Text="timeline.ComposerText"
                                      @bind-SelectedRecipientPlayerIdString="timeline.SelectedRecipientPlayerIdString"
@@ -162,6 +163,7 @@ else
     private readonly GameTimelineState timeline = new();
 
     private string currentUserId = string.Empty;
+    private Guid currentPlayerId;
     private GamePageActionCoordinator? actionCoordinator;
     private GamePageDataCoordinator? dataCoordinator;
     private GamePageLiveCoordinator? liveCoordinator;
@@ -169,7 +171,7 @@ else
 
     private GameLobbyView? lobby => data.Lobby;
 
-    private GameSessionSnapshot? session => data.Session;
+    private GameSessionView? session => data.Session;
 
     private GamePresenceView presence => data.Presence;
 
@@ -217,6 +219,10 @@ else
     {
         currentUserId = await GetUserIdAsync();
         await LoadPageAsync();
+        if (lobby is not null)
+        {
+            currentPlayerId = lobby.CurrentPlayerId;
+        }
 
         if (lobby is null)
         {
@@ -269,7 +275,7 @@ else
             return;
         }
 
-        await dataCoordinator!.ReloadPresenceAsync(lobby.GameId, currentUserId);
+        await dataCoordinator!.ReloadPresenceAsync(lobby.GameId);
     }
 
     private async Task LoadSessionAsync()
@@ -280,7 +286,7 @@ else
             return;
         }
 
-        await dataCoordinator!.ReloadSessionAsync(lobby.GameId, currentUserId);
+        await dataCoordinator!.ReloadSessionAsync(lobby.GameId, currentPlayerId);
     }
 
     private Task HandleLobbyInvalidatedAsync()
@@ -329,10 +335,10 @@ else
     }
 
     private Task AcquireCardAsync(Guid marketCardInstanceId)
-        => actionCoordinator!.AcquireCardAsync(GameId, currentUserId, marketCardInstanceId);
+        => actionCoordinator!.AcquireCardAsync(GameId, currentPlayerId, marketCardInstanceId);
 
     private Task LockBatchAsync(IReadOnlyList<GameBatchCardSelection> cards)
-        => actionCoordinator!.LockBatchAsync(GameId, currentUserId, cards);
+        => actionCoordinator!.LockBatchAsync(GameId, currentPlayerId, cards);
 
     private async Task LoadInitialMessagesAsync()
     {
@@ -345,12 +351,12 @@ else
 
         try
         {
-            var page = await GetMessagesHandler.HandleAsync(lobby.GameId, currentUserId);
+            var page = await GetMessagesHandler.HandleAsync(lobby.GameId, currentPlayerId);
             timeline.ApplyInitialPage(page);
         }
         catch (Exception exception)
         {
-            Logger.LogError(exception, "Failed to load initial messages for game {GameId} user {UserId}.", GameId, currentUserId);
+            Logger.LogError(exception, "Failed to load initial messages for game {GameId} player {PlayerId}.", GameId, currentPlayerId);
             timeline.MessageError = "We couldn't load messages right now. Please try again.";
         }
         finally
@@ -376,7 +382,7 @@ else
         try
         {
             var shouldStickToBottom = timelineComponent is null || await timelineComponent.IsNearBottomAsync();
-            var updates = await GetMessageUpdatesHandler.HandleAsync(lobby.GameId, currentUserId, timeline.NewestMessageId);
+            var updates = await GetMessageUpdatesHandler.HandleAsync(lobby.GameId, currentPlayerId, timeline.NewestMessageId);
             if (updates is null || updates.Count == 0)
             {
                 return;
@@ -390,7 +396,7 @@ else
         }
         catch (Exception exception)
         {
-            Logger.LogError(exception, "Failed to load message updates for game {GameId} user {UserId}.", GameId, currentUserId);
+            Logger.LogError(exception, "Failed to load message updates for game {GameId} player {PlayerId}.", GameId, currentPlayerId);
             timeline.MessageError = "We couldn't refresh messages right now. Please try again.";
         }
     }
@@ -409,12 +415,12 @@ else
             var metrics = timelineComponent is null
                 ? new TimelineScrollMetrics()
                 : await timelineComponent.GetScrollMetricsAsync();
-            var page = await GetMessagesHandler.HandleAsync(lobby.GameId, currentUserId, timeline.OldestMessageId);
+            var page = await GetMessagesHandler.HandleAsync(lobby.GameId, currentPlayerId, timeline.OldestMessageId);
             timeline.ApplyOlderPage(page, metrics);
         }
         catch (Exception exception)
         {
-            Logger.LogError(exception, "Failed to load older messages for game {GameId} user {UserId}.", GameId, currentUserId);
+            Logger.LogError(exception, "Failed to load older messages for game {GameId} player {PlayerId}.", GameId, currentPlayerId);
             timeline.MessageError = "We couldn't load older messages right now. Please try again.";
         }
         finally
@@ -448,11 +454,11 @@ else
             GameMessageCommandOutcome result;
             if (recipient is null)
             {
-                result = await SendPublicMessageHandler.HandleAsync(lobby.GameId, currentUserId, new SendGameMessageRequest(body));
+                result = await SendPublicMessageHandler.HandleAsync(lobby.GameId, currentPlayerId, new SendGameMessageRequest(body));
             }
             else
             {
-                result = await SendPrivateMessageHandler.HandleAsync(lobby.GameId, currentUserId, recipient.PlayerId, new SendGameMessageRequest(body));
+                result = await SendPrivateMessageHandler.HandleAsync(lobby.GameId, currentPlayerId, recipient.PlayerId, new SendGameMessageRequest(body));
             }
 
             if (result is not GameMessageCommandSucceeded succeeded)
@@ -467,7 +473,7 @@ else
         catch (Exception exception)
         {
             timeline.SetPendingMessageFailed(pendingItem.Key, true);
-            Logger.LogError(exception, "Failed to send a message for game {GameId} user {UserId}.", GameId, currentUserId);
+            Logger.LogError(exception, "Failed to send a message for game {GameId} player {PlayerId}.", GameId, currentPlayerId);
             timeline.MessageError = "We couldn't send that message right now. Please try again.";
         }
         finally
@@ -493,11 +499,11 @@ else
             GameMessageCommandOutcome result;
             if (item.Pending.RecipientPlayerId is null)
             {
-                result = await SendPublicMessageHandler.HandleAsync(lobby.GameId, currentUserId, new SendGameMessageRequest(item.Pending.Body));
+                result = await SendPublicMessageHandler.HandleAsync(lobby.GameId, currentPlayerId, new SendGameMessageRequest(item.Pending.Body));
             }
             else
             {
-                result = await SendPrivateMessageHandler.HandleAsync(lobby.GameId, currentUserId, item.Pending.RecipientPlayerId.Value, new SendGameMessageRequest(item.Pending.Body));
+                result = await SendPrivateMessageHandler.HandleAsync(lobby.GameId, currentPlayerId, item.Pending.RecipientPlayerId.Value, new SendGameMessageRequest(item.Pending.Body));
             }
 
             if (result is not GameMessageCommandSucceeded succeeded)
@@ -512,7 +518,7 @@ else
         catch (Exception exception)
         {
             timeline.SetPendingMessageFailed(itemKey, true);
-            Logger.LogError(exception, "Failed to retry a message for game {GameId} user {UserId}.", GameId, currentUserId);
+            Logger.LogError(exception, "Failed to retry a message for game {GameId} player {PlayerId}.", GameId, currentPlayerId);
             timeline.MessageError = "We couldn't resend that message right now. Please try again.";
         }
         finally
@@ -548,7 +554,7 @@ else
 
         try
         {
-            var result = await EditMessageHandler.HandleAsync(lobby.GameId, currentUserId, timeline.EditingMessageId.Value, new UpdateGameMessageRequest(timeline.EditMessageText));
+            var result = await EditMessageHandler.HandleAsync(lobby.GameId, currentPlayerId, timeline.EditingMessageId.Value, new UpdateGameMessageRequest(timeline.EditMessageText));
             if (result is not GameMessageCommandSucceeded succeeded)
             {
                 timeline.MessageError = ((GameMessageCommandFailed)result).ErrorMessage;
@@ -560,7 +566,7 @@ else
         }
         catch (Exception exception)
         {
-            Logger.LogError(exception, "Failed to save a message edit for game {GameId} user {UserId}.", GameId, currentUserId);
+            Logger.LogError(exception, "Failed to save a message edit for game {GameId} player {PlayerId}.", GameId, currentPlayerId);
             timeline.MessageError = "We couldn't save that message right now. Please try again.";
         }
         finally
@@ -580,7 +586,7 @@ else
 
         try
         {
-            var result = await DeleteMessageHandler.HandleAsync(lobby.GameId, currentUserId, messageId);
+            var result = await DeleteMessageHandler.HandleAsync(lobby.GameId, currentPlayerId, messageId);
             if (result is not GameMessageCommandSucceeded succeeded)
             {
                 timeline.MessageError = ((GameMessageCommandFailed)result).ErrorMessage;
@@ -595,7 +601,7 @@ else
         }
         catch (Exception exception)
         {
-            Logger.LogError(exception, "Failed to delete a message for game {GameId} user {UserId}.", GameId, currentUserId);
+            Logger.LogError(exception, "Failed to delete a message for game {GameId} player {PlayerId}.", GameId, currentPlayerId);
             timeline.MessageError = "We couldn't delete that message right now. Please try again.";
         }
     }

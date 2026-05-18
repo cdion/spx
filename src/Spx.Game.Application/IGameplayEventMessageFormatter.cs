@@ -1,11 +1,10 @@
-using Spx.Contracts;
-
 namespace Spx.Game.Application;
 
 public interface IGameplayEventMessageFormatter
 {
     IReadOnlyList<string> CreateMessageBodies(
-    GameSessionSnapshot session,
+        GameResolvedBatchView? lastResolvedBatch,
+        GameCompletionView? completion,
         IReadOnlyList<GameplayEvent> gameplayEvents,
         IReadOnlyDictionary<Guid, string> playerNames);
 }

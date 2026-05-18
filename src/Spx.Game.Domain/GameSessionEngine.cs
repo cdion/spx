@@ -1,5 +1,3 @@
-using Spx.Contracts;
-
 namespace Spx.Game.Domain;
 
 public static class GameSessionEngine
@@ -34,44 +32,7 @@ public static class GameSessionEngine
         GameCardDefinition.Produce
     ];
 
-    public static GameSessionState CloneState(GameSessionState state)
-        => new()
-        {
-            FirstPlayer = state.FirstPlayer is null ? null : new GameSessionParticipantGrainView(state.FirstPlayer.PlayerId, state.FirstPlayer.UserId),
-            SecondPlayer = state.SecondPlayer is null ? null : new GameSessionParticipantGrainView(state.SecondPlayer.PlayerId, state.SecondPlayer.UserId),
-            FirstPlayerActive = state.FirstPlayerActive,
-            SecondPlayerActive = state.SecondPlayerActive,
-            RoundNumber = state.RoundNumber,
-            Phase = state.Phase,
-            MarketDeck = state.MarketDeck.Select(CloneCard).ToList(),
-            VisibleMarketCards = state.VisibleMarketCards.Select(CloneCard).ToList(),
-            FirstPlayerHand = state.FirstPlayerHand.Select(CloneCard).ToList(),
-            SecondPlayerHand = state.SecondPlayerHand.Select(CloneCard).ToList(),
-            FirstPlayerPendingBatch = state.FirstPlayerPendingBatch is null ? null : ClonePendingBatch(state.FirstPlayerPendingBatch),
-            SecondPlayerPendingBatch = state.SecondPlayerPendingBatch is null ? null : ClonePendingBatch(state.SecondPlayerPendingBatch),
-            LastResolvedBatch = state.LastResolvedBatch is null ? null : CloneResolvedBatch(state.LastResolvedBatch),
-            FirstPlayerScoutOverride = state.FirstPlayerScoutOverride,
-            SecondPlayerScoutOverride = state.SecondPlayerScoutOverride,
-            CurrentAcquireFirstUserId = state.CurrentAcquireFirstUserId,
-            CurrentAcquireSecondUserId = state.CurrentAcquireSecondUserId,
-            AcquireFirstCompleted = state.AcquireFirstCompleted,
-            AcquireSecondCompleted = state.AcquireSecondCompleted,
-            PreviousAcquireSecondUserId = state.PreviousAcquireSecondUserId,
-            InitialTieBreakerFirstUserId = state.InitialTieBreakerFirstUserId,
-            Completion = state.Completion is null
-                ? null
-                : new GameCompletionState
-                {
-                    Reason = state.Completion.Reason,
-                    WinnerUserId = state.Completion.WinnerUserId,
-                    CompletedAtUtc = state.Completion.CompletedAtUtc
-                },
-            ConsecutiveStalemateRounds = state.ConsecutiveStalemateRounds,
-            RoundHadHandChange = state.RoundHadHandChange,
-            AcquirePicksCompletedInPhase = state.AcquirePicksCompletedInPhase
-        };
-
-    public static void Initialize(GameSessionState state, InitializeGameSessionGrainCommand command)
+    public static void Initialize(GameSessionState state, InitializeGameSessionCommand command)
     {
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(command);
@@ -107,18 +68,18 @@ public static class GameSessionEngine
         state.LastResolvedBatch = null;
         state.FirstPlayerScoutOverride = false;
         state.SecondPlayerScoutOverride = false;
-        state.PreviousAcquireSecondUserId = null;
-        state.InitialTieBreakerFirstUserId = Random.Shared.Next(2) == 0 ? command.FirstPlayer.UserId : command.SecondPlayer.UserId;
+        state.PreviousAcquireSecondPlayerId = null;
+        state.InitialTieBreakerFirstPlayerId = Random.Shared.Next(2) == 0 ? command.FirstPlayer.PlayerId : command.SecondPlayer.PlayerId;
         state.Completion = null;
         state.ConsecutiveStalemateRounds = 0;
         state.AcquirePicksCompletedInPhase = 0;
         StartAcquirePhase(state);
     }
 
-    public static GameSessionGrainCommandResult SubmitAcquire(
+    public static GameSessionCommandResult SubmitAcquire(
         GameSessionState state,
         Guid gameId,
-        SubmitAcquireGrainCommand command)
+        SubmitAcquireCommand command)
     {
         try
         {
@@ -128,7 +89,7 @@ public static class GameSessionEngine
             EnsureInitialized(state);
             EnsureNotCompleted(state);
 
-            var participant = GetParticipant(state, command.UserId);
+            var participant = GetParticipant(state, command.PlayerId);
             if (!participant.IsActive)
             {
                 throw new InvalidOperationException("Inactive players cannot acquire cards.");
@@ -148,11 +109,11 @@ public static class GameSessionEngine
             {
                 state.AcquirePicksCompletedInPhase = AcquirePicksPerPhase;
                 state.Phase = GamePhase.Play;
-                return new GameSessionGrainCommandSucceededResult(CreatePlayerView(state, gameId, participant.Player.UserId));
+                return new GameSessionCommandSucceededResult(CreatePlayerView(state, gameId, participant.Player.PlayerId));
             }
 
-            var currentAcquireUserId = GetCurrentAcquireUserId(state);
-            if (!string.Equals(currentAcquireUserId, command.UserId, StringComparison.Ordinal))
+            var currentAcquirePlayerId = GetCurrentAcquirePlayerId(state);
+            if (currentAcquirePlayerId != command.PlayerId)
             {
                 throw new InvalidOperationException("It is not this player's turn to acquire a card.");
             }
@@ -167,22 +128,22 @@ public static class GameSessionEngine
 
             if (state.VisibleMarketCards.Count == 0 || state.AcquirePicksCompletedInPhase >= AcquirePicksPerPhase)
             {
-                state.PreviousAcquireSecondUserId = state.CurrentAcquireSecondUserId;
+                state.PreviousAcquireSecondPlayerId = state.CurrentAcquireSecondPlayerId;
                 state.Phase = GamePhase.Play;
             }
 
-            return new GameSessionGrainCommandSucceededResult(CreatePlayerView(state, gameId, participant.Player.UserId));
+            return new GameSessionCommandSucceededResult(CreatePlayerView(state, gameId, participant.Player.PlayerId));
         }
         catch (InvalidOperationException exception)
         {
-            return new GameSessionGrainCommandRejectedResult(exception.Message);
+            return new GameSessionCommandRejectedResult(exception.Message);
         }
     }
 
-    public static GameSessionGrainCommandResult SubmitPlayBatch(
+    public static GameSessionCommandResult SubmitPlayBatch(
         GameSessionState state,
         Guid gameId,
-        SubmitPlayBatchGrainCommand command,
+        SubmitPlayBatchCommand command,
         DateTime nowUtc)
     {
         try
@@ -193,7 +154,7 @@ public static class GameSessionEngine
             EnsureInitialized(state);
             EnsureNotCompleted(state);
 
-            var participant = GetParticipant(state, command.UserId);
+            var participant = GetParticipant(state, command.PlayerId);
             if (!participant.IsActive)
             {
                 throw new InvalidOperationException("Inactive players cannot submit play batches.");
@@ -248,18 +209,18 @@ public static class GameSessionEngine
                 }
             }
 
-            return new GameSessionGrainCommandSucceededResult(CreatePlayerView(state, gameId, participant.Player.UserId), gameplayEvents);
+            return new GameSessionCommandSucceededResult(CreatePlayerView(state, gameId, participant.Player.PlayerId), gameplayEvents);
         }
         catch (InvalidOperationException exception)
         {
-            return new GameSessionGrainCommandRejectedResult(exception.Message);
+            return new GameSessionCommandRejectedResult(exception.Message);
         }
     }
 
-    public static GameSessionGrainView? GetSessionView(
+    public static GameSessionView? GetSessionView(
         GameSessionState state,
         Guid gameId,
-        GetGameSessionGrainQuery query)
+        GetGameSessionQuery query)
     {
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(query);
@@ -269,15 +230,15 @@ public static class GameSessionEngine
             return null;
         }
 
-        return TryGetParticipant(state, query.UserId) is { } participant
-            ? CreatePlayerView(state, gameId, participant.Player.UserId)
+        return TryGetParticipant(state, query.PlayerId) is { } participant
+            ? CreatePlayerView(state, gameId, participant.Player.PlayerId)
             : null;
     }
 
-    public static GameSessionGrainView AbandonPlayer(
+    public static GameSessionView AbandonPlayer(
         GameSessionState state,
         Guid gameId,
-        AbandonGameSessionGrainCommand command,
+        AbandonGameSessionCommand command,
         DateTime nowUtc)
     {
         ArgumentNullException.ThrowIfNull(state);
@@ -285,7 +246,7 @@ public static class GameSessionEngine
 
         EnsureInitialized(state);
 
-        var participant = GetParticipant(state, command.UserId);
+        var participant = GetParticipant(state, command.PlayerId);
         if (participant.IsFirstPlayer)
         {
             state.FirstPlayerActive = false;
@@ -301,18 +262,18 @@ public static class GameSessionEngine
         state.Completion = new GameCompletionState
         {
             Reason = GameCompletionReason.Abandoned,
-            WinnerUserId = participant.Opponent.UserId,
+            WinnerPlayerId = participant.Opponent.PlayerId,
             CompletedAtUtc = nowUtc
         };
 
-        return CreatePlayerView(state, gameId, participant.Player.UserId);
+        return CreatePlayerView(state, gameId, participant.Player.PlayerId);
     }
 
     private static bool HasSameRoster(
-        GameSessionParticipantGrainView existingFirstPlayer,
-        GameSessionParticipantGrainView existingSecondPlayer,
-        GameSessionParticipantGrainView incomingFirstPlayer,
-        GameSessionParticipantGrainView incomingSecondPlayer)
+        GameSessionParticipant existingFirstPlayer,
+        GameSessionParticipant existingSecondPlayer,
+        GameSessionParticipant incomingFirstPlayer,
+        GameSessionParticipant incomingSecondPlayer)
         => (existingFirstPlayer.PlayerId == incomingFirstPlayer.PlayerId && existingSecondPlayer.PlayerId == incomingSecondPlayer.PlayerId)
             || (existingFirstPlayer.PlayerId == incomingSecondPlayer.PlayerId && existingSecondPlayer.PlayerId == incomingFirstPlayer.PlayerId);
 
@@ -332,17 +293,17 @@ public static class GameSessionEngine
         }
     }
 
-    private static ParticipantState GetParticipant(GameSessionState state, string userId)
-        => TryGetParticipant(state, userId) ?? throw new InvalidOperationException("The current user is not part of this game session.");
+    private static ParticipantState GetParticipant(GameSessionState state, Guid playerId)
+        => TryGetParticipant(state, playerId) ?? throw new InvalidOperationException("The current user is not part of this game session.");
 
-    private static ParticipantState? TryGetParticipant(GameSessionState state, string userId)
+    private static ParticipantState? TryGetParticipant(GameSessionState state, Guid playerId)
     {
-        if (state.FirstPlayer is not null && string.Equals(state.FirstPlayer.UserId, userId, StringComparison.Ordinal))
+        if (state.FirstPlayer is not null && state.FirstPlayer.PlayerId == playerId)
         {
             return new ParticipantState(state.FirstPlayer, state.SecondPlayer!, state.FirstPlayerActive, IsFirstPlayer: true);
         }
 
-        if (state.SecondPlayer is not null && string.Equals(state.SecondPlayer.UserId, userId, StringComparison.Ordinal))
+        if (state.SecondPlayer is not null && state.SecondPlayer.PlayerId == playerId)
         {
             return new ParticipantState(state.SecondPlayer, state.FirstPlayer!, state.SecondPlayerActive, IsFirstPlayer: false);
         }
@@ -350,29 +311,29 @@ public static class GameSessionEngine
         return null;
     }
 
-    private static GameSessionGrainView CreatePlayerView(
+    private static GameSessionView CreatePlayerView(
         GameSessionState state,
         Guid gameId,
-        string userId)
+        Guid playerId)
     {
-        var participant = GetParticipant(state, userId);
+        var participant = GetParticipant(state, playerId);
         var currentPendingBatch = GetPendingBatch(state, participant.IsFirstPlayer);
         var opponentPendingBatch = GetPendingBatch(state, !participant.IsFirstPlayer);
         var canAcquireCard = state.Phase == GamePhase.Acquire
             && state.VisibleMarketCards.Count > 0
-            && string.Equals(GetCurrentAcquireUserId(state), userId, StringComparison.Ordinal);
+            && GetCurrentAcquirePlayerId(state) == playerId;
         var canLockBatch = state.Phase == GamePhase.Play && currentPendingBatch is null && participant.IsActive;
         var waitingForOpponent = state.Phase switch
         {
             GamePhase.Acquire => participant.IsActive
                 && !canAcquireCard
                 && state.VisibleMarketCards.Count > 0
-                && (state.CurrentAcquireFirstUserId is not null || state.CurrentAcquireSecondUserId is not null),
+                && (state.CurrentAcquireFirstPlayerId.HasValue || state.CurrentAcquireSecondPlayerId.HasValue),
             GamePhase.Play => currentPendingBatch is not null && opponentPendingBatch is null && (participant.IsFirstPlayer ? state.SecondPlayerActive : state.FirstPlayerActive),
             _ => false
         };
 
-        return new GameSessionGrainView(
+        return new GameSessionView(
             gameId,
             state.RoundNumber,
             state.Phase,
@@ -388,11 +349,11 @@ public static class GameSessionEngine
             CreateCompletionView(state));
     }
 
-    private sealed record ParticipantState(GameSessionParticipantGrainView Player, GameSessionParticipantGrainView Opponent, bool IsActive, bool IsFirstPlayer);
+    private sealed record ParticipantState(GameSessionParticipant Player, GameSessionParticipant Opponent, bool IsActive, bool IsFirstPlayer);
 
-    private static GamePlayerStateGrainView CreatePlayerStateView(
+    private static GamePlayerStateView CreatePlayerStateView(
         GameSessionState state,
-        GameSessionParticipantGrainView participant,
+        GameSessionParticipant participant,
         bool isFirstPlayer,
         PendingGameBatchState? pendingBatch,
         bool revealLockedCards)
@@ -403,37 +364,37 @@ public static class GameSessionEngine
             pendingBatch?.Cards.Count ?? 0,
             GetInitiativeScore(GetHand(state, isFirstPlayer)),
             isFirstPlayer ? state.FirstPlayerScoutOverride : state.SecondPlayerScoutOverride,
-            string.Equals(state.CurrentAcquireFirstUserId, participant.UserId, StringComparison.Ordinal),
+            state.CurrentAcquireFirstPlayerId == participant.PlayerId,
             revealLockedCards && pendingBatch is not null
                 ? pendingBatch.Cards.Select(CreateBatchCardView).ToArray()
                 : []);
 
-    private static GameResolvedBatchGrainView? CreateResolvedBatchView(GameSessionState state)
+    private static GameResolvedBatchView? CreateResolvedBatchView(GameSessionState state)
         => state.LastResolvedBatch is null
             ? null
-            : new GameResolvedBatchGrainView(
+            : new GameResolvedBatchView(
                 state.LastResolvedBatch.RoundNumber,
-                state.LastResolvedBatch.Players.Select(player => new GameResolvedPlayerBatchGrainView(
-                    GetParticipant(state, player.UserId).Player,
+                state.LastResolvedBatch.Players.Select(player => new GameResolvedPlayerBatchView(
+                    GetParticipant(state, player.PlayerId).Player,
                     player.Cards.Select(CreateBatchCardView).ToArray(),
                     player.ProducedVictory)).ToArray(),
                 state.LastResolvedBatch.ResolvedAtUtc);
 
-    private static GameCompletionGrainView? CreateCompletionView(GameSessionState state)
+    private static GameCompletionView? CreateCompletionView(GameSessionState state)
     {
         if (state.Completion is null)
         {
             return null;
         }
 
-        var winner = state.Completion.WinnerUserId is null
+        var winner = state.Completion.WinnerPlayerId is null
             ? null
-            : GetParticipant(state, state.Completion.WinnerUserId).Player;
+            : GetParticipant(state, state.Completion.WinnerPlayerId.Value).Player;
 
-        return new GameCompletionGrainView(state.Completion.Reason, winner, state.Completion.CompletedAtUtc);
+        return new GameCompletionView(state.Completion.Reason, winner, state.Completion.CompletedAtUtc);
     }
 
-    private static GameCardInstanceGrainView CreateCardView(GameCardState card)
+    private static GameCardView CreateCardView(GameCardState card)
         => new(
             card.CardInstanceId,
             card.Definition,
@@ -441,14 +402,14 @@ public static class GameSessionEngine
             GameCardCatalog.GetCategory(card.Definition),
             GameCardCatalog.GetResourceColor(card.Definition));
 
-    private static GameBatchCardGrainView CreateBatchCardView(PendingGameBatchCardState card)
+    private static GameBatchCardView CreateBatchCardView(PendingGameBatchCardState card)
         => new(
             CreateCardView(card.Card),
             card.ChosenResourceColor,
             card.CraftedCardDefinition,
             card.TargetResourceColor,
             card.TargetCardInstanceId,
-            card.ConsumedCards.Select(reference => new GameCardReferenceGrainView(reference.CardInstanceId, reference.ProducedByCardInstanceId, reference.ProducedCardDefinition)).ToArray());
+            card.ConsumedCards.Select(reference => new GameCardReferenceView(reference.CardInstanceId, reference.ProducedByCardInstanceId, reference.ProducedCardDefinition)).ToArray());
 
     private static List<GameCardState> CreateInitialMarketDeck()
         => InitialMarketDeck.Select(definition => CreateCard(definition)).ToList();
@@ -466,13 +427,10 @@ public static class GameSessionEngine
 
         RefillVisibleMarket(state);
 
-        state.CurrentAcquireFirstUserId = DetermineAcquireFirstUserId(state);
-        state.CurrentAcquireSecondUserId = state.FirstPlayer is not null && state.SecondPlayer is not null
-            ? GetOtherUserId(state, state.CurrentAcquireFirstUserId)
+        state.CurrentAcquireFirstPlayerId = TryConsumeScoutOverride(state) ?? DetermineAcquireFirstPlayerId(state);
+        state.CurrentAcquireSecondPlayerId = state.FirstPlayer is not null && state.SecondPlayer is not null
+            ? GetOtherPlayerId(state, state.CurrentAcquireFirstPlayerId)
             : null;
-        state.AcquireFirstCompleted = false;
-        state.AcquireSecondCompleted = false;
-
         if (state.VisibleMarketCards.Count == 0)
         {
             state.AcquirePicksCompletedInPhase = AcquirePicksPerPhase;
@@ -497,7 +455,7 @@ public static class GameSessionEngine
         }
     }
 
-    private static string? GetCurrentAcquireUserId(GameSessionState state)
+    private static Guid? GetCurrentAcquirePlayerId(GameSessionState state)
     {
         if (state.Phase != GamePhase.Acquire || state.VisibleMarketCards.Count == 0 || state.AcquirePicksCompletedInPhase >= AcquirePicksPerPhase)
         {
@@ -505,58 +463,66 @@ public static class GameSessionEngine
         }
 
         return state.AcquirePicksCompletedInPhase % 2 == 0
-            ? state.CurrentAcquireFirstUserId
-            : state.CurrentAcquireSecondUserId;
+            ? state.CurrentAcquireFirstPlayerId
+            : state.CurrentAcquireSecondPlayerId;
     }
 
-    private static string DetermineAcquireFirstUserId(GameSessionState state)
+    private static Guid? TryConsumeScoutOverride(GameSessionState state)
     {
-        EnsureInitialized(state);
-
         if (state.FirstPlayerScoutOverride && state.SecondPlayerScoutOverride)
         {
             state.FirstPlayerScoutOverride = false;
             state.SecondPlayerScoutOverride = false;
+            return null;
         }
-        else if (state.FirstPlayerScoutOverride)
+
+        if (state.FirstPlayerScoutOverride)
         {
             state.FirstPlayerScoutOverride = false;
-            return state.FirstPlayer!.UserId;
+            return state.FirstPlayer!.PlayerId;
         }
-        else if (state.SecondPlayerScoutOverride)
+
+        if (state.SecondPlayerScoutOverride)
         {
             state.SecondPlayerScoutOverride = false;
-            return state.SecondPlayer!.UserId;
+            return state.SecondPlayer!.PlayerId;
         }
+
+        return null;
+    }
+
+    private static Guid DetermineAcquireFirstPlayerId(GameSessionState state)
+    {
+        EnsureInitialized(state);
 
         var firstScore = GetInitiativeScore(state.FirstPlayerHand);
         var secondScore = GetInitiativeScore(state.SecondPlayerHand);
 
         if (firstScore != secondScore)
         {
-            return firstScore < secondScore ? state.FirstPlayer!.UserId : state.SecondPlayer!.UserId;
+            return firstScore < secondScore ? state.FirstPlayer!.PlayerId : state.SecondPlayer!.PlayerId;
         }
 
         if (state.FirstPlayerHand.Count != state.SecondPlayerHand.Count)
         {
-            return state.FirstPlayerHand.Count < state.SecondPlayerHand.Count ? state.FirstPlayer!.UserId : state.SecondPlayer!.UserId;
+            return state.FirstPlayerHand.Count < state.SecondPlayerHand.Count ? state.FirstPlayer!.PlayerId : state.SecondPlayer!.PlayerId;
         }
 
-        if (!string.IsNullOrWhiteSpace(state.PreviousAcquireSecondUserId))
+        if (state.PreviousAcquireSecondPlayerId.HasValue)
         {
-            return state.PreviousAcquireSecondUserId!;
+            return state.PreviousAcquireSecondPlayerId.Value;
         }
 
-        return state.InitialTieBreakerFirstUserId ?? state.FirstPlayer!.UserId;
+        return state.InitialTieBreakerFirstPlayerId ?? state.FirstPlayer!.PlayerId;
     }
 
     private static int GetInitiativeScore(IEnumerable<GameCardState> hand)
         => hand.Sum(card => GameCardCatalog.GetInitiativeWeight(card.Definition));
 
-    private static string GetOtherUserId(GameSessionState state, string? userId)
-        => string.Equals(state.FirstPlayer!.UserId, userId, StringComparison.Ordinal)
-            ? state.SecondPlayer!.UserId
-            : state.FirstPlayer!.UserId;
+    private static Guid GetOtherPlayerId(GameSessionState state, Guid? playerId)
+        => state.FirstPlayer!.PlayerId == playerId
+            ? state.SecondPlayer!.PlayerId
+            : state.FirstPlayer!.PlayerId;
 
     private static List<GameCardState> GetHand(GameSessionState state, bool isFirstPlayer)
         => isFirstPlayer ? state.FirstPlayerHand : state.SecondPlayerHand;
@@ -596,7 +562,7 @@ public static class GameSessionEngine
     }
 
     private static PendingGameBatchState BuildPendingBatch(
-        SubmitPlayBatchGrainCommand command,
+        SubmitPlayBatchCommand command,
         List<GameCardState> ownHand,
         List<GameCardState> opponentHand)
     {
@@ -608,7 +574,7 @@ public static class GameSessionEngine
         var handById = ownHand.ToDictionary(card => card.CardInstanceId);
         var opponentHandById = opponentHand.ToDictionary(card => card.CardInstanceId);
 
-        var selectedCardsById = new Dictionary<Guid, GameBatchCardGrainCommand>();
+        var selectedCardsById = new Dictionary<Guid, GameBatchCardCommand>();
         foreach (var selectedCard in command.Cards)
         {
             if (!selectedCardsById.TryAdd(selectedCard.CardInstanceId, selectedCard))
@@ -635,7 +601,7 @@ public static class GameSessionEngine
 
         return new PendingGameBatchState
         {
-            UserId = command.UserId,
+            PlayerId = command.PlayerId,
             Cards = command.Cards.Select(selectedCard => new PendingGameBatchCardState
             {
                 Card = handById[selectedCard.CardInstanceId],
@@ -654,9 +620,9 @@ public static class GameSessionEngine
     }
 
     private static void ValidateSelectedCard(
-        GameBatchCardGrainCommand selectedCard,
+        GameBatchCardCommand selectedCard,
         GameCardState handCard,
-        IReadOnlyDictionary<Guid, GameBatchCardGrainCommand> selectedCardsById,
+        IReadOnlyDictionary<Guid, GameBatchCardCommand> selectedCardsById,
         IReadOnlyDictionary<Guid, GameCardState> handById,
         IReadOnlyDictionary<Guid, GameCardState> opponentHandById)
     {
@@ -696,12 +662,12 @@ public static class GameSessionEngine
         }
     }
 
-    private static void ValidateExtract(GameBatchCardGrainCommand selectedCard)
+    private static void ValidateExtract(GameBatchCardCommand selectedCard)
         => EnsureNoExtraChoices(selectedCard, allowCraftedCard: false, allowTargetCard: false, allowTargetResource: false, allowConsumedCards: false, allowChosenResource: true);
 
     private static void ValidateRefine(
-        GameBatchCardGrainCommand selectedCard,
-        IReadOnlyDictionary<Guid, GameBatchCardGrainCommand> selectedCardsById,
+        GameBatchCardCommand selectedCard,
+        IReadOnlyDictionary<Guid, GameBatchCardCommand> selectedCardsById,
         IReadOnlyDictionary<Guid, GameCardState> handById)
     {
         EnsureNoExtraChoices(selectedCard, allowCraftedCard: false, allowTargetCard: false, allowTargetResource: false, allowConsumedCards: true, allowChosenResource: false);
@@ -722,11 +688,11 @@ public static class GameSessionEngine
         }
     }
 
-    private static void ValidateProduce(GameBatchCardGrainCommand selectedCard)
+    private static void ValidateProduce(GameBatchCardCommand selectedCard)
         => EnsureNoExtraChoices(selectedCard, allowCraftedCard: true, allowTargetCard: false, allowTargetResource: false, allowConsumedCards: true, allowChosenResource: false);
 
     private static void EnsureNoExtraChoices(
-        GameBatchCardGrainCommand selectedCard,
+        GameBatchCardCommand selectedCard,
         bool allowCraftedCard,
         bool allowTargetCard,
         bool allowTargetResource,
@@ -759,7 +725,7 @@ public static class GameSessionEngine
         }
     }
 
-    private static void EnsureUniqueConsumedReferences(GameBatchCardGrainCommand selectedCard)
+    private static void EnsureUniqueConsumedReferences(GameBatchCardCommand selectedCard)
     {
         var seenExistingCards = new HashSet<Guid>();
         var seenProducedCards = new HashSet<Guid>();
@@ -786,8 +752,8 @@ public static class GameSessionEngine
     }
 
     private static GameCardDefinition ResolveReferenceDefinition(
-        GameCardReferenceGrainCommand reference,
-        IReadOnlyDictionary<Guid, GameBatchCardGrainCommand> selectedCardsById,
+        GameCardReferenceCommand reference,
+        IReadOnlyDictionary<Guid, GameBatchCardCommand> selectedCardsById,
         IReadOnlyDictionary<Guid, GameCardState> handById,
         int currentStep,
         ISet<Guid> visitedCards)
@@ -830,9 +796,9 @@ public static class GameSessionEngine
     }
 
     private static GameCardDefinition ResolveProducedDefinition(
-        GameBatchCardGrainCommand selectedCard,
+        GameBatchCardCommand selectedCard,
         GameCardDefinition sourceDefinition,
-        IReadOnlyDictionary<Guid, GameBatchCardGrainCommand> selectedCardsById,
+        IReadOnlyDictionary<Guid, GameBatchCardCommand> selectedCardsById,
         IReadOnlyDictionary<Guid, GameCardState> handById,
         ISet<Guid> visitedCards)
         => sourceDefinition switch
@@ -846,8 +812,8 @@ public static class GameSessionEngine
         };
 
     private static GameCardDefinition ResolveRefineOutput(
-        GameBatchCardGrainCommand selectedCard,
-        IReadOnlyDictionary<Guid, GameBatchCardGrainCommand> selectedCardsById,
+        GameBatchCardCommand selectedCard,
+        IReadOnlyDictionary<Guid, GameBatchCardCommand> selectedCardsById,
         IReadOnlyDictionary<Guid, GameCardState> handById,
         ISet<Guid> visitedCards)
     {
@@ -891,8 +857,8 @@ public static class GameSessionEngine
             ResolvedAtUtc = nowUtc,
             Players =
             [
-                new ResolvedGamePlayerBatchState { UserId = firstBatch.UserId, Cards = CloneBatchCards(firstBatch.Cards), ProducedVictory = firstProducedVictory },
-                new ResolvedGamePlayerBatchState { UserId = secondBatch.UserId, Cards = CloneBatchCards(secondBatch.Cards), ProducedVictory = secondProducedVictory }
+                new ResolvedGamePlayerBatchState { PlayerId = firstBatch.PlayerId, Cards = CloneBatchCards(firstBatch.Cards), ProducedVictory = firstProducedVictory },
+                new ResolvedGamePlayerBatchState { PlayerId = secondBatch.PlayerId, Cards = CloneBatchCards(secondBatch.Cards), ProducedVictory = secondProducedVictory }
             ]
         };
 
@@ -949,12 +915,12 @@ public static class GameSessionEngine
             || removedCard is null
             || !predicate(removedCard.Definition))
         {
-            events.Add(CreateFizzledEvent(GetParticipantName(state, isFirstPlayer), playedCard.Card.Definition));
+            events.Add(CreateFizzledEvent(GetParticipantPlayerId(state, isFirstPlayer), playedCard.Card.Definition));
             return;
         }
 
         state.RoundHadHandChange = true;
-        events.Add(CreateDiscardedEvent(GetParticipantName(state, isFirstPlayer), playedCard.Card.Definition, GetParticipantName(state, !isFirstPlayer), removedCard.Definition));
+        events.Add(CreateDiscardedEvent(GetParticipantPlayerId(state, isFirstPlayer), playedCard.Card.Definition, GetParticipantPlayerId(state, !isFirstPlayer), removedCard.Definition));
     }
 
     private static void ResolveReplicate(
@@ -967,21 +933,21 @@ public static class GameSessionEngine
         var hand = GetHand(state, isFirstPlayer);
         if (playedCard.TargetCardInstanceId is not { } targetCardId)
         {
-            events.Add(CreateFizzledEvent(GetParticipantName(state, isFirstPlayer), playedCard.Card.Definition));
+            events.Add(CreateFizzledEvent(GetParticipantPlayerId(state, isFirstPlayer), playedCard.Card.Definition));
             return;
         }
 
         var targetCard = hand.FirstOrDefault(card => card.CardInstanceId == targetCardId);
         if (targetCard is null || !GameCardCatalog.IsBaseResource(targetCard.Definition))
         {
-            events.Add(CreateFizzledEvent(GetParticipantName(state, isFirstPlayer), playedCard.Card.Definition));
+            events.Add(CreateFizzledEvent(GetParticipantPlayerId(state, isFirstPlayer), playedCard.Card.Definition));
             return;
         }
 
         var createdCard = CreateCard(targetCard.Definition);
         AddCardToHand(state, isFirstPlayer, createdCard);
         createdCards[playedCard.Card.CardInstanceId] = createdCard;
-        events.Add(CreateCreatedEvent(GetParticipantName(state, isFirstPlayer), playedCard.Card.Definition, createdCard.Definition));
+        events.Add(CreateCreatedEvent(GetParticipantPlayerId(state, isFirstPlayer), playedCard.Card.Definition, createdCard.Definition));
     }
 
     private static void ResolveCatalyst(
@@ -998,13 +964,13 @@ public static class GameSessionEngine
             || removedCard is null
             || !GameCardCatalog.IsBaseResource(removedCard.Definition))
         {
-            events.Add(CreateFizzledEvent(GetParticipantName(state, isFirstPlayer), playedCard.Card.Definition));
+            events.Add(CreateFizzledEvent(GetParticipantPlayerId(state, isFirstPlayer), playedCard.Card.Definition));
             return;
         }
 
         if (!GameCardCatalog.TryGetBaseDefinition(targetColor, out var convertedDefinition))
         {
-            events.Add(CreateFizzledEvent(GetParticipantName(state, isFirstPlayer), playedCard.Card.Definition));
+            events.Add(CreateFizzledEvent(GetParticipantPlayerId(state, isFirstPlayer), playedCard.Card.Definition));
             return;
         }
 
@@ -1012,26 +978,26 @@ public static class GameSessionEngine
         var createdCard = CreateCard(convertedDefinition);
         AddCardToHand(state, isFirstPlayer, createdCard);
         createdCards[playedCard.Card.CardInstanceId] = createdCard;
-        events.Add(CreateConvertedEvent(GetParticipantName(state, isFirstPlayer), playedCard.Card.Definition, removedCard.Definition, createdCard.Definition));
+        events.Add(CreateConvertedEvent(GetParticipantPlayerId(state, isFirstPlayer), playedCard.Card.Definition, removedCard.Definition, createdCard.Definition));
     }
 
     private static void ResolveReclaim(GameSessionState state, PendingGameBatchState batch, PendingGameBatchCardState playedCard, List<GameplayEvent> events)
     {
         if (playedCard.TargetCardInstanceId is not { } targetCardId)
         {
-            events.Add(CreateFizzledEvent(GetParticipantName(state, batch.UserId), playedCard.Card.Definition));
+            events.Add(CreateFizzledEvent(GetBatchParticipantPlayerId(state, batch.PlayerId), playedCard.Card.Definition));
             return;
         }
 
         var targetCard = batch.Cards.FirstOrDefault(card => card.Card.CardInstanceId == targetCardId);
         if (targetCard is null || targetCard.Card.CardInstanceId == playedCard.Card.CardInstanceId || !GameCardCatalog.IsMarketCard(targetCard.Card.Definition))
         {
-            events.Add(CreateFizzledEvent(GetParticipantName(state, batch.UserId), playedCard.Card.Definition));
+            events.Add(CreateFizzledEvent(GetBatchParticipantPlayerId(state, batch.PlayerId), playedCard.Card.Definition));
             return;
         }
 
         targetCard.ReturnToHand = true;
-        events.Add(CreateScheduledReturnToHandEvent(GetParticipantName(state, batch.UserId), playedCard.Card.Definition, targetCard.Card.Definition));
+        events.Add(CreateScheduledReturnToHandEvent(GetBatchParticipantPlayerId(state, batch.PlayerId), playedCard.Card.Definition, targetCard.Card.Definition));
     }
 
     private static void ResolveScout(GameSessionState state, bool isFirstPlayer, List<GameplayEvent> events)
@@ -1045,7 +1011,7 @@ public static class GameSessionEngine
             state.SecondPlayerScoutOverride = true;
         }
 
-        events.Add(CreateResolvedEvent(GetParticipantName(state, isFirstPlayer), GameCardDefinition.Scout));
+        events.Add(CreateResolvedEvent(GetParticipantPlayerId(state, isFirstPlayer), GameCardDefinition.Scout));
     }
 
     private static void ResolveExtracts(
@@ -1067,14 +1033,14 @@ public static class GameSessionEngine
 
             if (createdDefinition is null)
             {
-                events.Add(CreateFizzledEvent(GetParticipantName(state, isFirstPlayer), playedCard.Card.Definition));
+                events.Add(CreateFizzledEvent(GetParticipantPlayerId(state, isFirstPlayer), playedCard.Card.Definition));
                 continue;
             }
 
             var createdCard = CreateCard(createdDefinition.Value);
             AddCardToHand(state, isFirstPlayer, createdCard);
             createdCards[playedCard.Card.CardInstanceId] = createdCard;
-            events.Add(CreateCreatedEvent(GetParticipantName(state, isFirstPlayer), playedCard.Card.Definition, createdCard.Definition));
+            events.Add(CreateCreatedEvent(GetParticipantPlayerId(state, isFirstPlayer), playedCard.Card.Definition, createdCard.Definition));
         }
     }
 
@@ -1092,7 +1058,7 @@ public static class GameSessionEngine
                 || consumedCards.Count != 2
                 || GameCardCatalog.TryGetRefineOutput(consumedCards[0].Definition, consumedCards[1].Definition) is not { } createdDefinition)
             {
-                events.Add(CreateFizzledEvent(GetParticipantName(state, isFirstPlayer), playedCard.Card.Definition));
+                events.Add(CreateFizzledEvent(GetParticipantPlayerId(state, isFirstPlayer), playedCard.Card.Definition));
                 continue;
             }
 
@@ -1100,7 +1066,7 @@ public static class GameSessionEngine
             var createdCard = CreateCard(createdDefinition);
             AddCardToHand(state, isFirstPlayer, createdCard);
             createdCards[playedCard.Card.CardInstanceId] = createdCard;
-            events.Add(CreateCreatedEvent(GetParticipantName(state, isFirstPlayer), playedCard.Card.Definition, createdDefinition));
+            events.Add(CreateCreatedEvent(GetParticipantPlayerId(state, isFirstPlayer), playedCard.Card.Definition, createdDefinition));
         }
     }
 
@@ -1117,7 +1083,7 @@ public static class GameSessionEngine
         {
             if (!GameCraftingRules.TryGetProduceResult(playedCard.CraftedCardDefinition, out var craftedDefinition))
             {
-                events.Add(CreateFizzledEvent(GetParticipantName(state, isFirstPlayer), playedCard.Card.Definition));
+                events.Add(CreateFizzledEvent(GetParticipantPlayerId(state, isFirstPlayer), playedCard.Card.Definition));
                 continue;
             }
 
@@ -1125,7 +1091,7 @@ public static class GameSessionEngine
             if (!TryResolveConsumedCards(hand, playedCard, createdCards, out var consumedCards)
                 || !GameCraftingRules.MatchesProduceRecipe(craftedDefinition, consumedCards.Select(card => card.Definition).ToArray()))
             {
-                events.Add(CreateFizzledEvent(GetParticipantName(state, isFirstPlayer), playedCard.Card.Definition));
+                events.Add(CreateFizzledEvent(GetParticipantPlayerId(state, isFirstPlayer), playedCard.Card.Definition));
                 continue;
             }
 
@@ -1134,7 +1100,7 @@ public static class GameSessionEngine
             AddCardToHand(state, isFirstPlayer, createdCard);
             createdCards[playedCard.Card.CardInstanceId] = createdCard;
             producedVictory |= craftedDefinition == GameCardDefinition.Victory;
-            events.Add(CreateCreatedEvent(GetParticipantName(state, isFirstPlayer), playedCard.Card.Definition, craftedDefinition));
+            events.Add(CreateCreatedEvent(GetParticipantPlayerId(state, isFirstPlayer), playedCard.Card.Definition, craftedDefinition));
         }
 
         return producedVictory;
@@ -1206,7 +1172,7 @@ public static class GameSessionEngine
             if (playedCard.ReturnToHand)
             {
                 AddCardToHand(state, isFirstPlayer, playedCard.Card);
-                events.Add(CreateReturnedToHandEvent(GetParticipantName(state, isFirstPlayer), playedCard.Card.Definition));
+                events.Add(CreateReturnedToHandEvent(GetParticipantPlayerId(state, isFirstPlayer), playedCard.Card.Definition));
                 continue;
             }
 
@@ -1241,7 +1207,7 @@ public static class GameSessionEngine
             state.Completion = new GameCompletionState
             {
                 Reason = GameCompletionReason.Victory,
-                WinnerUserId = firstHasVictory ? state.FirstPlayer!.UserId : state.SecondPlayer!.UserId,
+                WinnerPlayerId = firstHasVictory ? state.FirstPlayer!.PlayerId : state.SecondPlayer!.PlayerId,
                 CompletedAtUtc = nowUtc
             };
             state.Phase = GamePhase.Completed;
@@ -1295,7 +1261,7 @@ public static class GameSessionEngine
     private static PendingGameBatchState ClonePendingBatch(PendingGameBatchState batch)
         => new()
         {
-            UserId = batch.UserId,
+            PlayerId = batch.PlayerId,
             Cards = CloneBatchCards(batch.Cards)
         };
 
@@ -1306,45 +1272,38 @@ public static class GameSessionEngine
             ResolvedAtUtc = batch.ResolvedAtUtc,
             Players = batch.Players.Select(player => new ResolvedGamePlayerBatchState
             {
-                UserId = player.UserId,
+                PlayerId = player.PlayerId,
                 ProducedVictory = player.ProducedVictory,
                 Cards = CloneBatchCards(player.Cards)
             }).ToList()
         };
 
-    private static string GetParticipantName(GameSessionState state, bool isFirstPlayer)
-        => GetParticipantName(isFirstPlayer ? state.FirstPlayer : state.SecondPlayer);
+    private static Guid GetParticipantPlayerId(GameSessionState state, bool isFirstPlayer)
+        => (isFirstPlayer ? state.FirstPlayer : state.SecondPlayer)?.PlayerId ?? Guid.Empty;
 
-    private static string GetParticipantName(GameSessionState state, string userId)
-        => TryGetParticipant(state, userId) is { } participant
-            ? GetParticipantName(participant.Player)
-            : userId;
+    private static Guid GetBatchParticipantPlayerId(GameSessionState state, Guid playerId)
+        => TryGetParticipant(state, playerId)?.Player.PlayerId ?? playerId;
 
-    private static string GetParticipantName(GameSessionParticipantGrainView? participant)
-        => participant is null
-            ? string.Empty
-            : participant.UserId;
+    private static GameplayEvent CreateFizzledEvent(Guid actorPlayerId, GameCardDefinition sourceCardDefinition)
+        => new(GameplayEventKind.Fizzled, actorPlayerId, sourceCardDefinition, null, null, null);
 
-    private static GameplayEvent CreateFizzledEvent(string actorUserId, GameCardDefinition sourceCardDefinition)
-        => new(GameplayEventKind.Fizzled, actorUserId, sourceCardDefinition, null, null, null);
+    private static GameplayEvent CreateDiscardedEvent(Guid actorPlayerId, GameCardDefinition sourceCardDefinition, Guid targetPlayerId, GameCardDefinition targetCardDefinition)
+        => new(GameplayEventKind.DiscardedCard, actorPlayerId, sourceCardDefinition, targetPlayerId, targetCardDefinition, null);
 
-    private static GameplayEvent CreateDiscardedEvent(string actorUserId, GameCardDefinition sourceCardDefinition, string targetUserId, GameCardDefinition targetCardDefinition)
-        => new(GameplayEventKind.DiscardedCard, actorUserId, sourceCardDefinition, targetUserId, targetCardDefinition, null);
+    private static GameplayEvent CreateCreatedEvent(Guid actorPlayerId, GameCardDefinition sourceCardDefinition, GameCardDefinition producedCardDefinition)
+        => new(GameplayEventKind.CreatedCard, actorPlayerId, sourceCardDefinition, null, null, producedCardDefinition);
 
-    private static GameplayEvent CreateCreatedEvent(string actorUserId, GameCardDefinition sourceCardDefinition, GameCardDefinition producedCardDefinition)
-        => new(GameplayEventKind.CreatedCard, actorUserId, sourceCardDefinition, null, null, producedCardDefinition);
+    private static GameplayEvent CreateConvertedEvent(Guid actorPlayerId, GameCardDefinition sourceCardDefinition, GameCardDefinition targetCardDefinition, GameCardDefinition producedCardDefinition)
+        => new(GameplayEventKind.ConvertedCard, actorPlayerId, sourceCardDefinition, null, targetCardDefinition, producedCardDefinition);
 
-    private static GameplayEvent CreateConvertedEvent(string actorUserId, GameCardDefinition sourceCardDefinition, GameCardDefinition targetCardDefinition, GameCardDefinition producedCardDefinition)
-        => new(GameplayEventKind.ConvertedCard, actorUserId, sourceCardDefinition, null, targetCardDefinition, producedCardDefinition);
+    private static GameplayEvent CreateScheduledReturnToHandEvent(Guid actorPlayerId, GameCardDefinition sourceCardDefinition, GameCardDefinition targetCardDefinition)
+        => new(GameplayEventKind.ScheduledReturnToHand, actorPlayerId, sourceCardDefinition, null, targetCardDefinition, null);
 
-    private static GameplayEvent CreateScheduledReturnToHandEvent(string actorUserId, GameCardDefinition sourceCardDefinition, GameCardDefinition targetCardDefinition)
-        => new(GameplayEventKind.ScheduledReturnToHand, actorUserId, sourceCardDefinition, null, targetCardDefinition, null);
+    private static GameplayEvent CreateReturnedToHandEvent(Guid actorPlayerId, GameCardDefinition sourceCardDefinition)
+        => new(GameplayEventKind.ReturnedToHand, actorPlayerId, sourceCardDefinition, null, null, null);
 
-    private static GameplayEvent CreateReturnedToHandEvent(string actorUserId, GameCardDefinition sourceCardDefinition)
-        => new(GameplayEventKind.ReturnedToHand, actorUserId, sourceCardDefinition, null, null, null);
-
-    private static GameplayEvent CreateResolvedEvent(string actorUserId, GameCardDefinition sourceCardDefinition)
-        => new(GameplayEventKind.Resolved, actorUserId, sourceCardDefinition, null, null, null);
+    private static GameplayEvent CreateResolvedEvent(Guid actorPlayerId, GameCardDefinition sourceCardDefinition)
+        => new(GameplayEventKind.Resolved, actorPlayerId, sourceCardDefinition, null, null, null);
 
     private static void Shuffle<T>(IList<T> list)
     {

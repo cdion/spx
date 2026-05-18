@@ -4,7 +4,7 @@ public interface IGameSessionService
 {
     Task<bool> EnsureSessionAsync(Guid gameId, IReadOnlyList<GameSessionParticipant> players, CancellationToken cancellationToken = default);
 
-    Task<GameSessionSnapshot?> GetSessionAsync(Guid gameId, string userId, CancellationToken cancellationToken = default);
+    Task<GameSessionView?> GetSessionAsync(Guid gameId, Guid playerId, CancellationToken cancellationToken = default);
 
     Task<GameSessionCommandOutcome> SubmitAcquireAsync(Guid gameId, SubmitAcquireRequest request, CancellationToken cancellationToken = default);
 
@@ -12,5 +12,5 @@ public interface IGameSessionService
 
     Task AcknowledgeGameplayEventBatchAsync(Guid gameId, Guid gameplayEventBatchId, CancellationToken cancellationToken = default);
 
-    Task<GameSessionSnapshot> AbandonAsync(Guid gameId, string userId, CancellationToken cancellationToken = default);
+    Task AbandonAsync(Guid gameId, Guid playerId, CancellationToken cancellationToken = default);
 }

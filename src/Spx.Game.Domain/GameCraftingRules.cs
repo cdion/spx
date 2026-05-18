@@ -1,5 +1,3 @@
-using Spx.Contracts;
-
 namespace Spx.Game.Domain;
 
 public static class GameCraftingRules

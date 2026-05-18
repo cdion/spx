@@ -7,7 +7,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Spx.Contracts\Spx.Game.Contract.csproj" />
     <ProjectReference Include="..\Spx.Game.Domain\Spx.Game.Domain.csproj" />
   </ItemGroup>
 

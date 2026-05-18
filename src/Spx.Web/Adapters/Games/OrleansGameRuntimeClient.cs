@@ -115,8 +115,8 @@ public sealed class OrleansGameRuntimeClient(
         try
         {
             await clusterClient.GetGrain<IGameSessionGrain>(gameId).InitializeAsync(new InitializeGameSessionGrainCommand(
-                new GameSessionParticipantGrainView(players[0].PlayerId, players[0].UserId),
-                new GameSessionParticipantGrainView(players[1].PlayerId, players[1].UserId)));
+                new GameSessionParticipantGrainView(players[0].PlayerId),
+                new GameSessionParticipantGrainView(players[1].PlayerId)));
             return true;
         }
         catch (OrleansException exception)
@@ -131,22 +131,22 @@ public sealed class OrleansGameRuntimeClient(
         }
     }
 
-    public async Task<GameSessionSnapshot?> GetSessionAsync(Guid gameId, string userId, CancellationToken cancellationToken = default)
+    public async Task<GameSessionView?> GetSessionAsync(Guid gameId, Guid playerId, CancellationToken cancellationToken = default)
     {
         try
         {
             await TryPersistPendingGameplayEventBatchesAsync(gameId, cancellationToken);
-            var session = await clusterClient.GetGrain<IGameSessionGrain>(gameId).GetPlayerViewAsync(new GetGameSessionGrainQuery(userId));
+            var session = await clusterClient.GetGrain<IGameSessionGrain>(gameId).GetPlayerViewAsync(new GetGameSessionGrainQuery(playerId));
             return session is null ? null : MapSession(session);
         }
         catch (OrleansException exception)
         {
-            logger.LogWarning(exception, "Failed to fetch player view for game {GameId} user {UserId}. Session data unavailable.", gameId, userId);
+            logger.LogWarning(exception, "Failed to fetch player view for game {GameId} player {PlayerId}. Session data unavailable.", gameId, playerId);
             return null;
         }
         catch (TimeoutException exception)
         {
-            logger.LogWarning(exception, "Failed to fetch player view for game {GameId} user {UserId}. Session data unavailable.", gameId, userId);
+            logger.LogWarning(exception, "Failed to fetch player view for game {GameId} player {PlayerId}. Session data unavailable.", gameId, playerId);
             return null;
         }
     }
@@ -156,17 +156,17 @@ public sealed class OrleansGameRuntimeClient(
         try
         {
             var result = await clusterClient.GetGrain<IGameSessionGrain>(gameId).SubmitAcquireAsync(
-                new SubmitAcquireGrainCommand(request.UserId, request.ExpectedRoundNumber, request.MarketCardInstanceId));
-            return MapSessionCommandResult(gameId, request.UserId, result);
+                new SubmitAcquireGrainCommand(request.PlayerId, request.ExpectedRoundNumber, request.MarketCardInstanceId));
+            return MapSessionCommandResult(gameId, request.PlayerId, result);
         }
         catch (OrleansException exception)
         {
-            logger.LogWarning(exception, "Failed to submit acquire choice for game {GameId} user {UserId}.", gameId, request.UserId);
+            logger.LogWarning(exception, "Failed to submit acquire choice for game {GameId} player {PlayerId}.", gameId, request.PlayerId);
             throw;
         }
         catch (TimeoutException exception)
         {
-            logger.LogWarning(exception, "Failed to submit acquire choice for game {GameId} user {UserId}.", gameId, request.UserId);
+            logger.LogWarning(exception, "Failed to submit acquire choice for game {GameId} player {PlayerId}.", gameId, request.PlayerId);
             throw;
         }
     }
@@ -176,38 +176,40 @@ public sealed class OrleansGameRuntimeClient(
         try
         {
             var result = await clusterClient.GetGrain<IGameSessionGrain>(gameId).SubmitPlayBatchAsync(new SubmitPlayBatchGrainCommand(
-                request.UserId,
+                request.PlayerId,
                 request.ExpectedRoundNumber,
                 request.Cards.Select(MapBatchCardSelection).ToArray()));
-            return MapSessionCommandResult(gameId, request.UserId, result);
+            return MapSessionCommandResult(gameId, request.PlayerId, result);
         }
         catch (OrleansException exception)
         {
-            logger.LogWarning(exception, "Failed to submit play batch for game {GameId} user {UserId}.", gameId, request.UserId);
+            logger.LogWarning(exception, "Failed to submit play batch for game {GameId} player {PlayerId}.", gameId, request.PlayerId);
             throw;
         }
         catch (TimeoutException exception)
         {
-            logger.LogWarning(exception, "Failed to submit play batch for game {GameId} user {UserId}.", gameId, request.UserId);
+            logger.LogWarning(exception, "Failed to submit play batch for game {GameId} player {PlayerId}.", gameId, request.PlayerId);
             throw;
         }
     }
 
-    public async Task<GameSessionSnapshot> AbandonAsync(Guid gameId, string userId, CancellationToken cancellationToken = default)
-        => MapSession(await clusterClient.GetGrain<IGameSessionGrain>(gameId).AbandonAsync(new AbandonGameSessionGrainCommand(userId)));
+    public async Task AbandonAsync(Guid gameId, Guid playerId, CancellationToken cancellationToken = default)
+    {
+        await clusterClient.GetGrain<IGameSessionGrain>(gameId).AbandonAsync(new AbandonGameSessionGrainCommand(playerId));
+    }
 
     public Task AcknowledgeGameplayEventBatchAsync(Guid gameId, Guid gameplayEventBatchId, CancellationToken cancellationToken = default)
         => clusterClient.GetGrain<IGameSessionGrain>(gameId).AcknowledgeGameplayEventBatchesAsync(new AcknowledgeGameplayEventBatchesGrainCommand([gameplayEventBatchId]));
 
-    private GameSessionCommandOutcome MapSessionCommandResult(Guid gameId, string userId, GameSessionGrainCommandResult result)
+    private GameSessionCommandOutcome MapSessionCommandResult(Guid gameId, Guid playerId, GameSessionGrainCommandResult result)
         => result switch
         {
             GameSessionGrainCommandSucceededResult succeeded => new GameSessionCommandSucceeded(MapSession(succeeded.Session), succeeded.GameplayEvents, succeeded.PendingGameplayEventBatchId),
-            GameSessionGrainCommandRejectedResult rejected => LogRejectedCommand(gameId, userId, rejected),
+            GameSessionGrainCommandRejectedResult rejected => LogRejectedCommand(gameId, playerId, rejected),
             _ => throw new InvalidOperationException("Unknown game session command result type.")
         };
 
-    private static GameSessionSnapshot MapSession(GameSessionGrainView session)
+    private static GameSessionView MapSession(GameSessionGrainView session)
         => new(
             session.GameId,
             session.RoundNumber,
@@ -224,9 +226,9 @@ public sealed class OrleansGameRuntimeClient(
             session.Completion is null ? null : MapCompletion(session.Completion));
 
     private static GameSessionParticipant MapParticipant(GameSessionParticipantGrainView participant)
-        => new(participant.PlayerId, participant.UserId);
+        => new(participant.PlayerId);
 
-    private static GamePlayerSnapshot MapPlayer(GamePlayerStateGrainView player)
+    private static GamePlayerStateView MapPlayer(GamePlayerStateGrainView player)
         => new(
             MapParticipant(player.Participant),
             player.Hand.Select(MapCard).ToArray(),
@@ -237,13 +239,13 @@ public sealed class OrleansGameRuntimeClient(
             player.PicksFirstInAcquirePhase,
             player.VisibleLockedCards.Select(MapBatchCard).ToArray());
 
-    private static GameCardSnapshot MapCard(GameCardInstanceGrainView card)
+    private static GameCardView MapCard(GameCardInstanceGrainView card)
         => new(card.CardInstanceId, card.Definition, card.DisplayName, card.Category, card.ResourceColor);
 
-    private static GameCardReferenceSnapshot MapReference(GameCardReferenceGrainView reference)
+    private static GameCardReferenceView MapReference(GameCardReferenceGrainView reference)
         => new(reference.CardInstanceId, reference.ProducedByCardInstanceId, reference.ProducedCardDefinition);
 
-    private static GameBatchCardSnapshot MapBatchCard(GameBatchCardGrainView card)
+    private static GameBatchCardView MapBatchCard(GameBatchCardGrainView card)
         => new(
             MapCard(card.Card),
             card.ChosenResourceColor,
@@ -252,19 +254,19 @@ public sealed class OrleansGameRuntimeClient(
             card.TargetCardInstanceId,
             card.ConsumedCards.Select(MapReference).ToArray());
 
-    private static GameResolvedPlayerBatchSnapshot MapResolvedPlayerBatch(GameResolvedPlayerBatchGrainView batch)
+    private static GameResolvedPlayerBatchView MapResolvedPlayerBatch(GameResolvedPlayerBatchGrainView batch)
         => new(
             MapParticipant(batch.Participant),
             batch.PlayedCards.Select(MapBatchCard).ToArray(),
             batch.ProducedVictory);
 
-    private static GameResolvedBatchSnapshot MapResolvedBatch(GameResolvedBatchGrainView batch)
+    private static GameResolvedBatchView MapResolvedBatch(GameResolvedBatchGrainView batch)
         => new(
             batch.RoundNumber,
             batch.Players.Select(MapResolvedPlayerBatch).ToArray(),
             batch.ResolvedAtUtc);
 
-    private static GameCompletionSnapshot MapCompletion(GameCompletionGrainView completion)
+    private static GameCompletionView MapCompletion(GameCompletionGrainView completion)
         => new(
             completion.Reason,
             completion.Winner is null ? null : MapParticipant(completion.Winner),
@@ -282,9 +284,9 @@ public sealed class OrleansGameRuntimeClient(
             selection.TargetCardInstanceId,
             selection.ConsumedCards.Select(MapCardReferenceSelection).ToArray());
 
-    private GameSessionCommandFailed LogRejectedCommand(Guid gameId, string userId, GameSessionGrainCommandRejectedResult rejected)
+    private GameSessionCommandFailed LogRejectedCommand(Guid gameId, Guid playerId, GameSessionGrainCommandRejectedResult rejected)
     {
-        logger.LogInformation("Gameplay command was rejected for game {GameId} user {UserId}: {ErrorMessage}", gameId, userId, rejected.ErrorMessage);
+        logger.LogInformation("Gameplay command was rejected for game {GameId} player {PlayerId}: {ErrorMessage}", gameId, playerId, rejected.ErrorMessage);
         return new GameSessionCommandFailed(rejected.ErrorMessage);
     }
 
@@ -306,7 +308,12 @@ public sealed class OrleansGameRuntimeClient(
         {
             try
             {
-                persistedGameplayMessageCount += await gameplayEventMessageWriter.PersistResolvedBatchAsync(MapSession(batch.Session), batch.GameplayEvents, cancellationToken);
+                persistedGameplayMessageCount += await gameplayEventMessageWriter.PersistResolvedBatchAsync(
+                    batch.GameId,
+                    batch.LastResolvedBatch is null ? null : MapResolvedBatch(batch.LastResolvedBatch),
+                    batch.Completion is null ? null : MapCompletion(batch.Completion),
+                    batch.GameplayEvents,
+                    cancellationToken);
                 acknowledgedBatchIds.Add(batch.BatchId);
             }
             catch (Exception exception)

@@ -73,7 +73,7 @@ public sealed class GamePageDataCoordinatorTests
             NullLogger<GamePageDataCoordinator>.Instance,
             state);
 
-        await coordinator.ReloadPresenceAsync(gameId, "user-1");
+        await coordinator.ReloadPresenceAsync(gameId);
 
         Assert.Equal(expectedPresence, state.Presence);
     }
@@ -92,7 +92,7 @@ public sealed class GamePageDataCoordinatorTests
             NullLogger<GamePageDataCoordinator>.Instance,
             state);
 
-        await coordinator.ReloadSessionAsync(gameId, "user-1");
+        await coordinator.ReloadSessionAsync(gameId, GamePageCoordinatorTestData.CurrentPlayerId);
 
         Assert.Equal(expectedSession, state.Session);
     }
@@ -110,7 +110,7 @@ public sealed class GamePageDataCoordinatorTests
             NullLogger<GamePageDataCoordinator>.Instance,
             state);
 
-        await coordinator.ReloadSessionAsync(gameId, "user-1");
+        await coordinator.ReloadSessionAsync(gameId, GamePageCoordinatorTestData.CurrentPlayerId);
 
         Assert.Equal("We couldn't refresh the game state right now. Please try again.", state.GameplayError);
     }
@@ -127,12 +127,12 @@ public sealed class GamePageDataCoordinatorTests
 
     private sealed class StubGetGameSessionHandler : IGetGameSessionHandler
     {
-        public GameSessionSnapshot? Result { get; init; }
+        public GameSessionView? Result { get; init; }
 
         public Exception? Exception { get; init; }
 
-        public Task<GameSessionSnapshot?> HandleAsync(Guid gameId, string userId, CancellationToken cancellationToken = default)
-            => Exception is null ? Task.FromResult(Result) : Task.FromException<GameSessionSnapshot?>(Exception);
+        public Task<GameSessionView?> HandleAsync(Guid gameId, Guid playerId, CancellationToken cancellationToken = default)
+            => Exception is null ? Task.FromResult(Result) : Task.FromException<GameSessionView?>(Exception);
     }
 
     private sealed class StubGetGamePresenceHandler : IGetGamePresenceHandler

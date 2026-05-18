@@ -1,4 +1,3 @@
-using Spx.Contracts;
 using Spx.Game.Application.Features.EnsureGameSession;
 
 namespace Spx.Game.Application.Features.JoinGame;
@@ -27,18 +26,17 @@ internal sealed class JoinGameHandler(
             new JoinGamePersistenceRequest(userId, inviteCode, playerName, playerNameLookup),
             cancellationToken);
 
-        if (joinResult.GameIdToPublish.HasValue)
+        if (joinResult.LobbyGameId is Guid lobbyGameId)
         {
-            var gameId = joinResult.GameIdToPublish.Value;
-            if (joinResult.PublishMessagesChanged)
+            if (joinResult.MessagesGameId.HasValue)
             {
-                await ensureGameSessionHandler.HandleAsync(gameId, cancellationToken);
+                await ensureGameSessionHandler.HandleAsync(lobbyGameId, cancellationToken);
             }
 
-            await gameLobbyInvalidationPublisher.PublishLobbyInvalidatedAsync(gameId, cancellationToken);
-            if (joinResult.PublishMessagesChanged)
+            await gameLobbyInvalidationPublisher.PublishLobbyInvalidatedAsync(lobbyGameId, cancellationToken);
+            if (joinResult.MessagesGameId.HasValue)
             {
-                await gameMessageInvalidationPublisher.PublishMessagesInvalidatedAsync(gameId, cancellationToken);
+                await gameMessageInvalidationPublisher.PublishMessagesInvalidatedAsync(lobbyGameId, cancellationToken);
             }
         }
 

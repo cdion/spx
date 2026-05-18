@@ -1,38 +1,27 @@
-using Spx.Contracts;
-
 namespace Spx.Game.Application;
 
 public sealed class GameplayEventMessageFormatter : IGameplayEventMessageFormatter
 {
     public IReadOnlyList<string> CreateMessageBodies(
-        GameSessionSnapshot session,
+        GameResolvedBatchView? lastResolvedBatch,
+        GameCompletionView? completion,
         IReadOnlyList<GameplayEvent> gameplayEvents,
         IReadOnlyDictionary<Guid, string> playerNames)
     {
-        ArgumentNullException.ThrowIfNull(session);
         ArgumentNullException.ThrowIfNull(gameplayEvents);
         ArgumentNullException.ThrowIfNull(playerNames);
 
-        var resolvedBatch = session.LastResolvedBatch;
-        if (resolvedBatch is null)
+        if (lastResolvedBatch is null)
         {
             return [];
         }
 
-        var userNames = resolvedBatch.Players
-            .Select(player => player.Participant)
-            .DistinctBy(participant => participant.UserId)
-            .ToDictionary(
-                participant => participant.UserId,
-                participant => ResolvePlayerName(participant, playerNames),
-                StringComparer.Ordinal);
-
         var summaryLines = new List<string>
         {
-            $"Round {resolvedBatch.RoundNumber} resolved."
+            $"Round {lastResolvedBatch.RoundNumber} resolved."
         };
 
-        foreach (var player in resolvedBatch.Players)
+        foreach (var player in lastResolvedBatch.Players)
         {
             var playerName = ResolvePlayerName(player.Participant, playerNames);
             var playedCards = player.PlayedCards.Select(card => card.Card.DisplayName).ToArray();
@@ -43,7 +32,7 @@ public sealed class GameplayEventMessageFormatter : IGameplayEventMessageFormatt
 
         foreach (var gameplayEvent in gameplayEvents)
         {
-            summaryLines.Add(FormatGameplayEvent(gameplayEvent, userNames));
+            summaryLines.Add(FormatGameplayEvent(gameplayEvent, playerNames));
         }
 
         var messages = new List<string>
@@ -51,30 +40,30 @@ public sealed class GameplayEventMessageFormatter : IGameplayEventMessageFormatt
             string.Join("\n", summaryLines)
         };
 
-        if (session.Completion is not null && session.Completion.CompletedAtUtc == resolvedBatch.ResolvedAtUtc)
+        if (completion is not null && completion.CompletedAtUtc == lastResolvedBatch.ResolvedAtUtc)
         {
-            messages.Add(CreateCompletionBody(session.Completion, playerNames));
+            messages.Add(CreateCompletionBody(completion, playerNames));
         }
 
         return messages;
     }
 
-    private static string FormatGameplayEvent(GameplayEvent gameplayEvent, IReadOnlyDictionary<string, string> userNames)
+    private static string FormatGameplayEvent(GameplayEvent gameplayEvent, IReadOnlyDictionary<Guid, string> playerNames)
         => gameplayEvent.Kind switch
         {
-            GameplayEventKind.Fizzled => $"{ResolveUserName(gameplayEvent.ActorUserId, userNames)}'s {gameplayEvent.SourceCardDefinition} fizzled.",
-            GameplayEventKind.DiscardedCard => $"{ResolveUserName(gameplayEvent.ActorUserId, userNames)} resolved {gameplayEvent.SourceCardDefinition} and discarded {gameplayEvent.TargetCardDefinition} from {ResolveUserName(gameplayEvent.TargetUserId, userNames)}.",
-            GameplayEventKind.CreatedCard => FormatCreatedEvent(gameplayEvent, userNames),
-            GameplayEventKind.ConvertedCard => $"{ResolveUserName(gameplayEvent.ActorUserId, userNames)} resolved {gameplayEvent.SourceCardDefinition} and converted {gameplayEvent.TargetCardDefinition} into {gameplayEvent.ProducedCardDefinition}.",
-            GameplayEventKind.ScheduledReturnToHand => $"{ResolveUserName(gameplayEvent.ActorUserId, userNames)} resolved {gameplayEvent.SourceCardDefinition} and will return {gameplayEvent.TargetCardDefinition} to hand.",
-            GameplayEventKind.ReturnedToHand => $"{ResolveUserName(gameplayEvent.ActorUserId, userNames)} returned {gameplayEvent.SourceCardDefinition} to hand.",
-            GameplayEventKind.Resolved => $"{ResolveUserName(gameplayEvent.ActorUserId, userNames)} resolved {gameplayEvent.SourceCardDefinition}.",
+            GameplayEventKind.Fizzled => $"{ResolvePlayerName(gameplayEvent.ActorPlayerId, playerNames)}'s {gameplayEvent.SourceCardDefinition} fizzled.",
+            GameplayEventKind.DiscardedCard => $"{ResolvePlayerName(gameplayEvent.ActorPlayerId, playerNames)} resolved {gameplayEvent.SourceCardDefinition} and discarded {gameplayEvent.TargetCardDefinition} from {ResolvePlayerName(gameplayEvent.TargetPlayerId, playerNames)}.",
+            GameplayEventKind.CreatedCard => FormatCreatedEvent(gameplayEvent, playerNames),
+            GameplayEventKind.ConvertedCard => $"{ResolvePlayerName(gameplayEvent.ActorPlayerId, playerNames)} resolved {gameplayEvent.SourceCardDefinition} and converted {gameplayEvent.TargetCardDefinition} into {gameplayEvent.ProducedCardDefinition}.",
+            GameplayEventKind.ScheduledReturnToHand => $"{ResolvePlayerName(gameplayEvent.ActorPlayerId, playerNames)} resolved {gameplayEvent.SourceCardDefinition} and will return {gameplayEvent.TargetCardDefinition} to hand.",
+            GameplayEventKind.ReturnedToHand => $"{ResolvePlayerName(gameplayEvent.ActorPlayerId, playerNames)} returned {gameplayEvent.SourceCardDefinition} to hand.",
+            GameplayEventKind.Resolved => $"{ResolvePlayerName(gameplayEvent.ActorPlayerId, playerNames)} resolved {gameplayEvent.SourceCardDefinition}.",
             _ => throw new InvalidOperationException("Unknown gameplay event kind.")
         };
 
-    private static string FormatCreatedEvent(GameplayEvent gameplayEvent, IReadOnlyDictionary<string, string> userNames)
+    private static string FormatCreatedEvent(GameplayEvent gameplayEvent, IReadOnlyDictionary<Guid, string> playerNames)
     {
-        var actorName = ResolveUserName(gameplayEvent.ActorUserId, userNames);
+        var actorName = ResolvePlayerName(gameplayEvent.ActorPlayerId, playerNames);
         return gameplayEvent.SourceCardDefinition switch
         {
             GameCardDefinition.Extract => $"{actorName} extracted {gameplayEvent.ProducedCardDefinition}.",
@@ -84,7 +73,7 @@ public sealed class GameplayEventMessageFormatter : IGameplayEventMessageFormatt
         };
     }
 
-    private static string CreateCompletionBody(GameCompletionSnapshot completion, IReadOnlyDictionary<Guid, string> playerNames)
+    private static string CreateCompletionBody(GameCompletionView completion, IReadOnlyDictionary<Guid, string> playerNames)
         => completion.Reason switch
         {
             GameCompletionReason.Victory when completion.Winner is not null
@@ -97,10 +86,11 @@ public sealed class GameplayEventMessageFormatter : IGameplayEventMessageFormatt
     private static string ResolvePlayerName(GameSessionParticipant participant, IReadOnlyDictionary<Guid, string> playerNames)
         => playerNames.TryGetValue(participant.PlayerId, out var playerName)
             ? playerName
-            : participant.UserId;
+            : participant.PlayerId.ToString();
 
-    private static string ResolveUserName(string? userId, IReadOnlyDictionary<string, string> userNames)
-        => userId is not null && userNames.TryGetValue(userId, out var userName)
-            ? userName
-            : userId ?? string.Empty;
+    private static string ResolvePlayerName(Guid playerId, IReadOnlyDictionary<Guid, string> playerNames)
+        => playerNames.TryGetValue(playerId, out var playerName) ? playerName : playerId.ToString();
+
+    private static string ResolvePlayerName(Guid? playerId, IReadOnlyDictionary<Guid, string> playerNames)
+        => playerId.HasValue ? ResolvePlayerName(playerId.Value, playerNames) : string.Empty;
 }

@@ -1,12 +1,10 @@
-using Spx.Contracts;
-
 namespace Spx.Game.Domain;
 
 public sealed class GameSessionState
 {
-    public GameSessionParticipantGrainView? FirstPlayer { get; set; }
+    public GameSessionParticipant? FirstPlayer { get; set; }
 
-    public GameSessionParticipantGrainView? SecondPlayer { get; set; }
+    public GameSessionParticipant? SecondPlayer { get; set; }
 
     public bool FirstPlayerActive { get; set; }
 
@@ -34,17 +32,13 @@ public sealed class GameSessionState
 
     public bool SecondPlayerScoutOverride { get; set; }
 
-    public string? CurrentAcquireFirstUserId { get; set; }
+    public Guid? CurrentAcquireFirstPlayerId { get; set; }
 
-    public string? CurrentAcquireSecondUserId { get; set; }
+    public Guid? CurrentAcquireSecondPlayerId { get; set; }
 
-    public bool AcquireFirstCompleted { get; set; }
+    public Guid? PreviousAcquireSecondPlayerId { get; set; }
 
-    public bool AcquireSecondCompleted { get; set; }
-
-    public string? PreviousAcquireSecondUserId { get; set; }
-
-    public string? InitialTieBreakerFirstUserId { get; set; }
+    public Guid? InitialTieBreakerFirstPlayerId { get; set; }
 
     public GameCompletionState? Completion { get; set; }
 
@@ -73,7 +67,7 @@ public sealed class GameCardReferenceState
 
 public sealed class PendingGameBatchState
 {
-    public string UserId { get; set; } = string.Empty;
+    public Guid PlayerId { get; set; }
 
     public List<PendingGameBatchCardState> Cards { get; set; } = [];
 }
@@ -106,7 +100,7 @@ public sealed class ResolvedGameBatchState
 
 public sealed class ResolvedGamePlayerBatchState
 {
-    public string UserId { get; set; } = string.Empty;
+    public Guid PlayerId { get; set; }
 
     public List<PendingGameBatchCardState> Cards { get; set; } = [];
 
@@ -117,7 +111,7 @@ public sealed class GameCompletionState
 {
     public GameCompletionReason Reason { get; set; }
 
-    public string? WinnerUserId { get; set; }
+    public Guid? WinnerPlayerId { get; set; }
 
     public DateTime CompletedAtUtc { get; set; }
 }

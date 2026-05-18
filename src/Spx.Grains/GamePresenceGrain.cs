@@ -110,7 +110,7 @@ internal static class GamePresenceTracker
         }
 
         leases[connectionId] = expiresAtUtc;
-        return !before.SetEquals(CaptureRepresentedPlayerIds(leasesByPlayerId));
+        return !before.SetEquals(CaptureOnlinePlayerIds(leasesByPlayerId, nowUtc));
     }
 
     public static bool RemoveLease(
@@ -133,7 +133,7 @@ internal static class GamePresenceTracker
             leasesByPlayerId.Remove(playerId);
         }
 
-        return !before.SetEquals(CaptureRepresentedPlayerIds(leasesByPlayerId));
+        return !before.SetEquals(CaptureOnlinePlayerIds(leasesByPlayerId, nowUtc));
     }
 
     public static bool PruneExpiredLeases(IDictionary<Guid, Dictionary<Guid, DateTime>> leasesByPlayerId, DateTime nowUtc)

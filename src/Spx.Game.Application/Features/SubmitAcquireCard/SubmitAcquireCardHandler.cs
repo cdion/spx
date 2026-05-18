@@ -9,14 +9,14 @@ internal sealed class SubmitAcquireCardHandler(
 {
     public async Task<GameSessionCommandOutcome> HandleAsync(
         Guid gameId,
-        string userId,
+        Guid playerId,
         int expectedRoundNumber,
         Guid marketCardInstanceId,
         CancellationToken cancellationToken = default)
     {
         var result = await gameSessionService.SubmitAcquireAsync(
             gameId,
-            new SubmitAcquireRequest(userId, expectedRoundNumber, marketCardInstanceId),
+            new SubmitAcquireRequest(playerId, expectedRoundNumber, marketCardInstanceId),
             cancellationToken);
 
         if (result is GameSessionCommandSucceeded)
@@ -27,7 +27,7 @@ internal sealed class SubmitAcquireCardHandler(
             }
             catch (Exception exception)
             {
-                logger.LogWarning(exception, "Failed to publish session invalidation after acquire submission for game {GameId} user {UserId}.", gameId, userId);
+                logger.LogWarning(exception, "Failed to publish session invalidation after acquire submission for game {GameId} user {PlayerId}.", gameId, playerId);
             }
         }
 

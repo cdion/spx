@@ -1,4 +1,3 @@
-using Spx.Contracts;
 using Spx.Game.Application;
 using Spx.Game.Domain;
 using Xunit;
@@ -11,33 +10,33 @@ public sealed class GameplayEventMessageFormatterTests
     public void CreateMessageBodies_formats_round_summary_events_and_completion()
     {
         var formatter = new GameplayEventMessageFormatter();
-        var firstPlayer = new GameSessionParticipant(Guid.Parse("85b56bc8-bd95-48f5-8374-f53714734717"), "user-1");
-        var secondPlayer = new GameSessionParticipant(Guid.Parse("6421fe5a-5585-4db9-b48b-e6caf8323b8f"), "user-2");
+        var firstPlayer = new GameSessionParticipant(Guid.Parse("85b56bc8-bd95-48f5-8374-f53714734717"));
+        var secondPlayer = new GameSessionParticipant(Guid.Parse("6421fe5a-5585-4db9-b48b-e6caf8323b8f"));
         var resolvedAtUtc = DateTime.UtcNow;
-        var session = new GameSessionSnapshot(
+        var session = new GameSessionView(
             Guid.NewGuid(),
             4,
             GamePhase.Completed,
-            new GamePlayerSnapshot(firstPlayer, [], false, 0, 0, false, false, []),
-            new GamePlayerSnapshot(secondPlayer, [], false, 0, 0, false, false, []),
+            new GamePlayerStateView(firstPlayer, [], false, 0, 0, false, false, []),
+            new GamePlayerStateView(secondPlayer, [], false, 0, 0, false, false, []),
             [],
             0,
             false,
             false,
             false,
             GameCardCatalog.MaxBatchSize,
-            new GameResolvedBatchSnapshot(
+            new GameResolvedBatchView(
                 4,
                 [
-                    new GameResolvedPlayerBatchSnapshot(firstPlayer, [CreatePlayedCardView(GameCardDefinition.Produce)], true),
-                    new GameResolvedPlayerBatchSnapshot(secondPlayer, [], false)
+                    new GameResolvedPlayerBatchView(firstPlayer, [CreatePlayedCardView(GameCardDefinition.Produce)], true),
+                    new GameResolvedPlayerBatchView(secondPlayer, [], false)
                 ],
                 resolvedAtUtc),
-            new GameCompletionSnapshot(GameCompletionReason.Victory, firstPlayer, resolvedAtUtc));
+            new GameCompletionView(GameCompletionReason.Victory, firstPlayer, resolvedAtUtc));
         var gameplayEvents = new GameplayEvent[]
         {
-            new(GameplayEventKind.CreatedCard, "user-1", GameCardDefinition.Produce, null, null, GameCardDefinition.Victory),
-            new(GameplayEventKind.Fizzled, "user-2", GameCardDefinition.Sabotage, null, null, null)
+            new(GameplayEventKind.CreatedCard, firstPlayer.PlayerId, GameCardDefinition.Produce, null, null, GameCardDefinition.Victory),
+            new(GameplayEventKind.Fizzled, secondPlayer.PlayerId, GameCardDefinition.Sabotage, null, null, null)
         };
         var playerNames = new Dictionary<Guid, string>
         {
@@ -45,7 +44,7 @@ public sealed class GameplayEventMessageFormatterTests
             [secondPlayer.PlayerId] = "Captain Blue"
         };
 
-        var messages = formatter.CreateMessageBodies(session, gameplayEvents, playerNames);
+        var messages = formatter.CreateMessageBodies(session.LastResolvedBatch, session.Completion, gameplayEvents, playerNames);
 
         Assert.Equal(2, messages.Count);
         Assert.Contains("Round 4 resolved.", messages[0], StringComparison.Ordinal);
@@ -56,9 +55,9 @@ public sealed class GameplayEventMessageFormatterTests
         Assert.Equal("Captain Red won by producing Victory.", messages[1]);
     }
 
-    private static GameBatchCardSnapshot CreatePlayedCardView(GameCardDefinition definition)
+    private static GameBatchCardView CreatePlayedCardView(GameCardDefinition definition)
         => new(
-            new GameCardSnapshot(Guid.NewGuid(), definition, definition.ToString(), GameCardCatalog.GetCategory(definition), GameCardCatalog.GetResourceColor(definition)),
+            new GameCardView(Guid.NewGuid(), definition, definition.ToString(), GameCardCatalog.GetCategory(definition), GameCardCatalog.GetResourceColor(definition)),
             null,
             null,
             null,

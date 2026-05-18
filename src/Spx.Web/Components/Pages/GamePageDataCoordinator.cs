@@ -27,7 +27,7 @@ internal sealed class GamePageDataCoordinator(
         }
     }
 
-    public async Task ReloadPresenceAsync(Guid gameId, string userId, CancellationToken cancellationToken = default)
+    public async Task ReloadPresenceAsync(Guid gameId, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -35,19 +35,19 @@ internal sealed class GamePageDataCoordinator(
         }
         catch (Exception exception)
         {
-            logger.LogError(exception, "Failed to refresh presence for game {GameId} user {UserId}.", gameId, userId);
+            logger.LogError(exception, "Failed to refresh presence for game {GameId}.", gameId);
         }
     }
 
-    public async Task ReloadSessionAsync(Guid gameId, string userId, CancellationToken cancellationToken = default)
+    public async Task ReloadSessionAsync(Guid gameId, Guid playerId, CancellationToken cancellationToken = default)
     {
         try
         {
-            state.ApplySession(await getGameSessionHandler.HandleAsync(gameId, userId, cancellationToken));
+            state.ApplySession(await getGameSessionHandler.HandleAsync(gameId, playerId, cancellationToken));
         }
         catch (Exception exception)
         {
-            logger.LogError(exception, "Failed to refresh session state for game {GameId} user {UserId}.", gameId, userId);
+            logger.LogError(exception, "Failed to refresh session state for game {GameId} player {PlayerId}.", gameId, playerId);
             state.TrySetGameplayError("We couldn't refresh the game state right now. Please try again.");
         }
     }

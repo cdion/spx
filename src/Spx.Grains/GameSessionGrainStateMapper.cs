@@ -7,8 +7,8 @@ internal static class GameSessionGrainStateMapper
     public static GameSessionState ToDomainState(GameSessionGrainState state)
         => new()
         {
-            FirstPlayer = state.FirstPlayer is null ? null : new(state.FirstPlayer.PlayerId, state.FirstPlayer.UserId),
-            SecondPlayer = state.SecondPlayer is null ? null : new(state.SecondPlayer.PlayerId, state.SecondPlayer.UserId),
+            FirstPlayer = state.FirstPlayer is null ? null : new(state.FirstPlayer.PlayerId),
+            SecondPlayer = state.SecondPlayer is null ? null : new(state.SecondPlayer.PlayerId),
             FirstPlayerActive = state.FirstPlayerActive,
             SecondPlayerActive = state.SecondPlayerActive,
             RoundNumber = state.RoundNumber,
@@ -22,12 +22,10 @@ internal static class GameSessionGrainStateMapper
             LastResolvedBatch = state.LastResolvedBatch is null ? null : ToDomainResolvedBatch(state.LastResolvedBatch),
             FirstPlayerScoutOverride = state.FirstPlayerScoutOverride,
             SecondPlayerScoutOverride = state.SecondPlayerScoutOverride,
-            CurrentAcquireFirstUserId = state.CurrentAcquireFirstUserId,
-            CurrentAcquireSecondUserId = state.CurrentAcquireSecondUserId,
-            AcquireFirstCompleted = state.AcquireFirstCompleted,
-            AcquireSecondCompleted = state.AcquireSecondCompleted,
-            PreviousAcquireSecondUserId = state.PreviousAcquireSecondUserId,
-            InitialTieBreakerFirstUserId = state.InitialTieBreakerFirstUserId,
+            CurrentAcquireFirstPlayerId = state.CurrentAcquireFirstPlayerId,
+            CurrentAcquireSecondPlayerId = state.CurrentAcquireSecondPlayerId,
+            PreviousAcquireSecondPlayerId = state.PreviousAcquireSecondPlayerId,
+            InitialTieBreakerFirstPlayerId = state.InitialTieBreakerFirstPlayerId,
             Completion = state.Completion is null ? null : ToDomainCompletion(state.Completion),
             ConsecutiveStalemateRounds = state.ConsecutiveStalemateRounds,
             RoundHadHandChange = state.RoundHadHandChange,
@@ -39,8 +37,8 @@ internal static class GameSessionGrainStateMapper
         IEnumerable<PendingGameplayEventBatchGrainState>? pendingGameplayEventBatches = null)
         => new()
         {
-            FirstPlayer = state.FirstPlayer is null ? null : new(state.FirstPlayer.PlayerId, state.FirstPlayer.UserId),
-            SecondPlayer = state.SecondPlayer is null ? null : new(state.SecondPlayer.PlayerId, state.SecondPlayer.UserId),
+            FirstPlayer = state.FirstPlayer is null ? null : new(state.FirstPlayer.PlayerId),
+            SecondPlayer = state.SecondPlayer is null ? null : new(state.SecondPlayer.PlayerId),
             FirstPlayerActive = state.FirstPlayerActive,
             SecondPlayerActive = state.SecondPlayerActive,
             RoundNumber = state.RoundNumber,
@@ -54,12 +52,10 @@ internal static class GameSessionGrainStateMapper
             LastResolvedBatch = state.LastResolvedBatch is null ? null : FromDomainResolvedBatch(state.LastResolvedBatch),
             FirstPlayerScoutOverride = state.FirstPlayerScoutOverride,
             SecondPlayerScoutOverride = state.SecondPlayerScoutOverride,
-            CurrentAcquireFirstUserId = state.CurrentAcquireFirstUserId,
-            CurrentAcquireSecondUserId = state.CurrentAcquireSecondUserId,
-            AcquireFirstCompleted = state.AcquireFirstCompleted,
-            AcquireSecondCompleted = state.AcquireSecondCompleted,
-            PreviousAcquireSecondUserId = state.PreviousAcquireSecondUserId,
-            InitialTieBreakerFirstUserId = state.InitialTieBreakerFirstUserId,
+            CurrentAcquireFirstPlayerId = state.CurrentAcquireFirstPlayerId,
+            CurrentAcquireSecondPlayerId = state.CurrentAcquireSecondPlayerId,
+            PreviousAcquireSecondPlayerId = state.PreviousAcquireSecondPlayerId,
+            InitialTieBreakerFirstPlayerId = state.InitialTieBreakerFirstPlayerId,
             Completion = state.Completion is null ? null : FromDomainCompletion(state.Completion),
             ConsecutiveStalemateRounds = state.ConsecutiveStalemateRounds,
             RoundHadHandChange = state.RoundHadHandChange,
@@ -92,14 +88,14 @@ internal static class GameSessionGrainStateMapper
     private static PendingGameBatchState ToDomainPendingBatch(GameSessionPendingBatchGrainState batch)
         => new()
         {
-            UserId = batch.UserId,
+            PlayerId = batch.PlayerId,
             Cards = batch.Cards.Select(ToDomainPendingBatchCard).ToList()
         };
 
     private static GameSessionPendingBatchGrainState FromDomainPendingBatch(PendingGameBatchState batch)
         => new()
         {
-            UserId = batch.UserId,
+            PlayerId = batch.PlayerId,
             Cards = batch.Cards.Select(FromDomainPendingBatchCard).ToList()
         };
 
@@ -146,7 +142,7 @@ internal static class GameSessionGrainStateMapper
     private static ResolvedGamePlayerBatchState ToDomainResolvedPlayerBatch(GameSessionResolvedPlayerBatchGrainState batch)
         => new()
         {
-            UserId = batch.UserId,
+            PlayerId = batch.PlayerId,
             Cards = batch.Cards.Select(ToDomainPendingBatchCard).ToList(),
             ProducedVictory = batch.ProducedVictory
         };
@@ -154,7 +150,7 @@ internal static class GameSessionGrainStateMapper
     private static GameSessionResolvedPlayerBatchGrainState FromDomainResolvedPlayerBatch(ResolvedGamePlayerBatchState batch)
         => new()
         {
-            UserId = batch.UserId,
+            PlayerId = batch.PlayerId,
             Cards = batch.Cards.Select(FromDomainPendingBatchCard).ToList(),
             ProducedVictory = batch.ProducedVictory
         };
@@ -163,7 +159,7 @@ internal static class GameSessionGrainStateMapper
         => new()
         {
             Reason = completion.Reason,
-            WinnerUserId = completion.WinnerUserId,
+            WinnerPlayerId = completion.WinnerPlayerId,
             CompletedAtUtc = completion.CompletedAtUtc
         };
 
@@ -171,7 +167,7 @@ internal static class GameSessionGrainStateMapper
         => new()
         {
             Reason = completion.Reason,
-            WinnerUserId = completion.WinnerUserId,
+            WinnerPlayerId = completion.WinnerPlayerId,
             CompletedAtUtc = completion.CompletedAtUtc
         };
 
@@ -179,7 +175,9 @@ internal static class GameSessionGrainStateMapper
         => new()
         {
             BatchId = batch.BatchId,
-            Session = batch.Session,
+            GameId = batch.GameId,
+            LastResolvedBatch = batch.LastResolvedBatch,
+            Completion = batch.Completion,
             GameplayEvents = [.. batch.GameplayEvents]
         };
 }

@@ -1,4 +1,3 @@
-using Spx.Contracts;
 using Spx.Game.Domain;
 using Xunit;
 

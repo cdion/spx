@@ -1,75 +1,11 @@
 using Orleans;
+using Spx.Game.Domain;
 
 namespace Spx.Contracts;
 
-public enum GamePhase
-{
-    Acquire = 0,
-    Play = 1,
-    Resolve = 2,
-    Completed = 3
-}
-
-public enum GameCardDefinition
-{
-    Extract = 0,
-    Refine = 1,
-    Produce = 2,
-    Red = 3,
-    Yellow = 4,
-    Blue = 5,
-    Purple = 6,
-    Green = 7,
-    Orange = 8,
-    Sabotage = 9,
-    Replicate = 10,
-    Catalyst = 11,
-    Corrupt = 12,
-    Reclaim = 13,
-    Scout = 14,
-    Victory = 15
-}
-
-public enum GameCardCategory
-{
-    Action = 0,
-    Resource = 1,
-    Effect = 2,
-    Victory = 3
-}
-
-public enum GameResourceColor
-{
-    Red = 0,
-    Yellow = 1,
-    Blue = 2,
-    Purple = 3,
-    Green = 4,
-    Orange = 5
-}
-
-public enum GameCompletionReason
-{
-    Victory = 0,
-    Draw = 1,
-    Abandoned = 2
-}
-
-public enum GameplayEventKind
-{
-    Fizzled = 0,
-    DiscardedCard = 1,
-    CreatedCard = 2,
-    ConvertedCard = 3,
-    ScheduledReturnToHand = 4,
-    ReturnedToHand = 5,
-    Resolved = 6
-}
-
 [GenerateSerializer]
 public sealed record GameSessionParticipantGrainView(
-    [property: Id(0)] Guid PlayerId,
-    [property: Id(1)] string UserId);
+    [property: Id(0)] Guid PlayerId);
 
 [GenerateSerializer]
 public sealed record InitializeGameSessionGrainCommand(
@@ -78,7 +14,7 @@ public sealed record InitializeGameSessionGrainCommand(
 
 [GenerateSerializer]
 public sealed record SubmitAcquireGrainCommand(
-    [property: Id(0)] string UserId,
+    [property: Id(0)] Guid PlayerId,
     [property: Id(1)] int ExpectedRoundNumber,
     [property: Id(2)] Guid MarketCardInstanceId);
 
@@ -99,17 +35,17 @@ public sealed record GameBatchCardGrainCommand(
 
 [GenerateSerializer]
 public sealed record SubmitPlayBatchGrainCommand(
-    [property: Id(0)] string UserId,
+    [property: Id(0)] Guid PlayerId,
     [property: Id(1)] int ExpectedRoundNumber,
     [property: Id(2)] IReadOnlyList<GameBatchCardGrainCommand> Cards);
 
 [GenerateSerializer]
 public sealed record GetGameSessionGrainQuery(
-    [property: Id(0)] string UserId);
+    [property: Id(0)] Guid PlayerId);
 
 [GenerateSerializer]
 public sealed record AbandonGameSessionGrainCommand(
-    [property: Id(0)] string UserId);
+    [property: Id(0)] Guid PlayerId);
 
 [GenerateSerializer]
 public sealed record GameCardInstanceGrainView(
@@ -164,15 +100,6 @@ public sealed record GameCompletionGrainView(
     [property: Id(2)] DateTime CompletedAtUtc);
 
 [GenerateSerializer]
-public sealed record GameplayEvent(
-    [property: Id(0)] GameplayEventKind Kind,
-    [property: Id(1)] string ActorUserId,
-    [property: Id(2)] GameCardDefinition SourceCardDefinition,
-    [property: Id(3)] string? TargetUserId,
-    [property: Id(4)] GameCardDefinition? TargetCardDefinition,
-    [property: Id(5)] GameCardDefinition? ProducedCardDefinition);
-
-[GenerateSerializer]
 public sealed record GameSessionGrainView(
     [property: Id(0)] Guid GameId,
     [property: Id(1)] int RoundNumber,
@@ -191,8 +118,10 @@ public sealed record GameSessionGrainView(
 [GenerateSerializer]
 public sealed record PendingGameplayEventBatchGrainView(
     [property: Id(0)] Guid BatchId,
-    [property: Id(1)] GameSessionGrainView Session,
-    [property: Id(2)] IReadOnlyList<GameplayEvent> GameplayEvents);
+    [property: Id(1)] Guid GameId,
+    [property: Id(2)] GameResolvedBatchGrainView? LastResolvedBatch,
+    [property: Id(3)] GameCompletionGrainView? Completion,
+    [property: Id(4)] IReadOnlyList<GameplayEvent> GameplayEvents);
 
 [GenerateSerializer]
 public sealed record AcknowledgeGameplayEventBatchesGrainCommand(

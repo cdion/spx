@@ -285,7 +285,7 @@
     public GameLobbyView Lobby { get; set; } = default!;
 
     [Parameter]
-    public GameSessionSnapshot? Session { get; set; }
+    public GameSessionView? Session { get; set; }
 
     [Parameter]
     public bool IsSubmittingAction { get; set; }
@@ -344,13 +344,13 @@
 
     private string OpponentPlayerName
         => ResolvePlayerName(Session?.OpponentPlayer.Participant.PlayerId)
-            ?? Lobby.Players.FirstOrDefault(player => !player.IsCurrentUser)?.Name
+            ?? Lobby.Players.FirstOrDefault(player => player.PlayerId != Lobby.CurrentPlayerId)?.Name
             ?? "your opponent";
 
-    private IEnumerable<GameCardSnapshot> GetPlayableCards()
+    private IEnumerable<GameCardView> GetPlayableCards()
         => Session?.CurrentPlayer.Hand.Where(card => GameCardCatalog.IsPlayable(card.Definition)) ?? [];
 
-    private IEnumerable<GameResolvedPlayerBatchSnapshot> GetResolvedPlayersInDisplayOrder()
+    private IEnumerable<GameResolvedPlayerBatchView> GetResolvedPlayersInDisplayOrder()
         => Session?.LastResolvedBatch?.Players
             .OrderBy(playerBatch => playerBatch.Participant.PlayerId == Session.CurrentPlayer.Participant.PlayerId ? 0 : 1)
             .ToArray()
@@ -419,7 +419,7 @@
         };
     }
 
-    private bool ShowCurrentAcquireBadge(GamePlayerSnapshot player)
+    private bool ShowCurrentAcquireBadge(GamePlayerStateView player)
         => Session is not null
             && Session.Phase == GamePhase.Acquire
             && Session.VisibleMarketCards.Count > 0
@@ -485,7 +485,7 @@
         editor.IsSelected = true;
     }
 
-    private RenderFragment RenderEditor(GameCardSnapshot card) => builder =>
+    private RenderFragment RenderEditor(GameCardView card) => builder =>
     {
         if (!batchEditors.TryGetValue(card.CardInstanceId, out var editor))
         {
@@ -570,7 +570,7 @@
         }
     };
 
-    private void RenderConsumeEditor(RenderTreeBuilder builder, ref int sequence, GameCardSnapshot card, EditableBatchCardState editor, string label, IReadOnlyList<CardReferenceOption> options)
+    private void RenderConsumeEditor(RenderTreeBuilder builder, ref int sequence, GameCardView card, EditableBatchCardState editor, string label, IReadOnlyList<CardReferenceOption> options)
     {
         builder.OpenElement(sequence++, "div");
         builder.AddAttribute(sequence++, "class", "space-y-2 text-sm text-slate-300");
@@ -598,7 +598,7 @@
         builder.CloseElement();
     }
 
-    private void RenderProducedCardPreview(RenderTreeBuilder builder, ref int sequence, GameCardSnapshot card, string label)
+    private void RenderProducedCardPreview(RenderTreeBuilder builder, ref int sequence, GameCardView card, string label)
     {
         if (!TryGetConfiguredOutputDefinition(card, out var producedDefinition))
         {
@@ -668,7 +668,7 @@
                 .Select(card => new SelectOption(card.CardInstanceId.ToString(), card.DisplayName))
                 .ToArray();
 
-    private IReadOnlyList<CardReferenceOption> GetConsumedOptions(GameCardSnapshot card)
+    private IReadOnlyList<CardReferenceOption> GetConsumedOptions(GameCardView card)
     {
         if (Session is null)
         {
@@ -716,7 +716,7 @@
         return options;
     }
 
-    private bool IsConsumedOptionDisabled(GameCardSnapshot card, EditableBatchCardState editor, CardReferenceOption option)
+    private bool IsConsumedOptionDisabled(GameCardView card, EditableBatchCardState editor, CardReferenceOption option)
     {
         if (editor.ConsumedKeys.Contains(option.Key))
         {
@@ -731,7 +731,7 @@
         };
     }
 
-    private bool IsProduceConsumedOptionDisabled(GameCardSnapshot card, EditableBatchCardState editor, CardReferenceOption option)
+    private bool IsProduceConsumedOptionDisabled(GameCardView card, EditableBatchCardState editor, CardReferenceOption option)
     {
         if (!TryGetSelectedProduceDefinition(card.CardInstanceId, out var craftedDefinition))
         {
@@ -742,7 +742,7 @@
         return !GameCraftingRules.CanAddProduceInput(craftedDefinition, selectedDefinitions, option.Definition);
     }
 
-    private bool TryGetProducedDefinition(GameCardSnapshot sourceCard, out GameCardDefinition producedDefinition)
+    private bool TryGetProducedDefinition(GameCardView sourceCard, out GameCardDefinition producedDefinition)
     {
         producedDefinition = default;
         if (!batchEditors.TryGetValue(sourceCard.CardInstanceId, out var editor))
@@ -773,7 +773,7 @@
         }
     }
 
-    private bool TryGetConfiguredOutputDefinition(GameCardSnapshot card, out GameCardDefinition producedDefinition)
+    private bool TryGetConfiguredOutputDefinition(GameCardView card, out GameCardDefinition producedDefinition)
     {
         producedDefinition = default;
         if (!batchEditors.TryGetValue(card.CardInstanceId, out var editor))
@@ -905,7 +905,7 @@
     private Task PassPlayAsync()
         => OnLockBatch.InvokeAsync(Array.Empty<GameBatchCardSelection>());
 
-    private GameBatchCardSelection BuildBatchCommand(GameCardSnapshot card)
+    private GameBatchCardSelection BuildBatchCommand(GameCardView card)
     {
         var editor = batchEditors[card.CardInstanceId];
         return new GameBatchCardSelection(
@@ -952,7 +952,7 @@
     private static Guid? ParseGuid(string value)
         => Guid.TryParse(value, out var parsedValue) ? parsedValue : null;
 
-    private string DescribeSelection(GameBatchCardSnapshot card)
+    private string DescribeSelection(GameBatchCardView card)
     {
         var details = new List<string>();
 

@@ -73,12 +73,7 @@ internal sealed class GamePageLiveCoordinator(
             return;
         }
 
-        var currentPlayerId = lobby.Players.SingleOrDefault(player => player.IsCurrentUser)?.PlayerId;
-        if (!currentPlayerId.HasValue)
-        {
-            await StopPresenceTrackingAsync();
-            return;
-        }
+        var currentPlayerId = lobby.CurrentPlayerId;
 
         if (trackedPresenceGameId == lobby.GameId
             && trackedPresencePlayerId == currentPlayerId
@@ -89,7 +84,7 @@ internal sealed class GamePageLiveCoordinator(
                 return;
             }
 
-            await ResumePresenceTrackingAsync(lobby.GameId, currentPlayerId.Value, presenceConnectionId.Value);
+            await ResumePresenceTrackingAsync(lobby.GameId, currentPlayerId, presenceConnectionId.Value);
             return;
         }
 
@@ -101,9 +96,9 @@ internal sealed class GamePageLiveCoordinator(
         presenceRenewalCts = new CancellationTokenSource();
         presenceRenewalTimer = new PeriodicTimer(TimeSpan.FromSeconds(PresenceRenewalSeconds));
 
-        await PublishPresenceLeaseAsync(lobby.GameId, currentPlayerId.Value, presenceConnectionId.Value, presenceRenewalCts.Token);
+        await PublishPresenceLeaseAsync(lobby.GameId, currentPlayerId, presenceConnectionId.Value, presenceRenewalCts.Token);
         await onPresenceChanged();
-        presenceRenewalTask = RenewPresenceAsync(lobby.GameId, currentPlayerId.Value, presenceConnectionId.Value, presenceRenewalCts.Token);
+        presenceRenewalTask = RenewPresenceAsync(lobby.GameId, currentPlayerId, presenceConnectionId.Value, presenceRenewalCts.Token);
     }
 
     private async Task ResumePresenceTrackingAsync(Guid gameId, Guid playerId, Guid connectionId)

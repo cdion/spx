@@ -1,5 +1,14 @@
-using Spx.Contracts;
 using Spx.Game.Domain;
+using GameBatchCardGrainCommand = Spx.Game.Domain.GameBatchCardCommand;
+using GameCardReferenceGrainCommand = Spx.Game.Domain.GameCardReferenceCommand;
+using GameSessionGrainCommandRejectedResult = Spx.Game.Domain.GameSessionCommandRejectedResult;
+using GameSessionGrainCommandResult = Spx.Game.Domain.GameSessionCommandResult;
+using GameSessionGrainCommandSucceededResult = Spx.Game.Domain.GameSessionCommandSucceededResult;
+using GameSessionParticipantGrainView = Spx.Game.Domain.GameSessionParticipant;
+using GetGameSessionGrainQuery = Spx.Game.Domain.GetGameSessionQuery;
+using InitializeGameSessionGrainCommand = Spx.Game.Domain.InitializeGameSessionCommand;
+using SubmitAcquireGrainCommand = Spx.Game.Domain.SubmitAcquireCommand;
+using SubmitPlayBatchGrainCommand = Spx.Game.Domain.SubmitPlayBatchCommand;
 using Xunit;
 
 namespace Spx.Game.Domain.Tests;
@@ -7,9 +16,9 @@ namespace Spx.Game.Domain.Tests;
 public sealed class GameSessionEngineTests
 {
     private static readonly Guid GameId = Guid.Parse("6FD75A29-6B90-43AA-B97A-80A0C5210D73");
-    private static readonly GameSessionParticipantGrainView FirstPlayer = new(Guid.Parse("0C8999C0-D4D2-46B5-B287-5D211CC99A40"), "user-1");
-    private static readonly GameSessionParticipantGrainView SecondPlayer = new(Guid.Parse("92C6775C-95F1-4C3B-9025-8E37D126CD4B"), "user-2");
-    private static readonly GameSessionParticipantGrainView ReplacementPlayer = new(Guid.Parse("D5985582-CF06-447D-A5AD-2F85B86B0AB7"), "user-3");
+    private static readonly GameSessionParticipantGrainView FirstPlayer = new(Guid.Parse("0C8999C0-D4D2-46B5-B287-5D211CC99A40"));
+    private static readonly GameSessionParticipantGrainView SecondPlayer = new(Guid.Parse("92C6775C-95F1-4C3B-9025-8E37D126CD4B"));
+    private static readonly GameSessionParticipantGrainView ReplacementPlayer = new(Guid.Parse("D5985582-CF06-447D-A5AD-2F85B86B0AB7"));
 
     [Fact]
     public void Initialize_allows_same_roster_twice_without_resetting_progress()
@@ -47,38 +56,38 @@ public sealed class GameSessionEngineTests
     public void SubmitAcquire_moves_market_card_into_hand_and_waits_for_second_picker()
     {
         var state = CreateInitializedState();
-        var firstPicker = state.CurrentAcquireFirstUserId == FirstPlayer.UserId ? FirstPlayer : SecondPlayer;
+        var firstPicker = state.CurrentAcquireFirstPlayerId == FirstPlayer.PlayerId ? FirstPlayer : SecondPlayer;
         var pickedCard = state.VisibleMarketCards[0];
 
         var result = AssertSucceeded(GameSessionEngine.SubmitAcquire(
             state,
             GameId,
-            new SubmitAcquireGrainCommand(firstPicker.UserId, state.RoundNumber, pickedCard.CardInstanceId)));
+            new SubmitAcquireGrainCommand(firstPicker.PlayerId, state.RoundNumber, pickedCard.CardInstanceId)));
 
         Assert.Equal(GamePhase.Acquire, result.Session.Phase);
         Assert.True(result.Session.WaitingForOpponent);
         Assert.Equal(4, state.VisibleMarketCards.Count);
-        Assert.Contains(GetHand(state, firstPicker.UserId), card => card.CardInstanceId == pickedCard.CardInstanceId);
+        Assert.Contains(GetHand(state, firstPicker.PlayerId), card => card.CardInstanceId == pickedCard.CardInstanceId);
     }
 
     [Fact]
     public void SubmitAcquire_keeps_acquire_phase_after_both_players_finish_first_acquire_round()
     {
         var state = CreateInitializedState();
-        var firstPickerUserId = state.CurrentAcquireFirstUserId!;
-        var secondPickerUserId = state.CurrentAcquireSecondUserId!;
+        var firstPickerPlayerId = state.CurrentAcquireFirstPlayerId!.Value;
+        var secondPickerPlayerId = state.CurrentAcquireSecondPlayerId!.Value;
 
         AssertSucceeded(GameSessionEngine.SubmitAcquire(
             state,
             GameId,
-            new SubmitAcquireGrainCommand(firstPickerUserId, state.RoundNumber, state.VisibleMarketCards[0].CardInstanceId)));
+            new SubmitAcquireGrainCommand(firstPickerPlayerId, state.RoundNumber, state.VisibleMarketCards[0].CardInstanceId)));
 
         AssertSucceeded(GameSessionEngine.SubmitAcquire(
             state,
             GameId,
-            new SubmitAcquireGrainCommand(secondPickerUserId, state.RoundNumber, state.VisibleMarketCards[0].CardInstanceId)));
+            new SubmitAcquireGrainCommand(secondPickerPlayerId, state.RoundNumber, state.VisibleMarketCards[0].CardInstanceId)));
 
-        var nextView = GameSessionEngine.GetSessionView(state, GameId, new GetGameSessionGrainQuery(firstPickerUserId));
+        var nextView = GameSessionEngine.GetSessionView(state, GameId, new GetGameSessionGrainQuery(firstPickerPlayerId));
 
         Assert.NotNull(nextView);
         Assert.Equal(GamePhase.Acquire, state.Phase);
@@ -94,11 +103,11 @@ public sealed class GameSessionEngineTests
 
         for (var pick = 0; pick < 4; pick++)
         {
-            var currentUserId = GetCurrentAcquireUserId(state);
+            var currentPlayerId = GetCurrentAcquirePlayerId(state);
             AssertSucceeded(GameSessionEngine.SubmitAcquire(
                 state,
                 GameId,
-                new SubmitAcquireGrainCommand(currentUserId, state.RoundNumber, state.VisibleMarketCards[0].CardInstanceId)));
+                new SubmitAcquireGrainCommand(currentPlayerId, state.RoundNumber, state.VisibleMarketCards[0].CardInstanceId)));
         }
 
         Assert.Equal(GamePhase.Play, state.Phase);
@@ -122,7 +131,7 @@ public sealed class GameSessionEngineTests
             state,
             GameId,
             new SubmitPlayBatchGrainCommand(
-                FirstPlayer.UserId,
+                FirstPlayer.PlayerId,
                 state.RoundNumber,
                 [
                     new GameBatchCardGrainCommand(firstExtract.CardInstanceId, GameResourceColor.Red, null, null, null, []),
@@ -143,7 +152,7 @@ public sealed class GameSessionEngineTests
         var secondPlayerResult = AssertSucceeded(GameSessionEngine.SubmitPlayBatch(
             state,
             GameId,
-            new SubmitPlayBatchGrainCommand(SecondPlayer.UserId, state.RoundNumber, []),
+            new SubmitPlayBatchGrainCommand(SecondPlayer.PlayerId, state.RoundNumber, []),
             DateTime.UtcNow));
 
         Assert.Equal(2, secondPlayerResult.Session.RoundNumber);
@@ -168,7 +177,7 @@ public sealed class GameSessionEngineTests
             state,
             GameId,
             new SubmitPlayBatchGrainCommand(
-                FirstPlayer.UserId,
+                FirstPlayer.PlayerId,
                 state.RoundNumber,
                 [
                     new GameBatchCardGrainCommand(
@@ -184,7 +193,7 @@ public sealed class GameSessionEngineTests
         var secondPlayerResult = AssertSucceeded(GameSessionEngine.SubmitPlayBatch(
             state,
             GameId,
-            new SubmitPlayBatchGrainCommand(SecondPlayer.UserId, state.RoundNumber, []),
+            new SubmitPlayBatchGrainCommand(SecondPlayer.PlayerId, state.RoundNumber, []),
             DateTime.UtcNow));
 
         Assert.Equal(2, secondPlayerResult.Session.RoundNumber);
@@ -210,7 +219,7 @@ public sealed class GameSessionEngineTests
                 state,
                 GameId,
                 new SubmitPlayBatchGrainCommand(
-                    FirstPlayer.UserId,
+                    FirstPlayer.PlayerId,
                     state.RoundNumber,
                     [
                         new GameBatchCardGrainCommand(
@@ -243,7 +252,7 @@ public sealed class GameSessionEngineTests
             state,
             GameId,
             new SubmitPlayBatchGrainCommand(
-                FirstPlayer.UserId,
+                FirstPlayer.PlayerId,
                 state.RoundNumber,
                 [new GameBatchCardGrainCommand(extract.CardInstanceId, null, null, null, null, [])]),
             DateTime.UtcNow));
@@ -251,7 +260,7 @@ public sealed class GameSessionEngineTests
         var secondPlayerResult = AssertSucceeded(GameSessionEngine.SubmitPlayBatch(
             state,
             GameId,
-            new SubmitPlayBatchGrainCommand(SecondPlayer.UserId, state.RoundNumber, []),
+            new SubmitPlayBatchGrainCommand(SecondPlayer.PlayerId, state.RoundNumber, []),
             DateTime.UtcNow));
 
         Assert.Contains(secondPlayerResult.GameplayEvents, entry => entry.Kind == GameplayEventKind.Fizzled && entry.SourceCardDefinition == GameCardDefinition.Extract);
@@ -272,7 +281,7 @@ public sealed class GameSessionEngineTests
             state,
             GameId,
             new SubmitPlayBatchGrainCommand(
-                FirstPlayer.UserId,
+                FirstPlayer.PlayerId,
                 state.RoundNumber,
                 [new GameBatchCardGrainCommand(produce.CardInstanceId, null, null, null, null, [])]),
             DateTime.UtcNow));
@@ -280,7 +289,7 @@ public sealed class GameSessionEngineTests
         var secondPlayerResult = AssertSucceeded(GameSessionEngine.SubmitPlayBatch(
             state,
             GameId,
-            new SubmitPlayBatchGrainCommand(SecondPlayer.UserId, state.RoundNumber, []),
+            new SubmitPlayBatchGrainCommand(SecondPlayer.PlayerId, state.RoundNumber, []),
             DateTime.UtcNow));
 
         Assert.Contains(secondPlayerResult.GameplayEvents, entry => entry.Kind == GameplayEventKind.Fizzled && entry.SourceCardDefinition == GameCardDefinition.Produce);
@@ -301,7 +310,7 @@ public sealed class GameSessionEngineTests
             state,
             GameId,
             new SubmitPlayBatchGrainCommand(
-                FirstPlayer.UserId,
+                FirstPlayer.PlayerId,
                 state.RoundNumber,
                 [new GameBatchCardGrainCommand(sabotage.CardInstanceId, null, null, null, null, [])]),
             DateTime.UtcNow));
@@ -309,7 +318,7 @@ public sealed class GameSessionEngineTests
         var secondPlayerResult = AssertSucceeded(GameSessionEngine.SubmitPlayBatch(
             state,
             GameId,
-            new SubmitPlayBatchGrainCommand(SecondPlayer.UserId, state.RoundNumber, []),
+            new SubmitPlayBatchGrainCommand(SecondPlayer.PlayerId, state.RoundNumber, []),
             DateTime.UtcNow));
 
         Assert.Contains(secondPlayerResult.GameplayEvents, entry => entry.Kind == GameplayEventKind.Fizzled && entry.SourceCardDefinition == GameCardDefinition.Sabotage);
@@ -329,7 +338,7 @@ public sealed class GameSessionEngineTests
             state,
             GameId,
             new SubmitPlayBatchGrainCommand(
-                FirstPlayer.UserId,
+                FirstPlayer.PlayerId,
                 state.RoundNumber,
                 [new GameBatchCardGrainCommand(replicate.CardInstanceId, null, null, null, null, [])]),
             DateTime.UtcNow));
@@ -337,7 +346,7 @@ public sealed class GameSessionEngineTests
         var secondPlayerResult = AssertSucceeded(GameSessionEngine.SubmitPlayBatch(
             state,
             GameId,
-            new SubmitPlayBatchGrainCommand(SecondPlayer.UserId, state.RoundNumber, []),
+            new SubmitPlayBatchGrainCommand(SecondPlayer.PlayerId, state.RoundNumber, []),
             DateTime.UtcNow));
 
         Assert.Contains(secondPlayerResult.GameplayEvents, entry => entry.Kind == GameplayEventKind.Fizzled && entry.SourceCardDefinition == GameCardDefinition.Replicate);
@@ -358,7 +367,7 @@ public sealed class GameSessionEngineTests
             state,
             GameId,
             new SubmitPlayBatchGrainCommand(
-                FirstPlayer.UserId,
+                FirstPlayer.PlayerId,
                 state.RoundNumber,
                 [new GameBatchCardGrainCommand(catalyst.CardInstanceId, null, null, null, red.CardInstanceId, [])]),
             DateTime.UtcNow));
@@ -366,7 +375,7 @@ public sealed class GameSessionEngineTests
         var secondPlayerResult = AssertSucceeded(GameSessionEngine.SubmitPlayBatch(
             state,
             GameId,
-            new SubmitPlayBatchGrainCommand(SecondPlayer.UserId, state.RoundNumber, []),
+            new SubmitPlayBatchGrainCommand(SecondPlayer.PlayerId, state.RoundNumber, []),
             DateTime.UtcNow));
 
         Assert.Contains(secondPlayerResult.GameplayEvents, entry => entry.Kind == GameplayEventKind.Fizzled && entry.SourceCardDefinition == GameCardDefinition.Catalyst);
@@ -387,7 +396,7 @@ public sealed class GameSessionEngineTests
             state,
             GameId,
             new SubmitPlayBatchGrainCommand(
-                FirstPlayer.UserId,
+                FirstPlayer.PlayerId,
                 state.RoundNumber,
                 [new GameBatchCardGrainCommand(corrupt.CardInstanceId, null, null, null, null, [])]),
             DateTime.UtcNow));
@@ -395,7 +404,7 @@ public sealed class GameSessionEngineTests
         var secondPlayerResult = AssertSucceeded(GameSessionEngine.SubmitPlayBatch(
             state,
             GameId,
-            new SubmitPlayBatchGrainCommand(SecondPlayer.UserId, state.RoundNumber, []),
+            new SubmitPlayBatchGrainCommand(SecondPlayer.PlayerId, state.RoundNumber, []),
             DateTime.UtcNow));
 
         Assert.Contains(secondPlayerResult.GameplayEvents, entry => entry.Kind == GameplayEventKind.Fizzled && entry.SourceCardDefinition == GameCardDefinition.Corrupt);
@@ -415,7 +424,7 @@ public sealed class GameSessionEngineTests
             state,
             GameId,
             new SubmitPlayBatchGrainCommand(
-                FirstPlayer.UserId,
+                FirstPlayer.PlayerId,
                 state.RoundNumber,
                 [new GameBatchCardGrainCommand(reclaim.CardInstanceId, null, null, null, null, [])]),
             DateTime.UtcNow));
@@ -423,7 +432,7 @@ public sealed class GameSessionEngineTests
         var secondPlayerResult = AssertSucceeded(GameSessionEngine.SubmitPlayBatch(
             state,
             GameId,
-            new SubmitPlayBatchGrainCommand(SecondPlayer.UserId, state.RoundNumber, []),
+            new SubmitPlayBatchGrainCommand(SecondPlayer.PlayerId, state.RoundNumber, []),
             DateTime.UtcNow));
 
         Assert.Contains(secondPlayerResult.GameplayEvents, entry => entry.Kind == GameplayEventKind.Fizzled && entry.SourceCardDefinition == GameCardDefinition.Reclaim);
@@ -449,7 +458,7 @@ public sealed class GameSessionEngineTests
             state,
             GameId,
             new SubmitPlayBatchGrainCommand(
-                FirstPlayer.UserId,
+                FirstPlayer.PlayerId,
                 state.RoundNumber,
                 [
                     new GameBatchCardGrainCommand(
@@ -472,7 +481,7 @@ public sealed class GameSessionEngineTests
         var secondPlayerResult = AssertSucceeded(GameSessionEngine.SubmitPlayBatch(
             state,
             GameId,
-            new SubmitPlayBatchGrainCommand(SecondPlayer.UserId, state.RoundNumber, []),
+            new SubmitPlayBatchGrainCommand(SecondPlayer.PlayerId, state.RoundNumber, []),
             DateTime.UtcNow));
 
         Assert.Equal(GamePhase.Completed, secondPlayerResult.Session.Phase);
@@ -496,11 +505,11 @@ public sealed class GameSessionEngineTests
     private static GameCardState CreateCard(GameCardDefinition definition)
         => new() { CardInstanceId = Guid.NewGuid(), Definition = definition };
 
-    private static List<GameCardState> GetHand(GameSessionState state, string userId)
-        => userId == FirstPlayer.UserId ? state.FirstPlayerHand : state.SecondPlayerHand;
+    private static List<GameCardState> GetHand(GameSessionState state, Guid playerId)
+        => playerId == FirstPlayer.PlayerId ? state.FirstPlayerHand : state.SecondPlayerHand;
 
-    private static string GetCurrentAcquireUserId(GameSessionState state)
+    private static Guid GetCurrentAcquirePlayerId(GameSessionState state)
         => state.AcquirePicksCompletedInPhase % 2 == 0
-            ? state.CurrentAcquireFirstUserId!
-            : state.CurrentAcquireSecondUserId!;
+            ? state.CurrentAcquireFirstPlayerId!.Value
+            : state.CurrentAcquireSecondPlayerId!.Value;
 }

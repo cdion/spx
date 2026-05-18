@@ -11,14 +11,14 @@ internal sealed class SubmitPlayBatchHandler(
 {
     public async Task<GameSessionCommandOutcome> HandleAsync(
         Guid gameId,
-        string userId,
+        Guid playerId,
         int expectedRoundNumber,
         IReadOnlyList<GameBatchCardSelection> cards,
         CancellationToken cancellationToken = default)
     {
         var result = await gameSessionService.SubmitPlayBatchAsync(
             gameId,
-            new SubmitPlayBatchRequest(userId, expectedRoundNumber, cards),
+            new SubmitPlayBatchRequest(playerId, expectedRoundNumber, cards),
             cancellationToken);
 
         if (result is GameSessionCommandSucceeded succeeded)
@@ -28,12 +28,12 @@ internal sealed class SubmitPlayBatchHandler(
 
             try
             {
-                persistedGameplayMessageCount = await gameplayEventMessageWriter.PersistResolvedBatchAsync(succeeded.Session, succeeded.GameplayEvents, cancellationToken);
+                persistedGameplayMessageCount = await gameplayEventMessageWriter.PersistResolvedBatchAsync(gameId, succeeded.Session.LastResolvedBatch, succeeded.Session.Completion, succeeded.GameplayEvents, cancellationToken);
                 persistedGameplayEvents = true;
             }
             catch (Exception exception)
             {
-                logger.LogWarning(exception, "Failed to persist gameplay event messages after play batch submission for game {GameId} user {UserId}.", gameId, userId);
+                logger.LogWarning(exception, "Failed to persist gameplay event messages after play batch submission for game {GameId} player {PlayerId}.", gameId, playerId);
             }
 
             if (persistedGameplayEvents && succeeded.PendingGameplayEventBatchId is Guid pendingGameplayEventBatchId)
@@ -44,7 +44,7 @@ internal sealed class SubmitPlayBatchHandler(
                 }
                 catch (Exception exception)
                 {
-                    logger.LogWarning(exception, "Failed to acknowledge persisted gameplay event batch {BatchId} after play batch submission for game {GameId} user {UserId}.", pendingGameplayEventBatchId, gameId, userId);
+                    logger.LogWarning(exception, "Failed to acknowledge persisted gameplay event batch {BatchId} after play batch submission for game {GameId} player {PlayerId}.", pendingGameplayEventBatchId, gameId, playerId);
                 }
             }
 
@@ -54,7 +54,7 @@ internal sealed class SubmitPlayBatchHandler(
             }
             catch (Exception exception)
             {
-                logger.LogWarning(exception, "Failed to publish session invalidation after play batch submission for game {GameId} user {UserId}.", gameId, userId);
+                logger.LogWarning(exception, "Failed to publish session invalidation after play batch submission for game {GameId} player {PlayerId}.", gameId, playerId);
             }
 
             if (persistedGameplayMessageCount > 0)
@@ -65,7 +65,7 @@ internal sealed class SubmitPlayBatchHandler(
                 }
                 catch (Exception exception)
                 {
-                    logger.LogWarning(exception, "Failed to publish message invalidation after play batch submission for game {GameId} user {UserId}.", gameId, userId);
+                    logger.LogWarning(exception, "Failed to publish message invalidation after play batch submission for game {GameId} player {PlayerId}.", gameId, playerId);
                 }
             }
         }

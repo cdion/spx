@@ -18,19 +18,20 @@ internal static class GamePageCoordinatorTestData
             DateTime.UtcNow,
             null,
             "Captain Red",
+            CurrentPlayerId,
             [
-                new GamePlayerView(CurrentPlayerId, "Captain Red", DateTime.UtcNow, true),
-                new GamePlayerView(OpponentPlayerId, "Captain Blue", DateTime.UtcNow, false)
+                new GamePlayerView(CurrentPlayerId, "Captain Red", DateTime.UtcNow),
+                new GamePlayerView(OpponentPlayerId, "Captain Blue", DateTime.UtcNow)
             ],
             isCurrentUserActive);
 
-    public static GameSessionSnapshot CreateSession(Guid gameId, int roundNumber = 1, GameResolvedBatchSnapshot? lastResolvedBatch = null)
+    public static GameSessionView CreateSession(Guid gameId, int roundNumber = 1, GameResolvedBatchView? lastResolvedBatch = null)
         => new(
             gameId,
             roundNumber,
             GamePhase.Play,
-            new GamePlayerSnapshot(new GameSessionParticipant(CurrentPlayerId, "user-1"), [], false, 0, 0, false, false, []),
-            new GamePlayerSnapshot(new GameSessionParticipant(OpponentPlayerId, "user-2"), [], false, 0, 0, false, true, []),
+            new GamePlayerStateView(new GameSessionParticipant(CurrentPlayerId), [], false, 0, 0, false, false, []),
+            new GamePlayerStateView(new GameSessionParticipant(OpponentPlayerId), [], false, 0, 0, false, true, []),
             [],
             0,
             false,
@@ -40,15 +41,15 @@ internal static class GamePageCoordinatorTestData
             lastResolvedBatch,
             null);
 
-    public static GamePageView CreatePage(Guid gameId, GamePresenceView? presence = null, GameSessionSnapshot? session = null)
+    public static GamePageView CreatePage(Guid gameId, GamePresenceView? presence = null, GameSessionView? session = null)
         => new(CreateLobby(gameId), session ?? CreateSession(gameId), presence ?? GamePresenceView.Empty);
 
-    public static GameResolvedBatchSnapshot CreateResolvedBatch(int roundNumber, DateTime? resolvedAtUtc = null)
+    public static GameResolvedBatchView CreateResolvedBatch(int roundNumber, DateTime? resolvedAtUtc = null)
         => new(
             roundNumber,
             [
-                new GameResolvedPlayerBatchSnapshot(
-                    new GameSessionParticipant(CurrentPlayerId, "user-1"),
+                new GameResolvedPlayerBatchView(
+                    new GameSessionParticipant(CurrentPlayerId),
                     [],
                     false)
             ],
@@ -57,9 +58,9 @@ internal static class GamePageCoordinatorTestData
     public static GameplayEvent CreateGameplayEvent()
         => new(
             GameplayEventKind.Resolved,
-            "user-1",
+            CurrentPlayerId,
             GameCardDefinition.Extract,
-            "user-2",
+            OpponentPlayerId,
             GameCardDefinition.Refine,
             null);
 

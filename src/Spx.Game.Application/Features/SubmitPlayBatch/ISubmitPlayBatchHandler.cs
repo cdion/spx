@@ -4,7 +4,7 @@ public interface ISubmitPlayBatchHandler
 {
     Task<GameSessionCommandOutcome> HandleAsync(
         Guid gameId,
-        string userId,
+        Guid playerId,
         int expectedRoundNumber,
     IReadOnlyList<GameBatchCardSelection> cards,
         CancellationToken cancellationToken = default);

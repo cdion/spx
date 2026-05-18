@@ -13,7 +13,7 @@ internal sealed class GetGamePageHandler(
             return null;
         }
 
-        var session = await gameSessionService.GetSessionAsync(gameId, userId, cancellationToken);
+        var session = await gameSessionService.GetSessionAsync(gameId, lobby.CurrentPlayerId, cancellationToken);
 
         var presence = await gamePresenceService.GetPresenceAsync(gameId, cancellationToken);
 

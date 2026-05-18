@@ -28,36 +28,34 @@ public sealed class DeleteMessageHandlerTests
             false,
             false,
             false);
-        var persistence = new FakeGameMessagePersistence
-        {
-            DeleteMessageResult = new GameMessageCommandSucceeded(persistedMessage)
-        };
-        var publisher = new FakeGameMessageEventsPublisher();
+        var persistence = Substitute.For<IGameMessagePersistence>();
+        persistence.DeleteMessageAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(new GameMessageCommandSucceeded(persistedMessage));
+        var publisher = Substitute.For<IGameMessageInvalidationPublisher>();
         using var services = GameMessageHandlerTestServices.Create(persistence, publisher);
 
         var handler = services.GetRequiredService<IDeleteMessageHandler>();
-        var result = await handler.HandleAsync(gameId, "user-1", messageId);
+        var result = await handler.HandleAsync(gameId, Guid.NewGuid(), messageId);
 
         Assert.IsType<GameMessageCommandSucceeded>(result);
-        Assert.Equal(messageId, persistence.LastDeletedMessageId);
-        Assert.Equal([gameId], publisher.PublishedGameIds);
+        await persistence.Received(1).DeleteMessageAsync(gameId, Arg.Any<Guid>(), messageId, Arg.Any<CancellationToken>());
+        await publisher.Received(1).PublishMessagesInvalidatedAsync(gameId, Arg.Any<CancellationToken>());
     }
 
     [Fact]
     public async Task HandleAsync_does_not_publish_when_persistence_fails()
     {
-        var persistence = new FakeGameMessagePersistence
-        {
-            DeleteMessageResult = new GameMessageCommandFailed("That message has already been deleted.")
-        };
-        var publisher = new FakeGameMessageEventsPublisher();
+        var persistence = Substitute.For<IGameMessagePersistence>();
+        persistence.DeleteMessageAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(new GameMessageCommandFailed("That message has already been deleted."));
+        var publisher = Substitute.For<IGameMessageInvalidationPublisher>();
         using var services = GameMessageHandlerTestServices.Create(persistence, publisher);
 
         var handler = services.GetRequiredService<IDeleteMessageHandler>();
-        var result = await handler.HandleAsync(Guid.NewGuid(), "user-1", Guid.NewGuid());
+        var result = await handler.HandleAsync(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid());
 
         var failed = Assert.IsType<GameMessageCommandFailed>(result);
         Assert.Equal("That message has already been deleted.", failed.ErrorMessage);
-        Assert.Empty(publisher.PublishedGameIds);
+        await publisher.DidNotReceive().PublishMessagesInvalidatedAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
 }

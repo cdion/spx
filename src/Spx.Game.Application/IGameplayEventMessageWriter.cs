@@ -1,8 +1,6 @@
-using Spx.Contracts;
-
 namespace Spx.Game.Application;
 
 public interface IGameplayEventMessageWriter
 {
-    Task<int> PersistResolvedBatchAsync(GameSessionSnapshot session, IReadOnlyList<GameplayEvent> gameplayEvents, CancellationToken cancellationToken = default);
+    Task<int> PersistResolvedBatchAsync(Guid gameId, GameResolvedBatchView? lastResolvedBatch, GameCompletionView? completion, IReadOnlyList<GameplayEvent> gameplayEvents, CancellationToken cancellationToken = default);
 }

@@ -28,7 +28,7 @@
                         value="@SelectedRecipientPlayerIdString"
                         @onchange="HandleRecipientChanged">
                     <option value="">All active players</option>
-                    @foreach (var player in Players.Where(player => !player.IsCurrentUser))
+                    @foreach (var player in Players.Where(player => player.PlayerId != CurrentPlayerId))
                     {
                         <option value="@player.PlayerId">@player.Name</option>
                     }
@@ -68,6 +68,9 @@
 @code {
     [Parameter]
     public bool IsCurrentUserActive { get; set; }
+
+    [Parameter, EditorRequired]
+    public Guid CurrentPlayerId { get; set; }
 
     [Parameter, EditorRequired]
     public IReadOnlyList<GamePlayerView> Players { get; set; } = [];

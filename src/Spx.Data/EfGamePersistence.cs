@@ -1,8 +1,8 @@
 using System.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using Spx.Contracts;
 using Spx.Game.Application;
+using Spx.Game.Domain;
 
 namespace Spx.Data;
 
@@ -79,12 +79,12 @@ internal sealed class EfGamePersistence(
 
             if (game is null)
             {
-                return new JoinGamePersistenceResult(new GameCommandFailed("That invite code does not match an open game."), null, false);
+                return new JoinGamePersistenceResult(new GameCommandFailed("That invite code does not match an open game."));
             }
 
             if (game.Status != GameStatus.Open)
             {
-                return new JoinGamePersistenceResult(new GameCommandFailed("That game is no longer open."), null, false);
+                return new JoinGamePersistenceResult(new GameCommandFailed("That game is no longer open."));
             }
 
             var activePlayers = await dbContext.GamePlayers
@@ -99,30 +99,30 @@ internal sealed class EfGamePersistence(
                 {
                     if (activePlayers.Any(entry => entry.Id != existingPlayer.Id && entry.NormalizedName == request.PlayerNameLookup))
                     {
-                        return new JoinGamePersistenceResult(new GameCommandFailed("That player name is already taken in this game."), null, false);
+                        return new JoinGamePersistenceResult(new GameCommandFailed("That player name is already taken in this game."));
                     }
 
                     existingPlayer.Name = request.PlayerName;
                     existingPlayer.NormalizedName = request.PlayerNameLookup;
                     await dbContext.SaveChangesAsync(innerCancellationToken);
                     await transaction.CommitAsync(innerCancellationToken);
-                    return new JoinGamePersistenceResult(new GameCommandSucceeded(game.Id), game.Id, false);
+                    return new JoinGamePersistenceResult(new GameCommandSucceeded(game.Id), LobbyGameId: game.Id);
                 }
 
-                return new JoinGamePersistenceResult(new GameCommandSucceeded(game.Id), null, false);
+                return new JoinGamePersistenceResult(new GameCommandSucceeded(game.Id));
             }
 
             if (activePlayers.Count >= game.MaxPlayers)
             {
-                return new JoinGamePersistenceResult(new GameCommandFailed("That game is already full."), null, false);
+                return new JoinGamePersistenceResult(new GameCommandFailed("That game is already full."));
             }
 
             if (activePlayers.Any(entry => entry.NormalizedName == request.PlayerNameLookup))
             {
-                return new JoinGamePersistenceResult(new GameCommandFailed("That player name is already taken in this game."), null, false);
+                return new JoinGamePersistenceResult(new GameCommandFailed("That player name is already taken in this game."));
             }
 
-            dbContext.GamePlayers.Add(new GamePlayer
+            var joinedPlayer = new GamePlayer
             {
                 Id = Guid.NewGuid(),
                 GameId = game.Id,
@@ -130,11 +130,9 @@ internal sealed class EfGamePersistence(
                 Name = request.PlayerName,
                 NormalizedName = request.PlayerNameLookup,
                 JoinedAtUtc = DateTime.UtcNow
-            });
+            };
 
-            var joinedPlayer = dbContext.ChangeTracker.Entries<GamePlayer>()
-                .Single(entry => entry.Entity.GameId == game.Id && entry.Entity.UserId == request.UserId && entry.Entity.LeftAtUtc == null)
-                .Entity;
+            dbContext.GamePlayers.Add(joinedPlayer);
 
             dbContext.GameMessages.Add(GameMessageFactory.CreateSystemEvent(game.Id, GameMessageKind.PlayerJoined, joinedPlayer.JoinedAtUtc, joinedPlayer));
 
@@ -142,14 +140,14 @@ internal sealed class EfGamePersistence(
             {
                 await dbContext.SaveChangesAsync(innerCancellationToken);
                 await transaction.CommitAsync(innerCancellationToken);
-                return new JoinGamePersistenceResult(new GameCommandSucceeded(game.Id), game.Id, true);
+                return new JoinGamePersistenceResult(new GameCommandSucceeded(game.Id), LobbyGameId: game.Id, MessagesGameId: game.Id);
             }
             catch (DbUpdateException exception) when (GamePersistenceErrors.IsUniqueViolation(exception))
             {
                 logger.LogInformation(exception, "A uniqueness constraint blocked joining the game.");
                 await transaction.RollbackAsync(innerCancellationToken);
                 dbContext.ChangeTracker.Clear();
-                return new JoinGamePersistenceResult(new GameCommandFailed("That player or seat is no longer available. Refresh and try again."), null, false);
+                return new JoinGamePersistenceResult(new GameCommandFailed("That player or seat is no longer available. Refresh and try again."));
             }
         }, cancellationToken);
     }
@@ -168,7 +166,7 @@ internal sealed class EfGamePersistence(
 
             if (game is null)
             {
-                return new LeaveGamePersistenceResult(new GameCommandFailed("That game could not be found."), false);
+                return new LeaveGamePersistenceResult(new GameCommandFailed("That game could not be found."));
             }
 
             var player = await dbContext.GamePlayers
@@ -176,7 +174,7 @@ internal sealed class EfGamePersistence(
 
             if (player is null)
             {
-                return new LeaveGamePersistenceResult(new GameCommandFailed("You are not an active player in that game."), false);
+                return new LeaveGamePersistenceResult(new GameCommandFailed("You are not an active player in that game."));
             }
 
             var now = DateTime.UtcNow;
@@ -201,7 +199,7 @@ internal sealed class EfGamePersistence(
 
             await dbContext.SaveChangesAsync(innerCancellationToken);
             await transaction.CommitAsync(innerCancellationToken);
-            return new LeaveGamePersistenceResult(new GameCommandSucceeded(gameId), true);
+            return new LeaveGamePersistenceResult(new GameCommandSucceeded(gameId), player.Id);
         }, cancellationToken);
     }
 
@@ -212,7 +210,7 @@ internal sealed class EfGamePersistence(
             .AsNoTracking()
             .Where(entry => entry.GameId == gameId && entry.LeftAtUtc == null)
             .OrderBy(entry => entry.JoinedAtUtc)
-            .Select(entry => new GameSessionParticipant(entry.Id, entry.UserId))
+            .Select(entry => new GameSessionParticipant(entry.Id))
             .ToListAsync(cancellationToken);
 
         return players.Count == 0 ? null : players;
@@ -252,7 +250,7 @@ internal sealed class EfGamePersistence(
             .AsNoTracking()
             .Where(entry => entry.GameId == gameId && entry.LeftAtUtc == null)
             .OrderBy(entry => entry.JoinedAtUtc)
-            .Select(entry => new GamePlayerView(entry.Id, entry.Name, entry.JoinedAtUtc, entry.UserId == userId))
+            .Select(entry => new GamePlayerView(entry.Id, entry.Name, entry.JoinedAtUtc))
             .ToListAsync(cancellationToken);
 
         return new GameLobbyView(
@@ -264,6 +262,7 @@ internal sealed class EfGamePersistence(
             game.CreatedAtUtc,
             game.EndedAtUtc,
             viewingPlayer.Name,
+            viewingPlayer.Id,
             players,
             currentPlayer is not null);
     }

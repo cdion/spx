@@ -1,6 +1,5 @@
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.EntityFrameworkCore;
-using Spx.Contracts;
 using Spx.Data;
 using Spx.Game.Application;
 using Spx.Game.Application.Features.CreateGame;
@@ -8,7 +7,6 @@ using Spx.Game.Application.Features.DeleteMessage;
 using Spx.Game.Application.Features.EditMessage;
 using Spx.Game.Application.Features.GetMessageUpdates;
 using Spx.Game.Application.Features.GetMessages;
-using Spx.Game.Application.Features.GetGameLobby;
 using Spx.Game.Application.Features.GetUserGames;
 using Spx.Game.Application.Features.EnsureGameSession;
 using Spx.Game.Application.Features.JoinGame;
@@ -37,7 +35,7 @@ internal static class GameFeatureTestFactory
             new CreateGameHandler(gamePersistence, notifier, messagePublisher),
             new JoinGameHandler(gamePersistence, ensureGameSession, notifier, messagePublisher),
             new LeaveGameHandler(gamePersistence, sessionService, notifier, messagePublisher, NullLogger<LeaveGameHandler>.Instance),
-            new GetGameLobbyHandler(gamePersistence),
+            gamePersistence,
             new GetUserGamesHandler(gamePersistence),
             new GetMessagesHandler(gameMessagePersistence),
             new GetMessageUpdatesHandler(gameMessagePersistence),
@@ -52,7 +50,7 @@ internal sealed record GameFeatureSet(
     ICreateGameHandler CreateGame,
     IJoinGameHandler JoinGame,
     ILeaveGameHandler LeaveGame,
-    IGetGameLobbyHandler GetGameLobby,
+    IGamePersistence Persistence,
     IGetUserGamesHandler GetUserGames,
     IGetMessagesHandler GetMessages,
     IGetMessageUpdatesHandler GetMessageUpdates,
@@ -71,8 +69,8 @@ internal sealed class FakeGameSessionService : IGameSessionService
     public Task AcknowledgeGameplayEventBatchAsync(Guid gameId, Guid gameplayEventBatchId, CancellationToken cancellationToken = default)
         => Task.CompletedTask;
 
-    public Task<GameSessionSnapshot?> GetSessionAsync(Guid gameId, string userId, CancellationToken cancellationToken = default)
-        => Task.FromResult<GameSessionSnapshot?>(null);
+    public Task<GameSessionView?> GetSessionAsync(Guid gameId, Guid playerId, CancellationToken cancellationToken = default)
+        => Task.FromResult<GameSessionView?>(null);
 
     public Task<GameSessionCommandOutcome> SubmitAcquireAsync(Guid gameId, SubmitAcquireRequest request, CancellationToken cancellationToken = default)
         => Task.FromResult<GameSessionCommandOutcome>(new GameSessionCommandFailed("Not implemented in integration test factory."));
@@ -80,6 +78,6 @@ internal sealed class FakeGameSessionService : IGameSessionService
     public Task<GameSessionCommandOutcome> SubmitPlayBatchAsync(Guid gameId, SubmitPlayBatchRequest request, CancellationToken cancellationToken = default)
         => Task.FromResult<GameSessionCommandOutcome>(new GameSessionCommandFailed("Not implemented in integration test factory."));
 
-    public Task<GameSessionSnapshot> AbandonAsync(Guid gameId, string userId, CancellationToken cancellationToken = default)
+    public Task AbandonAsync(Guid gameId, Guid playerId, CancellationToken cancellationToken = default)
         => throw new NotSupportedException();
 }

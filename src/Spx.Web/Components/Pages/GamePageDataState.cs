@@ -6,7 +6,7 @@ internal sealed class GamePageDataState
 {
     public GameLobbyView? Lobby { get; private set; }
 
-    public GameSessionSnapshot? Session { get; private set; }
+    public GameSessionView? Session { get; private set; }
 
     public GamePresenceView Presence { get; private set; } = GamePresenceView.Empty;
 
@@ -46,7 +46,7 @@ internal sealed class GamePageDataState
     public void ClearPresence()
         => Presence = GamePresenceView.Empty;
 
-    public void ApplySession(GameSessionSnapshot? session)
+    public void ApplySession(GameSessionView? session)
         => Session = session;
 
     public void ClearErrorMessage()

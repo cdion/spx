@@ -49,7 +49,7 @@ public sealed class GamePageActionCoordinatorTests
             session: initialSession,
             acquireHandler: new StubSubmitAcquireCardHandler { Result = new GameSessionCommandSucceeded(updatedSession) });
 
-        await coordinator.AcquireCardAsync(gameId, "user-1", Guid.NewGuid());
+        await coordinator.AcquireCardAsync(gameId, GamePageCoordinatorTestData.CurrentPlayerId, Guid.NewGuid());
 
         Assert.Equal(updatedSession, data.Session);
         Assert.False(actions.IsSubmittingGameplayAction);
@@ -69,7 +69,7 @@ public sealed class GamePageActionCoordinatorTests
             session: GamePageCoordinatorTestData.CreateSession(gameId, roundNumber: 2),
             acquireHandler: acquireHandler);
 
-        await coordinator.AcquireCardAsync(gameId, "user-1", Guid.NewGuid());
+        await coordinator.AcquireCardAsync(gameId, GamePageCoordinatorTestData.CurrentPlayerId, Guid.NewGuid());
 
         Assert.Equal(0, acquireHandler.CallCount);
         Assert.Equal(2, data.Session!.RoundNumber);
@@ -87,7 +87,7 @@ public sealed class GamePageActionCoordinatorTests
             session: GamePageCoordinatorTestData.CreateSession(gameId, roundNumber: 2),
             playBatchHandler: new StubSubmitPlayBatchHandler { Result = new GameSessionCommandFailed("Batch rejected.") });
 
-        await coordinator.LockBatchAsync(gameId, "user-1", GamePageCoordinatorTestData.CreateBatchSelection());
+        await coordinator.LockBatchAsync(gameId, GamePageCoordinatorTestData.CurrentPlayerId, GamePageCoordinatorTestData.CreateBatchSelection());
 
         Assert.Equal("Batch rejected.", data.GameplayError);
         Assert.False(actions.IsSubmittingGameplayAction);
@@ -109,7 +109,7 @@ public sealed class GamePageActionCoordinatorTests
             playBatchHandler: new StubSubmitPlayBatchHandler { Result = new GameSessionCommandSucceeded(updatedSession, [GamePageCoordinatorTestData.CreateGameplayEvent()]) },
             formatter: formatter);
 
-        await coordinator.LockBatchAsync(gameId, "user-1", GamePageCoordinatorTestData.CreateBatchSelection());
+        await coordinator.LockBatchAsync(gameId, GamePageCoordinatorTestData.CurrentPlayerId, GamePageCoordinatorTestData.CreateBatchSelection());
 
         Assert.Equal(updatedSession, data.Session);
         Assert.False(actions.IsSubmittingGameplayAction);
@@ -118,7 +118,7 @@ public sealed class GamePageActionCoordinatorTests
         Assert.Equal("Captain Red resolved Extract.", localEntry.Local?.Body);
         Assert.Equal(GameMessageKind.GameplayEvent, localEntry.Local?.Kind);
         Assert.Equal(resolvedAtUtc, localEntry.Local?.CreatedAtUtc);
-        Assert.Single(formatter.Calls);
+        Assert.Equal(1, formatter.CallCount);
     }
 
     private static GamePageActionCoordinator CreateCoordinator(
@@ -126,7 +126,7 @@ public sealed class GamePageActionCoordinatorTests
         out GamePageActionState actions,
         out GameTimelineState timeline,
         GameLobbyView? lobby = null,
-        GameSessionSnapshot? session = null,
+        GameSessionView? session = null,
         StubLeaveGameHandler? leaveHandler = null,
         StubSubmitAcquireCardHandler? acquireHandler = null,
         StubSubmitPlayBatchHandler? playBatchHandler = null,
@@ -178,7 +178,7 @@ public sealed class GamePageActionCoordinatorTests
 
         public int CallCount { get; private set; }
 
-        public Task<GameSessionCommandOutcome> HandleAsync(Guid gameId, string userId, int expectedRoundNumber, Guid marketCardInstanceId, CancellationToken cancellationToken = default)
+        public Task<GameSessionCommandOutcome> HandleAsync(Guid gameId, Guid playerId, int expectedRoundNumber, Guid marketCardInstanceId, CancellationToken cancellationToken = default)
         {
             CallCount++;
             return Exception is null ? Task.FromResult(Result) : Task.FromException<GameSessionCommandOutcome>(Exception);
@@ -193,7 +193,7 @@ public sealed class GamePageActionCoordinatorTests
 
         public int CallCount { get; private set; }
 
-        public Task<GameSessionCommandOutcome> HandleAsync(Guid gameId, string userId, int expectedRoundNumber, IReadOnlyList<GameBatchCardSelection> cards, CancellationToken cancellationToken = default)
+        public Task<GameSessionCommandOutcome> HandleAsync(Guid gameId, Guid playerId, int expectedRoundNumber, IReadOnlyList<GameBatchCardSelection> cards, CancellationToken cancellationToken = default)
         {
             CallCount++;
             return Exception is null ? Task.FromResult(Result) : Task.FromException<GameSessionCommandOutcome>(Exception);
@@ -204,14 +204,15 @@ public sealed class GamePageActionCoordinatorTests
     {
         public IReadOnlyList<string> Result { get; init; } = [];
 
-        public List<(GameSessionSnapshot Session, IReadOnlyList<GameplayEvent> Events, IReadOnlyDictionary<Guid, string> PlayerNames)> Calls { get; } = [];
+        public int CallCount { get; private set; }
 
         public IReadOnlyList<string> CreateMessageBodies(
-            GameSessionSnapshot session,
+            GameResolvedBatchView? lastResolvedBatch,
+            GameCompletionView? completion,
             IReadOnlyList<GameplayEvent> gameplayEvents,
             IReadOnlyDictionary<Guid, string> playerNames)
         {
-            Calls.Add((session, gameplayEvents, playerNames));
+            CallCount++;
             return Result;
         }
     }

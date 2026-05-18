@@ -1,5 +1,4 @@
 using Microsoft.Extensions.DependencyInjection;
-using Spx.Contracts;
 using Spx.Game.Domain;
 using Spx.Game.Application;
 using Spx.Game.Application.Features.GetGamePage;
@@ -39,7 +38,8 @@ public sealed class GetGamePageHandlerTests
             DateTime.UtcNow,
             null,
             "Captain Red",
-            [new GamePlayerView(CurrentPlayerId, "Captain Red", DateTime.UtcNow, true), new GamePlayerView(OpponentPlayerId, "Captain Blue", DateTime.UtcNow, false)],
+            CurrentPlayerId,
+            [new GamePlayerView(CurrentPlayerId, "Captain Red", DateTime.UtcNow), new GamePlayerView(OpponentPlayerId, "Captain Blue", DateTime.UtcNow)],
             true);
 
         var session = CreateSession(gameId, 3, waitingForOpponent: true);
@@ -71,7 +71,8 @@ public sealed class GetGamePageHandlerTests
             DateTime.UtcNow,
             null,
             "Captain Red",
-            [new GamePlayerView(CurrentPlayerId, "Captain Red", DateTime.UtcNow, true), new GamePlayerView(OpponentPlayerId, "Captain Blue", DateTime.UtcNow, false)],
+            CurrentPlayerId,
+            [new GamePlayerView(CurrentPlayerId, "Captain Red", DateTime.UtcNow), new GamePlayerView(OpponentPlayerId, "Captain Blue", DateTime.UtcNow)],
             true);
 
         var presence = new GamePresenceView([OpponentPlayerId]);
@@ -103,24 +104,24 @@ public sealed class GetGamePageHandlerTests
         services.AddSingleton<IGamePersistence>(persistence);
         services.AddSingleton<IGameSessionService>(sessionService);
         services.AddSingleton<IGamePresenceService>(presenceService ?? new FakeGamePresenceService());
-        services.AddSingleton<IGameLobbyInvalidationPublisher, StubGameLobbyEventsPublisher>();
-        services.AddSingleton<IGameSessionInvalidationPublisher, StubGameSessionInvalidationPublisher>();
-        services.AddSingleton<IGameMessageInvalidationPublisher, StubGameMessageEventsPublisher>();
-        services.AddSingleton<IGameMessagePersistence, StubGameMessagePersistence>();
+        services.AddSingleton(Substitute.For<IGameLobbyInvalidationPublisher>());
+        services.AddSingleton(Substitute.For<IGameSessionInvalidationPublisher>());
+        services.AddSingleton(Substitute.For<IGameMessageInvalidationPublisher>());
+        services.AddSingleton(Substitute.For<IGameMessagePersistence>());
         return services.BuildServiceProvider();
     }
 
-    private static GameSessionSnapshot CreateSession(Guid gameId, int roundNumber, bool waitingForOpponent)
+    private static GameSessionView CreateSession(Guid gameId, int roundNumber, bool waitingForOpponent)
     {
-        var currentPlayer = new GameSessionParticipant(CurrentPlayerId, "user-1");
-        var opponentPlayer = new GameSessionParticipant(OpponentPlayerId, "user-2");
+        var currentPlayer = new GameSessionParticipant(CurrentPlayerId);
+        var opponentPlayer = new GameSessionParticipant(OpponentPlayerId);
 
-        return new GameSessionSnapshot(
+        return new GameSessionView(
             gameId,
             roundNumber,
             GamePhase.Play,
-            new GamePlayerSnapshot(currentPlayer, [], false, 0, 0, false, false, []),
-            new GamePlayerSnapshot(opponentPlayer, [], false, 0, 0, false, true, []),
+            new GamePlayerStateView(currentPlayer, [], false, 0, 0, false, false, []),
+            new GamePlayerStateView(opponentPlayer, [], false, 0, 0, false, true, []),
             [],
             0,
             waitingForOpponent,
@@ -158,9 +159,9 @@ public sealed class GetGamePageHandlerTests
 
     private sealed class FakeGameSessionService : IGameSessionService
     {
-        public GameSessionSnapshot? Session { get; set; }
+        public GameSessionView? Session { get; set; }
 
-        public GameSessionSnapshot? SessionAfterInitialize { get; init; }
+        public GameSessionView? SessionAfterInitialize { get; init; }
 
         public int InitializeCalls { get; private set; }
 
@@ -177,7 +178,7 @@ public sealed class GetGamePageHandlerTests
             return Task.FromResult(TryInitializeResult);
         }
 
-        public Task<GameSessionSnapshot?> GetSessionAsync(Guid gameId, string userId, CancellationToken cancellationToken = default)
+        public Task<GameSessionView?> GetSessionAsync(Guid gameId, Guid playerId, CancellationToken cancellationToken = default)
             => Task.FromResult(Session);
 
         public Task AcknowledgeGameplayEventBatchAsync(Guid gameId, Guid gameplayEventBatchId, CancellationToken cancellationToken = default)
@@ -189,7 +190,7 @@ public sealed class GetGamePageHandlerTests
         public Task<GameSessionCommandOutcome> SubmitPlayBatchAsync(Guid gameId, SubmitPlayBatchRequest request, CancellationToken cancellationToken = default)
             => throw new NotSupportedException();
 
-        public Task<GameSessionSnapshot> AbandonAsync(Guid gameId, string userId, CancellationToken cancellationToken = default)
+        public Task AbandonAsync(Guid gameId, Guid playerId, CancellationToken cancellationToken = default)
             => throw new NotSupportedException();
     }
 
@@ -204,45 +205,6 @@ public sealed class GetGamePageHandlerTests
             => throw new NotSupportedException();
 
         public Task RemovePresenceLeaseAsync(Guid gameId, Guid playerId, Guid connectionId, CancellationToken cancellationToken = default)
-            => throw new NotSupportedException();
-    }
-
-    private sealed class StubGameLobbyEventsPublisher : IGameLobbyInvalidationPublisher
-    {
-        public Task PublishLobbyInvalidatedAsync(Guid gameId, CancellationToken cancellationToken = default)
-            => Task.CompletedTask;
-    }
-
-    private sealed class StubGameSessionInvalidationPublisher : IGameSessionInvalidationPublisher
-    {
-        public Task PublishSessionInvalidatedAsync(Guid gameId, CancellationToken cancellationToken = default)
-            => Task.CompletedTask;
-    }
-
-    private sealed class StubGameMessageEventsPublisher : IGameMessageInvalidationPublisher
-    {
-        public Task PublishMessagesInvalidatedAsync(Guid gameId, CancellationToken cancellationToken = default)
-            => Task.CompletedTask;
-    }
-
-    private sealed class StubGameMessagePersistence : IGameMessagePersistence
-    {
-        public Task<GameTimelinePageView?> GetMessagesAsync(Guid gameId, string userId, Guid? beforeMessageId, int take, CancellationToken cancellationToken)
-            => throw new NotSupportedException();
-
-        public Task<IReadOnlyList<GameTimelineEntryView>?> GetMessageUpdatesAsync(Guid gameId, string userId, Guid? afterMessageId, int take, CancellationToken cancellationToken)
-            => throw new NotSupportedException();
-
-        public Task<GameMessageCommandOutcome> SendPublicMessageAsync(Guid gameId, string userId, string body, CancellationToken cancellationToken)
-            => throw new NotSupportedException();
-
-        public Task<GameMessageCommandOutcome> SendPrivateMessageAsync(Guid gameId, string userId, Guid recipientPlayerId, string body, CancellationToken cancellationToken)
-            => throw new NotSupportedException();
-
-        public Task<GameMessageCommandOutcome> EditMessageAsync(Guid gameId, string userId, Guid messageId, string body, CancellationToken cancellationToken)
-            => throw new NotSupportedException();
-
-        public Task<GameMessageCommandOutcome> DeleteMessageAsync(Guid gameId, string userId, Guid messageId, CancellationToken cancellationToken)
             => throw new NotSupportedException();
     }
 }

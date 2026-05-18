@@ -36,17 +36,13 @@ public sealed class GameSessionGrainState
 
     [Id(14)] public bool SecondPlayerScoutOverride { get; set; }
 
-    [Id(15)] public string? CurrentAcquireFirstUserId { get; set; }
+    [Id(15)] public Guid? CurrentAcquireFirstPlayerId { get; set; }
 
-    [Id(16)] public string? CurrentAcquireSecondUserId { get; set; }
+    [Id(16)] public Guid? CurrentAcquireSecondPlayerId { get; set; }
 
-    [Id(17)] public bool AcquireFirstCompleted { get; set; }
+    [Id(19)] public Guid? PreviousAcquireSecondPlayerId { get; set; }
 
-    [Id(18)] public bool AcquireSecondCompleted { get; set; }
-
-    [Id(19)] public string? PreviousAcquireSecondUserId { get; set; }
-
-    [Id(20)] public string? InitialTieBreakerFirstUserId { get; set; }
+    [Id(20)] public Guid? InitialTieBreakerFirstPlayerId { get; set; }
 
     [Id(21)] public GameSessionCompletionGrainState? Completion { get; set; }
 
@@ -80,7 +76,7 @@ public sealed class GameSessionCardReferenceGrainState
 [GenerateSerializer]
 public sealed class GameSessionPendingBatchGrainState
 {
-    [Id(0)] public string UserId { get; set; } = string.Empty;
+    [Id(0)] public Guid PlayerId { get; set; }
 
     [Id(1)] public List<GameSessionPendingBatchCardGrainState> Cards { get; set; } = [];
 }
@@ -116,7 +112,7 @@ public sealed class GameSessionResolvedBatchGrainState
 [GenerateSerializer]
 public sealed class GameSessionResolvedPlayerBatchGrainState
 {
-    [Id(0)] public string UserId { get; set; } = string.Empty;
+    [Id(0)] public Guid PlayerId { get; set; }
 
     [Id(1)] public List<GameSessionPendingBatchCardGrainState> Cards { get; set; } = [];
 
@@ -128,7 +124,7 @@ public sealed class GameSessionCompletionGrainState
 {
     [Id(0)] public GameCompletionReason Reason { get; set; }
 
-    [Id(1)] public string? WinnerUserId { get; set; }
+    [Id(1)] public Guid? WinnerPlayerId { get; set; }
 
     [Id(2)] public DateTime CompletedAtUtc { get; set; }
 }
@@ -138,7 +134,11 @@ public sealed class PendingGameplayEventBatchGrainState
 {
     [Id(0)] public Guid BatchId { get; set; }
 
-    [Id(1)] public GameSessionGrainView Session { get; set; } = default!;
+    [Id(1)] public Guid GameId { get; set; }
 
-    [Id(2)] public List<GameplayEvent> GameplayEvents { get; set; } = [];
+    [Id(2)] public GameResolvedBatchGrainView? LastResolvedBatch { get; set; }
+
+    [Id(3)] public GameCompletionGrainView? Completion { get; set; }
+
+    [Id(4)] public List<GameplayEvent> GameplayEvents { get; set; } = [];
 }

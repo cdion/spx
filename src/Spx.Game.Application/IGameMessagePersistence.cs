@@ -4,41 +4,41 @@ public interface IGameMessagePersistence
 {
     Task<GameTimelinePageView?> GetMessagesAsync(
         Guid gameId,
-        string userId,
+        Guid playerId,
         Guid? beforeMessageId,
         int take,
         CancellationToken cancellationToken);
 
     Task<IReadOnlyList<GameTimelineEntryView>?> GetMessageUpdatesAsync(
         Guid gameId,
-        string userId,
+        Guid playerId,
         Guid? afterMessageId,
         int take,
         CancellationToken cancellationToken);
 
     Task<GameMessageCommandOutcome> SendPublicMessageAsync(
         Guid gameId,
-        string userId,
+        Guid playerId,
         string body,
         CancellationToken cancellationToken);
 
     Task<GameMessageCommandOutcome> SendPrivateMessageAsync(
         Guid gameId,
-        string userId,
+        Guid playerId,
         Guid recipientPlayerId,
         string body,
         CancellationToken cancellationToken);
 
     Task<GameMessageCommandOutcome> EditMessageAsync(
         Guid gameId,
-        string userId,
+        Guid playerId,
         Guid messageId,
         string body,
         CancellationToken cancellationToken);
 
     Task<GameMessageCommandOutcome> DeleteMessageAsync(
         Guid gameId,
-        string userId,
+        Guid playerId,
         Guid messageId,
         CancellationToken cancellationToken);
 }

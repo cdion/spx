@@ -1,5 +1,4 @@
 using Microsoft.Extensions.Logging;
-using Spx.Contracts;
 
 namespace Spx.Game.Application.Features.LeaveGame;
 
@@ -17,11 +16,11 @@ internal sealed class LeaveGameHandler(
         var leaveResult = await gamePersistence.LeaveGameAsync(gameId, userId, cancellationToken);
 
         // Only abandon in Orleans after SQL commit succeeds
-        if (leaveResult.Changed)
+        if (leaveResult.PlayerId is Guid playerId)
         {
             try
             {
-                await gameSessionService.AbandonAsync(gameId, userId, cancellationToken);
+                await gameSessionService.AbandonAsync(gameId, playerId, cancellationToken);
             }
             catch (Exception exception)
             {

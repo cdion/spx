@@ -49,7 +49,7 @@ internal sealed class GamePageActionCoordinator(
         }
     }
 
-    public async Task AcquireCardAsync(Guid gameId, string userId, Guid marketCardInstanceId, CancellationToken cancellationToken = default)
+    public async Task AcquireCardAsync(Guid gameId, Guid playerId, Guid marketCardInstanceId, CancellationToken cancellationToken = default)
     {
         var lobby = data.Lobby;
         var session = data.Session;
@@ -62,7 +62,7 @@ internal sealed class GamePageActionCoordinator(
 
         try
         {
-            var result = await submitAcquireCardHandler.HandleAsync(gameId, userId, session.RoundNumber, marketCardInstanceId, cancellationToken);
+            var result = await submitAcquireCardHandler.HandleAsync(gameId, playerId, session.RoundNumber, marketCardInstanceId, cancellationToken);
             if (result is not GameSessionCommandSucceeded succeeded)
             {
                 data.SetGameplayError(((GameSessionCommandFailed)result).ErrorMessage);
@@ -73,7 +73,7 @@ internal sealed class GamePageActionCoordinator(
         }
         catch (Exception exception)
         {
-            logger.LogError(exception, "Failed to submit an acquire choice for game {GameId} user {UserId}.", gameId, userId);
+            logger.LogError(exception, "Failed to submit an acquire choice for game {GameId} player {PlayerId}.", gameId, playerId);
             data.SetGameplayError("We couldn't lock your acquire choice right now. Please try again.");
         }
         finally
@@ -82,7 +82,7 @@ internal sealed class GamePageActionCoordinator(
         }
     }
 
-    public async Task LockBatchAsync(Guid gameId, string userId, IReadOnlyList<GameBatchCardSelection> cards, CancellationToken cancellationToken = default)
+    public async Task LockBatchAsync(Guid gameId, Guid playerId, IReadOnlyList<GameBatchCardSelection> cards, CancellationToken cancellationToken = default)
     {
         var lobby = data.Lobby;
         var session = data.Session;
@@ -95,7 +95,7 @@ internal sealed class GamePageActionCoordinator(
 
         try
         {
-            var result = await submitPlayBatchHandler.HandleAsync(gameId, userId, session.RoundNumber, cards, cancellationToken);
+            var result = await submitPlayBatchHandler.HandleAsync(gameId, playerId, session.RoundNumber, cards, cancellationToken);
             if (result is not GameSessionCommandSucceeded succeeded)
             {
                 data.SetGameplayError(((GameSessionCommandFailed)result).ErrorMessage);
@@ -107,7 +107,7 @@ internal sealed class GamePageActionCoordinator(
         }
         catch (Exception exception)
         {
-            logger.LogError(exception, "Failed to submit a play batch for game {GameId} user {UserId}.", gameId, userId);
+            logger.LogError(exception, "Failed to submit a play batch for game {GameId} player {PlayerId}.", gameId, playerId);
             data.SetGameplayError("We couldn't lock your play batch right now. Please try again.");
         }
         finally
@@ -118,7 +118,7 @@ internal sealed class GamePageActionCoordinator(
 
     private void AddImmediateGameplayEntries(
         GameLobbyView lobby,
-        GameSessionSnapshot updatedSession,
+        GameSessionView updatedSession,
         IReadOnlyList<GameplayEvent> gameplayEvents)
     {
         if (updatedSession.LastResolvedBatch is null || gameplayEvents.Count == 0)
@@ -127,7 +127,7 @@ internal sealed class GamePageActionCoordinator(
         }
 
         var playerNames = lobby.Players.ToDictionary(player => player.PlayerId, player => player.Name);
-        var messageBodies = gameplayEventMessageFormatter.CreateMessageBodies(updatedSession, gameplayEvents, playerNames);
+        var messageBodies = gameplayEventMessageFormatter.CreateMessageBodies(updatedSession.LastResolvedBatch, updatedSession.Completion, gameplayEvents, playerNames);
         if (messageBodies.Count == 0)
         {
             return;

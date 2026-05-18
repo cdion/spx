@@ -1,5 +1,4 @@
 using Microsoft.EntityFrameworkCore;
-using Spx.Contracts;
 using Spx.Game.Domain;
 using Spx.Data;
 using Spx.Game.Application;
@@ -23,12 +22,13 @@ public sealed class GameMessagingServiceTests(PostgresDatabaseFixture fixture) :
         var resolvedAtUtc = DateTime.UtcNow;
         var gameplayEvents = new GameplayEvent[]
         {
-            new(GameplayEventKind.CreatedCard, "user-1", GameCardDefinition.Produce, null, null, GameCardDefinition.Victory),
-            new(GameplayEventKind.Resolved, "user-2", GameCardDefinition.Scout, null, null, null)
+            new(GameplayEventKind.CreatedCard, firstPlayer.Id, GameCardDefinition.Produce, null, null, GameCardDefinition.Victory),
+            new(GameplayEventKind.Resolved, secondPlayer.Id, GameCardDefinition.Scout, null, null, null)
         };
 
-        var persistedCount = await writer.PersistResolvedBatchAsync(CreateResolvedSession(game.Id, firstPlayer.Id, secondPlayer.Id, resolvedAtUtc), gameplayEvents);
-        var persistedCountOnRetry = await writer.PersistResolvedBatchAsync(CreateResolvedSession(game.Id, firstPlayer.Id, secondPlayer.Id, resolvedAtUtc), gameplayEvents);
+        var (lastResolvedBatch, completion) = CreateResolvedBatch(firstPlayer.Id, secondPlayer.Id, resolvedAtUtc);
+        var persistedCount = await writer.PersistResolvedBatchAsync(game.Id, lastResolvedBatch, completion, gameplayEvents);
+        var persistedCountOnRetry = await writer.PersistResolvedBatchAsync(game.Id, lastResolvedBatch, completion, gameplayEvents);
 
         Assert.Equal(2, persistedCount);
         Assert.Equal(0, persistedCountOnRetry);
@@ -49,10 +49,11 @@ public sealed class GameMessagingServiceTests(PostgresDatabaseFixture fixture) :
         var database = Database;
         await database.AddUserAsync("user-1", "user1@example.com");
         var game = await database.AddGameAsync("user-1", "ABC123", "Alpha", "user-1", "Captain Red");
+        var sender = await database.Context.GamePlayers.SingleAsync(entry => entry.GameId == game.Id && entry.UserId == "user-1");
         var publisher = new FakeGameMessagePublisher();
         var features = GameFeatureTestFactory.Create(database.ContextFactory, messagePublisher: publisher);
 
-        var result = await features.SendPublicMessage.HandleAsync(game.Id, "user-1", new SendGameMessageRequest("Hello crew"));
+        var result = await features.SendPublicMessage.HandleAsync(game.Id, sender.Id, new SendGameMessageRequest("Hello crew"));
 
         var succeeded = Assert.IsType<GameMessageCommandSucceeded>(result);
         var message = await database.Context.GameMessages.SingleAsync();
@@ -73,17 +74,18 @@ public sealed class GameMessagingServiceTests(PostgresDatabaseFixture fixture) :
         await database.AddUserAsync("user-3", "user3@example.com");
         var game = await database.AddGameAsync("user-1", "ABC123", "Alpha", "user-1", "Captain Red");
         var recipient = await database.AddGamePlayerAsync(game.Id, "user-2", "Captain Blue");
-        await database.AddGamePlayerAsync(game.Id, "user-3", "Captain Green");
+        var thirdPlayer = await database.AddGamePlayerAsync(game.Id, "user-3", "Captain Green");
+        var sender = await database.Context.GamePlayers.SingleAsync(entry => entry.GameId == game.Id && entry.UserId == "user-1");
         var publisher = new FakeGameMessagePublisher();
         var features = GameFeatureTestFactory.Create(database.ContextFactory, messagePublisher: publisher);
 
-        var sendResult = await features.SendPrivateMessage.HandleAsync(game.Id, "user-1", recipient.Id, new SendGameMessageRequest("Keep this private."));
+        var sendResult = await features.SendPrivateMessage.HandleAsync(game.Id, sender.Id, recipient.Id, new SendGameMessageRequest("Keep this private."));
 
         Assert.IsType<GameMessageCommandSucceeded>(sendResult);
 
-        var senderView = await features.GetMessages.HandleAsync(game.Id, "user-1");
-        var recipientView = await features.GetMessages.HandleAsync(game.Id, "user-2");
-        var otherView = await features.GetMessages.HandleAsync(game.Id, "user-3");
+        var senderView = await features.GetMessages.HandleAsync(game.Id, sender.Id);
+        var recipientView = await features.GetMessages.HandleAsync(game.Id, recipient.Id);
+        var otherView = await features.GetMessages.HandleAsync(game.Id, thirdPlayer.Id);
 
         Assert.Single(senderView!.Items);
         Assert.Single(recipientView!.Items);
@@ -100,10 +102,11 @@ public sealed class GameMessagingServiceTests(PostgresDatabaseFixture fixture) :
         await database.AddUserAsync("user-2", "user2@example.com");
         var game = await database.AddGameAsync("user-1", "ABC123", "Alpha", "user-1", "Captain Red");
         var recipient = await database.AddGamePlayerAsync(game.Id, "user-2", "Captain Blue", leftAtUtc: DateTime.UtcNow.AddMinutes(-1));
+        var sender = await database.Context.GamePlayers.SingleAsync(entry => entry.GameId == game.Id && entry.UserId == "user-1");
         var publisher = new FakeGameMessagePublisher();
         var features = GameFeatureTestFactory.Create(database.ContextFactory, messagePublisher: publisher);
 
-        var result = await features.SendPrivateMessage.HandleAsync(game.Id, "user-1", recipient.Id, new SendGameMessageRequest("Still there?"));
+        var result = await features.SendPrivateMessage.HandleAsync(game.Id, sender.Id, recipient.Id, new SendGameMessageRequest("Still there?"));
 
         var failed = Assert.IsType<GameMessageCommandFailed>(result);
         Assert.Equal("That recipient is not an active player in this game.", failed.ErrorMessage);
@@ -127,7 +130,7 @@ public sealed class GameMessagingServiceTests(PostgresDatabaseFixture fixture) :
 
         var features = GameFeatureTestFactory.Create(database.ContextFactory);
 
-        var page = await features.GetMessages.HandleAsync(game.Id, "user-2");
+        var page = await features.GetMessages.HandleAsync(game.Id, formerPlayer.Id);
 
         Assert.Equal(2, page!.Items.Count);
         Assert.Contains(page.Items, entry => entry.Id == firstMessage.Id);
@@ -146,7 +149,7 @@ public sealed class GameMessagingServiceTests(PostgresDatabaseFixture fixture) :
         var thirdMessage = await database.AddMessageAsync(game.Id, GameMessageKind.PlayerPublic, GameMessageSenderKind.Player, sender.Id, null, sender.Name, string.Empty, "Third", id: Guid.Parse("019e0000-0000-7000-8000-000000000003"));
         var features = GameFeatureTestFactory.Create(database.ContextFactory);
 
-        var page = await features.GetMessages.HandleAsync(game.Id, "user-1", beforeMessageId: thirdMessage.Id, take: 1);
+        var page = await features.GetMessages.HandleAsync(game.Id, sender.Id, beforeMessageId: thirdMessage.Id, take: 1);
 
         Assert.NotNull(page);
         Assert.True(page!.HasMore);
@@ -166,7 +169,7 @@ public sealed class GameMessagingServiceTests(PostgresDatabaseFixture fixture) :
         var thirdMessage = await database.AddMessageAsync(game.Id, GameMessageKind.PlayerPublic, GameMessageSenderKind.Player, sender.Id, null, sender.Name, string.Empty, "Third", id: Guid.Parse("019e0000-0000-7000-8000-000000000013"));
         var features = GameFeatureTestFactory.Create(database.ContextFactory);
 
-        var updates = await features.GetMessageUpdates.HandleAsync(game.Id, "user-1", firstMessage.Id, take: 10);
+        var updates = await features.GetMessageUpdates.HandleAsync(game.Id, sender.Id, firstMessage.Id, take: 10);
 
         Assert.NotNull(updates);
         Assert.Equal([secondMessage.Id, thirdMessage.Id], updates!.Select(entry => entry.Id));
@@ -182,7 +185,7 @@ public sealed class GameMessagingServiceTests(PostgresDatabaseFixture fixture) :
         var message = await database.AddMessageAsync(game.Id, GameMessageKind.PlayerPublic, GameMessageSenderKind.Player, sender.Id, null, sender.Name, string.Empty, "Original", createdAtUtc: DateTime.UtcNow.AddMinutes(-3));
         var features = GameFeatureTestFactory.Create(database.ContextFactory);
 
-        var result = await features.EditMessage.HandleAsync(game.Id, "user-1", message.Id, new UpdateGameMessageRequest("Updated"));
+        var result = await features.EditMessage.HandleAsync(game.Id, sender.Id, message.Id, new UpdateGameMessageRequest("Updated"));
 
         var failed = Assert.IsType<GameMessageCommandFailed>(result);
         Assert.Equal("That message can no longer be edited.", failed.ErrorMessage);
@@ -198,7 +201,7 @@ public sealed class GameMessagingServiceTests(PostgresDatabaseFixture fixture) :
         var message = await database.AddMessageAsync(game.Id, GameMessageKind.PlayerPublic, GameMessageSenderKind.Player, sender.Id, null, sender.Name, string.Empty, "Original", deletedAtUtc: DateTime.UtcNow.AddSeconds(-5));
         var features = GameFeatureTestFactory.Create(database.ContextFactory);
 
-        var result = await features.EditMessage.HandleAsync(game.Id, "user-1", message.Id, new UpdateGameMessageRequest("Updated"));
+        var result = await features.EditMessage.HandleAsync(game.Id, sender.Id, message.Id, new UpdateGameMessageRequest("Updated"));
 
         var failed = Assert.IsType<GameMessageCommandFailed>(result);
         Assert.Equal("Deleted messages cannot be edited.", failed.ErrorMessage);
@@ -215,7 +218,7 @@ public sealed class GameMessagingServiceTests(PostgresDatabaseFixture fixture) :
         var publisher = new FakeGameMessagePublisher();
         var features = GameFeatureTestFactory.Create(database.ContextFactory, messagePublisher: publisher);
 
-        var result = await features.DeleteMessage.HandleAsync(game.Id, "user-1", message.Id);
+        var result = await features.DeleteMessage.HandleAsync(game.Id, sender.Id, message.Id);
 
         var succeeded = Assert.IsType<GameMessageCommandSucceeded>(result);
 
@@ -236,43 +239,32 @@ public sealed class GameMessagingServiceTests(PostgresDatabaseFixture fixture) :
         var publisher = new FakeGameMessagePublisher();
         var features = GameFeatureTestFactory.Create(database.ContextFactory, messagePublisher: publisher);
 
-        var result = await features.DeleteMessage.HandleAsync(game.Id, "user-1", message.Id);
+        var result = await features.DeleteMessage.HandleAsync(game.Id, sender.Id, message.Id);
 
         var failed = Assert.IsType<GameMessageCommandFailed>(result);
         Assert.Equal("That message has already been deleted.", failed.ErrorMessage);
     }
 
-    private static GameSessionSnapshot CreateResolvedSession(Guid gameId, Guid firstPlayerId, Guid secondPlayerId, DateTime resolvedAtUtc)
+    private static (GameResolvedBatchView, GameCompletionView) CreateResolvedBatch(Guid firstPlayerId, Guid secondPlayerId, DateTime resolvedAtUtc)
     {
-        var firstPlayer = new GameSessionParticipant(firstPlayerId, "user-1");
-        var secondPlayer = new GameSessionParticipant(secondPlayerId, "user-2");
+        var firstPlayer = new GameSessionParticipant(firstPlayerId);
+        var secondPlayer = new GameSessionParticipant(secondPlayerId);
 
-        return new GameSessionSnapshot(
-            gameId,
+        var lastResolvedBatch = new GameResolvedBatchView(
             4,
-            GamePhase.Completed,
-            new GamePlayerSnapshot(firstPlayer, [], false, 0, 0, false, false, []),
-            new GamePlayerSnapshot(secondPlayer, [], false, 0, 0, false, false, []),
-            [],
-            0,
-            false,
-            false,
-            false,
-            GameCardCatalog.MaxBatchSize,
-            new GameResolvedBatchSnapshot(
-                4,
-                [
-                    new GameResolvedPlayerBatchSnapshot(
-                        firstPlayer,
-                        [new GameBatchCardSnapshot(CreateCard(Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"), GameCardDefinition.Produce), null, GameCardDefinition.Victory, null, null, [])],
-                        true),
-                    new GameResolvedPlayerBatchSnapshot(secondPlayer, [], false)
-                ],
-                resolvedAtUtc),
-            new GameCompletionSnapshot(GameCompletionReason.Victory, firstPlayer, resolvedAtUtc));
+            [
+                new GameResolvedPlayerBatchView(
+                    firstPlayer,
+                    [new GameBatchCardView(CreateCard(Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"), GameCardDefinition.Produce), null, GameCardDefinition.Victory, null, null, [])],
+                    true),
+                new GameResolvedPlayerBatchView(secondPlayer, [], false)
+            ],
+            resolvedAtUtc);
+        var completion = new GameCompletionView(GameCompletionReason.Victory, firstPlayer, resolvedAtUtc);
+        return (lastResolvedBatch, completion);
     }
 
-    private static GameCardSnapshot CreateCard(Guid cardInstanceId, GameCardDefinition definition)
+    private static GameCardView CreateCard(Guid cardInstanceId, GameCardDefinition definition)
         => new(
             cardInstanceId,
             definition,
