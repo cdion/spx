@@ -1,15 +1,13 @@
 <aside class="ui-surface-form space-y-6">
-    <div class="ui-section-header">
-        <p class="ui-section-eyebrow">You</p>
-        <h2 class="ui-section-title">@Lobby.CurrentPlayerName</h2>
+    <SectionHeader Eyebrow="You" Title="@Lobby.CurrentPlayerName">
         <p class="text-sm leading-6 text-slate-300">@GetPlayerPanelMessage()</p>
-    </div>
+    </SectionHeader>
 
     <div class="space-y-3 text-sm leading-6 text-slate-300">
-        <p>Created @FormatDateTime(Lobby.CreatedAtUtc)</p>
+        <p>Created @UiHelpers.FormatDateTime(Lobby.CreatedAtUtc)</p>
         @if (Lobby.EndedAtUtc is not null)
         {
-            <p>Ended @FormatDateTime(Lobby.EndedAtUtc.Value)</p>
+            <p>Ended @UiHelpers.FormatDateTime(Lobby.EndedAtUtc.Value)</p>
         }
     </div>
 
@@ -43,6 +41,4 @@
             ? "Leaving removes your active seat. If you are the last active player, the game ends."
             : "You previously played in this game. This page remains available for archived timeline review.";
 
-    private static string FormatDateTime(DateTime value)
-        => value.ToLocalTime().ToString("g");
 }

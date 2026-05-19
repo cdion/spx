@@ -1,14 +1,14 @@
 <header class="@(Compact ? "ui-page-header-compact" : "ui-page-header")">
     @if (!string.IsNullOrWhiteSpace(Eyebrow))
     {
-        <p class="ui-page-eyebrow">@Eyebrow</p>
+        <p class="ui-section-eyebrow">@Eyebrow</p>
     }
 
-    <h1 class="@(Compact ? "text-3xl font-semibold tracking-tight text-white" : "ui-page-title")">@Title</h1>
+    <h1 class="@(Compact ? "ui-page-title-compact" : "ui-page-title")">@Title</h1>
 
     @if (!string.IsNullOrWhiteSpace(Description))
     {
-        <p class="@(Compact ? "text-base leading-7 text-slate-300" : "ui-page-copy")">@Description</p>
+        <p class="ui-page-copy">@Description</p>
     }
 
     @ChildContent

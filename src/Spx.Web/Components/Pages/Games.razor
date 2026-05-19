@@ -22,7 +22,7 @@ else if (games is not null)
     <section class="ui-page max-w-6xl">
         <header class="ui-surface-form flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div class="ui-section-header">
-                <p class="ui-page-eyebrow">Lobby</p>
+                <p class="ui-section-eyebrow">Lobby</p>
                 <h1 class="ui-page-title">My games</h1>
                 <p class="ui-page-copy">
                     Open games stay actionable, while ended games remain available as lightweight history.
@@ -43,18 +43,18 @@ else if (games is not null)
             <div class="space-y-6">
                 <section class="ui-surface-form">
                     <div class="flex items-start justify-between gap-4">
-                        <div class="space-y-2">
+                        <div class="ui-section-header">
                             <p class="ui-section-eyebrow text-emerald-300">Open</p>
                             <h2 class="ui-section-title">Active seats</h2>
                         </div>
-                        <span class="ui-status-badge border-emerald-400/30 bg-emerald-500/10 text-emerald-200">
+                        <StatusBadge Tone="StatusBadge.BadgeTone.Success">
                             @games.OpenGames.Count game(s)
-                        </span>
+                        </StatusBadge>
                     </div>
 
                     @if (games.OpenGames.Count == 0)
                     {
-                        <p class="mt-6 text-sm leading-6 text-slate-300">You are not currently seated in any open games.</p>
+                        <p class="mt-6 ui-empty-state">You are not currently seated in any open games.</p>
                     }
                     else
                     {
@@ -70,9 +70,9 @@ else if (games is not null)
                                         </div>
 
                                         <div class="flex flex-wrap gap-3">
-                                            <span class="ui-status-badge">
+                                            <StatusBadge>
                                                 @game.ActivePlayerCount / @game.MaxPlayers players
-                                            </span>
+                                            </StatusBadge>
                                             <a class="ui-button-primary px-4 py-2" href="/games/@game.GameId">
                                                 Open lobby
                                             </a>
@@ -86,18 +86,18 @@ else if (games is not null)
 
                 <section class="ui-surface-form">
                     <div class="flex items-start justify-between gap-4">
-                        <div class="space-y-2">
+                        <div class="ui-section-header">
                             <p class="ui-section-eyebrow text-slate-400">Ended</p>
                             <h2 class="ui-section-title">History</h2>
                         </div>
-                        <span class="ui-status-badge">
+                        <StatusBadge>
                             @games.EndedGames.Count game(s)
-                        </span>
+                        </StatusBadge>
                     </div>
 
                     @if (games.EndedGames.Count == 0)
                     {
-                        <p class="mt-6 text-sm leading-6 text-slate-300">Ended games will appear here after their final player leaves.</p>
+                        <p class="mt-6 ui-empty-state">Ended games will appear here after their final player leaves.</p>
                     }
                     else
                     {
@@ -113,8 +113,8 @@ else if (games is not null)
                                         </div>
 
                                         <div class="space-y-2 text-sm text-slate-400 sm:text-right">
-                                            <p>Ended @FormatDateTime(game.EndedAtUtc ?? game.CreatedAtUtc)</p>
-                                            <p>Created @FormatDateTime(game.CreatedAtUtc)</p>
+                                            <p>Ended @UiHelpers.FormatDateTime(game.EndedAtUtc ?? game.CreatedAtUtc)</p>
+                                            <p>Created @UiHelpers.FormatDateTime(game.CreatedAtUtc)</p>
                                         </div>
                                     </div>
                                 </article>
@@ -125,10 +125,7 @@ else if (games is not null)
             </div>
 
             <aside class="ui-surface-form space-y-6">
-                <div class="ui-section-header">
-                    <p class="ui-section-eyebrow">Notes</p>
-                    <h2 class="ui-section-title">Current rules</h2>
-                </div>
+                <SectionHeader Eyebrow="Notes" Title="Current rules" />
 
                 <ul class="space-y-3 text-sm leading-6 text-slate-300">
                     <li>Every game supports exactly two active player seats in this first slice.</li>
@@ -164,7 +161,7 @@ else if (games is not null)
 
         try
         {
-            var userId = await GetUserIdAsync();
+            var userId = await UiHelpers.GetUserIdAsync(AuthenticationStateTask);
             games = await GetUserGamesHandler.HandleAsync(userId);
         }
         catch (Exception exception)
@@ -178,13 +175,4 @@ else if (games is not null)
         }
     }
 
-    private async Task<string> GetUserIdAsync()
-    {
-        var authenticationState = await AuthenticationStateTask;
-        return authenticationState.User.FindFirstValue(ClaimTypes.NameIdentifier)
-            ?? throw new InvalidOperationException("The current user does not have an identity id claim.");
-    }
-
-    private static string FormatDateTime(DateTime value)
-        => value.ToLocalTime().ToString("g");
 }

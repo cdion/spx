@@ -1,12 +1,10 @@
 @using Microsoft.AspNetCore.Components.Rendering
 @using Spx.Game.Domain
 
-<section class="ui-surface-form space-y-5 p-5 sm:p-6 lg:p-7">
-    <div class="space-y-2">
-        <p class="ui-section-eyebrow">Gameplay</p>
-        <h2 class="ui-section-title">@GetHeadline()</h2>
+<section class="ui-surface-form-tight space-y-5">
+    <SectionHeader Eyebrow="Gameplay" Title="@GetHeadline()">
         <p class="text-sm leading-6 text-slate-300">@GetDescription()</p>
-    </div>
+    </SectionHeader>
 
     @if (!string.IsNullOrWhiteSpace(GameplayError))
     {
@@ -24,59 +22,59 @@
         <div class="grid gap-3 lg:grid-cols-3">
             <article class="ui-panel-row items-start">
                 <div>
-                    <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Round</p>
+                    <p class="ui-panel-label">Round</p>
                     <p class="mt-2 text-2xl font-semibold text-white">@Session.RoundNumber</p>
                 </div>
-                <span class="ui-status-badge">@Session.Phase</span>
+                <StatusBadge>@Session.Phase</StatusBadge>
             </article>
 
             <article class="ui-panel-row items-start">
                 <div class="space-y-1">
-                    <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Matchup</p>
+                    <p class="ui-panel-label">Matchup</p>
                     <p class="text-base font-semibold text-white">@CurrentPlayerName</p>
                     <p class="text-sm text-slate-400">vs @OpponentPlayerName</p>
                 </div>
-                <span class="ui-status-badge">@GetStatusBadgeText()</span>
+                <StatusBadge>@GetStatusBadgeText()</StatusBadge>
             </article>
 
             <article class="ui-panel-row items-start">
                 <div>
-                    <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Market deck</p>
+                    <p class="ui-panel-label">Market deck</p>
                     <p class="mt-2 text-2xl font-semibold text-white">@Session.MarketDeckCount</p>
                 </div>
-                <span class="ui-status-badge border-emerald-400/30 bg-emerald-500/10 text-emerald-200">
+                <StatusBadge Tone="StatusBadge.BadgeTone.Success">
                     @Session.VisibleMarketCards.Count visible
-                </span>
+                </StatusBadge>
             </article>
         </div>
 
         @if (Session.Completion is not null)
         {
-            <AlertBanner Tone="success" Role="status">
+            <AlertBanner Tone="AlertBanner.AlertTone.Success" Role="status">
                 @GetCompletionMessage()
             </AlertBanner>
         }
 
-        <section class="rounded-3xl border border-white/10 bg-slate-950/40 p-4 space-y-4 lg:p-5">
+        <section class="ui-surface-section p-4 space-y-4 lg:p-5">
             <div>
-                <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Hands</p>
+                <p class="ui-panel-label">Hands</p>
             </div>
 
             <div class="grid gap-4 lg:grid-cols-2">
-                <article class="space-y-4 rounded-2xl border border-white/10 bg-slate-900/60 p-4">
+                <article class="ui-panel-card-inner space-y-4">
                     <div class="flex items-center justify-between gap-3">
                         <div>
-                            <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Your hand</p>
+                            <p class="ui-panel-label">Your hand</p>
                             <p class="mt-1 text-sm text-slate-300">@Session.CurrentPlayer.Hand.Count cards</p>
                         </div>
                         <div class="flex flex-wrap justify-end gap-2">
                             @if (ShowCurrentAcquireBadge(Session.CurrentPlayer))
                             {
-                                <span class="ui-status-badge border-sky-400/30 bg-sky-400/10 text-sky-200">Current pick</span>
+                                <StatusBadge Tone="StatusBadge.BadgeTone.Info">Current pick</StatusBadge>
                             }
                             @if (Session.CurrentPlayer.HasLockedBatch)
                             {
-                                <span class="ui-status-badge border-amber-400/30 bg-amber-500/10 text-amber-200">Batch locked</span>
+                                <StatusBadge Tone="StatusBadge.BadgeTone.Warning">Batch locked</StatusBadge>
                             }
                         </div>
                     </div>
@@ -88,20 +86,20 @@
                     </div>
                 </article>
 
-                <article class="space-y-4 rounded-2xl border border-white/10 bg-slate-900/60 p-4">
+                <article class="ui-panel-card-inner space-y-4">
                     <div class="flex items-center justify-between gap-3">
                         <div>
-                            <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">@OpponentPlayerName's hand</p>
+                            <p class="ui-panel-label">@OpponentPlayerName's hand</p>
                             <p class="mt-1 text-sm text-slate-300">@Session.OpponentPlayer.Hand.Count cards</p>
                         </div>
                         <div class="flex flex-wrap justify-end gap-2">
                             @if (ShowCurrentAcquireBadge(Session.OpponentPlayer))
                             {
-                                <span class="ui-status-badge border-sky-400/30 bg-sky-400/10 text-sky-200">Current pick</span>
+                                <StatusBadge Tone="StatusBadge.BadgeTone.Info">Current pick</StatusBadge>
                             }
                             @if (Session.OpponentPlayer.HasLockedBatch)
                             {
-                                <span class="ui-status-badge border-amber-400/30 bg-amber-500/10 text-amber-200">Batch locked</span>
+                                <StatusBadge Tone="StatusBadge.BadgeTone.Warning">Batch locked</StatusBadge>
                             }
                         </div>
                     </div>
@@ -117,15 +115,15 @@
 
         @if (Session.Phase == GamePhase.Acquire)
         {
-            <section class="rounded-3xl border border-white/10 bg-slate-950/40 p-4 space-y-4 lg:p-5">
+            <section class="ui-surface-section p-4 space-y-4 lg:p-5">
                 <div class="flex items-center justify-between gap-3">
                     <div>
-                        <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Shared market</p>
+                        <p class="ui-panel-label">Shared market</p>
                         <p class="mt-1 text-sm text-slate-300">Acquire one visible action card when it is your turn.</p>
                     </div>
                     @if (Session.CanAcquireCard)
                     {
-                        <span class="ui-status-badge border-sky-400/30 bg-sky-400/10 text-sky-200">Your acquire</span>
+                    <StatusBadge Tone="StatusBadge.BadgeTone.Info">Your acquire</StatusBadge>
                     }
                 </div>
 
@@ -162,26 +160,26 @@
         }
         else if (Session.Phase == GamePhase.Play)
         {
-            <section class="rounded-3xl border border-white/10 bg-slate-950/40 p-5 space-y-5">
+            <section class="ui-surface-section p-5 space-y-5">
                 @if (ShowPlayEditor)
                 {
                     <div class="flex items-center justify-between gap-3">
                         <div>
-                            <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Play phase</p>
+                            <p class="ui-panel-label">Play phase</p>
                             <p class="mt-1 text-sm text-slate-300">Lock up to @Session.MaxBatchSize action or effect cards. Resources stay in hand and are referenced as inputs.</p>
                         </div>
-                        <span class="ui-status-badge border-sky-400/30 bg-sky-400/10 text-sky-200">Your turn</span>
+                        <StatusBadge Tone="StatusBadge.BadgeTone.Info">Your turn</StatusBadge>
                     </div>
 
                     <div class="grid gap-3 lg:grid-cols-3">
                         @foreach (var card in GetPlayableCards())
                         {
                             var isSelected = IsCardSelected(card.CardInstanceId);
-                            <article class="rounded-2xl border border-white/10 bg-slate-900/60 p-4 space-y-3">
+                            <article class="ui-panel-card-inner space-y-3">
                                 <div class="flex items-start justify-between gap-3">
                                     <div>
                                         <p class="text-sm font-semibold text-white">@card.DisplayName</p>
-                                        <p class="mt-1 text-xs uppercase tracking-[0.2em] text-slate-400">@card.Category</p>
+                                        <p class="ui-panel-label mt-1">@card.Category</p>
                                     </div>
                                     <button class="ui-button-secondary"
                                             @onclick="() => ToggleCardSelection(card.CardInstanceId)"
@@ -216,7 +214,7 @@
                 else
                 {
                     <div>
-                        <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Play phase</p>
+                        <p class="ui-panel-label">Play phase</p>
                         <p class="mt-1 text-sm text-slate-300">Play controls are unavailable while the current batches are being locked and resolved.</p>
                     </div>
 
@@ -236,12 +234,12 @@
 
         @if (Session.CurrentPlayer.VisibleLockedCards.Count > 0)
         {
-            <section class="rounded-3xl border border-white/10 bg-slate-950/40 p-5 space-y-3">
-                <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Locked batch</p>
+            <section class="ui-surface-section p-5 space-y-3">
+                <p class="ui-panel-label">Locked batch</p>
                 <div class="grid gap-3 lg:grid-cols-3">
                     @foreach (var lockedCard in Session.CurrentPlayer.VisibleLockedCards)
                     {
-                        <article class="rounded-2xl border border-white/10 bg-slate-900/60 p-4">
+                        <article class="ui-panel-card-inner">
                             <p class="text-sm font-semibold text-white">@lockedCard.Card.DisplayName</p>
                             <p class="mt-2 text-xs text-slate-400">@DescribeSelection(lockedCard)</p>
                         </article>
@@ -252,15 +250,15 @@
 
         @if (Session.LastResolvedBatch is not null)
         {
-            <section class="rounded-3xl border border-white/10 bg-slate-950/40 p-5 space-y-4">
+            <section class="ui-surface-section p-5 space-y-4">
                 <div>
-                    <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Last resolution</p>
+                    <p class="ui-panel-label">Last resolution</p>
                     <p class="mt-1 text-sm text-slate-300">Round @Session.LastResolvedBatch.RoundNumber</p>
                 </div>
                 <div class="grid gap-4 md:grid-cols-2">
                     @foreach (var playerBatch in GetResolvedPlayersInDisplayOrder())
                     {
-                        <article class="rounded-2xl border border-white/10 bg-slate-900/60 p-4">
+                        <article class="ui-panel-card-inner">
                             <p class="text-sm font-semibold text-white">@ResolvePlayerName(playerBatch.Participant.PlayerId)</p>
                             <p class="mt-2 text-sm text-slate-300">Played @string.Join(", ", playerBatch.PlayedCards.Select(card => card.Card.DisplayName))</p>
                             @if (playerBatch.ProducedVictory)

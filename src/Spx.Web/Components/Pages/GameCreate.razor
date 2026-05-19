@@ -7,13 +7,7 @@
 
 <PageTitle>Create Game</PageTitle>
 
-<section class="ui-page">
-    <PageHero Eyebrow="Lobby"
-              Title="Create a game"
-              Description="Creating a game reserves the invite code and seats you immediately as player one." />
-
-    <div class="ui-surface-form">
-        <div class="ui-flow">
+<FormPage Eyebrow="Lobby" Title="Create a game" Description="Creating a game reserves the invite code and seats you immediately as player one.">
             @if (!string.IsNullOrWhiteSpace(errorMessage))
             {
                 <AlertBanner>@errorMessage</AlertBanner>
@@ -47,9 +41,7 @@
                     Cancel
                 </a>
             </div>
-        </div>
-    </div>
-</section>
+</FormPage>
 
 @code {
     [CascadingParameter]
@@ -72,7 +64,7 @@
 
         try
         {
-            var userId = await GetUserIdAsync();
+            var userId = await UiHelpers.GetUserIdAsync(AuthenticationStateTask);
             var result = await CreateGameHandler.HandleAsync(userId, new CreateGameRequest(gameName, playerName));
 
             if (result is not GameCommandSucceeded succeeded)
@@ -94,10 +86,4 @@
         }
     }
 
-    private async Task<string> GetUserIdAsync()
-    {
-        var authenticationState = await AuthenticationStateTask;
-        return authenticationState.User.FindFirstValue(ClaimTypes.NameIdentifier)
-            ?? throw new InvalidOperationException("The current user does not have an identity id claim.");
-    }
 }

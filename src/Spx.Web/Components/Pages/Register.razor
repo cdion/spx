@@ -3,13 +3,7 @@
 
 <PageTitle>Create account</PageTitle>
 
-<section class="ui-page">
-    <PageHero Eyebrow="Identity"
-              Title="Create account"
-              Description="Register with your email address. You will confirm the account before the first sign-in." />
-
-    <div class="ui-surface-form">
-        <div class="ui-flow">
+<FormPage Eyebrow="Identity" Title="Create account" Description="Register with your email address. You will confirm the account before the first sign-in.">
             @if (!string.IsNullOrWhiteSpace(Error))
             {
                 <AlertBanner>@Error</AlertBanner>
@@ -49,9 +43,7 @@
                 Already registered?
                 <a class="ui-inline-link" href="/login">Sign in</a>
             </p>
-        </div>
-    </div>
-</section>
+</FormPage>
 
 @code {
     [SupplyParameterFromQuery(Name = "error")]

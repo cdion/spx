@@ -4,8 +4,10 @@
 }
 
 @code {
+    public enum AlertTone { Error, Success, Warning }
+
     [Parameter]
-    public string Tone { get; set; } = "error";
+    public AlertTone Tone { get; set; } = AlertTone.Error;
 
     [Parameter]
     public string Role { get; set; } = "alert";
@@ -15,8 +17,8 @@
 
     private string CssClass => Tone switch
     {
-        "success" => "ui-alert ui-alert-success",
-        "warning" => "ui-alert ui-alert-warning",
+        AlertTone.Success => "ui-alert ui-alert-success",
+        AlertTone.Warning => "ui-alert ui-alert-warning",
         _ => "ui-alert ui-alert-error"
     };
 }

@@ -3,16 +3,10 @@
 
 <PageTitle>Resend confirmation</PageTitle>
 
-<section class="ui-page">
-    <PageHero Eyebrow="Identity"
-              Title="Resend confirmation email"
-              Description="Enter the email address you used to register and we will send a fresh confirmation link if the account still needs one." />
-
-    <div class="ui-surface-form">
-        <div class="ui-flow">
+<FormPage Eyebrow="Identity" Title="Resend confirmation email" Description="Enter the email address you used to register and we will send a fresh confirmation link if the account still needs one.">
             @if (!string.IsNullOrWhiteSpace(Status))
             {
-                <AlertBanner Tone="success" Role="status">@Status</AlertBanner>
+                <AlertBanner Tone="AlertBanner.AlertTone.Success" Role="status">@Status</AlertBanner>
             }
 
             @if (!string.IsNullOrWhiteSpace(Error))
@@ -33,9 +27,7 @@
                     Resend email
                 </button>
             </form>
-        </div>
-    </div>
-</section>
+</FormPage>
 
 @code {
     [SupplyParameterFromQuery(Name = "status")]

@@ -55,10 +55,10 @@ else if (lobby is null)
 else
 {
     <section class="ui-page max-w-6xl gap-6 lg:gap-7">
-        <header class="ui-surface-form p-5 sm:p-6 lg:p-7">
+        <header class="ui-surface-form-tight">
             <div class="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-                <div class="space-y-2">
-                    <p class="ui-page-eyebrow">Lobby</p>
+                <div class="ui-section-header">
+                    <p class="ui-section-eyebrow">Lobby</p>
                     <h1 class="ui-page-title">@lobby.Name</h1>
                     <p class="ui-page-copy">
                         Invite code <span class="font-semibold tracking-[0.25em] text-sky-300">@lobby.InviteCode</span>
@@ -66,12 +66,12 @@ else
                 </div>
 
                 <div class="flex flex-wrap items-center gap-2">
-                    <span class="ui-status-badge">
+                    <StatusBadge>
                         @lobby.Status
-                    </span>
-                    <span class="ui-status-badge border-emerald-400/30 bg-emerald-500/10 text-emerald-200">
+                    </StatusBadge>
+                    <StatusBadge Tone="StatusBadge.BadgeTone.Success">
                         @lobby.Players.Count / @lobby.MaxPlayers players
-                    </span>
+                    </StatusBadge>
                 </div>
             </div>
         </header>
@@ -83,7 +83,7 @@ else
 
         @if (!lobby.IsCurrentUserActive)
         {
-            <AlertBanner Tone="warning" Role="status">
+            <AlertBanner Tone="AlertBanner.AlertTone.Warning" Role="status">
                 You are viewing this game as a former player. Timeline history is limited to the point when you left.
             </AlertBanner>
         }
@@ -95,12 +95,9 @@ else
                   OnAcquireCard="AcquireCardAsync"
                   OnLockBatch="LockBatchAsync" />
 
-        <section class="ui-surface-form p-5 sm:p-6 lg:p-7">
+        <section class="ui-surface-form-tight">
             <div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-                <div class="space-y-1">
-                    <p class="ui-section-eyebrow">Timeline</p>
-                    <h2 class="ui-section-title">Messages and game events</h2>
-                </div>
+                <SectionHeader Eyebrow="Timeline" Title="Messages and game events" />
             </div>
 
             @if (!string.IsNullOrWhiteSpace(timeline.MessageError))
@@ -217,7 +214,7 @@ else
 
     protected override async Task OnParametersSetAsync()
     {
-        currentUserId = await GetUserIdAsync();
+        currentUserId = await UiHelpers.GetUserIdAsync(AuthenticationStateTask);
         await LoadPageAsync();
         if (lobby is not null)
         {
@@ -612,13 +609,6 @@ else
         {
             await liveCoordinator.DisposeAsync();
         }
-    }
-
-    private async Task<string> GetUserIdAsync()
-    {
-        var authenticationState = await AuthenticationStateTask;
-        return authenticationState.User.FindFirstValue(ClaimTypes.NameIdentifier)
-            ?? throw new InvalidOperationException("The current user does not have an identity id claim.");
     }
 
     private void ResetTimelineState()

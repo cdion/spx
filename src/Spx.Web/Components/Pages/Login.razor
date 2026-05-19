@@ -3,16 +3,10 @@
 
 <PageTitle>Sign in</PageTitle>
 
-<section class="ui-page">
-    <PageHero Eyebrow="Identity"
-              Title="Sign in"
-              Description="Use your email and password to open an authenticated session for the Orleans demo." />
-
-    <div class="ui-surface-form">
-        <div class="ui-flow">
+<FormPage Eyebrow="Identity" Title="Sign in" Description="Use your email and password to open an authenticated session for the Orleans demo.">
             @if (!string.IsNullOrWhiteSpace(Status))
             {
-                <AlertBanner Tone="success" Role="status">@Status</AlertBanner>
+                <AlertBanner Tone="AlertBanner.AlertTone.Success" Role="status">@Status</AlertBanner>
             }
 
             @if (!string.IsNullOrWhiteSpace(Error))
@@ -46,9 +40,7 @@
                 <a class="ui-inline-link" href="/forgot-password">Forgot your password?</a>
                 <a class="ui-inline-link" href="/resend-confirmation?email=@Uri.EscapeDataString(Email ?? string.Empty)">Resend confirmation email</a>
             </div>
-        </div>
-    </div>
-</section>
+</FormPage>
 
 @code {
     [SupplyParameterFromQuery(Name = "returnUrl")]

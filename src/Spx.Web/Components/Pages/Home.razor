@@ -12,13 +12,11 @@
 	<div class="grid gap-6 lg:grid-cols-[1.3fr_0.9fr]">
 		<section class="ui-surface-form">
 			<div class="ui-flow">
-				<div class="ui-section-header">
-					<p class="ui-section-eyebrow text-emerald-300">Quick Start</p>
-					<h2 class="ui-section-title">Choose your next move</h2>
+				<SectionHeader Eyebrow="Quick Start" Title="Choose your next move" Tone="SectionHeader.EyebrowTone.Accent">
 					<p class="max-w-xl text-sm leading-6 text-slate-300">
 						Start a fresh lobby for a new match, or jump straight into an existing game with an invite code.
 					</p>
-				</div>
+				</SectionHeader>
 
 				<div class="ui-actions">
 					<a class="ui-button-primary" href="/games/create">
@@ -35,10 +33,7 @@
 		</section>
 
 		<aside class="ui-surface-form">
-			<div class="ui-section-header">
-				<p class="ui-section-eyebrow">What Changed</p>
-				<h2 class="ui-section-title">Lobby-first flow</h2>
-			</div>
+			<SectionHeader Eyebrow="What Changed" Title="Lobby-first flow" />
 
 			<ul class="mt-6 space-y-3 text-sm leading-6 text-slate-300">
 				<li>The game lobby is now the default authenticated landing page.</li>

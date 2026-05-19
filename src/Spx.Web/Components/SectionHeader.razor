@@ -1,0 +1,31 @@
+<div class="ui-section-header">
+    @if (!string.IsNullOrWhiteSpace(Eyebrow))
+    {
+        <p class="@EyebrowCssClass">@Eyebrow</p>
+    }
+    <h2 class="ui-section-title">@Title</h2>
+    @ChildContent
+</div>
+
+@code {
+    public enum EyebrowTone { Default, Accent, Muted }
+
+    [Parameter]
+    public string? Eyebrow { get; set; }
+
+    [Parameter]
+    public EyebrowTone Tone { get; set; } = EyebrowTone.Default;
+
+    [Parameter, EditorRequired]
+    public string Title { get; set; } = string.Empty;
+
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    private string EyebrowCssClass => Tone switch
+    {
+        EyebrowTone.Accent => "ui-section-eyebrow text-emerald-300",
+        EyebrowTone.Muted  => "ui-section-eyebrow text-slate-400",
+        _                  => "ui-section-eyebrow"
+    };
+}
