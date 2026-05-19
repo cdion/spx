@@ -16,7 +16,7 @@ public sealed class GameSessionCommandHandlerTests
         sessionService
             .SubmitAcquireAsync(
                 Arg.Any<Guid>(),
-                Arg.Any<SubmitAcquireRequest>(),
+                Arg.Any<SubmitAcquireCommand>(),
                 Arg.Any<CancellationToken>()
             )
             .Returns(
@@ -39,7 +39,7 @@ public sealed class GameSessionCommandHandlerTests
         sessionService
             .SubmitAcquireAsync(
                 Arg.Any<Guid>(),
-                Arg.Any<SubmitAcquireRequest>(),
+                Arg.Any<SubmitAcquireCommand>(),
                 Arg.Any<CancellationToken>()
             )
             .Returns(new GameSessionCommandSucceeded(session));
@@ -110,7 +110,7 @@ public sealed class GameSessionCommandHandlerTests
         sessionService
             .SubmitPlayBatchAsync(
                 Arg.Any<Guid>(),
-                Arg.Any<SubmitPlayBatchRequest>(),
+                Arg.Any<SubmitPlayBatchCommand>(),
                 Arg.Any<CancellationToken>()
             )
             .Returns(
@@ -154,16 +154,7 @@ public sealed class GameSessionCommandHandlerTests
             session.GameId,
             Guid.NewGuid(),
             session.RoundNumber,
-            [
-                new GameBatchCardSelection(
-                    Guid.NewGuid(),
-                    GameResourceColor.Red,
-                    null,
-                    null,
-                    null,
-                    []
-                ),
-            ]
+            [new GameBatchCardCommand(Guid.NewGuid(), GameResourceColor.Red, null, null, null, [])]
         );
 
         var succeeded = Assert.IsType<GameSessionCommandSucceeded>(result);

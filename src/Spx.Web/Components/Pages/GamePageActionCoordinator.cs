@@ -108,7 +108,7 @@ internal sealed partial class GamePageActionCoordinator(
     public async Task LockBatchAsync(
         Guid gameId,
         Guid playerId,
-        IReadOnlyList<GameBatchCardSelection> cards,
+        IReadOnlyList<GameBatchCardCommand> cards,
         CancellationToken cancellationToken = default
     )
     {

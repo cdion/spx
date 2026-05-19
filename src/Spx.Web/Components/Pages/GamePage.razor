@@ -334,7 +334,7 @@ else
     private Task AcquireCardAsync(Guid marketCardInstanceId)
         => actionCoordinator!.AcquireCardAsync(GameId, currentPlayerId, marketCardInstanceId);
 
-    private Task LockBatchAsync(IReadOnlyList<GameBatchCardSelection> cards)
+    private Task LockBatchAsync(IReadOnlyList<GameBatchCardCommand> cards)
         => actionCoordinator!.LockBatchAsync(GameId, currentPlayerId, cards);
 
     private async Task LoadInitialMessagesAsync()

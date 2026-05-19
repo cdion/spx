@@ -14,13 +14,13 @@ internal sealed partial class SubmitPlayBatchHandler(
         Guid gameId,
         Guid playerId,
         int expectedRoundNumber,
-        IReadOnlyList<GameBatchCardSelection> cards,
+        IReadOnlyList<GameBatchCardCommand> cards,
         CancellationToken cancellationToken = default
     )
     {
         var result = await gameSessionService.SubmitPlayBatchAsync(
             gameId,
-            new SubmitPlayBatchRequest(playerId, expectedRoundNumber, cards),
+            new SubmitPlayBatchCommand(playerId, expectedRoundNumber, cards),
             cancellationToken
         );
 

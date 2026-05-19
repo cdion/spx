@@ -291,7 +291,7 @@ public sealed class GamePageActionCoordinatorTests
             Guid gameId,
             Guid playerId,
             int expectedRoundNumber,
-            IReadOnlyList<GameBatchCardSelection> cards,
+            IReadOnlyList<GameBatchCardCommand> cards,
             CancellationToken cancellationToken = default
         )
         {

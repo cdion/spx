@@ -295,7 +295,7 @@
     public EventCallback<Guid> OnAcquireCard { get; set; }
 
     [Parameter]
-    public EventCallback<IReadOnlyList<GameBatchCardSelection>> OnLockBatch { get; set; }
+    public EventCallback<IReadOnlyList<GameBatchCardCommand>> OnLockBatch { get; set; }
 
     protected override void OnParametersSet()
     {
@@ -901,12 +901,12 @@
     }
 
     private Task PassPlayAsync()
-        => OnLockBatch.InvokeAsync(Array.Empty<GameBatchCardSelection>());
+        => OnLockBatch.InvokeAsync(Array.Empty<GameBatchCardCommand>());
 
-    private GameBatchCardSelection BuildBatchCommand(GameCardView card)
+    private GameBatchCardCommand BuildBatchCommand(GameCardView card)
     {
         var editor = batchEditors[card.CardInstanceId];
-        return new GameBatchCardSelection(
+        return new GameBatchCardCommand(
             card.CardInstanceId,
             ParseEnum<GameResourceColor>(editor.ChosenResourceColor),
             ParseEnum<GameCardDefinition>(editor.CraftedCardDefinition),
@@ -915,18 +915,18 @@
             editor.ConsumedKeys.Select(BuildReferenceCommand).ToArray());
     }
 
-    private GameCardReferenceSelection BuildReferenceCommand(string key)
+    private GameCardReferenceCommand BuildReferenceCommand(string key)
         => TryCreateReferenceCommand(key, out var reference)
             ? reference
-            : new GameCardReferenceSelection(null, null, null);
+            : new GameCardReferenceCommand(null, null, null);
 
-    private bool TryCreateReferenceCommand(string key, out GameCardReferenceSelection reference)
+    private bool TryCreateReferenceCommand(string key, out GameCardReferenceCommand reference)
     {
-        reference = new GameCardReferenceSelection(null, null, null);
+        reference = new GameCardReferenceCommand(null, null, null);
 
         if (key.StartsWith("hand:", StringComparison.Ordinal) && Guid.TryParse(key[5..], out var handCardId))
         {
-            reference = new GameCardReferenceSelection(handCardId, null, null);
+            reference = new GameCardReferenceCommand(handCardId, null, null);
             return true;
         }
 
@@ -935,7 +935,7 @@
             var sourceCard = GetPlayableCards().FirstOrDefault(card => card.CardInstanceId == producedByCardId);
             if (sourceCard is not null && TryGetProducedDefinition(sourceCard, out var producedDefinition))
             {
-                reference = new GameCardReferenceSelection(null, producedByCardId, producedDefinition);
+                reference = new GameCardReferenceCommand(null, producedByCardId, producedDefinition);
                 return true;
             }
         }

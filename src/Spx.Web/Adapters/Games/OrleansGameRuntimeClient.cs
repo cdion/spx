@@ -209,7 +209,7 @@ public sealed partial class OrleansGameRuntimeClient(
 
     public async Task<GameSessionCommandOutcome> SubmitAcquireAsync(
         Guid gameId,
-        SubmitAcquireRequest request,
+        SubmitAcquireCommand command,
         CancellationToken cancellationToken = default
     )
     {
@@ -217,30 +217,24 @@ public sealed partial class OrleansGameRuntimeClient(
         {
             var result = await clusterClient
                 .GetGrain<IGameSessionGrain>(gameId)
-                .SubmitAcquireAsync(
-                    new SubmitAcquireCommand(
-                        request.PlayerId,
-                        request.ExpectedRoundNumber,
-                        request.MarketCardInstanceId
-                    )
-                );
-            return MapSessionCommandResult(gameId, request.PlayerId, result);
+                .SubmitAcquireAsync(command);
+            return MapSessionCommandResult(gameId, command.PlayerId, result);
         }
         catch (OrleansException exception)
         {
-            LogSubmitAcquireFailed(logger, exception, gameId, request.PlayerId);
+            LogSubmitAcquireFailed(logger, exception, gameId, command.PlayerId);
             throw;
         }
         catch (TimeoutException exception)
         {
-            LogSubmitAcquireFailed(logger, exception, gameId, request.PlayerId);
+            LogSubmitAcquireFailed(logger, exception, gameId, command.PlayerId);
             throw;
         }
     }
 
     public async Task<GameSessionCommandOutcome> SubmitPlayBatchAsync(
         Guid gameId,
-        SubmitPlayBatchRequest request,
+        SubmitPlayBatchCommand command,
         CancellationToken cancellationToken = default
     )
     {
@@ -248,23 +242,17 @@ public sealed partial class OrleansGameRuntimeClient(
         {
             var result = await clusterClient
                 .GetGrain<IGameSessionGrain>(gameId)
-                .SubmitPlayBatchAsync(
-                    new SubmitPlayBatchCommand(
-                        request.PlayerId,
-                        request.ExpectedRoundNumber,
-                        request.Cards.Select(MapBatchCardSelection).ToArray()
-                    )
-                );
-            return MapSessionCommandResult(gameId, request.PlayerId, result);
+                .SubmitPlayBatchAsync(command);
+            return MapSessionCommandResult(gameId, command.PlayerId, result);
         }
         catch (OrleansException exception)
         {
-            LogSubmitPlayBatchFailed(logger, exception, gameId, request.PlayerId);
+            LogSubmitPlayBatchFailed(logger, exception, gameId, command.PlayerId);
             throw;
         }
         catch (TimeoutException exception)
         {
-            LogSubmitPlayBatchFailed(logger, exception, gameId, request.PlayerId);
+            LogSubmitPlayBatchFailed(logger, exception, gameId, command.PlayerId);
             throw;
         }
     }
@@ -310,25 +298,6 @@ public sealed partial class OrleansGameRuntimeClient(
             ),
             _ => throw new InvalidOperationException("Unknown game session command result type."),
         };
-
-    private static GameCardReferenceCommand MapCardReferenceSelection(
-        GameCardReferenceSelection selection
-    ) =>
-        new(
-            selection.CardInstanceId,
-            selection.ProducedByCardInstanceId,
-            selection.ProducedCardDefinition
-        );
-
-    private static GameBatchCardCommand MapBatchCardSelection(GameBatchCardSelection selection) =>
-        new(
-            selection.CardInstanceId,
-            selection.ChosenResourceColor,
-            selection.CraftedCardDefinition,
-            selection.TargetResourceColor,
-            selection.TargetCardInstanceId,
-            selection.ConsumedCards.Select(MapCardReferenceSelection).ToArray()
-        );
 
     private GameSessionCommandFailed LogRejectedCommand(
         Guid gameId,

@@ -18,7 +18,7 @@ internal sealed partial class SubmitAcquireCardHandler(
     {
         var result = await gameSessionService.SubmitAcquireAsync(
             gameId,
-            new SubmitAcquireRequest(playerId, expectedRoundNumber, marketCardInstanceId),
+            new SubmitAcquireCommand(playerId, expectedRoundNumber, marketCardInstanceId),
             cancellationToken
         );
 

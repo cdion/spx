@@ -95,7 +95,7 @@ internal sealed class FakeGameSessionService : IGameSessionService
 
     public Task<GameSessionCommandOutcome> SubmitAcquireAsync(
         Guid gameId,
-        SubmitAcquireRequest request,
+        SubmitAcquireCommand command,
         CancellationToken cancellationToken = default
     ) =>
         Task.FromResult<GameSessionCommandOutcome>(
@@ -104,7 +104,7 @@ internal sealed class FakeGameSessionService : IGameSessionService
 
     public Task<GameSessionCommandOutcome> SubmitPlayBatchAsync(
         Guid gameId,
-        SubmitPlayBatchRequest request,
+        SubmitPlayBatchCommand command,
         CancellationToken cancellationToken = default
     ) =>
         Task.FromResult<GameSessionCommandOutcome>(

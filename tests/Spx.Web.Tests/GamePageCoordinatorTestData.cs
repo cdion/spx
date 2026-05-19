@@ -106,6 +106,6 @@ internal static class GamePageCoordinatorTestData
             null
         );
 
-    public static IReadOnlyList<GameBatchCardSelection> CreateBatchSelection() =>
-        [new GameBatchCardSelection(Guid.NewGuid(), null, null, null, null, [])];
+    public static IReadOnlyList<GameBatchCardCommand> CreateBatchSelection() =>
+        [new GameBatchCardCommand(Guid.NewGuid(), null, null, null, null, [])];
 }

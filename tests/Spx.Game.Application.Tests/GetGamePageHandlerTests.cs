@@ -223,13 +223,13 @@ public sealed class GetGamePageHandlerTests
 
         public Task<GameSessionCommandOutcome> SubmitAcquireAsync(
             Guid gameId,
-            SubmitAcquireRequest request,
+            SubmitAcquireCommand command,
             CancellationToken cancellationToken = default
         ) => throw new NotSupportedException();
 
         public Task<GameSessionCommandOutcome> SubmitPlayBatchAsync(
             Guid gameId,
-            SubmitPlayBatchRequest request,
+            SubmitPlayBatchCommand command,
             CancellationToken cancellationToken = default
         ) => throw new NotSupportedException();
 

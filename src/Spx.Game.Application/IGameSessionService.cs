@@ -16,13 +16,13 @@ public interface IGameSessionService
 
     Task<GameSessionCommandOutcome> SubmitAcquireAsync(
         Guid gameId,
-        SubmitAcquireRequest request,
+        SubmitAcquireCommand command,
         CancellationToken cancellationToken = default
     );
 
     Task<GameSessionCommandOutcome> SubmitPlayBatchAsync(
         Guid gameId,
-        SubmitPlayBatchRequest request,
+        SubmitPlayBatchCommand command,
         CancellationToken cancellationToken = default
     );
 
