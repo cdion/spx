@@ -38,8 +38,7 @@
 else if (lobby is null)
 {
     <section class="ui-surface-empty mx-auto flex max-w-3xl flex-col gap-6">
-        <PageHero Eyebrow="Lobby"
-                  Title="Game unavailable"
+        <PageHero Eyebrow="Lobby" Title="Game unavailable"
                   Description="You can only open lobby pages for games where you are an active player or where you previously played."
                   Compact />
         <div class="ui-actions">
@@ -88,12 +87,8 @@ else
             </AlertBanner>
         }
 
-        <GameSessionPanel Lobby="@lobby"
-                  Session="@session"
-                  IsSubmittingAction="@isSubmittingGameplayAction"
-                  GameplayError="@gameplayError"
-                  OnAcquireCard="AcquireCardAsync"
-                  OnLockBatch="LockBatchAsync" />
+        <GameSessionPanel Lobby="@lobby" Session="@session" IsSubmittingAction="@isSubmittingGameplayAction"
+                          GameplayError="@gameplayError" OnAcquireCard="AcquireCardAsync" OnLockBatch="LockBatchAsync" />
 
         <section class="ui-surface-form-tight">
             <div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
@@ -108,42 +103,27 @@ else
             }
 
             <div class="mt-4 grid gap-4 lg:grid-cols-[1.35fr_0.85fr] lg:gap-5">
-                <GameTimelinePanel @key="GetTimelinePanelKey()"
-                                   @ref="timelineComponent"
-                                   CurrentUserName="@lobby.CurrentPlayerName"
-                                   TimelineItems="timeline.Items"
-                                   MessageError="@timeline.MessageError"
-                                   IsTimelineLoading="@timeline.IsTimelineLoading"
-                                   IsLoadingOlderMessages="@timeline.IsLoadingOlderMessages"
-                                   HasOlderMessages="@timeline.HasOlderMessages"
-                                   EditingMessageId="@timeline.EditingMessageId"
-                                   @bind-EditMessageText="timeline.EditMessageText"
-                                   IsSavingEdit="@timeline.IsSavingEdit"
-                                   OnLoadOlderMessages="LoadOlderMessagesAsync"
-                                   OnBeginEdit="BeginEdit"
-                                   OnCancelEdit="CancelEdit"
-                                   OnSaveEdit="SaveEditAsync"
-                                   OnDeleteMessage="DeleteMessageAsync"
-                                   OnRetryPendingMessage="RetryPendingMessageAsync"
+                <GameTimelinePanel @key="GetTimelinePanelKey()" @ref="timelineComponent"
+                                   CurrentUserName="@lobby.CurrentPlayerName" TimelineItems="timeline.Items"
+                                   MessageError="@timeline.MessageError" IsTimelineLoading="@timeline.IsTimelineLoading"
+                                   IsLoadingOlderMessages="@timeline.IsLoadingOlderMessages" HasOlderMessages="@timeline.HasOlderMessages"
+                                   EditingMessageId="@timeline.EditingMessageId" @bind-EditMessageText="timeline.EditMessageText"
+                                   IsSavingEdit="@timeline.IsSavingEdit" OnLoadOlderMessages="LoadOlderMessagesAsync"
+                                   OnBeginEdit="BeginEdit" OnCancelEdit="CancelEdit" OnSaveEdit="SaveEditAsync"
+                                   OnDeleteMessage="DeleteMessageAsync" OnRetryPendingMessage="RetryPendingMessageAsync"
                                    OnDismissPendingMessage="DismissPendingMessage" />
 
-                <GameMessageComposer @key="GetMessageComposerKey()"
-                                     IsCurrentUserActive="@lobby.IsCurrentUserActive"
-                                     CurrentPlayerId="@lobby.CurrentPlayerId"
-                                     Players="@lobby.Players"
-                                     @bind-Text="timeline.ComposerText"
+                <GameMessageComposer @key="GetMessageComposerKey()" IsCurrentUserActive="@lobby.IsCurrentUserActive"
+                                     CurrentPlayerId="@lobby.CurrentPlayerId" Players="@lobby.Players" @bind-Text="timeline.ComposerText"
                                      @bind-SelectedRecipientPlayerIdString="timeline.SelectedRecipientPlayerIdString"
-                                     IsSendingMessage="@timeline.IsSendingMessage"
-                                     OnSend="SendMessageAsync" />
+                                     IsSendingMessage="@timeline.IsSendingMessage" OnSend="SendMessageAsync" />
             </div>
         </section>
 
         <div class="grid gap-4 xl:grid-cols-[1.4fr_1fr] xl:gap-5">
             <GameRosterPanel Lobby="@lobby" Presence="@presence" />
 
-            <GameCurrentUserPanel Lobby="@lobby"
-                                  IsLeaving="@isLeaving"
-                                  OnLeave="LeaveGameAsync" />
+            <GameCurrentUserPanel Lobby="@lobby" IsLeaving="@isLeaving" OnLeave="LeaveGameAsync" />
         </div>
     </section>
 }
@@ -353,7 +333,8 @@ else
         }
         catch (Exception exception)
         {
-            Logger.LogError(exception, "Failed to load initial messages for game {GameId} player {PlayerId}.", GameId, currentPlayerId);
+            Logger.LogError(exception, "Failed to load initial messages for game {GameId} player {PlayerId}.", GameId,
+currentPlayerId);
             timeline.MessageError = "We couldn't load messages right now. Please try again.";
         }
         finally
@@ -393,7 +374,8 @@ else
         }
         catch (Exception exception)
         {
-            Logger.LogError(exception, "Failed to load message updates for game {GameId} player {PlayerId}.", GameId, currentPlayerId);
+            Logger.LogError(exception, "Failed to load message updates for game {GameId} player {PlayerId}.", GameId,
+currentPlayerId);
             timeline.MessageError = "We couldn't refresh messages right now. Please try again.";
         }
     }
@@ -417,7 +399,8 @@ else
         }
         catch (Exception exception)
         {
-            Logger.LogError(exception, "Failed to load older messages for game {GameId} player {PlayerId}.", GameId, currentPlayerId);
+            Logger.LogError(exception, "Failed to load older messages for game {GameId} player {PlayerId}.", GameId,
+currentPlayerId);
             timeline.MessageError = "We couldn't load older messages right now. Please try again.";
         }
         finally
@@ -442,7 +425,8 @@ else
         }
 
         var recipient = GetSelectedRecipient();
-        var pendingItem = timeline.AddPendingMessage(body, recipient?.PlayerId, recipient?.Name ?? string.Empty, recipient is not null);
+        var pendingItem = timeline.AddPendingMessage(body, recipient?.PlayerId, recipient?.Name ?? string.Empty, recipient is
+not null);
         timeline.ClearComposer();
         timeline.BeginSend();
 
@@ -455,7 +439,8 @@ else
             }
             else
             {
-                result = await SendPrivateMessageHandler.HandleAsync(lobby.GameId, currentPlayerId, recipient.PlayerId, new SendGameMessageRequest(body));
+                result = await SendPrivateMessageHandler.HandleAsync(lobby.GameId, currentPlayerId, recipient.PlayerId, new
+SendGameMessageRequest(body));
             }
 
             if (result is not GameMessageCommandSucceeded succeeded)
@@ -496,11 +481,13 @@ else
             GameMessageCommandOutcome result;
             if (item.Pending.RecipientPlayerId is null)
             {
-                result = await SendPublicMessageHandler.HandleAsync(lobby.GameId, currentPlayerId, new SendGameMessageRequest(item.Pending.Body));
+                result = await SendPublicMessageHandler.HandleAsync(lobby.GameId, currentPlayerId, new
+SendGameMessageRequest(item.Pending.Body));
             }
             else
             {
-                result = await SendPrivateMessageHandler.HandleAsync(lobby.GameId, currentPlayerId, item.Pending.RecipientPlayerId.Value, new SendGameMessageRequest(item.Pending.Body));
+                result = await SendPrivateMessageHandler.HandleAsync(lobby.GameId, currentPlayerId,
+item.Pending.RecipientPlayerId.Value, new SendGameMessageRequest(item.Pending.Body));
             }
 
             if (result is not GameMessageCommandSucceeded succeeded)
@@ -551,7 +538,8 @@ else
 
         try
         {
-            var result = await EditMessageHandler.HandleAsync(lobby.GameId, currentPlayerId, timeline.EditingMessageId.Value, new UpdateGameMessageRequest(timeline.EditMessageText));
+            var result = await EditMessageHandler.HandleAsync(lobby.GameId, currentPlayerId, timeline.EditingMessageId.Value, new
+UpdateGameMessageRequest(timeline.EditMessageText));
             if (result is not GameMessageCommandSucceeded succeeded)
             {
                 timeline.MessageError = ((GameMessageCommandFailed)result).ErrorMessage;
@@ -563,7 +551,8 @@ else
         }
         catch (Exception exception)
         {
-            Logger.LogError(exception, "Failed to save a message edit for game {GameId} player {PlayerId}.", GameId, currentPlayerId);
+            Logger.LogError(exception, "Failed to save a message edit for game {GameId} player {PlayerId}.", GameId,
+currentPlayerId);
             timeline.MessageError = "We couldn't save that message right now. Please try again.";
         }
         finally

@@ -27,6 +27,13 @@ applyTo:
 - Prefer the touched test project over a repo-wide test run.
 - Use `dotnet tool restore` before coverage or EF tool workflows.
 
+## Build Quality Gate
+
+- `Directory.Build.props` sets `AnalysisMode=Recommended` and `EnforceCodeStyleInBuild=true` for every project. CA and IDE rule violations are **build errors**, not warnings.
+- The pre-commit hook runs `dotnet build -warnaserror` across the solution. A warning that passes locally may still block a commit.
+- CA1848 (calling `ILogger.Log*` directly) is one of the most commonly triggered rules — use `[LoggerMessage]` static partial methods in a `partial class` to satisfy it.
+- CSharpier is the formatter. Run `dotnet csharpier .` before committing; the hook runs `dotnet csharpier check` and will reject unformatted files.
+
 ## Common Commands
 
 - `dotnet test tests/Spx.Account.Tests/Spx.Account.Tests.csproj`
