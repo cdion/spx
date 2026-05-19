@@ -81,8 +81,10 @@
                     <div class="flex flex-wrap gap-2">
                         @foreach (var card in Session.CurrentPlayer.Hand)
                         {
-                            <span
-                            class="rounded-full border border-white/10 px-3 py-1 text-sm text-slate-200">@card.DisplayName</span>
+                            <div class="w-20">
+                                <GameCard Definition="@card.Definition" DisplayName="@card.DisplayName"
+                                          Category="@card.Category" />
+                            </div>
                         }
                     </div>
                 </article>
@@ -107,8 +109,10 @@
                     <div class="flex flex-wrap gap-2">
                         @foreach (var card in Session.OpponentPlayer.Hand)
                         {
-                            <span
-                            class="rounded-full border border-white/10 px-3 py-1 text-sm text-slate-200">@card.DisplayName</span>
+                            <div class="w-20">
+                                <GameCard Definition="@card.Definition" DisplayName="@card.DisplayName"
+                                          Category="@card.Category" />
+                            </div>
                         }
                     </div>
                 </article>
@@ -132,17 +136,12 @@
                 <div class="grid gap-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
                     @foreach (var marketCard in Session.VisibleMarketCards)
                     {
-                        <button
-                            class="min-w-0 rounded-2xl border border-white/10 bg-slate-900/70 p-3 text-left transition hover:border-sky-400/40 hover:bg-slate-900 disabled:cursor-not-allowed disabled:opacity-60 xl:p-3.5"
-                            @onclick="() => AcquireCardAsync(marketCard.CardInstanceId)"
-                            disabled="@(!CanAcquireCard(marketCard.CardInstanceId))">
-                            <p class="truncate text-sm font-semibold text-white">@marketCard.DisplayName</p>
-                            <p class="mt-1.5 text-[0.7rem] uppercase tracking-[0.2em] text-slate-400">@marketCard.Category</p>
-                            @if (Session.CanAcquireCard)
-                            {
-                                <p class="mt-2 text-sm text-sky-200">@(IsSubmittingAction ? "Locking..." : "Take card")</p>
-                            }
-                        </button>
+                        var capturedMarketCard = marketCard;
+                        <GameCard Definition="@capturedMarketCard.Definition" DisplayName="@capturedMarketCard.DisplayName"
+                                  Category="@capturedMarketCard.Category"
+                                  IsInteractive="@CanAcquireCard(capturedMarketCard.CardInstanceId)"
+                                  IsDisabled="@(!CanAcquireCard(capturedMarketCard.CardInstanceId))"
+                                  OnClick="@(() => AcquireCardAsync(capturedMarketCard.CardInstanceId))" />
                     }
                 </div>
 
@@ -179,25 +178,20 @@
                             @foreach (var card in GetPlayableCards())
                             {
                                 var isSelected = IsCardSelected(card.CardInstanceId);
-                                <article class="ui-panel-card-inner space-y-3">
-                                    <div class="flex items-start justify-between gap-3">
-                                        <div>
-                                            <p class="text-sm font-semibold text-white">@card.DisplayName</p>
-                                            <p class="ui-panel-label mt-1">@card.Category</p>
-                                        </div>
-                                        <button class="ui-button-secondary" @onclick="() => ToggleCardSelection(card.CardInstanceId)"
-                                                disabled="@(!CanToggleCard(card.CardInstanceId))">
-                                            @(isSelected ? "Remove" : "Select")
-                                        </button>
-                                    </div>
-
+                                var capturedPlayCard = card;
+                                <div class="space-y-2">
+                                    <GameCard Definition="@capturedPlayCard.Definition" DisplayName="@capturedPlayCard.DisplayName"
+                                              Category="@capturedPlayCard.Category" IsSelected="@isSelected"
+                                              IsInteractive="@CanToggleCard(capturedPlayCard.CardInstanceId)"
+                                              IsDisabled="@(!CanToggleCard(capturedPlayCard.CardInstanceId))"
+                                              OnClick="@(() => ToggleCardSelection(capturedPlayCard.CardInstanceId))" />
                                     @if (isSelected)
                                     {
-                                        <div class="space-y-4 border-t border-white/10 pt-4">
-                                            @RenderEditor(card)
+                                        <div class="space-y-4 rounded-2xl border border-white/10 bg-slate-900/60 p-4">
+                                            @RenderEditor(capturedPlayCard)
                                         </div>
                                     }
-                                </article>
+                                </div>
                             }
                         </div>
 
@@ -239,10 +233,11 @@
                         <div class="grid gap-3 lg:grid-cols-3">
                             @foreach (var lockedCard in Session.CurrentPlayer.VisibleLockedCards)
                             {
-                                <article class="ui-panel-card-inner">
-                                    <p class="text-sm font-semibold text-white">@lockedCard.Card.DisplayName</p>
-                                    <p class="mt-2 text-xs text-slate-400">@DescribeSelection(lockedCard)</p>
-                                </article>
+                                <div class="space-y-2">
+                                    <GameCard Definition="@lockedCard.Card.Definition" DisplayName="@lockedCard.Card.DisplayName"
+                                              Category="@lockedCard.Card.Category" />
+                                    <p class="text-xs text-slate-400">@DescribeSelection(lockedCard)</p>
+                                </div>
                             }
                         </div>
                     </section>
@@ -261,7 +256,7 @@
                                 <article class="ui-panel-card-inner">
                                     <p class="text-sm font-semibold text-white">@ResolvePlayerName(playerBatch.Participant.PlayerId)</p>
                                     <p class="mt-2 text-sm text-slate-300">Played @string.Join(", ", playerBatch.PlayedCards.Select(card =>
-                                                            card.Card.DisplayName))</p>
+                                                                                                    card.Card.DisplayName))</p>
                                         @if (playerBatch.ProducedVictory)
                                         {
                                             <p class="mt-2 text-sm text-emerald-200">Produced Victory</p>
@@ -388,7 +383,7 @@
             ? "You can still read the lobby timeline, but gameplay controls are disabled because you already left this game."
             : Lobby.Players.Count < Lobby.MaxPlayers
                 ? "Share the invite code and wait for the second player to join. Gameplay will appear here as soon as the match initializes."
-                : "The game session is initializing. This panel refreshes automatically when Orleans publishes the updated state.";
+                : "The match state is still loading. This panel updates automatically.";
 
     private string GetStatusBadgeText()
         => Session switch

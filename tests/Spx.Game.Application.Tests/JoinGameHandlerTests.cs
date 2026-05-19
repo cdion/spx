@@ -233,7 +233,6 @@ public sealed class JoinGameHandlerTests
         services.AddSingleton(persistence);
         services.AddSingleton(sessionService);
         services.AddSingleton(lobbyPublisher);
-        services.AddSingleton(Substitute.For<IGameSessionInvalidationPublisher>());
         services.AddSingleton(messagePublisher);
         services.AddSingleton(Substitute.For<IGameMessagePersistence>());
         return services.BuildServiceProvider();

@@ -14,7 +14,6 @@ public sealed partial class OrleansGameRuntimeClient(
     : IGameLobbyInvalidationPublisher,
         IGameSessionInvalidationPublisher,
         IGameMessageInvalidationPublisher,
-        IGamePresenceInvalidationPublisher,
         IGamePresenceService,
         IGameSessionService
 {
@@ -79,27 +78,6 @@ public sealed partial class OrleansGameRuntimeClient(
         }
     }
 
-    public async Task PublishPresenceInvalidatedAsync(
-        Guid gameId,
-        CancellationToken cancellationToken = default
-    )
-    {
-        try
-        {
-            await clusterClient
-                .GetGrain<IGameInvalidationGrain>(gameId)
-                .PublishPresenceInvalidated();
-        }
-        catch (OrleansException exception)
-        {
-            LogPublishPresenceUpdateFailed(logger, exception, gameId);
-        }
-        catch (TimeoutException exception)
-        {
-            LogPublishPresenceUpdateFailed(logger, exception, gameId);
-        }
-    }
-
     public async Task<GamePresenceView> GetPresenceAsync(
         Guid gameId,
         CancellationToken cancellationToken = default
@@ -123,29 +101,6 @@ public sealed partial class OrleansGameRuntimeClient(
             return GamePresenceView.Empty;
         }
     }
-
-    public Task UpsertPresenceLeaseAsync(
-        Guid gameId,
-        Guid playerId,
-        Guid connectionId,
-        DateTime expiresAtUtc,
-        CancellationToken cancellationToken = default
-    ) =>
-        clusterClient
-            .GetGrain<IGamePresenceGrain>(gameId)
-            .UpsertLeaseAsync(
-                new UpsertGamePresenceLeaseCommand(playerId, connectionId, expiresAtUtc)
-            );
-
-    public Task RemovePresenceLeaseAsync(
-        Guid gameId,
-        Guid playerId,
-        Guid connectionId,
-        CancellationToken cancellationToken = default
-    ) =>
-        clusterClient
-            .GetGrain<IGamePresenceGrain>(gameId)
-            .RemoveLeaseAsync(new RemoveGamePresenceLeaseCommand(playerId, connectionId));
 
     public async Task<bool> EnsureSessionAsync(
         Guid gameId,
@@ -392,16 +347,6 @@ public sealed partial class OrleansGameRuntimeClient(
         Message = "Failed to publish message update for game {GameId}."
     )]
     private static partial void LogPublishMessageUpdateFailed(
-        ILogger logger,
-        Exception exception,
-        Guid gameId
-    );
-
-    [LoggerMessage(
-        Level = LogLevel.Warning,
-        Message = "Failed to publish presence update for game {GameId}."
-    )]
-    private static partial void LogPublishPresenceUpdateFailed(
         ILogger logger,
         Exception exception,
         Guid gameId

@@ -40,12 +40,6 @@ public sealed partial class GameInvalidationGrain(ILogger<GameInvalidationGrain>
         return Task.CompletedTask;
     }
 
-    public Task PublishPresenceInvalidated()
-    {
-        NotifyPresenceObservers(this.GetPrimaryKey(), observers, logger);
-        return Task.CompletedTask;
-    }
-
     internal static void NotifyLobbyObservers(
         Guid gameId,
         ICollection<IGameInvalidationObserver> observers,
@@ -79,18 +73,6 @@ public sealed partial class GameInvalidationGrain(ILogger<GameInvalidationGrain>
             gameId,
             observers,
             static (observer, targetGameId) => observer.OnMessagesInvalidated(targetGameId),
-            logger
-        );
-
-    internal static void NotifyPresenceObservers(
-        Guid gameId,
-        ICollection<IGameInvalidationObserver> observers,
-        ILogger<GameInvalidationGrain> logger
-    ) =>
-        NotifyObservers(
-            gameId,
-            observers,
-            static (observer, targetGameId) => observer.OnPresenceInvalidated(targetGameId),
             logger
         );
 

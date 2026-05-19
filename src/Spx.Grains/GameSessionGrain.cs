@@ -93,17 +93,19 @@ public sealed class GameSessionGrain(
     public Task<
         IReadOnlyList<PendingGameplayEventBatchGrainView>
     > GetPendingGameplayEventBatchesAsync() =>
-        Task.FromResult<IReadOnlyList<PendingGameplayEventBatchGrainView>>([
-            .. sessionState.State.PendingGameplayEventBatches.Select(
-                batch => new PendingGameplayEventBatchGrainView(
-                    batch.BatchId,
-                    batch.GameId,
-                    batch.LastResolvedBatch,
-                    batch.Completion,
-                    [.. batch.GameplayEvents]
+        Task.FromResult<IReadOnlyList<PendingGameplayEventBatchGrainView>>(
+            sessionState
+                .State.PendingGameplayEventBatches.Select(
+                    batch => new PendingGameplayEventBatchGrainView(
+                        batch.BatchId,
+                        batch.GameId,
+                        batch.LastResolvedBatch,
+                        batch.Completion,
+                        batch.GameplayEvents.ToArray()
+                    )
                 )
-            ),
-        ]);
+                .ToList()
+        );
 
     public Task AcknowledgeGameplayEventBatchesAsync(
         AcknowledgeGameplayEventBatchesGrainCommand command

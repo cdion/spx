@@ -3,6 +3,7 @@
 @source "../Components/**/*.razor";
 
 @layer base {
+
   html,
   body {
     @apply min-h-full bg-slate-950 text-slate-100 antialiased;
@@ -197,6 +198,75 @@
 
   .ui-nav-pill-danger {
     @apply rounded-full border border-white/10 px-4 py-2 text-sm font-medium text-slate-300 transition hover:border-rose-400/40 hover:text-white lg:rounded-2xl;
+  }
+
+  /* Game card component */
+
+  .ui-game-card {
+    @apply relative flex aspect-[5/7] w-full flex-col overflow-hidden rounded-2xl border transition;
+  }
+
+  .ui-game-card-interactive {
+    @apply cursor-pointer hover:-translate-y-1 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400;
+  }
+
+  .ui-game-card-selected {
+    @apply -translate-y-1 ring-2 ring-sky-400;
+  }
+
+  .ui-game-card-disabled {
+    @apply cursor-not-allowed opacity-50;
+  }
+
+  .ui-game-card-body {
+    @apply flex h-full flex-col justify-between p-3;
+  }
+
+  .ui-game-card-name {
+    @apply text-sm font-bold leading-tight text-white;
+  }
+
+  .ui-game-card-category {
+    @apply text-xs font-semibold uppercase text-slate-400;
+    letter-spacing: 0.15em;
+  }
+
+  /* Game card color variants */
+
+  .ui-game-card-action {
+    @apply border-slate-500/40 bg-slate-800/60;
+  }
+
+  .ui-game-card-effect {
+    @apply border-violet-500/40 bg-violet-900/20;
+  }
+
+  .ui-game-card-victory {
+    @apply border-amber-400/40 bg-amber-900/30;
+  }
+
+  .ui-game-card-red {
+    @apply border-red-500/40 bg-red-900/20;
+  }
+
+  .ui-game-card-amber {
+    @apply border-amber-400/40 bg-amber-900/20;
+  }
+
+  .ui-game-card-sky {
+    @apply border-sky-500/40 bg-sky-900/20;
+  }
+
+  .ui-game-card-violet {
+    @apply border-violet-500/40 bg-violet-900/20;
+  }
+
+  .ui-game-card-emerald {
+    @apply border-emerald-500/40 bg-emerald-900/20;
+  }
+
+  .ui-game-card-orange {
+    @apply border-orange-500/40 bg-orange-900/20;
   }
 
   .blazor-error-boundary {

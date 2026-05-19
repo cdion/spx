@@ -13,6 +13,4 @@ public interface IGameInvalidationGrain : IGrainWithGuidKey
     Task PublishSessionInvalidated();
 
     Task PublishMessagesInvalidated();
-
-    Task PublishPresenceInvalidated();
 }

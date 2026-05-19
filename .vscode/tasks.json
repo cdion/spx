@@ -347,7 +347,7 @@
     {
       "label": "apphost: watch",
       "type": "shell",
-      "command": "${workspaceFolder}/tools/dev/run-apphost-watch-and-open-dashboard.sh",
+      "command": "${workspaceFolder}/tools/dev/run-apphost-watch.fish",
       "isBackground": true,
       "problemMatcher": {
         "owner": "apphost-watch",

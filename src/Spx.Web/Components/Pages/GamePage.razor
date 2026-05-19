@@ -4,12 +4,10 @@
 @using Orleans
 @using Spx.Data
 @using System.Security.Claims
-@inject IClusterClient ClusterClient
+@using Microsoft.AspNetCore.SignalR.Client
 @inject IGetGamePageHandler GetGamePageHandler
 @inject IGetGamePresenceHandler GetGamePresenceHandler
 @inject IGetGameSessionHandler GetGameSessionHandler
-@inject IGamePresenceService GamePresenceService
-@inject Spx.Web.Circuits.CircuitConnectionEvents CircuitConnectionEvents
 @inject ILeaveGameHandler LeaveGameHandler
 @inject IGetMessagesHandler GetMessagesHandler
 @inject IGetMessageUpdatesHandler GetMessageUpdatesHandler
@@ -23,8 +21,6 @@
 @inject ILogger<GamePage> Logger
 @inject ILogger<GamePageActionCoordinator> ActionCoordinatorLogger
 @inject ILogger<GamePageDataCoordinator> DataCoordinatorLogger
-@inject ILogger<GamePageLiveCoordinator> LiveCoordinatorLogger
-@inject ILogger<GamePageSubscription> SubscriptionLogger
 @inject NavigationManager Navigation
 
 <PageTitle>Game</PageTitle>
@@ -143,7 +139,8 @@ else
     private Guid currentPlayerId;
     private GamePageActionCoordinator? actionCoordinator;
     private GamePageDataCoordinator? dataCoordinator;
-    private GamePageLiveCoordinator? liveCoordinator;
+    private HubConnection? hubConnection;
+    private Guid connectedGameId;
     private GameTimelinePanel? timelineComponent;
 
     private GameLobbyView? lobby => data.Lobby;
@@ -179,17 +176,6 @@ else
             GetGamePresenceHandler,
             DataCoordinatorLogger,
             data);
-        liveCoordinator = new GamePageLiveCoordinator(
-            ClusterClient,
-            GamePresenceService,
-            CircuitConnectionEvents,
-            LiveCoordinatorLogger,
-            SubscriptionLogger,
-            HandleLobbyInvalidatedAsync,
-            HandleSessionInvalidatedAsync,
-            HandleMessagesInvalidatedAsync,
-            HandlePresenceInvalidatedAsync);
-        liveCoordinator.Initialize();
     }
 
     protected override async Task OnParametersSetAsync()
@@ -203,22 +189,31 @@ else
 
         if (lobby is null)
         {
-            await liveCoordinator!.StopAsync();
+            if (hubConnection is not null)
+            {
+                await hubConnection.StopAsync();
+                await hubConnection.DisposeAsync();
+                hubConnection = null;
+                connectedGameId = Guid.Empty;
+            }
             ResetTimelineState();
             return;
         }
 
-        var isNewGame = liveCoordinator!.GameId != lobby.GameId;
+        var isNewGame = connectedGameId != lobby.GameId;
         if (isNewGame)
         {
             ResetTimelineState();
             await LoadInitialMessagesAsync();
-            await liveCoordinator.StartAsync(lobby);
+            await ConnectToGameHubAsync(lobby.GameId);
             timeline.RequestScrollToBottom();
             return;
         }
 
-        await liveCoordinator.StartAsync(lobby);
+        if (hubConnection is null)
+        {
+            await ConnectToGameHubAsync(lobby.GameId);
+        }
 
         if (timeline.Items.Count == 0)
         {
@@ -255,53 +250,65 @@ else
         await dataCoordinator!.ReloadPresenceAsync(lobby.GameId);
     }
 
-    private async Task LoadSessionAsync()
+    private async Task ConnectToGameHubAsync(Guid gameId)
     {
-        if (lobby is null)
+        if (hubConnection is not null)
         {
-            data.ApplySession(null);
-            return;
+            await hubConnection.StopAsync();
+            await hubConnection.DisposeAsync();
         }
 
-        await dataCoordinator!.ReloadSessionAsync(lobby.GameId, currentPlayerId);
-    }
+        hubConnection = new HubConnectionBuilder()
+            .WithUrl(Navigation.ToAbsoluteUri($"/hubs/game?gameId={gameId}&playerId={currentPlayerId}"))
+            .WithAutomaticReconnect()
+            .Build();
 
-    private Task HandleLobbyInvalidatedAsync()
-        => InvokeAsync(async () =>
+        hubConnection.On<Guid>("GameStateChanged", _ => InvokeAsync(async () =>
         {
             await LoadPageAsync();
             if (lobby is null)
             {
-                await liveCoordinator!.StopAsync();
+                if (hubConnection is not null)
+                {
+                    await hubConnection.StopAsync();
+                    await hubConnection.DisposeAsync();
+                    hubConnection = null;
+                    connectedGameId = Guid.Empty;
+                }
             }
-            else
-            {
-                await liveCoordinator!.StartAsync(lobby);
-            }
-
             StateHasChanged();
-        });
+        }));
 
-    private Task HandleSessionInvalidatedAsync()
-        => InvokeAsync(async () =>
+        hubConnection.On<Guid>("MessagesChanged", _ => InvokeAsync(async () =>
         {
-            await LoadSessionAsync();
+            await LoadMessageUpdatesAsync();
             StateHasChanged();
-        });
+        }));
 
-    private Task HandleMessagesInvalidatedAsync()
-        => InvokeAsync(async () =>
+        hubConnection.On<Guid>("PresenceChanged", _ => InvokeAsync(async () =>
         {
+            await LoadPresenceAsync();
+            StateHasChanged();
+        }));
+
+        hubConnection.Reconnected += async _ => await InvokeAsync(async () =>
+        {
+            await LoadPageAsync();
             await LoadMessageUpdatesAsync();
             StateHasChanged();
         });
 
-    private Task HandlePresenceInvalidatedAsync()
-        => InvokeAsync(async () =>
-        {
-            await LoadPresenceAsync();
-            StateHasChanged();
-        });
+        await hubConnection.StartAsync();
+        connectedGameId = gameId;
+    }
+
+    private Task HandleLobbyInvalidatedAsync() => Task.CompletedTask;
+
+    private Task HandleSessionInvalidatedAsync() => Task.CompletedTask;
+
+    private Task HandleMessagesInvalidatedAsync() => Task.CompletedTask;
+
+    private Task HandlePresenceInvalidatedAsync() => Task.CompletedTask;
 
     private async Task LeaveGameAsync()
     {
@@ -594,9 +601,10 @@ currentPlayerId);
 
     public async ValueTask DisposeAsync()
     {
-        if (liveCoordinator is not null)
+        if (hubConnection is not null)
         {
-            await liveCoordinator.DisposeAsync();
+            await hubConnection.StopAsync();
+            await hubConnection.DisposeAsync();
         }
     }
 

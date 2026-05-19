@@ -18,9 +18,6 @@ public static class GameWebAdaptersServiceCollectionExtensions
         services.AddSingleton<IGameMessageInvalidationPublisher>(serviceProvider =>
             serviceProvider.GetRequiredService<OrleansGameRuntimeClient>()
         );
-        services.AddSingleton<IGamePresenceInvalidationPublisher>(serviceProvider =>
-            serviceProvider.GetRequiredService<OrleansGameRuntimeClient>()
-        );
         services.AddSingleton<IGamePresenceService>(serviceProvider =>
             serviceProvider.GetRequiredService<OrleansGameRuntimeClient>()
         );

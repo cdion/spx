@@ -2,7 +2,6 @@
 // inherent to the composition root pattern and not a refactoring candidate.
 #pragma warning disable CA1506
 using Microsoft.AspNetCore.Components.Authorization;
-using Microsoft.AspNetCore.Components.Server.Circuits;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -12,9 +11,9 @@ using Spx.Data;
 using Spx.Game.Application;
 using Spx.Web.Adapters.Account;
 using Spx.Web.Adapters.Games;
-using Spx.Web.Circuits;
 using Spx.Web.Components;
 using Spx.Web.Endpoints;
+using Spx.Web.Hubs;
 using Spx.Web.Options;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -50,8 +49,19 @@ builder.Services.Configure<ResendOptions>(
 
 // Add services to the container.
 builder.Services.AddRazorComponents().AddInteractiveServerComponents();
-builder.Services.AddScoped<CircuitConnectionEvents>();
-builder.Services.AddScoped<CircuitHandler, CircuitConnectionHandler>();
+builder
+    .Services.AddSignalR()
+    .AddStackExchangeRedis(
+        builder.Configuration.GetConnectionString("orleans-redis")
+            ?? throw new InvalidOperationException(
+                "The orleans-redis connection string was not configured."
+            )
+    );
+builder.Services.AddSingleton<GameInvalidationHubBridge>();
+builder.Services.AddSingleton<IGameInvalidationHubBridge>(sp =>
+    sp.GetRequiredService<GameInvalidationHubBridge>()
+);
+builder.Services.AddHostedService(sp => sp.GetRequiredService<GameInvalidationHubBridge>());
 builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddAuthentication(IdentityConstants.ApplicationScheme).AddIdentityCookies();
@@ -133,6 +143,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.UseAntiforgery();
 
+app.MapHub<GameHub>("/hubs/game");
 app.MapAccountEndpoints();
 app.MapStaticAssets();
 app.MapRazorComponents<App>().AddInteractiveServerRenderMode();

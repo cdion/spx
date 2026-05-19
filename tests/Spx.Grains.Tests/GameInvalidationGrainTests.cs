@@ -138,32 +138,14 @@ public sealed class GameInvalidationGrainTests
     [Fact]
     public void NotifyPresenceObservers_LeavesObserversWhenNoneThrow()
     {
-        var notifiedGameIds = new List<Guid>();
-        var firstObserver = new DelegateGameInvalidationObserver(onPresenceInvalidated: gameId =>
-            notifiedGameIds.Add(gameId)
-        );
-        var secondObserver = new DelegateGameInvalidationObserver(onPresenceInvalidated: gameId =>
-            notifiedGameIds.Add(gameId)
-        );
-        var observers = new HashSet<IGameInvalidationObserver> { firstObserver, secondObserver };
-        var gameId = Guid.NewGuid();
-
-        GameInvalidationGrain.NotifyPresenceObservers(
-            gameId,
-            observers,
-            NullLogger<GameInvalidationGrain>.Instance
-        );
-
-        Assert.Equal([gameId, gameId], notifiedGameIds);
-        Assert.Contains(firstObserver, observers);
-        Assert.Contains(secondObserver, observers);
+        // Presence notifications are now handled by the SignalR hub directly.
+        // This test is intentionally empty — the method was removed.
     }
 
     private sealed class DelegateGameInvalidationObserver(
         Action<Guid>? onLobbyInvalidated = null,
         Action<Guid>? onSessionInvalidated = null,
-        Action<Guid>? onMessagesInvalidated = null,
-        Action<Guid>? onPresenceInvalidated = null
+        Action<Guid>? onMessagesInvalidated = null
     ) : IGameInvalidationObserver
     {
         public void OnLobbyInvalidated(Guid gameId) => onLobbyInvalidated?.Invoke(gameId);
@@ -171,7 +153,5 @@ public sealed class GameInvalidationGrainTests
         public void OnSessionInvalidated(Guid gameId) => onSessionInvalidated?.Invoke(gameId);
 
         public void OnMessagesInvalidated(Guid gameId) => onMessagesInvalidated?.Invoke(gameId);
-
-        public void OnPresenceInvalidated(Guid gameId) => onPresenceInvalidated?.Invoke(gameId);
     }
 }
