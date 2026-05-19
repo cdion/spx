@@ -1,5 +1,4 @@
 <Project Sdk="Microsoft.NET.Sdk">
-
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
@@ -26,5 +25,4 @@
     <ProjectReference Include="../../src/Spx.Data/Spx.Data.csproj" />
     <ProjectReference Include="../../src/Spx.Game.Application/Spx.Game.Application.csproj" />
   </ItemGroup>
-
 </Project>

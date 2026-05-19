@@ -12,7 +12,8 @@ public sealed class GetGameSessionHandlerTests
     {
         var session = CreateSession(Guid.NewGuid(), 2, waitingForOpponent: true);
         var sessionService = Substitute.For<IGameSessionService>();
-        sessionService.GetSessionAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+        sessionService
+            .GetSessionAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(session);
         using var services = CreateServices(sessionService);
 
@@ -26,7 +27,8 @@ public sealed class GetGameSessionHandlerTests
     public async Task HandleAsync_returns_null_when_session_is_unavailable()
     {
         var sessionService = Substitute.For<IGameSessionService>();
-        sessionService.GetSessionAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+        sessionService
+            .GetSessionAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns((GameSessionView?)null);
         using var services = CreateServices(sessionService);
 
@@ -49,7 +51,11 @@ public sealed class GetGameSessionHandlerTests
         return services.BuildServiceProvider();
     }
 
-    private static GameSessionView CreateSession(Guid gameId, int roundNumber, bool waitingForOpponent)
+    private static GameSessionView CreateSession(
+        Guid gameId,
+        int roundNumber,
+        bool waitingForOpponent
+    )
     {
         var currentPlayer = new GameSessionParticipant(Guid.NewGuid());
         var opponentPlayer = new GameSessionParticipant(Guid.NewGuid());
@@ -67,6 +73,7 @@ public sealed class GetGameSessionHandlerTests
             false,
             GameCardCatalog.MaxBatchSize,
             null,
-            null);
+            null
+        );
     }
 }

@@ -7,5 +7,6 @@ public interface ISubmitAcquireCardHandler
         Guid playerId,
         int expectedRoundNumber,
         Guid marketCardInstanceId,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default
+    );
 }

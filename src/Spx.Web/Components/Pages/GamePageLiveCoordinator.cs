@@ -3,7 +3,7 @@ using Spx.Game.Application;
 
 namespace Spx.Web.Components.Pages;
 
-internal sealed class GamePageLiveCoordinator(
+internal sealed partial class GamePageLiveCoordinator(
     IClusterClient clusterClient,
     IGamePresenceService gamePresenceService,
     Spx.Web.Circuits.CircuitConnectionEvents circuitConnectionEvents,
@@ -12,7 +12,8 @@ internal sealed class GamePageLiveCoordinator(
     Func<Task> onLobbyInvalidated,
     Func<Task> onSessionInvalidated,
     Func<Task> onMessagesInvalidated,
-    Func<Task> onPresenceChanged) : IAsyncDisposable
+    Func<Task> onPresenceChanged
+) : IAsyncDisposable
 {
     private const int PresenceLeaseSeconds = 10;
     private const int PresenceRenewalSeconds = 5;
@@ -45,7 +46,8 @@ internal sealed class GamePageLiveCoordinator(
                 onLobbyInvalidated,
                 onSessionInvalidated,
                 onMessagesInvalidated,
-                onPresenceChanged);
+                onPresenceChanged
+            );
             await subscription.SubscribeAsync(cancellationToken);
         }
 
@@ -75,16 +77,22 @@ internal sealed class GamePageLiveCoordinator(
 
         var currentPlayerId = lobby.CurrentPlayerId;
 
-        if (trackedPresenceGameId == lobby.GameId
+        if (
+            trackedPresenceGameId == lobby.GameId
             && trackedPresencePlayerId == currentPlayerId
-            && presenceConnectionId.HasValue)
+            && presenceConnectionId.HasValue
+        )
         {
             if (presenceRenewalTask is not null)
             {
                 return;
             }
 
-            await ResumePresenceTrackingAsync(lobby.GameId, currentPlayerId, presenceConnectionId.Value);
+            await ResumePresenceTrackingAsync(
+                lobby.GameId,
+                currentPlayerId,
+                presenceConnectionId.Value
+            );
             return;
         }
 
@@ -96,9 +104,19 @@ internal sealed class GamePageLiveCoordinator(
         presenceRenewalCts = new CancellationTokenSource();
         presenceRenewalTimer = new PeriodicTimer(TimeSpan.FromSeconds(PresenceRenewalSeconds));
 
-        await PublishPresenceLeaseAsync(lobby.GameId, currentPlayerId, presenceConnectionId.Value, presenceRenewalCts.Token);
+        await PublishPresenceLeaseAsync(
+            lobby.GameId,
+            currentPlayerId,
+            presenceConnectionId.Value,
+            presenceRenewalCts.Token
+        );
         await onPresenceChanged();
-        presenceRenewalTask = RenewPresenceAsync(lobby.GameId, currentPlayerId, presenceConnectionId.Value, presenceRenewalCts.Token);
+        presenceRenewalTask = RenewPresenceAsync(
+            lobby.GameId,
+            currentPlayerId,
+            presenceConnectionId.Value,
+            presenceRenewalCts.Token
+        );
     }
 
     private async Task ResumePresenceTrackingAsync(Guid gameId, Guid playerId, Guid connectionId)
@@ -108,7 +126,12 @@ internal sealed class GamePageLiveCoordinator(
 
         await PublishPresenceLeaseAsync(gameId, playerId, connectionId, presenceRenewalCts.Token);
         await onPresenceChanged();
-        presenceRenewalTask = RenewPresenceAsync(gameId, playerId, connectionId, presenceRenewalCts.Token);
+        presenceRenewalTask = RenewPresenceAsync(
+            gameId,
+            playerId,
+            connectionId,
+            presenceRenewalCts.Token
+        );
     }
 
     private async Task PausePresenceTrackingAsync()
@@ -131,7 +154,7 @@ internal sealed class GamePageLiveCoordinator(
             }
             catch (OperationCanceledException exception)
             {
-                logger.LogDebug(exception, "Presence renewal task finished after cancellation.");
+                LogPresenceRenewalCanceled(logger, exception);
             }
         }
 
@@ -158,15 +181,24 @@ internal sealed class GamePageLiveCoordinator(
 
         try
         {
-            await gamePresenceService.RemovePresenceLeaseAsync(gameId.Value, playerId.Value, connectionId.Value);
+            await gamePresenceService.RemovePresenceLeaseAsync(
+                gameId.Value,
+                playerId.Value,
+                connectionId.Value
+            );
         }
         catch (Exception exception)
         {
-            logger.LogWarning(exception, "Failed to remove presence lease for game {GameId} player {PlayerId}.", gameId.Value, playerId.Value);
+            LogRemovePresenceLeaseFailed(logger, exception, gameId.Value, playerId.Value);
         }
     }
 
-    private async Task RenewPresenceAsync(Guid gameId, Guid playerId, Guid connectionId, CancellationToken cancellationToken)
+    private async Task RenewPresenceAsync(
+        Guid gameId,
+        Guid playerId,
+        Guid connectionId,
+        CancellationToken cancellationToken
+    )
     {
         if (presenceRenewalTimer is null)
         {
@@ -182,11 +214,16 @@ internal sealed class GamePageLiveCoordinator(
         }
         catch (OperationCanceledException exception)
         {
-            logger.LogDebug(exception, "Presence renewal loop stopped for game {GameId} player {PlayerId} because tracking was canceled.", gameId, playerId);
+            LogPresenceRenewalLoopCanceled(logger, exception, gameId, playerId);
         }
     }
 
-    private async Task PublishPresenceLeaseAsync(Guid gameId, Guid playerId, Guid connectionId, CancellationToken cancellationToken)
+    private async Task PublishPresenceLeaseAsync(
+        Guid gameId,
+        Guid playerId,
+        Guid connectionId,
+        CancellationToken cancellationToken
+    )
     {
         try
         {
@@ -195,15 +232,16 @@ internal sealed class GamePageLiveCoordinator(
                 playerId,
                 connectionId,
                 DateTime.UtcNow.AddSeconds(PresenceLeaseSeconds),
-                cancellationToken);
+                cancellationToken
+            );
         }
         catch (OperationCanceledException exception)
         {
-            logger.LogDebug(exception, "Ignoring canceled presence lease renewal for game {GameId} player {PlayerId}.", gameId, playerId);
+            LogPresenceLeaseRenewalCanceled(logger, exception, gameId, playerId);
         }
         catch (Exception exception)
         {
-            logger.LogWarning(exception, "Failed to renew presence for game {GameId} player {PlayerId}.", gameId, playerId);
+            LogRenewPresenceFailed(logger, exception, gameId, playerId);
         }
     }
 
@@ -218,14 +256,72 @@ internal sealed class GamePageLiveCoordinator(
         subscription = null;
     }
 
-    private Task HandleConnectionDownAsync()
-        => PausePresenceTrackingAsync();
+    private Task HandleConnectionDownAsync() => PausePresenceTrackingAsync();
 
     private async Task HandleConnectionUpAsync()
     {
-        if (trackedPresenceGameId.HasValue && trackedPresencePlayerId.HasValue && presenceConnectionId.HasValue && presenceRenewalTask is null)
+        if (
+            trackedPresenceGameId.HasValue
+            && trackedPresencePlayerId.HasValue
+            && presenceConnectionId.HasValue
+            && presenceRenewalTask is null
+        )
         {
-            await ResumePresenceTrackingAsync(trackedPresenceGameId.Value, trackedPresencePlayerId.Value, presenceConnectionId.Value);
+            await ResumePresenceTrackingAsync(
+                trackedPresenceGameId.Value,
+                trackedPresencePlayerId.Value,
+                presenceConnectionId.Value
+            );
         }
     }
+
+    [LoggerMessage(
+        Level = LogLevel.Debug,
+        Message = "Presence renewal task finished after cancellation."
+    )]
+    private static partial void LogPresenceRenewalCanceled(ILogger logger, Exception exception);
+
+    [LoggerMessage(
+        Level = LogLevel.Warning,
+        Message = "Failed to remove presence lease for game {GameId} player {PlayerId}."
+    )]
+    private static partial void LogRemovePresenceLeaseFailed(
+        ILogger logger,
+        Exception exception,
+        Guid gameId,
+        Guid playerId
+    );
+
+    [LoggerMessage(
+        Level = LogLevel.Debug,
+        Message = "Presence renewal loop stopped for game {GameId} player {PlayerId} because tracking was canceled."
+    )]
+    private static partial void LogPresenceRenewalLoopCanceled(
+        ILogger logger,
+        Exception exception,
+        Guid gameId,
+        Guid playerId
+    );
+
+    [LoggerMessage(
+        Level = LogLevel.Debug,
+        Message = "Ignoring canceled presence lease renewal for game {GameId} player {PlayerId}."
+    )]
+    private static partial void LogPresenceLeaseRenewalCanceled(
+        ILogger logger,
+        Exception exception,
+        Guid gameId,
+        Guid playerId
+    );
+
+    [LoggerMessage(
+        Level = LogLevel.Warning,
+        Message = "Failed to renew presence for game {GameId} player {PlayerId}."
+    )]
+    private static partial void LogRenewPresenceFailed(
+        ILogger logger,
+        Exception exception,
+        Guid gameId,
+        Guid playerId
+    );
 }

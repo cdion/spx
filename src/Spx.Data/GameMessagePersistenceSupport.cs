@@ -5,14 +5,20 @@ namespace Spx.Data;
 
 internal sealed class GameMessagePersistenceSupport(ApplicationDbContext dbContext)
 {
-    public IQueryable<GameMessage> BuildVisibleMessagesQuery(Guid gameId, Guid playerId, MessageReadAccess access)
+    public IQueryable<GameMessage> BuildVisibleMessagesQuery(
+        Guid gameId,
+        Guid playerId,
+        MessageReadAccess access
+    )
     {
-        var query = dbContext.GameMessages
-            .AsNoTracking()
+        var query = dbContext
+            .GameMessages.AsNoTracking()
             .Where(entry => entry.GameId == gameId)
-            .Where(entry => entry.RecipientPlayerId == null
+            .Where(entry =>
+                entry.RecipientPlayerId == null
                 || entry.SenderPlayerId == playerId
-                || entry.RecipientPlayerId == playerId);
+                || entry.RecipientPlayerId == playerId
+            );
 
         if (access.VisibleThroughMessageId.HasValue)
         {
@@ -26,28 +32,49 @@ internal sealed class GameMessagePersistenceSupport(ApplicationDbContext dbConte
         return query;
     }
 
-    public async Task<GamePlayer?> GetActivePlayerAsync(Guid gameId, Guid playerId, CancellationToken cancellationToken)
-        => await dbContext.GamePlayers
-            .SingleOrDefaultAsync(entry => entry.GameId == gameId && entry.Id == playerId && entry.LeftAtUtc == null, cancellationToken);
+    public async Task<GamePlayer?> GetActivePlayerAsync(
+        Guid gameId,
+        Guid playerId,
+        CancellationToken cancellationToken
+    ) =>
+        await dbContext.GamePlayers.SingleOrDefaultAsync(
+            entry => entry.GameId == gameId && entry.Id == playerId && entry.LeftAtUtc == null,
+            cancellationToken
+        );
 
-    public async Task<bool> IsActivePlayerAsync(Guid gameId, Guid playerId, CancellationToken cancellationToken)
-        => await dbContext.GamePlayers
-            .AnyAsync(entry => entry.GameId == gameId && entry.Id == playerId && entry.LeftAtUtc == null, cancellationToken);
+    public async Task<bool> IsActivePlayerAsync(
+        Guid gameId,
+        Guid playerId,
+        CancellationToken cancellationToken
+    ) =>
+        await dbContext.GamePlayers.AnyAsync(
+            entry => entry.GameId == gameId && entry.Id == playerId && entry.LeftAtUtc == null,
+            cancellationToken
+        );
 
-    public async Task<MessageReadAccess?> GetReadAccessAsync(Guid gameId, Guid playerId, CancellationToken cancellationToken)
+    public async Task<MessageReadAccess?> GetReadAccessAsync(
+        Guid gameId,
+        Guid playerId,
+        CancellationToken cancellationToken
+    )
     {
-        var activePlayer = await dbContext.GamePlayers
-            .AsNoTracking()
-            .SingleOrDefaultAsync(entry => entry.GameId == gameId && entry.Id == playerId && entry.LeftAtUtc == null, cancellationToken);
+        var activePlayer = await dbContext
+            .GamePlayers.AsNoTracking()
+            .SingleOrDefaultAsync(
+                entry => entry.GameId == gameId && entry.Id == playerId && entry.LeftAtUtc == null,
+                cancellationToken
+            );
 
         if (activePlayer is not null)
         {
             return new MessageReadAccess(true, null, null);
         }
 
-        var formerPlayer = await dbContext.GamePlayers
-            .AsNoTracking()
-            .Where(entry => entry.GameId == gameId && entry.Id == playerId && entry.LeftAtUtc != null)
+        var formerPlayer = await dbContext
+            .GamePlayers.AsNoTracking()
+            .Where(entry =>
+                entry.GameId == gameId && entry.Id == playerId && entry.LeftAtUtc != null
+            )
             .OrderByDescending(entry => entry.LeftAtUtc)
             .FirstOrDefaultAsync(cancellationToken);
 
@@ -56,8 +83,16 @@ internal sealed class GameMessagePersistenceSupport(ApplicationDbContext dbConte
             return null;
         }
 
-        return new MessageReadAccess(false, formerPlayer.VisibleThroughMessageId, formerPlayer.LeftAtUtc);
+        return new MessageReadAccess(
+            false,
+            formerPlayer.VisibleThroughMessageId,
+            formerPlayer.LeftAtUtc
+        );
     }
 
-    internal sealed record MessageReadAccess(bool IsActive, Guid? VisibleThroughMessageId, DateTime? LeftAtUtc);
+    internal sealed record MessageReadAccess(
+        bool IsActive,
+        Guid? VisibleThroughMessageId,
+        DateTime? LeftAtUtc
+    );
 }

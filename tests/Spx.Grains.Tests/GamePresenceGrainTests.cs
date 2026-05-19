@@ -17,8 +17,10 @@ public sealed class GamePresenceGrainTests
 
         Assert.DoesNotContain(
             constructorParameters,
-            parameter => parameter.ParameterType.IsGenericType
-                && parameter.ParameterType.GetGenericTypeDefinition() == typeof(IPersistentState<>));
+            parameter =>
+                parameter.ParameterType.IsGenericType
+                && parameter.ParameterType.GetGenericTypeDefinition() == typeof(IPersistentState<>)
+        );
     }
 
     [Fact]
@@ -26,10 +28,19 @@ public sealed class GamePresenceGrainTests
     {
         var leasesByPlayerId = new Dictionary<Guid, Dictionary<Guid, DateTime>>();
         var playerId = Guid.NewGuid();
-        var changed = GamePresenceTracker.UpsertLease(leasesByPlayerId, playerId, Guid.NewGuid(), DateTime.UtcNow.AddSeconds(10), DateTime.UtcNow);
+        var changed = GamePresenceTracker.UpsertLease(
+            leasesByPlayerId,
+            playerId,
+            Guid.NewGuid(),
+            DateTime.UtcNow.AddSeconds(10),
+            DateTime.UtcNow
+        );
 
         Assert.True(changed);
-        Assert.Equal([playerId], GamePresenceTracker.CreateSnapshot(leasesByPlayerId).OnlinePlayerIds);
+        Assert.Equal(
+            [playerId],
+            GamePresenceTracker.CreateSnapshot(leasesByPlayerId).OnlinePlayerIds
+        );
     }
 
     [Fact]
@@ -39,8 +50,20 @@ public sealed class GamePresenceGrainTests
         var playerId = Guid.NewGuid();
         var nowUtc = DateTime.UtcNow;
 
-        GamePresenceTracker.UpsertLease(leasesByPlayerId, playerId, Guid.NewGuid(), nowUtc.AddSeconds(10), nowUtc);
-        var changed = GamePresenceTracker.UpsertLease(leasesByPlayerId, playerId, Guid.NewGuid(), nowUtc.AddSeconds(10), nowUtc);
+        GamePresenceTracker.UpsertLease(
+            leasesByPlayerId,
+            playerId,
+            Guid.NewGuid(),
+            nowUtc.AddSeconds(10),
+            nowUtc
+        );
+        var changed = GamePresenceTracker.UpsertLease(
+            leasesByPlayerId,
+            playerId,
+            Guid.NewGuid(),
+            nowUtc.AddSeconds(10),
+            nowUtc
+        );
 
         Assert.False(changed);
     }
@@ -52,12 +75,27 @@ public sealed class GamePresenceGrainTests
         var playerId = Guid.NewGuid();
         var nowUtc = DateTime.UtcNow;
 
-        GamePresenceTracker.UpsertLease(leasesByPlayerId, playerId, Guid.NewGuid(), nowUtc.AddSeconds(-1), nowUtc);
+        GamePresenceTracker.UpsertLease(
+            leasesByPlayerId,
+            playerId,
+            Guid.NewGuid(),
+            nowUtc.AddSeconds(-1),
+            nowUtc
+        );
 
-        var changed = GamePresenceTracker.UpsertLease(leasesByPlayerId, playerId, Guid.NewGuid(), nowUtc.AddSeconds(10), nowUtc);
+        var changed = GamePresenceTracker.UpsertLease(
+            leasesByPlayerId,
+            playerId,
+            Guid.NewGuid(),
+            nowUtc.AddSeconds(10),
+            nowUtc
+        );
 
         Assert.True(changed);
-        Assert.Equal([playerId], GamePresenceTracker.CreateSnapshot(leasesByPlayerId).OnlinePlayerIds);
+        Assert.Equal(
+            [playerId],
+            GamePresenceTracker.CreateSnapshot(leasesByPlayerId).OnlinePlayerIds
+        );
     }
 
     [Fact]
@@ -69,11 +107,27 @@ public sealed class GamePresenceGrainTests
         var secondConnectionId = Guid.NewGuid();
         var nowUtc = DateTime.UtcNow;
 
-        GamePresenceTracker.UpsertLease(leasesByPlayerId, playerId, firstConnectionId, nowUtc.AddSeconds(10), nowUtc);
-        GamePresenceTracker.UpsertLease(leasesByPlayerId, playerId, secondConnectionId, nowUtc.AddSeconds(10), nowUtc);
+        GamePresenceTracker.UpsertLease(
+            leasesByPlayerId,
+            playerId,
+            firstConnectionId,
+            nowUtc.AddSeconds(10),
+            nowUtc
+        );
+        GamePresenceTracker.UpsertLease(
+            leasesByPlayerId,
+            playerId,
+            secondConnectionId,
+            nowUtc.AddSeconds(10),
+            nowUtc
+        );
 
-        Assert.False(GamePresenceTracker.RemoveLease(leasesByPlayerId, playerId, firstConnectionId, nowUtc));
-        Assert.True(GamePresenceTracker.RemoveLease(leasesByPlayerId, playerId, secondConnectionId, nowUtc));
+        Assert.False(
+            GamePresenceTracker.RemoveLease(leasesByPlayerId, playerId, firstConnectionId, nowUtc)
+        );
+        Assert.True(
+            GamePresenceTracker.RemoveLease(leasesByPlayerId, playerId, secondConnectionId, nowUtc)
+        );
     }
 
     [Fact]
@@ -83,8 +137,17 @@ public sealed class GamePresenceGrainTests
         var playerId = Guid.NewGuid();
         var nowUtc = DateTime.UtcNow;
 
-        GamePresenceTracker.UpsertLease(leasesByPlayerId, playerId, Guid.NewGuid(), nowUtc.AddSeconds(1), nowUtc);
-        var changed = GamePresenceTracker.PruneExpiredLeases(leasesByPlayerId, nowUtc.AddSeconds(2));
+        GamePresenceTracker.UpsertLease(
+            leasesByPlayerId,
+            playerId,
+            Guid.NewGuid(),
+            nowUtc.AddSeconds(1),
+            nowUtc
+        );
+        var changed = GamePresenceTracker.PruneExpiredLeases(
+            leasesByPlayerId,
+            nowUtc.AddSeconds(2)
+        );
 
         Assert.True(changed);
         Assert.Empty(GamePresenceTracker.CreateSnapshot(leasesByPlayerId).OnlinePlayerIds);

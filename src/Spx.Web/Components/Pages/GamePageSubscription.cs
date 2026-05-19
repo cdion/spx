@@ -5,15 +5,15 @@ using Spx.Contracts;
 
 namespace Spx.Web.Components.Pages;
 
-internal sealed class GamePageSubscription(
+internal sealed partial class GamePageSubscription(
     IClusterClient clusterClient,
     ILogger<GamePageSubscription> logger,
     Guid gameId,
     Func<Task> onLobbyInvalidated,
     Func<Task> onSessionInvalidated,
     Func<Task> onMessagesInvalidated,
-    Func<Task> onPresenceInvalidated)
-    : IGameInvalidationObserver, IAsyncDisposable
+    Func<Task> onPresenceInvalidated
+) : IGameInvalidationObserver, IAsyncDisposable
 {
     private IGameInvalidationObserver? observerReference;
     private bool isSubscribed;
@@ -31,17 +31,19 @@ internal sealed class GamePageSubscription(
 
         try
         {
-            await clusterClient.GetGrain<IGameInvalidationGrain>(GameId).Subscribe(observerReference);
+            await clusterClient
+                .GetGrain<IGameInvalidationGrain>(GameId)
+                .Subscribe(observerReference);
             isSubscribed = true;
         }
         catch (OrleansException exception)
         {
-            logger.LogWarning(exception, "Failed to subscribe to live game invalidation events for game {GameId}.", GameId);
+            LogSubscribeFailed(logger, exception, GameId);
             throw;
         }
         catch (TimeoutException exception)
         {
-            logger.LogWarning(exception, "Failed to subscribe to live game invalidation events for game {GameId}.", GameId);
+            LogSubscribeFailed(logger, exception, GameId);
             throw;
         }
         finally
@@ -103,7 +105,9 @@ internal sealed class GamePageSubscription(
 
         try
         {
-            await clusterClient.GetGrain<IGameInvalidationGrain>(GameId).Unsubscribe(observerReference);
+            await clusterClient
+                .GetGrain<IGameInvalidationGrain>(GameId)
+                .Unsubscribe(observerReference);
         }
         finally
         {
@@ -112,4 +116,14 @@ internal sealed class GamePageSubscription(
             isSubscribed = false;
         }
     }
+
+    [LoggerMessage(
+        Level = LogLevel.Warning,
+        Message = "Failed to subscribe to live game invalidation events for game {GameId}."
+    )]
+    private static partial void LogSubscribeFailed(
+        ILogger logger,
+        Exception exception,
+        Guid gameId
+    );
 }

@@ -18,8 +18,7 @@ public sealed class TestDatabase : IAsyncDisposable
 
     public ApplicationDbContext Context => LeaseContext();
 
-    public ApplicationDbContext CreateDbContext()
-        => contextFactory.CreateDbContext();
+    public ApplicationDbContext CreateDbContext() => contextFactory.CreateDbContext();
 
     private ApplicationDbContext LeaseContext()
     {
@@ -32,14 +31,16 @@ public sealed class TestDatabase : IAsyncDisposable
     {
         await using var context = CreateDbContext();
 
-        context.Users.Add(new ApplicationUser
-        {
-            Id = userId,
-            UserName = email,
-            NormalizedUserName = email.ToUpperInvariant(),
-            Email = email,
-            NormalizedEmail = email.ToUpperInvariant()
-        });
+        context.Users.Add(
+            new ApplicationUser
+            {
+                Id = userId,
+                UserName = email,
+                NormalizedUserName = email.ToUpperInvariant(),
+                Email = email,
+                NormalizedEmail = email.ToUpperInvariant(),
+            }
+        );
 
         await context.SaveChangesAsync();
     }
@@ -53,7 +54,8 @@ public sealed class TestDatabase : IAsyncDisposable
         GameStatus status = GameStatus.Open,
         DateTime? endedAtUtc = null,
         DateTime? leftAtUtc = null,
-        Guid? visibleThroughMessageId = null)
+        Guid? visibleThroughMessageId = null
+    )
     {
         await using var context = CreateDbContext();
 
@@ -67,21 +69,23 @@ public sealed class TestDatabase : IAsyncDisposable
             CreatedByUserId = createdByUserId,
             MaxPlayers = 2,
             Status = status,
-            EndedAtUtc = endedAtUtc
+            EndedAtUtc = endedAtUtc,
         };
 
         context.Games.Add(game);
-        context.GamePlayers.Add(new GamePlayer
-        {
-            Id = Guid.NewGuid(),
-            GameId = game.Id,
-            UserId = activePlayerUserId,
-            Name = activePlayerName,
-            NormalizedName = activePlayerName.ToUpperInvariant(),
-            JoinedAtUtc = now.AddMinutes(1),
-            LeftAtUtc = leftAtUtc,
-            VisibleThroughMessageId = visibleThroughMessageId
-        });
+        context.GamePlayers.Add(
+            new GamePlayer
+            {
+                Id = Guid.NewGuid(),
+                GameId = game.Id,
+                UserId = activePlayerUserId,
+                Name = activePlayerName,
+                NormalizedName = activePlayerName.ToUpperInvariant(),
+                JoinedAtUtc = now.AddMinutes(1),
+                LeftAtUtc = leftAtUtc,
+                VisibleThroughMessageId = visibleThroughMessageId,
+            }
+        );
 
         await context.SaveChangesAsync();
         return game;
@@ -93,7 +97,8 @@ public sealed class TestDatabase : IAsyncDisposable
         string playerName,
         DateTime? joinedAtUtc = null,
         DateTime? leftAtUtc = null,
-        Guid? visibleThroughMessageId = null)
+        Guid? visibleThroughMessageId = null
+    )
     {
         await using var context = CreateDbContext();
 
@@ -106,7 +111,7 @@ public sealed class TestDatabase : IAsyncDisposable
             NormalizedName = playerName.ToUpperInvariant(),
             JoinedAtUtc = joinedAtUtc ?? DateTime.UtcNow.AddMinutes(-5),
             LeftAtUtc = leftAtUtc,
-            VisibleThroughMessageId = visibleThroughMessageId
+            VisibleThroughMessageId = visibleThroughMessageId,
         };
 
         context.GamePlayers.Add(player);
@@ -134,7 +139,8 @@ public sealed class TestDatabase : IAsyncDisposable
         DateTime? createdAtUtc = null,
         DateTime? editedAtUtc = null,
         DateTime? deletedAtUtc = null,
-        Guid? id = null)
+        Guid? id = null
+    )
     {
         await using var context = CreateDbContext();
 
@@ -151,7 +157,7 @@ public sealed class TestDatabase : IAsyncDisposable
             Body = body,
             CreatedAtUtc = createdAtUtc ?? DateTime.UtcNow,
             EditedAtUtc = editedAtUtc,
-            DeletedAtUtc = deletedAtUtc
+            DeletedAtUtc = deletedAtUtc,
         };
 
         context.GameMessages.Add(message);
@@ -172,7 +178,10 @@ internal sealed class FakeGameLobbyNotifier : IGameLobbyInvalidationPublisher
 {
     public List<Guid> PublishedGameIds { get; } = [];
 
-    public Task PublishLobbyInvalidatedAsync(Guid gameId, CancellationToken cancellationToken = default)
+    public Task PublishLobbyInvalidatedAsync(
+        Guid gameId,
+        CancellationToken cancellationToken = default
+    )
     {
         PublishedGameIds.Add(gameId);
         return Task.CompletedTask;
@@ -183,14 +192,18 @@ internal sealed class FakeGameMessagePublisher : IGameMessageInvalidationPublish
 {
     public List<Guid> PublishedGameIds { get; } = [];
 
-    public Task PublishMessagesInvalidatedAsync(Guid gameId, CancellationToken cancellationToken = default)
+    public Task PublishMessagesInvalidatedAsync(
+        Guid gameId,
+        CancellationToken cancellationToken = default
+    )
     {
         PublishedGameIds.Add(gameId);
         return Task.CompletedTask;
     }
 }
 
-internal sealed class TestDbContextFactory(string connectionString) : IDbContextFactory<ApplicationDbContext>
+internal sealed class TestDbContextFactory(string connectionString)
+    : IDbContextFactory<ApplicationDbContext>
 {
     public ApplicationDbContext CreateDbContext()
     {
@@ -201,7 +214,9 @@ internal sealed class TestDbContextFactory(string connectionString) : IDbContext
         return new ApplicationDbContext(options);
     }
 
-    public async ValueTask<ApplicationDbContext> CreateDbContextAsync(CancellationToken cancellationToken = default)
+    public async ValueTask<ApplicationDbContext> CreateDbContextAsync(
+        CancellationToken cancellationToken = default
+    )
     {
         var options = new DbContextOptionsBuilder<ApplicationDbContext>()
             .UseNpgsql(connectionString)

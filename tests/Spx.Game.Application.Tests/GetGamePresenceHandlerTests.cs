@@ -12,7 +12,8 @@ public sealed class GetGamePresenceHandlerTests
     {
         var presence = new GamePresenceView([Guid.NewGuid()]);
         var presenceService = Substitute.For<IGamePresenceService>();
-        presenceService.GetPresenceAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+        presenceService
+            .GetPresenceAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(presence);
         using var services = CreateServices(presenceService);
 

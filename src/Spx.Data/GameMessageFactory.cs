@@ -4,14 +4,36 @@ namespace Spx.Data;
 
 internal static class GameMessageFactory
 {
-    public static GameMessage CreatePublicPlayerMessage(Guid gameId, GamePlayer sender, string body, DateTime createdAtUtc)
-        => CreatePlayerMessage(gameId, sender, null, GameMessageKind.PlayerPublic, body, createdAtUtc);
+    public static GameMessage CreatePublicPlayerMessage(
+        Guid gameId,
+        GamePlayer sender,
+        string body,
+        DateTime createdAtUtc
+    ) =>
+        CreatePlayerMessage(gameId, sender, null, GameMessageKind.PlayerPublic, body, createdAtUtc);
 
-    public static GameMessage CreatePrivatePlayerMessage(Guid gameId, GamePlayer sender, GamePlayer recipient, string body, DateTime createdAtUtc)
-        => CreatePlayerMessage(gameId, sender, recipient, GameMessageKind.PlayerPrivate, body, createdAtUtc);
+    public static GameMessage CreatePrivatePlayerMessage(
+        Guid gameId,
+        GamePlayer sender,
+        GamePlayer recipient,
+        string body,
+        DateTime createdAtUtc
+    ) =>
+        CreatePlayerMessage(
+            gameId,
+            sender,
+            recipient,
+            GameMessageKind.PlayerPrivate,
+            body,
+            createdAtUtc
+        );
 
-    public static GameMessage CreateGameplayEvent(Guid gameId, string body, DateTime createdAtUtc)
-        => new()
+    public static GameMessage CreateGameplayEvent(
+        Guid gameId,
+        string body,
+        DateTime createdAtUtc
+    ) =>
+        new()
         {
             Id = Guid.CreateVersion7(),
             GameId = gameId,
@@ -22,11 +44,16 @@ internal static class GameMessageFactory
             Body = body,
             SenderDisplayName = "Game",
             RecipientDisplayName = string.Empty,
-            CreatedAtUtc = createdAtUtc
+            CreatedAtUtc = createdAtUtc,
         };
 
-    public static GameMessage CreateSystemEvent(Guid gameId, GameMessageKind kind, DateTime createdAtUtc, GamePlayer? actor = null)
-        => new()
+    public static GameMessage CreateSystemEvent(
+        Guid gameId,
+        GameMessageKind kind,
+        DateTime createdAtUtc,
+        GamePlayer? actor = null
+    ) =>
+        new()
         {
             Id = Guid.CreateVersion7(),
             GameId = gameId,
@@ -37,11 +64,18 @@ internal static class GameMessageFactory
             Body = string.Empty,
             SenderDisplayName = actor?.Name ?? "Game",
             RecipientDisplayName = string.Empty,
-            CreatedAtUtc = createdAtUtc
+            CreatedAtUtc = createdAtUtc,
         };
 
-    private static GameMessage CreatePlayerMessage(Guid gameId, GamePlayer sender, GamePlayer? recipient, GameMessageKind kind, string body, DateTime createdAtUtc)
-        => new()
+    private static GameMessage CreatePlayerMessage(
+        Guid gameId,
+        GamePlayer sender,
+        GamePlayer? recipient,
+        GameMessageKind kind,
+        string body,
+        DateTime createdAtUtc
+    ) =>
+        new()
         {
             Id = Guid.CreateVersion7(),
             GameId = gameId,
@@ -52,6 +86,6 @@ internal static class GameMessageFactory
             Body = body,
             SenderDisplayName = sender.Name,
             RecipientDisplayName = recipient?.Name ?? string.Empty,
-            CreatedAtUtc = createdAtUtc
+            CreatedAtUtc = createdAtUtc,
         };
 }

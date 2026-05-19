@@ -15,17 +15,21 @@ public sealed class OrleansClusterFixture : IAsyncLifetime
     {
         var builder = new InProcessTestClusterBuilder();
 
-        builder.ConfigureSilo((_, siloBuilder) =>
-        {
-            siloBuilder.AddMemoryGrainStorageAsDefault();
-
-            siloBuilder.Configure<GrainCollectionOptions>(options =>
+        builder.ConfigureSilo(
+            (_, siloBuilder) =>
             {
-                options.CollectionQuantum = TimeSpan.FromSeconds(1);
-                options.ClassSpecificCollectionAge[typeof(GamePresenceGrain).FullName!] = TimeSpan.FromSeconds(2);
-                options.ClassSpecificCollectionAge[typeof(GameSessionGrain).FullName!] = TimeSpan.FromSeconds(2);
-            });
-        });
+                siloBuilder.AddMemoryGrainStorageAsDefault();
+
+                siloBuilder.Configure<GrainCollectionOptions>(options =>
+                {
+                    options.CollectionQuantum = TimeSpan.FromSeconds(1);
+                    options.ClassSpecificCollectionAge[typeof(GamePresenceGrain).FullName!] =
+                        TimeSpan.FromSeconds(2);
+                    options.ClassSpecificCollectionAge[typeof(GameSessionGrain).FullName!] =
+                        TimeSpan.FromSeconds(2);
+                });
+            }
+        );
 
         Cluster = builder.Build();
         await Cluster.DeployAsync();

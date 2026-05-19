@@ -17,8 +17,7 @@ internal sealed class GamePageActionState
         return true;
     }
 
-    public void CompleteLeave()
-        => IsLeaving = false;
+    public void CompleteLeave() => IsLeaving = false;
 
     public bool TryBeginGameplayAction()
     {
@@ -31,6 +30,5 @@ internal sealed class GamePageActionState
         return true;
     }
 
-    public void CompleteGameplayAction()
-        => IsSubmittingGameplayAction = false;
+    public void CompleteGameplayAction() => IsSubmittingGameplayAction = false;
 }

@@ -2,8 +2,7 @@ using Spx.Account;
 
 namespace Spx.Account.Features.Login;
 
-internal sealed class LoginHandler(
-    IAccountIdentity accountIdentity) : ILoginHandler
+internal sealed class LoginHandler(IAccountIdentity accountIdentity) : ILoginHandler
 {
     public async Task<LoginOutcome> HandleAsync(string email, string password, string? returnUrl)
     {
@@ -28,7 +27,11 @@ internal sealed class LoginHandler(
 
         if (result.Status == AccountPasswordSignInStatus.EmailConfirmationRequired)
         {
-            return new LoginOutcome(LoginOutcomeStatus.EmailConfirmationRequired, resolvedReturnUrl, email);
+            return new LoginOutcome(
+                LoginOutcomeStatus.EmailConfirmationRequired,
+                resolvedReturnUrl,
+                email
+            );
         }
 
         if (result.Status == AccountPasswordSignInStatus.LockedOut)
@@ -41,7 +44,11 @@ internal sealed class LoginHandler(
 
     private static string ResolveReturnUrl(string? returnUrl)
     {
-        if (!string.IsNullOrWhiteSpace(returnUrl) && returnUrl.StartsWith('/') && !returnUrl.StartsWith("//", StringComparison.Ordinal))
+        if (
+            !string.IsNullOrWhiteSpace(returnUrl)
+            && returnUrl.StartsWith('/')
+            && !returnUrl.StartsWith("//", StringComparison.Ordinal)
+        )
         {
             return returnUrl;
         }

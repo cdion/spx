@@ -16,8 +16,8 @@ internal static class InviteCodeGenerator
         return CreateCode(value);
     }
 
-    public static string NormalizeInviteCode(string inviteCode)
-        => inviteCode.Trim().ToUpperInvariant();
+    public static string NormalizeInviteCode(string inviteCode) =>
+        inviteCode.Trim().ToUpperInvariant();
 
     public static string CreateCode(ulong value)
     {

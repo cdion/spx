@@ -1,4 +1,3 @@
-using Spx.Contracts;
 using Spx.Game.Domain;
 using Spx.Grains;
 using Xunit;
@@ -22,7 +21,14 @@ public sealed class GameSessionGrainTests
             SecondPlayerActive = false,
             CurrentAcquireFirstPlayerId = firstPlayer.PlayerId,
             CurrentAcquireSecondPlayerId = secondPlayer.PlayerId,
-            FirstPlayerHand = [new GameCardState { CardInstanceId = Guid.NewGuid(), Definition = GameCardDefinition.Extract }],
+            FirstPlayerHand =
+            [
+                new GameCardState
+                {
+                    CardInstanceId = Guid.NewGuid(),
+                    Definition = GameCardDefinition.Extract,
+                },
+            ],
             LastResolvedBatch = new ResolvedGameBatchState
             {
                 RoundNumber = 3,
@@ -36,20 +42,30 @@ public sealed class GameSessionGrainTests
                         [
                             new PendingGameBatchCardState
                             {
-                                Card = new GameCardState { CardInstanceId = Guid.NewGuid(), Definition = GameCardDefinition.Refine },
-                                ConsumedCards = [new GameCardReferenceState { ProducedCardDefinition = GameCardDefinition.Red }]
-                            }
+                                Card = new GameCardState
+                                {
+                                    CardInstanceId = Guid.NewGuid(),
+                                    Definition = GameCardDefinition.Refine,
+                                },
+                                ConsumedCards =
+                                [
+                                    new GameCardReferenceState
+                                    {
+                                        ProducedCardDefinition = GameCardDefinition.Red,
+                                    },
+                                ],
+                            },
                         ],
-                        ProducedVictory = true
-                    }
-                ]
+                        ProducedVictory = true,
+                    },
+                ],
             },
             Completion = new GameCompletionState
             {
                 Reason = GameCompletionReason.Victory,
                 WinnerPlayerId = firstPlayer.PlayerId,
-                CompletedAtUtc = DateTime.UtcNow
-            }
+                CompletedAtUtc = DateTime.UtcNow,
+            },
         };
 
         var grainState = GameSessionGrainStateMapper.FromDomainState(domainState);
@@ -77,8 +93,8 @@ public sealed class GameSessionGrainTests
         var firstPlayerId = Guid.NewGuid();
         var grainState = new GameSessionGrainState
         {
-            FirstPlayer = new GameSessionParticipantGrainView(firstPlayerId),
-            SecondPlayer = new GameSessionParticipantGrainView(Guid.NewGuid()),
+            FirstPlayer = new GameSessionParticipant(firstPlayerId),
+            SecondPlayer = new GameSessionParticipant(Guid.NewGuid()),
             RoundNumber = 2,
             Phase = GamePhase.Play,
             FirstPlayerPendingBatch = new GameSessionPendingBatchGrainState
@@ -88,17 +104,28 @@ public sealed class GameSessionGrainTests
                 [
                     new GameSessionPendingBatchCardGrainState
                     {
-                        Card = new GameSessionGrainCardState { CardInstanceId = Guid.NewGuid(), Definition = GameCardDefinition.Produce },
+                        Card = new GameSessionGrainCardState
+                        {
+                            CardInstanceId = Guid.NewGuid(),
+                            Definition = GameCardDefinition.Produce,
+                        },
                         CraftedCardDefinition = GameCardDefinition.Victory,
                         ConsumedCards =
                         [
-                            new GameSessionCardReferenceGrainState { CardInstanceId = Guid.NewGuid() },
-                            new GameSessionCardReferenceGrainState { ProducedByCardInstanceId = Guid.NewGuid(), ProducedCardDefinition = GameCardDefinition.Red }
+                            new GameSessionCardReferenceGrainState
+                            {
+                                CardInstanceId = Guid.NewGuid(),
+                            },
+                            new GameSessionCardReferenceGrainState
+                            {
+                                ProducedByCardInstanceId = Guid.NewGuid(),
+                                ProducedCardDefinition = GameCardDefinition.Red,
+                            },
                         ],
-                        ReturnToHand = true
-                    }
-                ]
-            }
+                        ReturnToHand = true,
+                    },
+                ],
+            },
         };
 
         var domainState = GameSessionGrainStateMapper.ToDomainState(grainState);

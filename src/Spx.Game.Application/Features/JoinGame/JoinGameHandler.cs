@@ -6,12 +6,23 @@ internal sealed class JoinGameHandler(
     IGamePersistence gamePersistence,
     IEnsureGameSessionHandler ensureGameSessionHandler,
     IGameLobbyInvalidationPublisher gameLobbyInvalidationPublisher,
-    IGameMessageInvalidationPublisher gameMessageInvalidationPublisher)
-    : IJoinGameHandler
+    IGameMessageInvalidationPublisher gameMessageInvalidationPublisher
+) : IJoinGameHandler
 {
-    public async Task<GameCommandOutcome> HandleAsync(string userId, JoinGameRequest request, CancellationToken cancellationToken = default)
+    public async Task<GameCommandOutcome> HandleAsync(
+        string userId,
+        JoinGameRequest request,
+        CancellationToken cancellationToken = default
+    )
     {
-        if (!GameInputValidation.TryNormalizePlayerName(request.PlayerName, out var playerName, out var playerNameLookup, out var playerNameError))
+        if (
+            !GameInputValidation.TryNormalizePlayerName(
+                request.PlayerName,
+                out var playerName,
+                out var playerNameLookup,
+                out var playerNameError
+            )
+        )
         {
             return new GameCommandFailed(playerNameError);
         }
@@ -24,7 +35,8 @@ internal sealed class JoinGameHandler(
 
         var joinResult = await gamePersistence.JoinGameAsync(
             new JoinGamePersistenceRequest(userId, inviteCode, playerName, playerNameLookup),
-            cancellationToken);
+            cancellationToken
+        );
 
         if (joinResult.LobbyGameId is Guid lobbyGameId)
         {
@@ -33,10 +45,16 @@ internal sealed class JoinGameHandler(
                 await ensureGameSessionHandler.HandleAsync(lobbyGameId, cancellationToken);
             }
 
-            await gameLobbyInvalidationPublisher.PublishLobbyInvalidatedAsync(lobbyGameId, cancellationToken);
+            await gameLobbyInvalidationPublisher.PublishLobbyInvalidatedAsync(
+                lobbyGameId,
+                cancellationToken
+            );
             if (joinResult.MessagesGameId.HasValue)
             {
-                await gameMessageInvalidationPublisher.PublishMessagesInvalidatedAsync(lobbyGameId, cancellationToken);
+                await gameMessageInvalidationPublisher.PublishMessagesInvalidatedAsync(
+                    lobbyGameId,
+                    cancellationToken
+                );
             }
         }
 

@@ -15,12 +15,25 @@ public sealed class SendPublicMessageHandlerTests
         using var services = GameMessageHandlerTestServices.Create(persistence, publisher);
 
         var handler = services.GetRequiredService<ISendPublicMessageHandler>();
-        var result = await handler.HandleAsync(Guid.NewGuid(), Guid.NewGuid(), new SendGameMessageRequest("  \r\n  "));
+        var result = await handler.HandleAsync(
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            new SendGameMessageRequest("  \r\n  ")
+        );
 
         var failed = Assert.IsType<GameMessageCommandFailed>(result);
         Assert.Equal("Messages cannot be empty.", failed.ErrorMessage);
-        await persistence.DidNotReceive().SendPublicMessageAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
-        await publisher.DidNotReceive().PublishMessagesInvalidatedAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+        await persistence
+            .DidNotReceive()
+            .SendPublicMessageAsync(
+                Arg.Any<Guid>(),
+                Arg.Any<Guid>(),
+                Arg.Any<string>(),
+                Arg.Any<CancellationToken>()
+            );
+        await publisher
+            .DidNotReceive()
+            .PublishMessagesInvalidatedAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -42,35 +55,67 @@ public sealed class SendPublicMessageHandlerTests
             true,
             false,
             true,
-            true);
+            true
+        );
         var persistence = Substitute.For<IGameMessagePersistence>();
-        persistence.SendPublicMessageAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+        persistence
+            .SendPublicMessageAsync(
+                Arg.Any<Guid>(),
+                Arg.Any<Guid>(),
+                Arg.Any<string>(),
+                Arg.Any<CancellationToken>()
+            )
             .Returns(new GameMessageCommandSucceeded(persistedMessage));
         var publisher = Substitute.For<IGameMessageInvalidationPublisher>();
         using var services = GameMessageHandlerTestServices.Create(persistence, publisher);
 
         var handler = services.GetRequiredService<ISendPublicMessageHandler>();
-        var result = await handler.HandleAsync(gameId, Guid.NewGuid(), new SendGameMessageRequest(" Hello crew "));
+        var result = await handler.HandleAsync(
+            gameId,
+            Guid.NewGuid(),
+            new SendGameMessageRequest(" Hello crew ")
+        );
 
         Assert.IsType<GameMessageCommandSucceeded>(result);
-        await persistence.Received(1).SendPublicMessageAsync(gameId, Arg.Any<Guid>(), "Hello crew", Arg.Any<CancellationToken>());
-        await publisher.Received(1).PublishMessagesInvalidatedAsync(gameId, Arg.Any<CancellationToken>());
+        await persistence
+            .Received(1)
+            .SendPublicMessageAsync(
+                gameId,
+                Arg.Any<Guid>(),
+                "Hello crew",
+                Arg.Any<CancellationToken>()
+            );
+        await publisher
+            .Received(1)
+            .PublishMessagesInvalidatedAsync(gameId, Arg.Any<CancellationToken>());
     }
 
     [Fact]
     public async Task HandleAsync_does_not_publish_when_persistence_fails()
     {
         var persistence = Substitute.For<IGameMessagePersistence>();
-        persistence.SendPublicMessageAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+        persistence
+            .SendPublicMessageAsync(
+                Arg.Any<Guid>(),
+                Arg.Any<Guid>(),
+                Arg.Any<string>(),
+                Arg.Any<CancellationToken>()
+            )
             .Returns(new GameMessageCommandFailed("That player is not active in this game."));
         var publisher = Substitute.For<IGameMessageInvalidationPublisher>();
         using var services = GameMessageHandlerTestServices.Create(persistence, publisher);
 
         var handler = services.GetRequiredService<ISendPublicMessageHandler>();
-        var result = await handler.HandleAsync(Guid.NewGuid(), Guid.NewGuid(), new SendGameMessageRequest("Hello crew"));
+        var result = await handler.HandleAsync(
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            new SendGameMessageRequest("Hello crew")
+        );
 
         var failed = Assert.IsType<GameMessageCommandFailed>(result);
         Assert.Equal("That player is not active in this game.", failed.ErrorMessage);
-        await publisher.DidNotReceive().PublishMessagesInvalidatedAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+        await publisher
+            .DidNotReceive()
+            .PublishMessagesInvalidatedAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
 }

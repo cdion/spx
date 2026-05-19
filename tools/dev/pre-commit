@@ -1,0 +1,24 @@
+#!/bin/sh
+# Pre-commit hook: enforces formatting and runs all tests before every commit.
+# Installed via: tools/dev/install-hooks.sh
+
+set -e
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+
+echo "→ Restoring dotnet tools..."
+dotnet tool restore --tool-manifest "$REPO_ROOT/.config/dotnet-tools.json" --verbosity quiet
+
+echo "→ Checking C# formatting (CSharpier)..."
+dotnet csharpier check "$REPO_ROOT"
+
+echo "→ Building solution (analyzer checks)..."
+dotnet build "$REPO_ROOT/Spx.slnx" --verbosity quiet -warnaserror
+
+echo "→ Running all tests..."
+dotnet test "$REPO_ROOT/Spx.slnx" \
+  --no-build \
+  --verbosity quiet \
+  --logger "console;verbosity=minimal"
+
+echo "✓ Pre-commit checks passed."

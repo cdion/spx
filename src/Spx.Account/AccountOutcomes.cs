@@ -6,10 +6,14 @@ public enum LoginOutcomeStatus
     ValidationFailed,
     InvalidCredentials,
     EmailConfirmationRequired,
-    LockedOut
+    LockedOut,
 }
 
-public sealed record LoginOutcome(LoginOutcomeStatus Status, string ReturnUrl, string? Email = null);
+public sealed record LoginOutcome(
+    LoginOutcomeStatus Status,
+    string ReturnUrl,
+    string? Email = null
+);
 
 public enum RegisterOutcomeStatus
 {
@@ -17,16 +21,20 @@ public enum RegisterOutcomeStatus
     PasswordMismatch,
     Failed,
     ConfirmationResendRequired,
-    ConfirmationSent
+    ConfirmationSent,
 }
 
-public sealed record RegisterOutcome(RegisterOutcomeStatus Status, string? Email = null, IReadOnlyList<string>? Errors = null);
+public sealed record RegisterOutcome(
+    RegisterOutcomeStatus Status,
+    string? Email = null,
+    IReadOnlyList<string>? Errors = null
+);
 
 public enum ConfirmEmailOutcomeStatus
 {
     InvalidLink,
     Succeeded,
-    Failed
+    Failed,
 }
 
 public sealed record ConfirmEmailOutcome(ConfirmEmailOutcomeStatus Status, string? Email = null);
@@ -34,7 +42,7 @@ public sealed record ConfirmEmailOutcome(ConfirmEmailOutcomeStatus Status, strin
 public enum ForgotPasswordOutcomeStatus
 {
     ValidationFailed,
-    Completed
+    Completed,
 }
 
 public sealed record ForgotPasswordOutcome(ForgotPasswordOutcomeStatus Status);
@@ -44,21 +52,25 @@ public enum ResetPasswordOutcomeStatus
     IncompleteLink,
     PasswordMismatch,
     Completed,
-    Failed
+    Failed,
 }
 
 public sealed record ResetPasswordOutcome(
     ResetPasswordOutcomeStatus Status,
     string Email,
     string Code,
-    IReadOnlyList<string>? Errors = null);
+    IReadOnlyList<string>? Errors = null
+);
 
 public enum ResendConfirmationOutcomeStatus
 {
     ValidationFailed,
-    Completed
+    Completed,
 }
 
-public sealed record ResendConfirmationOutcome(ResendConfirmationOutcomeStatus Status, string? Email = null);
+public sealed record ResendConfirmationOutcome(
+    ResendConfirmationOutcomeStatus Status,
+    string? Email = null
+);
 
 public sealed record LogoutOutcome;

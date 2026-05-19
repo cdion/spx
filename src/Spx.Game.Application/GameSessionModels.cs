@@ -3,12 +3,14 @@ namespace Spx.Game.Application;
 public sealed record SubmitAcquireRequest(
     Guid PlayerId,
     int ExpectedRoundNumber,
-    Guid MarketCardInstanceId);
+    Guid MarketCardInstanceId
+);
 
 public sealed record GameCardReferenceSelection(
     Guid? CardInstanceId,
     Guid? ProducedByCardInstanceId,
-    GameCardDefinition? ProducedCardDefinition);
+    GameCardDefinition? ProducedCardDefinition
+);
 
 public sealed record GameBatchCardSelection(
     Guid CardInstanceId,
@@ -16,9 +18,11 @@ public sealed record GameBatchCardSelection(
     GameCardDefinition? CraftedCardDefinition,
     GameResourceColor? TargetResourceColor,
     Guid? TargetCardInstanceId,
-    IReadOnlyList<GameCardReferenceSelection> ConsumedCards);
+    IReadOnlyList<GameCardReferenceSelection> ConsumedCards
+);
 
 public sealed record SubmitPlayBatchRequest(
     Guid PlayerId,
     int ExpectedRoundNumber,
-    IReadOnlyList<GameBatchCardSelection> Cards);
+    IReadOnlyList<GameBatchCardSelection> Cards
+);

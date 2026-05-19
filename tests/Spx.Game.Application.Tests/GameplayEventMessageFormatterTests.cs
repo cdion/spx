@@ -10,8 +10,12 @@ public sealed class GameplayEventMessageFormatterTests
     public void CreateMessageBodies_formats_round_summary_events_and_completion()
     {
         var formatter = new GameplayEventMessageFormatter();
-        var firstPlayer = new GameSessionParticipant(Guid.Parse("85b56bc8-bd95-48f5-8374-f53714734717"));
-        var secondPlayer = new GameSessionParticipant(Guid.Parse("6421fe5a-5585-4db9-b48b-e6caf8323b8f"));
+        var firstPlayer = new GameSessionParticipant(
+            Guid.Parse("85b56bc8-bd95-48f5-8374-f53714734717")
+        );
+        var secondPlayer = new GameSessionParticipant(
+            Guid.Parse("6421fe5a-5585-4db9-b48b-e6caf8323b8f")
+        );
         var resolvedAtUtc = DateTime.UtcNow;
         var session = new GameSessionView(
             Guid.NewGuid(),
@@ -28,23 +32,48 @@ public sealed class GameplayEventMessageFormatterTests
             new GameResolvedBatchView(
                 4,
                 [
-                    new GameResolvedPlayerBatchView(firstPlayer, [CreatePlayedCardView(GameCardDefinition.Produce)], true),
-                    new GameResolvedPlayerBatchView(secondPlayer, [], false)
+                    new GameResolvedPlayerBatchView(
+                        firstPlayer,
+                        [CreatePlayedCardView(GameCardDefinition.Produce)],
+                        true
+                    ),
+                    new GameResolvedPlayerBatchView(secondPlayer, [], false),
                 ],
-                resolvedAtUtc),
-            new GameCompletionView(GameCompletionReason.Victory, firstPlayer, resolvedAtUtc));
+                resolvedAtUtc
+            ),
+            new GameCompletionView(GameCompletionReason.Victory, firstPlayer, resolvedAtUtc)
+        );
         var gameplayEvents = new GameplayEvent[]
         {
-            new(GameplayEventKind.CreatedCard, firstPlayer.PlayerId, GameCardDefinition.Produce, null, null, GameCardDefinition.Victory),
-            new(GameplayEventKind.Fizzled, secondPlayer.PlayerId, GameCardDefinition.Sabotage, null, null, null)
+            new(
+                GameplayEventKind.CreatedCard,
+                firstPlayer.PlayerId,
+                GameCardDefinition.Produce,
+                null,
+                null,
+                GameCardDefinition.Victory
+            ),
+            new(
+                GameplayEventKind.Fizzled,
+                secondPlayer.PlayerId,
+                GameCardDefinition.Sabotage,
+                null,
+                null,
+                null
+            ),
         };
         var playerNames = new Dictionary<Guid, string>
         {
             [firstPlayer.PlayerId] = "Captain Red",
-            [secondPlayer.PlayerId] = "Captain Blue"
+            [secondPlayer.PlayerId] = "Captain Blue",
         };
 
-        var messages = formatter.CreateMessageBodies(session.LastResolvedBatch, session.Completion, gameplayEvents, playerNames);
+        var messages = formatter.CreateMessageBodies(
+            session.LastResolvedBatch,
+            session.Completion,
+            gameplayEvents,
+            playerNames
+        );
 
         Assert.Equal(2, messages.Count);
         Assert.Contains("Round 4 resolved.", messages[0], StringComparison.Ordinal);
@@ -55,12 +84,19 @@ public sealed class GameplayEventMessageFormatterTests
         Assert.Equal("Captain Red won by producing Victory.", messages[1]);
     }
 
-    private static GameBatchCardView CreatePlayedCardView(GameCardDefinition definition)
-        => new(
-            new GameCardView(Guid.NewGuid(), definition, definition.ToString(), GameCardCatalog.GetCategory(definition), GameCardCatalog.GetResourceColor(definition)),
+    private static GameBatchCardView CreatePlayedCardView(GameCardDefinition definition) =>
+        new(
+            new GameCardView(
+                Guid.NewGuid(),
+                definition,
+                definition.ToString(),
+                GameCardCatalog.GetCategory(definition),
+                GameCardCatalog.GetResourceColor(definition)
+            ),
             null,
             null,
             null,
             null,
-            []);
+            []
+        );
 }

@@ -11,8 +11,11 @@ public sealed class EnsureGameSessionHandlerTests
     public async Task HandleAsync_returns_false_when_active_roster_is_not_two_players()
     {
         var persistence = Substitute.For<IGamePersistence>();
-        persistence.GetActiveSessionPlayersAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns<IReadOnlyList<GameSessionParticipant>?>([new GameSessionParticipant(Guid.NewGuid())]);
+        persistence
+            .GetActiveSessionPlayersAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns<IReadOnlyList<GameSessionParticipant>?>([
+                new GameSessionParticipant(Guid.NewGuid()),
+            ]);
         var sessionService = Substitute.For<IGameSessionService>();
         using var services = CreateServices(persistence, sessionService);
 
@@ -20,7 +23,13 @@ public sealed class EnsureGameSessionHandlerTests
         var result = await handler.HandleAsync(Guid.NewGuid());
 
         Assert.False(result);
-        await sessionService.DidNotReceive().EnsureSessionAsync(Arg.Any<Guid>(), Arg.Any<IReadOnlyList<GameSessionParticipant>>(), Arg.Any<CancellationToken>());
+        await sessionService
+            .DidNotReceive()
+            .EnsureSessionAsync(
+                Arg.Any<Guid>(),
+                Arg.Any<IReadOnlyList<GameSessionParticipant>>(),
+                Arg.Any<CancellationToken>()
+            );
     }
 
     [Fact]
@@ -28,10 +37,19 @@ public sealed class EnsureGameSessionHandlerTests
     {
         var gameId = Guid.NewGuid();
         var persistence = Substitute.For<IGamePersistence>();
-        persistence.GetActiveSessionPlayersAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns<IReadOnlyList<GameSessionParticipant>?>([new GameSessionParticipant(Guid.NewGuid()), new GameSessionParticipant(Guid.NewGuid())]);
+        persistence
+            .GetActiveSessionPlayersAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns<IReadOnlyList<GameSessionParticipant>?>([
+                new GameSessionParticipant(Guid.NewGuid()),
+                new GameSessionParticipant(Guid.NewGuid()),
+            ]);
         var sessionService = Substitute.For<IGameSessionService>();
-        sessionService.EnsureSessionAsync(Arg.Any<Guid>(), Arg.Any<IReadOnlyList<GameSessionParticipant>>(), Arg.Any<CancellationToken>())
+        sessionService
+            .EnsureSessionAsync(
+                Arg.Any<Guid>(),
+                Arg.Any<IReadOnlyList<GameSessionParticipant>>(),
+                Arg.Any<CancellationToken>()
+            )
             .Returns(true);
         using var services = CreateServices(persistence, sessionService);
 
@@ -39,10 +57,19 @@ public sealed class EnsureGameSessionHandlerTests
         var result = await handler.HandleAsync(gameId);
 
         Assert.True(result);
-        await sessionService.Received(1).EnsureSessionAsync(gameId, Arg.Any<IReadOnlyList<GameSessionParticipant>>(), Arg.Any<CancellationToken>());
+        await sessionService
+            .Received(1)
+            .EnsureSessionAsync(
+                gameId,
+                Arg.Any<IReadOnlyList<GameSessionParticipant>>(),
+                Arg.Any<CancellationToken>()
+            );
     }
 
-    private static ServiceProvider CreateServices(IGamePersistence persistence, IGameSessionService sessionService)
+    private static ServiceProvider CreateServices(
+        IGamePersistence persistence,
+        IGameSessionService sessionService
+    )
     {
         var services = new ServiceCollection();
         services.AddGameApplication();

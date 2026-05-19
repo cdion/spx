@@ -6,16 +6,33 @@ public static class GameMessageSupport
     public const int DefaultPageSize = 20;
     private const int MaxPageSize = 20;
 
-    public static int NormalizeTake(int take)
-        => Math.Clamp(take <= 0 ? DefaultPageSize : take, 1, MaxPageSize);
+    public static int NormalizeTake(int take) =>
+        Math.Clamp(take <= 0 ? DefaultPageSize : take, 1, MaxPageSize);
 
-    public static GameTimelineEntryView MapMessage(GameMessageSnapshot message, Guid playerId, bool canMutate, DateTime now)
+    public static GameTimelineEntryView MapMessage(
+        GameMessageSnapshot message,
+        Guid playerId,
+        bool canMutate,
+        DateTime now
+    )
     {
         var isCurrentUserSender = message.SenderPlayerId == playerId;
-        var isPlayerMessage = message.Kind == GameMessageKind.PlayerPublic || message.Kind == GameMessageKind.PlayerPrivate;
+        var isPlayerMessage =
+            message.Kind == GameMessageKind.PlayerPublic
+            || message.Kind == GameMessageKind.PlayerPrivate;
         var isWithinMutationWindow = now - message.CreatedAtUtc <= MessageMutationWindow;
-        var canEdit = canMutate && isCurrentUserSender && isPlayerMessage && message.DeletedAtUtc is null && isWithinMutationWindow;
-        var canDelete = canMutate && isCurrentUserSender && isPlayerMessage && message.DeletedAtUtc is null && isWithinMutationWindow;
+        var canEdit =
+            canMutate
+            && isCurrentUserSender
+            && isPlayerMessage
+            && message.DeletedAtUtc is null
+            && isWithinMutationWindow;
+        var canDelete =
+            canMutate
+            && isCurrentUserSender
+            && isPlayerMessage
+            && message.DeletedAtUtc is null
+            && isWithinMutationWindow;
 
         return new GameTimelineEntryView(
             message.Id,
@@ -32,10 +49,15 @@ public static class GameMessageSupport
             isCurrentUserSender,
             message.Kind == GameMessageKind.PlayerPrivate,
             canEdit,
-            canDelete);
+            canDelete
+        );
     }
 
-    public static bool TryNormalizeMessageBody(string value, out string normalizedValue, out string errorMessage)
+    public static bool TryNormalizeMessageBody(
+        string value,
+        out string normalizedValue,
+        out string errorMessage
+    )
     {
         normalizedValue = value.Replace("\r\n", "\n", StringComparison.Ordinal).Trim();
 
@@ -66,5 +88,6 @@ public static class GameMessageSupport
         string Body,
         DateTime CreatedAtUtc,
         DateTime? EditedAtUtc,
-        DateTime? DeletedAtUtc);
+        DateTime? DeletedAtUtc
+    );
 }

@@ -11,33 +11,43 @@ builder.AddKeyedNpgsqlDataSource("orleansdb");
 builder.AddKeyedRedisClient("orleans-redis");
 builder.UseOrleans(siloBuilder =>
 {
-	siloBuilder.Configure<ClusterOptions>(options =>
-	{
-		options.ClusterId = orleansClusterId;
-		options.ServiceId = orleansServiceId;
-	});
+    siloBuilder.Configure<ClusterOptions>(options =>
+    {
+        options.ClusterId = orleansClusterId;
+        options.ServiceId = orleansServiceId;
+    });
 
-	siloBuilder.AddAdoNetGrainStorageAsDefault(options =>
-	{
-		options.Invariant = "Npgsql";
-		options.ConnectionString = builder.Configuration.GetConnectionString("orleansdb")
-			?? throw new InvalidOperationException("Connection string 'orleansdb' was not configured.");
-	});
+    siloBuilder.AddAdoNetGrainStorageAsDefault(options =>
+    {
+        options.Invariant = "Npgsql";
+        options.ConnectionString =
+            builder.Configuration.GetConnectionString("orleansdb")
+            ?? throw new InvalidOperationException(
+                "Connection string 'orleansdb' was not configured."
+            );
+    });
 });
 
 var app = builder.Build();
 
 await OrleansStorageSchemaBootstrapper.BootstrapAsync(
-	app.Services,
-	app.Logger,
-	app.Lifetime.ApplicationStopping);
+    app.Services,
+    app.Logger,
+    app.Lifetime.ApplicationStopping
+);
 
 app.MapDefaultEndpoints();
 
-app.MapGet("/", static () => Results.Ok(new
-{
-	message = "Orleans starter is running.",
-	status = "Use the web app for authenticated Orleans calls."
-}));
+app.MapGet(
+    "/",
+    static () =>
+        Results.Ok(
+            new
+            {
+                message = "Orleans starter is running.",
+                status = "Use the web app for authenticated Orleans calls.",
+            }
+        )
+);
 
 app.Run();

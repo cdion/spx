@@ -6,101 +6,148 @@ using Spx.Game.Domain;
 namespace Spx.Grains;
 
 public sealed class GameSessionGrain(
-    [PersistentState("game-session")] IPersistentState<GameSessionGrainState> sessionState)
-    : Grain, IGameSessionGrain
+    [PersistentState("game-session")] IPersistentState<GameSessionGrainState> sessionState
+) : Grain, IGameSessionGrain
 {
-    public async Task InitializeAsync(InitializeGameSessionGrainCommand command)
+    public async Task InitializeAsync(InitializeGameSessionCommand command)
     {
         var workingState = GameSessionGrainStateMapper.ToDomainState(sessionState.State);
-        GameSessionEngine.Initialize(workingState, GameSessionGrainContractMapper.ToDomain(command));
-        sessionState.State = GameSessionGrainStateMapper.FromDomainState(workingState, sessionState.State.PendingGameplayEventBatches);
+        GameSessionEngine.Initialize(workingState, command);
+        sessionState.State = GameSessionGrainStateMapper.FromDomainState(
+            workingState,
+            sessionState.State.PendingGameplayEventBatches
+        );
         await sessionState.WriteStateAsync();
     }
 
-    public async Task<GameSessionGrainCommandResult> SubmitAcquireAsync(SubmitAcquireGrainCommand command)
+    public async Task<GameSessionGrainCommandResult> SubmitAcquireAsync(
+        SubmitAcquireCommand command
+    )
     {
         var workingState = GameSessionGrainStateMapper.ToDomainState(sessionState.State);
-        var result = GameSessionEngine.SubmitAcquire(
-            workingState,
-            this.GetPrimaryKey(),
-            GameSessionGrainContractMapper.ToDomain(command));
+        var result = GameSessionEngine.SubmitAcquire(workingState, this.GetPrimaryKey(), command);
 
         if (result is GameSessionCommandSucceededResult)
         {
-            sessionState.State = GameSessionGrainStateMapper.FromDomainState(workingState, sessionState.State.PendingGameplayEventBatches);
+            sessionState.State = GameSessionGrainStateMapper.FromDomainState(
+                workingState,
+                sessionState.State.PendingGameplayEventBatches
+            );
             await sessionState.WriteStateAsync();
         }
 
-        return GameSessionGrainContractMapper.ToContract(result);
+        return MapCommandResult(result);
     }
 
-    public async Task<GameSessionGrainCommandResult> SubmitPlayBatchAsync(SubmitPlayBatchGrainCommand command)
+    public async Task<GameSessionGrainCommandResult> SubmitPlayBatchAsync(
+        SubmitPlayBatchCommand command
+    )
     {
         var workingState = GameSessionGrainStateMapper.ToDomainState(sessionState.State);
         var result = GameSessionEngine.SubmitPlayBatch(
             workingState,
             this.GetPrimaryKey(),
-            GameSessionGrainContractMapper.ToDomain(command),
-            DateTime.UtcNow);
+            command,
+            DateTime.UtcNow
+        );
 
         Guid? pendingGameplayEventBatchId = null;
 
         if (result is GameSessionCommandSucceededResult succeeded)
         {
-            var mappedState = GameSessionGrainStateMapper.FromDomainState(workingState, sessionState.State.PendingGameplayEventBatches);
+            var mappedState = GameSessionGrainStateMapper.FromDomainState(
+                workingState,
+                sessionState.State.PendingGameplayEventBatches
+            );
             if (succeeded.GameplayEvents.Count > 0)
             {
                 pendingGameplayEventBatchId = Guid.NewGuid();
-                mappedState.PendingGameplayEventBatches.Add(new PendingGameplayEventBatchGrainState
-                {
-                    BatchId = pendingGameplayEventBatchId.Value,
-                    GameId = this.GetPrimaryKey(),
-                    LastResolvedBatch = succeeded.Session.LastResolvedBatch is null ? null : GameSessionGrainContractMapper.ToContract(succeeded.Session.LastResolvedBatch),
-                    Completion = succeeded.Session.Completion is null ? null : GameSessionGrainContractMapper.ToContract(succeeded.Session.Completion),
-                    GameplayEvents = [.. succeeded.GameplayEvents]
-                });
+                mappedState.PendingGameplayEventBatches.Add(
+                    new PendingGameplayEventBatchGrainState
+                    {
+                        BatchId = pendingGameplayEventBatchId.Value,
+                        GameId = this.GetPrimaryKey(),
+                        LastResolvedBatch = succeeded.Session.LastResolvedBatch,
+                        Completion = succeeded.Session.Completion,
+                        GameplayEvents = [.. succeeded.GameplayEvents],
+                    }
+                );
             }
 
             sessionState.State = mappedState;
             await sessionState.WriteStateAsync();
         }
 
-        return GameSessionGrainContractMapper.ToContract(result, pendingGameplayEventBatchId);
+        return MapCommandResult(result, pendingGameplayEventBatchId);
     }
 
-    public Task<GameSessionGrainView?> GetPlayerViewAsync(GetGameSessionGrainQuery query)
-        => Task.FromResult(
+    public Task<GameSessionView?> GetPlayerViewAsync(GetGameSessionQuery query) =>
+        Task.FromResult(
             GameSessionEngine.GetSessionView(
                 GameSessionGrainStateMapper.ToDomainState(sessionState.State),
                 this.GetPrimaryKey(),
-                GameSessionGrainContractMapper.ToDomain(query)) is { } view
-                    ? GameSessionGrainContractMapper.ToContract(view)
-                    : null);
+                query
+            )
+        );
 
-    public Task<IReadOnlyList<PendingGameplayEventBatchGrainView>> GetPendingGameplayEventBatchesAsync()
-        => Task.FromResult<IReadOnlyList<PendingGameplayEventBatchGrainView>>(
-        [
-            .. sessionState.State.PendingGameplayEventBatches.Select(batch => new PendingGameplayEventBatchGrainView(
-                batch.BatchId,
-                batch.GameId,
-                batch.LastResolvedBatch,
-                batch.Completion,
-                [.. batch.GameplayEvents]))
+    public Task<
+        IReadOnlyList<PendingGameplayEventBatchGrainView>
+    > GetPendingGameplayEventBatchesAsync() =>
+        Task.FromResult<IReadOnlyList<PendingGameplayEventBatchGrainView>>([
+            .. sessionState.State.PendingGameplayEventBatches.Select(
+                batch => new PendingGameplayEventBatchGrainView(
+                    batch.BatchId,
+                    batch.GameId,
+                    batch.LastResolvedBatch,
+                    batch.Completion,
+                    [.. batch.GameplayEvents]
+                )
+            ),
         ]);
 
-    public Task AcknowledgeGameplayEventBatchesAsync(AcknowledgeGameplayEventBatchesGrainCommand command)
+    public Task AcknowledgeGameplayEventBatchesAsync(
+        AcknowledgeGameplayEventBatchesGrainCommand command
+    )
     {
         var batchIds = command.BatchIds.ToHashSet();
-        sessionState.State.PendingGameplayEventBatches.RemoveAll(batch => batchIds.Contains(batch.BatchId));
+        sessionState.State.PendingGameplayEventBatches.RemoveAll(batch =>
+            batchIds.Contains(batch.BatchId)
+        );
         return sessionState.WriteStateAsync();
     }
 
-    public async Task<GameSessionGrainView> AbandonAsync(AbandonGameSessionGrainCommand command)
+    public async Task<GameSessionView> AbandonAsync(AbandonGameSessionCommand command)
     {
         var workingState = GameSessionGrainStateMapper.ToDomainState(sessionState.State);
-        var view = GameSessionEngine.AbandonPlayer(workingState, this.GetPrimaryKey(), GameSessionGrainContractMapper.ToDomain(command), DateTime.UtcNow);
-        sessionState.State = GameSessionGrainStateMapper.FromDomainState(workingState, sessionState.State.PendingGameplayEventBatches);
+        var view = GameSessionEngine.AbandonPlayer(
+            workingState,
+            this.GetPrimaryKey(),
+            command,
+            DateTime.UtcNow
+        );
+        sessionState.State = GameSessionGrainStateMapper.FromDomainState(
+            workingState,
+            sessionState.State.PendingGameplayEventBatches
+        );
         await sessionState.WriteStateAsync();
-        return GameSessionGrainContractMapper.ToContract(view);
+        return view;
     }
+
+    private static GameSessionGrainCommandResult MapCommandResult(
+        GameSessionCommandResult result,
+        Guid? pendingGameplayEventBatchId = null
+    ) =>
+        result switch
+        {
+            GameSessionCommandSucceededResult succeeded =>
+                new GameSessionGrainCommandSucceededResult(
+                    succeeded.Session,
+                    succeeded.GameplayEvents,
+                    pendingGameplayEventBatchId
+                ),
+            GameSessionCommandRejectedResult rejected => new GameSessionGrainCommandRejectedResult(
+                rejected.ErrorMessage
+            ),
+            _ => throw new InvalidOperationException("Unknown game session command result type."),
+        };
 }

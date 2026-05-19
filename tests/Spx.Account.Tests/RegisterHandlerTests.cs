@@ -35,7 +35,7 @@ public sealed class RegisterHandlerTests
     {
         var identity = new FakeAccountIdentity
         {
-            CreateUserResult = new AccountCreateFailed(["Password is too weak."])
+            CreateUserResult = new AccountCreateFailed(["Password is too weak."]),
         };
         var emailSender = new FakeAccountEmailSender();
         using var services = AccountHandlerTestServices.Create(identity, emailSender);
@@ -53,8 +53,10 @@ public sealed class RegisterHandlerTests
     {
         var identity = new FakeAccountIdentity
         {
-            CreateUserResult = new AccountCreateSucceeded(new AccountUser("user-1", "user@example.com")),
-            EmailConfirmationToken = string.Empty
+            CreateUserResult = new AccountCreateSucceeded(
+                new AccountUser("user-1", "user@example.com")
+            ),
+            EmailConfirmationToken = string.Empty,
         };
         var emailSender = new FakeAccountEmailSender();
         using var services = AccountHandlerTestServices.Create(identity, emailSender);
@@ -64,7 +66,12 @@ public sealed class RegisterHandlerTests
 
         Assert.Equal(RegisterOutcomeStatus.ConfirmationResendRequired, outcome.Status);
         Assert.Equal("user@example.com", outcome.Email);
-        Assert.Equal(["Your account was created, but we could not send a confirmation email. Request a new one below."], outcome.Errors);
+        Assert.Equal(
+            [
+                "Your account was created, but we could not send a confirmation email. Request a new one below.",
+            ],
+            outcome.Errors
+        );
         Assert.False(emailSender.ConfirmationEmailSent);
     }
 
@@ -73,12 +80,14 @@ public sealed class RegisterHandlerTests
     {
         var identity = new FakeAccountIdentity
         {
-            CreateUserResult = new AccountCreateSucceeded(new AccountUser("user-1", "user@example.com")),
-            EmailConfirmationToken = "confirm-token"
+            CreateUserResult = new AccountCreateSucceeded(
+                new AccountUser("user-1", "user@example.com")
+            ),
+            EmailConfirmationToken = "confirm-token",
         };
         var emailSender = new FakeAccountEmailSender
         {
-            SendConfirmationException = new InvalidOperationException("mail transport unavailable")
+            SendConfirmationException = new InvalidOperationException("mail transport unavailable"),
         };
         using var services = AccountHandlerTestServices.Create(identity, emailSender);
 
@@ -87,7 +96,12 @@ public sealed class RegisterHandlerTests
 
         Assert.Equal(RegisterOutcomeStatus.ConfirmationResendRequired, outcome.Status);
         Assert.Equal("user@example.com", outcome.Email);
-        Assert.Equal(["Your account was created, but we could not send a confirmation email. Request a new one below."], outcome.Errors);
+        Assert.Equal(
+            [
+                "Your account was created, but we could not send a confirmation email. Request a new one below.",
+            ],
+            outcome.Errors
+        );
         Assert.False(emailSender.ConfirmationEmailSent);
     }
 
@@ -96,8 +110,10 @@ public sealed class RegisterHandlerTests
     {
         var identity = new FakeAccountIdentity
         {
-            CreateUserResult = new AccountCreateSucceeded(new AccountUser("user-1", "user@example.com")),
-            EmailConfirmationToken = "confirm-token"
+            CreateUserResult = new AccountCreateSucceeded(
+                new AccountUser("user-1", "user@example.com")
+            ),
+            EmailConfirmationToken = "confirm-token",
         };
         var emailSender = new FakeAccountEmailSender();
         using var services = AccountHandlerTestServices.Create(identity, emailSender);
@@ -111,5 +127,4 @@ public sealed class RegisterHandlerTests
         Assert.Equal("user-1", emailSender.LastConfirmationUserId);
         Assert.Equal("confirm-token", emailSender.LastConfirmationCode);
     }
-
 }

@@ -25,7 +25,7 @@ public sealed class ForgotPasswordHandlerTests
         {
             FindByEmailResult = new AccountUser("user-1", "user@example.com"),
             IsEmailConfirmedResult = true,
-            PasswordResetToken = "reset-token"
+            PasswordResetToken = "reset-token",
         };
         var emailSender = new FakeAccountEmailSender();
         using var services = AccountHandlerTestServices.Create(identity, emailSender);
@@ -46,7 +46,7 @@ public sealed class ForgotPasswordHandlerTests
         {
             FindByEmailResult = new AccountUser("user-1", "user@example.com"),
             IsEmailConfirmedResult = false,
-            PasswordResetToken = "reset-token"
+            PasswordResetToken = "reset-token",
         };
         var emailSender = new FakeAccountEmailSender();
         using var services = AccountHandlerTestServices.Create(identity, emailSender);
@@ -65,7 +65,7 @@ public sealed class ForgotPasswordHandlerTests
         {
             FindByEmailResult = new AccountUser("user-1", "user@example.com"),
             IsEmailConfirmedResult = true,
-            PasswordResetToken = string.Empty
+            PasswordResetToken = string.Empty,
         };
         var emailSender = new FakeAccountEmailSender();
         using var services = AccountHandlerTestServices.Create(identity, emailSender);
@@ -84,11 +84,11 @@ public sealed class ForgotPasswordHandlerTests
         {
             FindByEmailResult = new AccountUser("user-1", "user@example.com"),
             IsEmailConfirmedResult = true,
-            PasswordResetToken = "reset-token"
+            PasswordResetToken = "reset-token",
         };
         var emailSender = new FakeAccountEmailSender
         {
-            SendPasswordResetException = new InvalidOperationException("mail failed")
+            SendPasswordResetException = new InvalidOperationException("mail failed"),
         };
         using var services = AccountHandlerTestServices.Create(identity, emailSender);
 

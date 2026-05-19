@@ -37,7 +37,9 @@ public sealed class LoginHandlerTests
         var identity = new FakeAccountIdentity
         {
             FindByEmailResult = new AccountUser("user-1", "user@example.com"),
-            PasswordSignInResult = new AccountPasswordSignInOutcome(AccountPasswordSignInStatus.EmailConfirmationRequired)
+            PasswordSignInResult = new AccountPasswordSignInOutcome(
+                AccountPasswordSignInStatus.EmailConfirmationRequired
+            ),
         };
         using var services = AccountHandlerTestServices.Create(identity);
 
@@ -55,7 +57,9 @@ public sealed class LoginHandlerTests
         var identity = new FakeAccountIdentity
         {
             FindByEmailResult = new AccountUser("user-1", "user@example.com"),
-            PasswordSignInResult = new AccountPasswordSignInOutcome(AccountPasswordSignInStatus.LockedOut)
+            PasswordSignInResult = new AccountPasswordSignInOutcome(
+                AccountPasswordSignInStatus.LockedOut
+            ),
         };
         using var services = AccountHandlerTestServices.Create(identity);
 
@@ -72,7 +76,9 @@ public sealed class LoginHandlerTests
         var identity = new FakeAccountIdentity
         {
             FindByEmailResult = new AccountUser("user-1", "user@example.com"),
-            PasswordSignInResult = new AccountPasswordSignInOutcome(AccountPasswordSignInStatus.Succeeded)
+            PasswordSignInResult = new AccountPasswordSignInOutcome(
+                AccountPasswordSignInStatus.Succeeded
+            ),
         };
         using var services = AccountHandlerTestServices.Create(identity);
 

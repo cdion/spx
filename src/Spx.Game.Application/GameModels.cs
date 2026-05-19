@@ -23,7 +23,8 @@ public sealed record GameLobbyView(
     string CurrentPlayerName,
     Guid CurrentPlayerId,
     IReadOnlyList<GamePlayerView> Players,
-    bool IsCurrentUserActive);
+    bool IsCurrentUserActive
+);
 
 public sealed record GameSummaryView(
     Guid GameId,
@@ -34,8 +35,10 @@ public sealed record GameSummaryView(
     int MaxPlayers,
     DateTime CreatedAtUtc,
     DateTime? EndedAtUtc,
-    string? CurrentPlayerName);
+    string? CurrentPlayerName
+);
 
 public sealed record UserGamesView(
     IReadOnlyList<GameSummaryView> OpenGames,
-    IReadOnlyList<GameSummaryView> EndedGames);
+    IReadOnlyList<GameSummaryView> EndedGames
+);

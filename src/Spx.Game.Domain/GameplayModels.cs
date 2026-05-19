@@ -5,7 +5,7 @@ public enum GamePhase
     Acquire = 0,
     Play = 1,
     Resolve = 2,
-    Completed = 3
+    Completed = 3,
 }
 
 public enum GameCardDefinition
@@ -25,7 +25,7 @@ public enum GameCardDefinition
     Corrupt = 12,
     Reclaim = 13,
     Scout = 14,
-    Victory = 15
+    Victory = 15,
 }
 
 public enum GameCardCategory
@@ -33,7 +33,7 @@ public enum GameCardCategory
     Action = 0,
     Resource = 1,
     Effect = 2,
-    Victory = 3
+    Victory = 3,
 }
 
 public enum GameResourceColor
@@ -43,14 +43,14 @@ public enum GameResourceColor
     Blue = 2,
     Purple = 3,
     Green = 4,
-    Orange = 5
+    Orange = 5,
 }
 
 public enum GameCompletionReason
 {
     Victory = 0,
     Draw = 1,
-    Abandoned = 2
+    Abandoned = 2,
 }
 
 public enum GameplayEventKind
@@ -61,7 +61,7 @@ public enum GameplayEventKind
     ConvertedCard = 3,
     ScheduledReturnToHand = 4,
     ReturnedToHand = 5,
-    Resolved = 6
+    Resolved = 6,
 }
 
 public sealed record GameplayEvent(
@@ -70,4 +70,5 @@ public sealed record GameplayEvent(
     GameCardDefinition SourceCardDefinition,
     Guid? TargetPlayerId,
     GameCardDefinition? TargetCardDefinition,
-    GameCardDefinition? ProducedCardDefinition);
+    GameCardDefinition? ProducedCardDefinition
+);

@@ -52,15 +52,18 @@ public sealed class PostgresDatabaseFixture : IAsyncLifetime
             .WithEnvironment("POSTGRES_DB", PostgresDb)
             .WithEnvironment("POSTGRES_USER", PostgresUser)
             .WithPortBinding(5432, true)
-            .WithWaitStrategy(Wait.ForUnixContainer()
-                .UntilMessageIsLogged("database system is ready to accept connections"))
+            .WithWaitStrategy(
+                Wait.ForUnixContainer()
+                    .UntilMessageIsLogged("database system is ready to accept connections")
+            )
             .Build();
 
         await container.StartAsync();
 
         var host = container.Hostname;
         var port = container.GetMappedPublicPort(5432);
-        ConnectionString = $"Host={host};Port={port};Database={PostgresDb};Username={PostgresUser};Password={PostgresPassword}";
+        ConnectionString =
+            $"Host={host};Port={port};Database={PostgresDb};Username={PostgresUser};Password={PostgresPassword}";
 
         var options = new DbContextOptionsBuilder<ApplicationDbContext>()
             .UseNpgsql(ConnectionString)
@@ -72,12 +75,15 @@ public sealed class PostgresDatabaseFixture : IAsyncLifetime
         await using (var connection = new NpgsqlConnection(ConnectionString))
         {
             await connection.OpenAsync();
-            respawner = await Respawner.CreateAsync(connection, new RespawnerOptions
-            {
-                DbAdapter = DbAdapter.Postgres,
-                SchemasToInclude = ["public"],
-                TablesToIgnore = [new Table("__EFMigrationsHistory")]
-            });
+            respawner = await Respawner.CreateAsync(
+                connection,
+                new RespawnerOptions
+                {
+                    DbAdapter = DbAdapter.Postgres,
+                    SchemasToInclude = ["public"],
+                    TablesToIgnore = [new Table("__EFMigrationsHistory")],
+                }
+            );
         }
     }
 

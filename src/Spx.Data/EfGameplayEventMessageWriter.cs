@@ -6,9 +6,16 @@ namespace Spx.Data;
 
 internal sealed class EfGameplayEventMessageWriter(
     IDbContextFactory<ApplicationDbContext> contextFactory,
-    IGameplayEventMessageFormatter gameplayEventMessageFormatter) : IGameplayEventMessageWriter
+    IGameplayEventMessageFormatter gameplayEventMessageFormatter
+) : IGameplayEventMessageWriter
 {
-    public async Task<int> PersistResolvedBatchAsync(Guid gameId, GameResolvedBatchView? lastResolvedBatch, GameCompletionView? completion, IReadOnlyList<GameplayEvent> gameplayEvents, CancellationToken cancellationToken = default)
+    public async Task<int> PersistResolvedBatchAsync(
+        Guid gameId,
+        GameResolvedBatchView? lastResolvedBatch,
+        GameCompletionView? completion,
+        IReadOnlyList<GameplayEvent> gameplayEvents,
+        CancellationToken cancellationToken = default
+    )
     {
         ArgumentNullException.ThrowIfNull(gameplayEvents);
 
@@ -19,30 +26,37 @@ internal sealed class EfGameplayEventMessageWriter(
 
         await using var dbContext = await contextFactory.CreateDbContextAsync(cancellationToken);
 
-        var participantIds = lastResolvedBatch.Players
-            .Select(player => player.Participant.PlayerId)
+        var participantIds = lastResolvedBatch
+            .Players.Select(player => player.Participant.PlayerId)
             .Append(completion?.Winner?.PlayerId ?? Guid.Empty)
             .Where(playerId => playerId != Guid.Empty)
             .Distinct()
             .ToArray();
 
-        var playerNames = await dbContext.GamePlayers
-            .AsNoTracking()
+        var playerNames = await dbContext
+            .GamePlayers.AsNoTracking()
             .Where(entry => entry.GameId == gameId && participantIds.Contains(entry.Id))
             .ToDictionaryAsync(entry => entry.Id, entry => entry.Name, cancellationToken);
 
-        var messageBodies = gameplayEventMessageFormatter.CreateMessageBodies(lastResolvedBatch, completion, gameplayEvents, playerNames);
+        var messageBodies = gameplayEventMessageFormatter.CreateMessageBodies(
+            lastResolvedBatch,
+            completion,
+            gameplayEvents,
+            playerNames
+        );
         if (messageBodies.Count == 0)
         {
             return 0;
         }
 
         var resolvedAtUtc = lastResolvedBatch.ResolvedAtUtc;
-        var existingBodies = await dbContext.GameMessages
-            .AsNoTracking()
-            .Where(entry => entry.GameId == gameId
+        var existingBodies = await dbContext
+            .GameMessages.AsNoTracking()
+            .Where(entry =>
+                entry.GameId == gameId
                 && entry.Kind == GameMessageKind.GameplayEvent
-                && entry.CreatedAtUtc == resolvedAtUtc)
+                && entry.CreatedAtUtc == resolvedAtUtc
+            )
             .Select(entry => entry.Body)
             .ToListAsync(cancellationToken);
 
@@ -57,7 +71,9 @@ internal sealed class EfGameplayEventMessageWriter(
 
         foreach (var body in newBodies)
         {
-            dbContext.GameMessages.Add(GameMessageFactory.CreateGameplayEvent(gameId, body, resolvedAtUtc));
+            dbContext.GameMessages.Add(
+                GameMessageFactory.CreateGameplayEvent(gameId, body, resolvedAtUtc)
+            );
         }
 
         await dbContext.SaveChangesAsync(cancellationToken);

@@ -1,5 +1,4 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
-
   <ItemGroup>
     <ProjectReference Include="..\Spx.Contracts\Spx.Game.Contract.csproj" />
     <ProjectReference Include="..\Spx.Grains\Spx.Game.Grain.csproj" />
@@ -27,5 +26,4 @@
     <AssemblyName>Spx.Silo</AssemblyName>
     <RootNamespace>Spx.Silo</RootNamespace>
   </PropertyGroup>
-
 </Project>

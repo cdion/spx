@@ -3,13 +3,13 @@ namespace Spx.Game.Application;
 public enum GameStatus
 {
     Open = 0,
-    Ended = 1
+    Ended = 1,
 }
 
 public enum GameMessageSenderKind
 {
     Player = 0,
-    Game = 1
+    Game = 1,
 }
 
 public enum GameMessageKind
@@ -20,5 +20,5 @@ public enum GameMessageKind
     PlayerJoined = 3,
     PlayerLeft = 4,
     GameEnded = 5,
-    GameplayEvent = 6
+    GameplayEvent = 6,
 }

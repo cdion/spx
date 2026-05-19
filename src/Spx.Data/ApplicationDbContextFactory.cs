@@ -16,7 +16,8 @@ public sealed class ApplicationDbContextFactory : IDesignTimeDbContextFactory<Ap
             .AddEnvironmentVariables()
             .Build();
 
-        var connectionString = configuration.GetConnectionString("appdb")
+        var connectionString =
+            configuration.GetConnectionString("appdb")
             ?? configuration["APPDB_URI"]
             ?? "Host=localhost;Database=appdb;Username=postgres;Password=postgres";
 

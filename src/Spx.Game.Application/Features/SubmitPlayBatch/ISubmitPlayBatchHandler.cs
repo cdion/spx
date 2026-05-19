@@ -6,6 +6,7 @@ public interface ISubmitPlayBatchHandler
         Guid gameId,
         Guid playerId,
         int expectedRoundNumber,
-    IReadOnlyList<GameBatchCardSelection> cards,
-        CancellationToken cancellationToken = default);
+        IReadOnlyList<GameBatchCardSelection> cards,
+        CancellationToken cancellationToken = default
+    );
 }

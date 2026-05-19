@@ -1,0 +1,17 @@
+<Project>
+  <!--
+    Applied automatically to every project in the solution.
+    Do not add package references or project-specific overrides here.
+  -->
+
+  <PropertyGroup>
+    <!-- Enable the Recommended set of .NET SDK built-in analyzers (CA*, IDE*).
+         "Recommended" activates quality, reliability, and style rules without
+         enabling every experimental or noisy rule from "All". -->
+    <AnalysisMode>Recommended</AnalysisMode>
+
+    <!-- Surface code-style (IDE*) violations as build diagnostics so
+         `dotnet build` and CI catch them in addition to the editor. -->
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+  </PropertyGroup>
+</Project>

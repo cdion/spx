@@ -4,14 +4,16 @@ using Spx.Game.Application;
 namespace Spx.Data;
 
 internal sealed class EfGameMessagePersistence(
-    IDbContextFactory<ApplicationDbContext> contextFactory) : IGameMessagePersistence
+    IDbContextFactory<ApplicationDbContext> contextFactory
+) : IGameMessagePersistence
 {
     public async Task<GameTimelinePageView?> GetMessagesAsync(
         Guid gameId,
         Guid playerId,
         Guid? beforeMessageId,
         int take,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         await using var dbContext = await contextFactory.CreateDbContextAsync(cancellationToken);
         var support = new GameMessagePersistenceSupport(dbContext);
@@ -44,7 +46,8 @@ internal sealed class EfGameMessagePersistence(
                 entry.Body,
                 entry.CreatedAtUtc,
                 entry.EditedAtUtc,
-                entry.DeletedAtUtc))
+                entry.DeletedAtUtc
+            ))
             .ToListAsync(cancellationToken);
 
         var hasMore = projections.Count > pageSize;
@@ -65,7 +68,8 @@ internal sealed class EfGameMessagePersistence(
         Guid playerId,
         Guid? afterMessageId,
         int take,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         await using var dbContext = await contextFactory.CreateDbContextAsync(cancellationToken);
         var support = new GameMessagePersistenceSupport(dbContext);
@@ -81,7 +85,8 @@ internal sealed class EfGameMessagePersistence(
         }
 
         var now = DateTime.UtcNow;
-        return await support.BuildVisibleMessagesQuery(gameId, playerId, access)
+        return await support
+            .BuildVisibleMessagesQuery(gameId, playerId, access)
             .Where(entry => entry.Id > afterMessageId.Value)
             .OrderBy(entry => entry.Id)
             .Take(GameMessageSupport.NormalizeTake(take))
@@ -96,7 +101,8 @@ internal sealed class EfGameMessagePersistence(
                 entry.Body,
                 entry.CreatedAtUtc,
                 entry.EditedAtUtc,
-                entry.DeletedAtUtc))
+                entry.DeletedAtUtc
+            ))
             .AsAsyncEnumerable()
             .Select(entry => GameMessageSupport.MapMessage(entry, playerId, access.IsActive, now))
             .ToListAsync(cancellationToken);
@@ -106,7 +112,8 @@ internal sealed class EfGameMessagePersistence(
         Guid gameId,
         Guid playerId,
         string body,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         await using var dbContext = await contextFactory.CreateDbContextAsync(cancellationToken);
         var support = new GameMessagePersistenceSupport(dbContext);
@@ -121,22 +128,26 @@ internal sealed class EfGameMessagePersistence(
         dbContext.GameMessages.Add(message);
         await dbContext.SaveChangesAsync(cancellationToken);
 
-        return new GameMessageCommandSucceeded(GameMessageSupport.MapMessage(
-            new GameMessageSupport.GameMessageSnapshot(
-                message.Id,
-                message.Kind,
-                message.SenderKind,
-                message.SenderPlayerId,
-                message.SenderDisplayName,
-                message.RecipientPlayerId,
-                message.RecipientDisplayName,
-                message.Body,
-                message.CreatedAtUtc,
-                message.EditedAtUtc,
-                message.DeletedAtUtc),
-            playerId,
-            true,
-            now));
+        return new GameMessageCommandSucceeded(
+            GameMessageSupport.MapMessage(
+                new GameMessageSupport.GameMessageSnapshot(
+                    message.Id,
+                    message.Kind,
+                    message.SenderKind,
+                    message.SenderPlayerId,
+                    message.SenderDisplayName,
+                    message.RecipientPlayerId,
+                    message.RecipientDisplayName,
+                    message.Body,
+                    message.CreatedAtUtc,
+                    message.EditedAtUtc,
+                    message.DeletedAtUtc
+                ),
+                playerId,
+                true,
+                now
+            )
+        );
     }
 
     public async Task<GameMessageCommandOutcome> SendPrivateMessageAsync(
@@ -144,7 +155,8 @@ internal sealed class EfGameMessagePersistence(
         Guid playerId,
         Guid recipientPlayerId,
         string body,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         await using var dbContext = await contextFactory.CreateDbContextAsync(cancellationToken);
         var support = new GameMessagePersistenceSupport(dbContext);
@@ -154,35 +166,50 @@ internal sealed class EfGameMessagePersistence(
             return new GameMessageCommandFailed("You are not an active player in that game.");
         }
 
-        var recipient = await dbContext.GamePlayers
-            .SingleOrDefaultAsync(entry => entry.GameId == gameId && entry.Id == recipientPlayerId && entry.LeftAtUtc == null, cancellationToken);
+        var recipient = await dbContext.GamePlayers.SingleOrDefaultAsync(
+            entry =>
+                entry.GameId == gameId && entry.Id == recipientPlayerId && entry.LeftAtUtc == null,
+            cancellationToken
+        );
 
         if (recipient is null)
         {
-            return new GameMessageCommandFailed("That recipient is not an active player in this game.");
+            return new GameMessageCommandFailed(
+                "That recipient is not an active player in this game."
+            );
         }
 
         var now = DateTime.UtcNow;
-        var message = GameMessageFactory.CreatePrivatePlayerMessage(gameId, sender, recipient, body, now);
+        var message = GameMessageFactory.CreatePrivatePlayerMessage(
+            gameId,
+            sender,
+            recipient,
+            body,
+            now
+        );
         dbContext.GameMessages.Add(message);
         await dbContext.SaveChangesAsync(cancellationToken);
 
-        return new GameMessageCommandSucceeded(GameMessageSupport.MapMessage(
-            new GameMessageSupport.GameMessageSnapshot(
-                message.Id,
-                message.Kind,
-                message.SenderKind,
-                message.SenderPlayerId,
-                message.SenderDisplayName,
-                message.RecipientPlayerId,
-                message.RecipientDisplayName,
-                message.Body,
-                message.CreatedAtUtc,
-                message.EditedAtUtc,
-                message.DeletedAtUtc),
-            playerId,
-            true,
-            now));
+        return new GameMessageCommandSucceeded(
+            GameMessageSupport.MapMessage(
+                new GameMessageSupport.GameMessageSnapshot(
+                    message.Id,
+                    message.Kind,
+                    message.SenderKind,
+                    message.SenderPlayerId,
+                    message.SenderDisplayName,
+                    message.RecipientPlayerId,
+                    message.RecipientDisplayName,
+                    message.Body,
+                    message.CreatedAtUtc,
+                    message.EditedAtUtc,
+                    message.DeletedAtUtc
+                ),
+                playerId,
+                true,
+                now
+            )
+        );
     }
 
     public async Task<GameMessageCommandOutcome> EditMessageAsync(
@@ -190,7 +217,8 @@ internal sealed class EfGameMessagePersistence(
         Guid playerId,
         Guid messageId,
         string body,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         await using var dbContext = await contextFactory.CreateDbContextAsync(cancellationToken);
         var support = new GameMessagePersistenceSupport(dbContext);
@@ -199,11 +227,18 @@ internal sealed class EfGameMessagePersistence(
             return new GameMessageCommandFailed("You are not an active player in that game.");
         }
 
-        var message = await dbContext.GameMessages
-            .Include(entry => entry.SenderPlayer)
-            .SingleOrDefaultAsync(entry => entry.GameId == gameId
-                && entry.Id == messageId
-                && (entry.Kind == GameMessageKind.PlayerPublic || entry.Kind == GameMessageKind.PlayerPrivate), cancellationToken);
+        var message = await dbContext
+            .GameMessages.Include(entry => entry.SenderPlayer)
+            .SingleOrDefaultAsync(
+                entry =>
+                    entry.GameId == gameId
+                    && entry.Id == messageId
+                    && (
+                        entry.Kind == GameMessageKind.PlayerPublic
+                        || entry.Kind == GameMessageKind.PlayerPrivate
+                    ),
+                cancellationToken
+            );
 
         if (message is null || message.SenderPlayerId != playerId)
         {
@@ -225,29 +260,34 @@ internal sealed class EfGameMessagePersistence(
         message.EditedAtUtc = now;
 
         await dbContext.SaveChangesAsync(cancellationToken);
-        return new GameMessageCommandSucceeded(GameMessageSupport.MapMessage(
-            new GameMessageSupport.GameMessageSnapshot(
-                message.Id,
-                message.Kind,
-                message.SenderKind,
-                message.SenderPlayerId,
-                message.SenderDisplayName,
-                message.RecipientPlayerId,
-                message.RecipientDisplayName,
-                message.Body,
-                message.CreatedAtUtc,
-                message.EditedAtUtc,
-                message.DeletedAtUtc),
-            playerId,
-            true,
-            now));
+        return new GameMessageCommandSucceeded(
+            GameMessageSupport.MapMessage(
+                new GameMessageSupport.GameMessageSnapshot(
+                    message.Id,
+                    message.Kind,
+                    message.SenderKind,
+                    message.SenderPlayerId,
+                    message.SenderDisplayName,
+                    message.RecipientPlayerId,
+                    message.RecipientDisplayName,
+                    message.Body,
+                    message.CreatedAtUtc,
+                    message.EditedAtUtc,
+                    message.DeletedAtUtc
+                ),
+                playerId,
+                true,
+                now
+            )
+        );
     }
 
     public async Task<GameMessageCommandOutcome> DeleteMessageAsync(
         Guid gameId,
         Guid playerId,
         Guid messageId,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         await using var dbContext = await contextFactory.CreateDbContextAsync(cancellationToken);
         var support = new GameMessagePersistenceSupport(dbContext);
@@ -256,11 +296,18 @@ internal sealed class EfGameMessagePersistence(
             return new GameMessageCommandFailed("You are not an active player in that game.");
         }
 
-        var message = await dbContext.GameMessages
-            .Include(entry => entry.SenderPlayer)
-            .SingleOrDefaultAsync(entry => entry.GameId == gameId
-                && entry.Id == messageId
-                && (entry.Kind == GameMessageKind.PlayerPublic || entry.Kind == GameMessageKind.PlayerPrivate), cancellationToken);
+        var message = await dbContext
+            .GameMessages.Include(entry => entry.SenderPlayer)
+            .SingleOrDefaultAsync(
+                entry =>
+                    entry.GameId == gameId
+                    && entry.Id == messageId
+                    && (
+                        entry.Kind == GameMessageKind.PlayerPublic
+                        || entry.Kind == GameMessageKind.PlayerPrivate
+                    ),
+                cancellationToken
+            );
 
         if (message is null || message.SenderPlayerId != playerId)
         {
@@ -282,21 +329,25 @@ internal sealed class EfGameMessagePersistence(
         message.DeletedAtUtc = now;
 
         await dbContext.SaveChangesAsync(cancellationToken);
-        return new GameMessageCommandSucceeded(GameMessageSupport.MapMessage(
-            new GameMessageSupport.GameMessageSnapshot(
-                message.Id,
-                message.Kind,
-                message.SenderKind,
-                message.SenderPlayerId,
-                message.SenderDisplayName,
-                message.RecipientPlayerId,
-                message.RecipientDisplayName,
-                message.Body,
-                message.CreatedAtUtc,
-                message.EditedAtUtc,
-                message.DeletedAtUtc),
-            playerId,
-            true,
-            now));
+        return new GameMessageCommandSucceeded(
+            GameMessageSupport.MapMessage(
+                new GameMessageSupport.GameMessageSnapshot(
+                    message.Id,
+                    message.Kind,
+                    message.SenderKind,
+                    message.SenderPlayerId,
+                    message.SenderDisplayName,
+                    message.RecipientPlayerId,
+                    message.RecipientDisplayName,
+                    message.Body,
+                    message.CreatedAtUtc,
+                    message.EditedAtUtc,
+                    message.DeletedAtUtc
+                ),
+                playerId,
+                true,
+                now
+            )
+        );
     }
 }

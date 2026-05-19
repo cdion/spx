@@ -18,7 +18,11 @@ public sealed class GameMessageSupportTests
     [Fact]
     public void TryNormalizeMessageBody_trims_and_normalizes_line_endings()
     {
-        var succeeded = GameMessageSupport.TryNormalizeMessageBody("  Hello\r\ncrew  ", out var body, out var errorMessage);
+        var succeeded = GameMessageSupport.TryNormalizeMessageBody(
+            "  Hello\r\ncrew  ",
+            out var body,
+            out var errorMessage
+        );
 
         Assert.True(succeeded);
         Assert.Equal("Hello\ncrew", body);
@@ -28,7 +32,11 @@ public sealed class GameMessageSupportTests
     [Fact]
     public void TryNormalizeMessageBody_rejects_messages_that_are_too_long()
     {
-        var succeeded = GameMessageSupport.TryNormalizeMessageBody(new string('a', 1025), out _, out var errorMessage);
+        var succeeded = GameMessageSupport.TryNormalizeMessageBody(
+            new string('a', 1025),
+            out _,
+            out var errorMessage
+        );
 
         Assert.False(succeeded);
         Assert.Equal("Messages must be 1024 characters or fewer.", errorMessage);
@@ -49,9 +57,15 @@ public sealed class GameMessageSupportTests
             "Original",
             DateTime.UtcNow.AddMinutes(-1),
             null,
-            DateTime.UtcNow);
+            DateTime.UtcNow
+        );
 
-        var message = GameMessageSupport.MapMessage(snapshot, playerId, canMutate: true, DateTime.UtcNow);
+        var message = GameMessageSupport.MapMessage(
+            snapshot,
+            playerId,
+            canMutate: true,
+            DateTime.UtcNow
+        );
 
         Assert.Equal(string.Empty, message.Body);
         Assert.False(message.CanEdit);
@@ -62,7 +76,9 @@ public sealed class GameMessageSupportTests
     public void MapMessage_disables_mutation_outside_mutation_window()
     {
         var playerId = Guid.NewGuid();
-        var createdAtUtc = DateTime.UtcNow.Subtract(GameMessageSupport.MessageMutationWindow).AddSeconds(-1);
+        var createdAtUtc = DateTime
+            .UtcNow.Subtract(GameMessageSupport.MessageMutationWindow)
+            .AddSeconds(-1);
         var snapshot = new GameMessageSupport.GameMessageSnapshot(
             Guid.NewGuid(),
             GameMessageKind.PlayerPrivate,
@@ -74,9 +90,15 @@ public sealed class GameMessageSupportTests
             "Secret",
             createdAtUtc,
             null,
-            null);
+            null
+        );
 
-        var message = GameMessageSupport.MapMessage(snapshot, playerId, canMutate: true, DateTime.UtcNow);
+        var message = GameMessageSupport.MapMessage(
+            snapshot,
+            playerId,
+            canMutate: true,
+            DateTime.UtcNow
+        );
 
         Assert.True(message.IsPrivate);
         Assert.False(message.CanEdit);

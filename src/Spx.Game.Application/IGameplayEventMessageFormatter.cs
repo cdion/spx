@@ -6,5 +6,6 @@ public interface IGameplayEventMessageFormatter
         GameResolvedBatchView? lastResolvedBatch,
         GameCompletionView? completion,
         IReadOnlyList<GameplayEvent> gameplayEvents,
-        IReadOnlyDictionary<Guid, string> playerNames);
+        IReadOnlyDictionary<Guid, string> playerNames
+    );
 }

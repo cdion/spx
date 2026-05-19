@@ -17,7 +17,8 @@ public sealed record LocalTimelineMessageState(
     string Title,
     string Body,
     DateTime CreatedAtUtc,
-    GameMessageKind Kind);
+    GameMessageKind Kind
+);
 
 public sealed record PendingMessageState(
     string Body,
@@ -25,7 +26,8 @@ public sealed record PendingMessageState(
     string RecipientDisplayName,
     DateTime CreatedAtUtc,
     bool IsPrivate,
-    bool Failed)
+    bool Failed
+)
 {
     public bool Failed { get; set; } = Failed;
 }

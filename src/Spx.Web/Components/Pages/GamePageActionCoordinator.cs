@@ -6,7 +6,7 @@ using Spx.Game.Application.Features.SubmitPlayBatch;
 
 namespace Spx.Web.Components.Pages;
 
-internal sealed class GamePageActionCoordinator(
+internal sealed partial class GamePageActionCoordinator(
     ILeaveGameHandler leaveGameHandler,
     ISubmitAcquireCardHandler submitAcquireCardHandler,
     ISubmitPlayBatchHandler submitPlayBatchHandler,
@@ -14,9 +14,14 @@ internal sealed class GamePageActionCoordinator(
     ILogger<GamePageActionCoordinator> logger,
     GamePageDataState data,
     GamePageActionState actions,
-    GameTimelineState timeline)
+    GameTimelineState timeline
+)
 {
-    public async Task<bool> LeaveGameAsync(Guid gameId, string userId, CancellationToken cancellationToken = default)
+    public async Task<bool> LeaveGameAsync(
+        Guid gameId,
+        string userId,
+        CancellationToken cancellationToken = default
+    )
     {
         if (!actions.TryBeginLeave())
         {
@@ -39,7 +44,7 @@ internal sealed class GamePageActionCoordinator(
         }
         catch (Exception exception)
         {
-            logger.LogError(exception, "Failed to leave game {GameId} for user {UserId}.", gameId, userId);
+            LogLeaveGameFailed(logger, exception, gameId, userId);
             data.SetErrorMessage("We couldn't leave the game right now. Please try again.");
             return false;
         }
@@ -49,11 +54,21 @@ internal sealed class GamePageActionCoordinator(
         }
     }
 
-    public async Task AcquireCardAsync(Guid gameId, Guid playerId, Guid marketCardInstanceId, CancellationToken cancellationToken = default)
+    public async Task AcquireCardAsync(
+        Guid gameId,
+        Guid playerId,
+        Guid marketCardInstanceId,
+        CancellationToken cancellationToken = default
+    )
     {
         var lobby = data.Lobby;
         var session = data.Session;
-        if (lobby is null || session is null || !lobby.IsCurrentUserActive || !actions.TryBeginGameplayAction())
+        if (
+            lobby is null
+            || session is null
+            || !lobby.IsCurrentUserActive
+            || !actions.TryBeginGameplayAction()
+        )
         {
             return;
         }
@@ -62,7 +77,13 @@ internal sealed class GamePageActionCoordinator(
 
         try
         {
-            var result = await submitAcquireCardHandler.HandleAsync(gameId, playerId, session.RoundNumber, marketCardInstanceId, cancellationToken);
+            var result = await submitAcquireCardHandler.HandleAsync(
+                gameId,
+                playerId,
+                session.RoundNumber,
+                marketCardInstanceId,
+                cancellationToken
+            );
             if (result is not GameSessionCommandSucceeded succeeded)
             {
                 data.SetGameplayError(((GameSessionCommandFailed)result).ErrorMessage);
@@ -73,8 +94,10 @@ internal sealed class GamePageActionCoordinator(
         }
         catch (Exception exception)
         {
-            logger.LogError(exception, "Failed to submit an acquire choice for game {GameId} player {PlayerId}.", gameId, playerId);
-            data.SetGameplayError("We couldn't lock your acquire choice right now. Please try again.");
+            LogAcquireCardFailed(logger, exception, gameId, playerId);
+            data.SetGameplayError(
+                "We couldn't lock your acquire choice right now. Please try again."
+            );
         }
         finally
         {
@@ -82,11 +105,21 @@ internal sealed class GamePageActionCoordinator(
         }
     }
 
-    public async Task LockBatchAsync(Guid gameId, Guid playerId, IReadOnlyList<GameBatchCardSelection> cards, CancellationToken cancellationToken = default)
+    public async Task LockBatchAsync(
+        Guid gameId,
+        Guid playerId,
+        IReadOnlyList<GameBatchCardSelection> cards,
+        CancellationToken cancellationToken = default
+    )
     {
         var lobby = data.Lobby;
         var session = data.Session;
-        if (lobby is null || session is null || !lobby.IsCurrentUserActive || !actions.TryBeginGameplayAction())
+        if (
+            lobby is null
+            || session is null
+            || !lobby.IsCurrentUserActive
+            || !actions.TryBeginGameplayAction()
+        )
         {
             return;
         }
@@ -95,7 +128,13 @@ internal sealed class GamePageActionCoordinator(
 
         try
         {
-            var result = await submitPlayBatchHandler.HandleAsync(gameId, playerId, session.RoundNumber, cards, cancellationToken);
+            var result = await submitPlayBatchHandler.HandleAsync(
+                gameId,
+                playerId,
+                session.RoundNumber,
+                cards,
+                cancellationToken
+            );
             if (result is not GameSessionCommandSucceeded succeeded)
             {
                 data.SetGameplayError(((GameSessionCommandFailed)result).ErrorMessage);
@@ -107,7 +146,7 @@ internal sealed class GamePageActionCoordinator(
         }
         catch (Exception exception)
         {
-            logger.LogError(exception, "Failed to submit a play batch for game {GameId} player {PlayerId}.", gameId, playerId);
+            LogLockBatchFailed(logger, exception, gameId, playerId);
             data.SetGameplayError("We couldn't lock your play batch right now. Please try again.");
         }
         finally
@@ -119,20 +158,65 @@ internal sealed class GamePageActionCoordinator(
     private void AddImmediateGameplayEntries(
         GameLobbyView lobby,
         GameSessionView updatedSession,
-        IReadOnlyList<GameplayEvent> gameplayEvents)
+        IReadOnlyList<GameplayEvent> gameplayEvents
+    )
     {
         if (updatedSession.LastResolvedBatch is null || gameplayEvents.Count == 0)
         {
             return;
         }
 
-        var playerNames = lobby.Players.ToDictionary(player => player.PlayerId, player => player.Name);
-        var messageBodies = gameplayEventMessageFormatter.CreateMessageBodies(updatedSession.LastResolvedBatch, updatedSession.Completion, gameplayEvents, playerNames);
+        var playerNames = lobby.Players.ToDictionary(
+            player => player.PlayerId,
+            player => player.Name
+        );
+        var messageBodies = gameplayEventMessageFormatter.CreateMessageBodies(
+            updatedSession.LastResolvedBatch,
+            updatedSession.Completion,
+            gameplayEvents,
+            playerNames
+        );
         if (messageBodies.Count == 0)
         {
             return;
         }
 
-        timeline.AddImmediateGameplayEntries(messageBodies, updatedSession.LastResolvedBatch.ResolvedAtUtc);
+        timeline.AddImmediateGameplayEntries(
+            messageBodies,
+            updatedSession.LastResolvedBatch.ResolvedAtUtc
+        );
     }
+
+    [LoggerMessage(
+        Level = LogLevel.Error,
+        Message = "Failed to leave game {GameId} for user {UserId}."
+    )]
+    private static partial void LogLeaveGameFailed(
+        ILogger logger,
+        Exception exception,
+        Guid gameId,
+        string userId
+    );
+
+    [LoggerMessage(
+        Level = LogLevel.Error,
+        Message = "Failed to submit an acquire choice for game {GameId} player {PlayerId}."
+    )]
+    private static partial void LogAcquireCardFailed(
+        ILogger logger,
+        Exception exception,
+        Guid gameId,
+        Guid playerId
+    );
+
+    [LoggerMessage(
+        Level = LogLevel.Error,
+        Message = "Failed to submit a play batch for game {GameId} player {PlayerId}."
+    )]
+    private static partial void LogLockBatchFailed(
+        ILogger logger,
+        Exception exception,
+        Guid gameId,
+        Guid playerId
+    );
 }

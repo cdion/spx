@@ -1,14 +1,14 @@
-using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
 using Spx.Data;
 using Spx.Game.Application;
 using Spx.Game.Application.Features.CreateGame;
 using Spx.Game.Application.Features.DeleteMessage;
 using Spx.Game.Application.Features.EditMessage;
-using Spx.Game.Application.Features.GetMessageUpdates;
-using Spx.Game.Application.Features.GetMessages;
-using Spx.Game.Application.Features.GetUserGames;
 using Spx.Game.Application.Features.EnsureGameSession;
+using Spx.Game.Application.Features.GetMessages;
+using Spx.Game.Application.Features.GetMessageUpdates;
+using Spx.Game.Application.Features.GetUserGames;
 using Spx.Game.Application.Features.JoinGame;
 using Spx.Game.Application.Features.LeaveGame;
 using Spx.Game.Application.Features.SendPrivateMessage;
@@ -22,19 +22,29 @@ internal static class GameFeatureTestFactory
         IDbContextFactory<ApplicationDbContext> contextFactory,
         IGameLobbyInvalidationPublisher? notifier = null,
         IGameMessageInvalidationPublisher? messagePublisher = null,
-        IGameSessionService? sessionService = null)
+        IGameSessionService? sessionService = null
+    )
     {
         notifier ??= new FakeGameLobbyNotifier();
         messagePublisher ??= new FakeGameMessagePublisher();
         sessionService ??= new FakeGameSessionService();
-        var gamePersistence = new EfGamePersistence(contextFactory, NullLogger<EfGamePersistence>.Instance);
+        var gamePersistence = new EfGamePersistence(
+            contextFactory,
+            NullLogger<EfGamePersistence>.Instance
+        );
         var gameMessagePersistence = new EfGameMessagePersistence(contextFactory);
         var ensureGameSession = new EnsureGameSessionHandler(gamePersistence, sessionService);
 
         return new GameFeatureSet(
             new CreateGameHandler(gamePersistence, notifier, messagePublisher),
             new JoinGameHandler(gamePersistence, ensureGameSession, notifier, messagePublisher),
-            new LeaveGameHandler(gamePersistence, sessionService, notifier, messagePublisher, NullLogger<LeaveGameHandler>.Instance),
+            new LeaveGameHandler(
+                gamePersistence,
+                sessionService,
+                notifier,
+                messagePublisher,
+                NullLogger<LeaveGameHandler>.Instance
+            ),
             gamePersistence,
             new GetUserGamesHandler(gamePersistence),
             new GetMessagesHandler(gameMessagePersistence),
@@ -42,7 +52,8 @@ internal static class GameFeatureTestFactory
             new SendPublicMessageHandler(messagePublisher, gameMessagePersistence),
             new SendPrivateMessageHandler(messagePublisher, gameMessagePersistence),
             new EditMessageHandler(messagePublisher, gameMessagePersistence),
-            new DeleteMessageHandler(messagePublisher, gameMessagePersistence));
+            new DeleteMessageHandler(messagePublisher, gameMessagePersistence)
+        );
     }
 }
 
@@ -57,27 +68,52 @@ internal sealed record GameFeatureSet(
     ISendPublicMessageHandler SendPublicMessage,
     ISendPrivateMessageHandler SendPrivateMessage,
     IEditMessageHandler EditMessage,
-    IDeleteMessageHandler DeleteMessage);
+    IDeleteMessageHandler DeleteMessage
+);
 
 internal sealed class FakeGameSessionService : IGameSessionService
 {
     public bool TryInitializeResult { get; init; } = true;
 
-    public Task<bool> EnsureSessionAsync(Guid gameId, IReadOnlyList<GameSessionParticipant> players, CancellationToken cancellationToken = default)
-        => Task.FromResult(TryInitializeResult);
+    public Task<bool> EnsureSessionAsync(
+        Guid gameId,
+        IReadOnlyList<GameSessionParticipant> players,
+        CancellationToken cancellationToken = default
+    ) => Task.FromResult(TryInitializeResult);
 
-    public Task AcknowledgeGameplayEventBatchAsync(Guid gameId, Guid gameplayEventBatchId, CancellationToken cancellationToken = default)
-        => Task.CompletedTask;
+    public Task AcknowledgeGameplayEventBatchAsync(
+        Guid gameId,
+        Guid gameplayEventBatchId,
+        CancellationToken cancellationToken = default
+    ) => Task.CompletedTask;
 
-    public Task<GameSessionView?> GetSessionAsync(Guid gameId, Guid playerId, CancellationToken cancellationToken = default)
-        => Task.FromResult<GameSessionView?>(null);
+    public Task<GameSessionView?> GetSessionAsync(
+        Guid gameId,
+        Guid playerId,
+        CancellationToken cancellationToken = default
+    ) => Task.FromResult<GameSessionView?>(null);
 
-    public Task<GameSessionCommandOutcome> SubmitAcquireAsync(Guid gameId, SubmitAcquireRequest request, CancellationToken cancellationToken = default)
-        => Task.FromResult<GameSessionCommandOutcome>(new GameSessionCommandFailed("Not implemented in integration test factory."));
+    public Task<GameSessionCommandOutcome> SubmitAcquireAsync(
+        Guid gameId,
+        SubmitAcquireRequest request,
+        CancellationToken cancellationToken = default
+    ) =>
+        Task.FromResult<GameSessionCommandOutcome>(
+            new GameSessionCommandFailed("Not implemented in integration test factory.")
+        );
 
-    public Task<GameSessionCommandOutcome> SubmitPlayBatchAsync(Guid gameId, SubmitPlayBatchRequest request, CancellationToken cancellationToken = default)
-        => Task.FromResult<GameSessionCommandOutcome>(new GameSessionCommandFailed("Not implemented in integration test factory."));
+    public Task<GameSessionCommandOutcome> SubmitPlayBatchAsync(
+        Guid gameId,
+        SubmitPlayBatchRequest request,
+        CancellationToken cancellationToken = default
+    ) =>
+        Task.FromResult<GameSessionCommandOutcome>(
+            new GameSessionCommandFailed("Not implemented in integration test factory.")
+        );
 
-    public Task AbandonAsync(Guid gameId, Guid playerId, CancellationToken cancellationToken = default)
-        => throw new NotSupportedException();
+    public Task AbandonAsync(
+        Guid gameId,
+        Guid playerId,
+        CancellationToken cancellationToken = default
+    ) => throw new NotSupportedException();
 }

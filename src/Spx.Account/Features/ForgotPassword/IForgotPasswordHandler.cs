@@ -4,5 +4,8 @@ namespace Spx.Account.Features.ForgotPassword;
 
 public interface IForgotPasswordHandler
 {
-    Task<ForgotPasswordOutcome> HandleAsync(string email, CancellationToken cancellationToken = default);
+    Task<ForgotPasswordOutcome> HandleAsync(
+        string email,
+        CancellationToken cancellationToken = default
+    );
 }

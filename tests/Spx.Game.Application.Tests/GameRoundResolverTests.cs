@@ -26,14 +26,23 @@ public sealed class GameCardCatalogTests
     [Fact]
     public void GetCategory_distinguishes_victory_from_regular_resources()
     {
-        Assert.Equal(GameCardCategory.Resource, GameCardCatalog.GetCategory(GameCardDefinition.Purple));
-        Assert.Equal(GameCardCategory.Victory, GameCardCatalog.GetCategory(GameCardDefinition.Victory));
+        Assert.Equal(
+            GameCardCategory.Resource,
+            GameCardCatalog.GetCategory(GameCardDefinition.Purple)
+        );
+        Assert.Equal(
+            GameCardCategory.Victory,
+            GameCardCatalog.GetCategory(GameCardDefinition.Victory)
+        );
     }
 
     [Fact]
     public void TryGetRefineResult_rejects_non_base_inputs()
     {
-        var succeeded = GameCraftingRules.TryGetRefineResult([GameCardDefinition.Orange, GameCardDefinition.Blue], out _);
+        var succeeded = GameCraftingRules.TryGetRefineResult(
+            [GameCardDefinition.Orange, GameCardDefinition.Blue],
+            out _
+        );
 
         Assert.False(succeeded);
     }
@@ -41,8 +50,26 @@ public sealed class GameCardCatalogTests
     [Fact]
     public void CanAddProduceInput_enforces_recipe_membership_and_counts()
     {
-        Assert.True(GameCraftingRules.CanAddProduceInput(GameCardDefinition.Sabotage, [], GameCardDefinition.Red));
-        Assert.False(GameCraftingRules.CanAddProduceInput(GameCardDefinition.Sabotage, [GameCardDefinition.Red], GameCardDefinition.Red));
-        Assert.False(GameCraftingRules.CanAddProduceInput(GameCardDefinition.Sabotage, [], GameCardDefinition.Blue));
+        Assert.True(
+            GameCraftingRules.CanAddProduceInput(
+                GameCardDefinition.Sabotage,
+                [],
+                GameCardDefinition.Red
+            )
+        );
+        Assert.False(
+            GameCraftingRules.CanAddProduceInput(
+                GameCardDefinition.Sabotage,
+                [GameCardDefinition.Red],
+                GameCardDefinition.Red
+            )
+        );
+        Assert.False(
+            GameCraftingRules.CanAddProduceInput(
+                GameCardDefinition.Sabotage,
+                [],
+                GameCardDefinition.Blue
+            )
+        );
     }
 }

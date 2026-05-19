@@ -20,7 +20,11 @@ public interface IAccountIdentity
 
     Task<string> GeneratePasswordResetTokenAsync(AccountUser user);
 
-    Task<AccountOperationOutcome> ResetPasswordAsync(AccountUser user, string code, string password);
+    Task<AccountOperationOutcome> ResetPasswordAsync(
+        AccountUser user,
+        string code,
+        string password
+    );
 }
 
 public sealed record AccountUser(string Id, string Email);
@@ -30,7 +34,7 @@ public enum AccountPasswordSignInStatus
     Succeeded,
     EmailConfirmationRequired,
     LockedOut,
-    Failed
+    Failed,
 }
 
 public sealed record AccountPasswordSignInOutcome(AccountPasswordSignInStatus Status);

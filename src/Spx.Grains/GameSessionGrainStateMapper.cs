@@ -4,11 +4,11 @@ namespace Spx.Grains;
 
 internal static class GameSessionGrainStateMapper
 {
-    public static GameSessionState ToDomainState(GameSessionGrainState state)
-        => new()
+    public static GameSessionState ToDomainState(GameSessionGrainState state) =>
+        new()
         {
-            FirstPlayer = state.FirstPlayer is null ? null : new(state.FirstPlayer.PlayerId),
-            SecondPlayer = state.SecondPlayer is null ? null : new(state.SecondPlayer.PlayerId),
+            FirstPlayer = state.FirstPlayer,
+            SecondPlayer = state.SecondPlayer,
             FirstPlayerActive = state.FirstPlayerActive,
             SecondPlayerActive = state.SecondPlayerActive,
             RoundNumber = state.RoundNumber,
@@ -17,9 +17,15 @@ internal static class GameSessionGrainStateMapper
             VisibleMarketCards = state.VisibleMarketCards.Select(ToDomainCard).ToList(),
             FirstPlayerHand = state.FirstPlayerHand.Select(ToDomainCard).ToList(),
             SecondPlayerHand = state.SecondPlayerHand.Select(ToDomainCard).ToList(),
-            FirstPlayerPendingBatch = state.FirstPlayerPendingBatch is null ? null : ToDomainPendingBatch(state.FirstPlayerPendingBatch),
-            SecondPlayerPendingBatch = state.SecondPlayerPendingBatch is null ? null : ToDomainPendingBatch(state.SecondPlayerPendingBatch),
-            LastResolvedBatch = state.LastResolvedBatch is null ? null : ToDomainResolvedBatch(state.LastResolvedBatch),
+            FirstPlayerPendingBatch = state.FirstPlayerPendingBatch is null
+                ? null
+                : ToDomainPendingBatch(state.FirstPlayerPendingBatch),
+            SecondPlayerPendingBatch = state.SecondPlayerPendingBatch is null
+                ? null
+                : ToDomainPendingBatch(state.SecondPlayerPendingBatch),
+            LastResolvedBatch = state.LastResolvedBatch is null
+                ? null
+                : ToDomainResolvedBatch(state.LastResolvedBatch),
             FirstPlayerScoutOverride = state.FirstPlayerScoutOverride,
             SecondPlayerScoutOverride = state.SecondPlayerScoutOverride,
             CurrentAcquireFirstPlayerId = state.CurrentAcquireFirstPlayerId,
@@ -29,16 +35,17 @@ internal static class GameSessionGrainStateMapper
             Completion = state.Completion is null ? null : ToDomainCompletion(state.Completion),
             ConsecutiveStalemateRounds = state.ConsecutiveStalemateRounds,
             RoundHadHandChange = state.RoundHadHandChange,
-            AcquirePicksCompletedInPhase = state.AcquirePicksCompletedInPhase
+            AcquirePicksCompletedInPhase = state.AcquirePicksCompletedInPhase,
         };
 
     public static GameSessionGrainState FromDomainState(
         GameSessionState state,
-        IEnumerable<PendingGameplayEventBatchGrainState>? pendingGameplayEventBatches = null)
-        => new()
+        IEnumerable<PendingGameplayEventBatchGrainState>? pendingGameplayEventBatches = null
+    ) =>
+        new()
         {
-            FirstPlayer = state.FirstPlayer is null ? null : new(state.FirstPlayer.PlayerId),
-            SecondPlayer = state.SecondPlayer is null ? null : new(state.SecondPlayer.PlayerId),
+            FirstPlayer = state.FirstPlayer,
+            SecondPlayer = state.SecondPlayer,
             FirstPlayerActive = state.FirstPlayerActive,
             SecondPlayerActive = state.SecondPlayerActive,
             RoundNumber = state.RoundNumber,
@@ -47,9 +54,15 @@ internal static class GameSessionGrainStateMapper
             VisibleMarketCards = state.VisibleMarketCards.Select(FromDomainCard).ToList(),
             FirstPlayerHand = state.FirstPlayerHand.Select(FromDomainCard).ToList(),
             SecondPlayerHand = state.SecondPlayerHand.Select(FromDomainCard).ToList(),
-            FirstPlayerPendingBatch = state.FirstPlayerPendingBatch is null ? null : FromDomainPendingBatch(state.FirstPlayerPendingBatch),
-            SecondPlayerPendingBatch = state.SecondPlayerPendingBatch is null ? null : FromDomainPendingBatch(state.SecondPlayerPendingBatch),
-            LastResolvedBatch = state.LastResolvedBatch is null ? null : FromDomainResolvedBatch(state.LastResolvedBatch),
+            FirstPlayerPendingBatch = state.FirstPlayerPendingBatch is null
+                ? null
+                : FromDomainPendingBatch(state.FirstPlayerPendingBatch),
+            SecondPlayerPendingBatch = state.SecondPlayerPendingBatch is null
+                ? null
+                : FromDomainPendingBatch(state.SecondPlayerPendingBatch),
+            LastResolvedBatch = state.LastResolvedBatch is null
+                ? null
+                : FromDomainResolvedBatch(state.LastResolvedBatch),
             FirstPlayerScoutOverride = state.FirstPlayerScoutOverride,
             SecondPlayerScoutOverride = state.SecondPlayerScoutOverride,
             CurrentAcquireFirstPlayerId = state.CurrentAcquireFirstPlayerId,
@@ -60,47 +73,58 @@ internal static class GameSessionGrainStateMapper
             ConsecutiveStalemateRounds = state.ConsecutiveStalemateRounds,
             RoundHadHandChange = state.RoundHadHandChange,
             AcquirePicksCompletedInPhase = state.AcquirePicksCompletedInPhase,
-            PendingGameplayEventBatches = pendingGameplayEventBatches?.Select(ClonePendingGameplayEventBatch).ToList() ?? []
+            PendingGameplayEventBatches =
+                pendingGameplayEventBatches?.Select(ClonePendingGameplayEventBatch).ToList() ?? [],
         };
 
-    private static GameCardState ToDomainCard(GameSessionGrainCardState card)
-        => new() { CardInstanceId = card.CardInstanceId, Definition = card.Definition };
+    private static GameCardState ToDomainCard(GameSessionGrainCardState card) =>
+        new() { CardInstanceId = card.CardInstanceId, Definition = card.Definition };
 
-    private static GameSessionGrainCardState FromDomainCard(GameCardState card)
-        => new() { CardInstanceId = card.CardInstanceId, Definition = card.Definition };
+    private static GameSessionGrainCardState FromDomainCard(GameCardState card) =>
+        new() { CardInstanceId = card.CardInstanceId, Definition = card.Definition };
 
-    private static GameCardReferenceState ToDomainReference(GameSessionCardReferenceGrainState reference)
-        => new()
+    private static GameCardReferenceState ToDomainReference(
+        GameSessionCardReferenceGrainState reference
+    ) =>
+        new()
         {
             CardInstanceId = reference.CardInstanceId,
             ProducedByCardInstanceId = reference.ProducedByCardInstanceId,
-            ProducedCardDefinition = reference.ProducedCardDefinition
+            ProducedCardDefinition = reference.ProducedCardDefinition,
         };
 
-    private static GameSessionCardReferenceGrainState FromDomainReference(GameCardReferenceState reference)
-        => new()
+    private static GameSessionCardReferenceGrainState FromDomainReference(
+        GameCardReferenceState reference
+    ) =>
+        new()
         {
             CardInstanceId = reference.CardInstanceId,
             ProducedByCardInstanceId = reference.ProducedByCardInstanceId,
-            ProducedCardDefinition = reference.ProducedCardDefinition
+            ProducedCardDefinition = reference.ProducedCardDefinition,
         };
 
-    private static PendingGameBatchState ToDomainPendingBatch(GameSessionPendingBatchGrainState batch)
-        => new()
+    private static PendingGameBatchState ToDomainPendingBatch(
+        GameSessionPendingBatchGrainState batch
+    ) =>
+        new()
         {
             PlayerId = batch.PlayerId,
-            Cards = batch.Cards.Select(ToDomainPendingBatchCard).ToList()
+            Cards = batch.Cards.Select(ToDomainPendingBatchCard).ToList(),
         };
 
-    private static GameSessionPendingBatchGrainState FromDomainPendingBatch(PendingGameBatchState batch)
-        => new()
+    private static GameSessionPendingBatchGrainState FromDomainPendingBatch(
+        PendingGameBatchState batch
+    ) =>
+        new()
         {
             PlayerId = batch.PlayerId,
-            Cards = batch.Cards.Select(FromDomainPendingBatchCard).ToList()
+            Cards = batch.Cards.Select(FromDomainPendingBatchCard).ToList(),
         };
 
-    private static PendingGameBatchCardState ToDomainPendingBatchCard(GameSessionPendingBatchCardGrainState card)
-        => new()
+    private static PendingGameBatchCardState ToDomainPendingBatchCard(
+        GameSessionPendingBatchCardGrainState card
+    ) =>
+        new()
         {
             Card = ToDomainCard(card.Card),
             ChosenResourceColor = card.ChosenResourceColor,
@@ -108,11 +132,13 @@ internal static class GameSessionGrainStateMapper
             TargetResourceColor = card.TargetResourceColor,
             TargetCardInstanceId = card.TargetCardInstanceId,
             ConsumedCards = card.ConsumedCards.Select(ToDomainReference).ToList(),
-            ReturnToHand = card.ReturnToHand
+            ReturnToHand = card.ReturnToHand,
         };
 
-    private static GameSessionPendingBatchCardGrainState FromDomainPendingBatchCard(PendingGameBatchCardState card)
-        => new()
+    private static GameSessionPendingBatchCardGrainState FromDomainPendingBatchCard(
+        PendingGameBatchCardState card
+    ) =>
+        new()
         {
             Card = FromDomainCard(card.Card),
             ChosenResourceColor = card.ChosenResourceColor,
@@ -120,64 +146,78 @@ internal static class GameSessionGrainStateMapper
             TargetResourceColor = card.TargetResourceColor,
             TargetCardInstanceId = card.TargetCardInstanceId,
             ConsumedCards = card.ConsumedCards.Select(FromDomainReference).ToList(),
-            ReturnToHand = card.ReturnToHand
+            ReturnToHand = card.ReturnToHand,
         };
 
-    private static ResolvedGameBatchState ToDomainResolvedBatch(GameSessionResolvedBatchGrainState batch)
-        => new()
+    private static ResolvedGameBatchState ToDomainResolvedBatch(
+        GameSessionResolvedBatchGrainState batch
+    ) =>
+        new()
         {
             RoundNumber = batch.RoundNumber,
             Players = batch.Players.Select(ToDomainResolvedPlayerBatch).ToList(),
-            ResolvedAtUtc = batch.ResolvedAtUtc
+            ResolvedAtUtc = batch.ResolvedAtUtc,
         };
 
-    private static GameSessionResolvedBatchGrainState FromDomainResolvedBatch(ResolvedGameBatchState batch)
-        => new()
+    private static GameSessionResolvedBatchGrainState FromDomainResolvedBatch(
+        ResolvedGameBatchState batch
+    ) =>
+        new()
         {
             RoundNumber = batch.RoundNumber,
             Players = batch.Players.Select(FromDomainResolvedPlayerBatch).ToList(),
-            ResolvedAtUtc = batch.ResolvedAtUtc
+            ResolvedAtUtc = batch.ResolvedAtUtc,
         };
 
-    private static ResolvedGamePlayerBatchState ToDomainResolvedPlayerBatch(GameSessionResolvedPlayerBatchGrainState batch)
-        => new()
+    private static ResolvedGamePlayerBatchState ToDomainResolvedPlayerBatch(
+        GameSessionResolvedPlayerBatchGrainState batch
+    ) =>
+        new()
         {
             PlayerId = batch.PlayerId,
             Cards = batch.Cards.Select(ToDomainPendingBatchCard).ToList(),
-            ProducedVictory = batch.ProducedVictory
+            ProducedVictory = batch.ProducedVictory,
         };
 
-    private static GameSessionResolvedPlayerBatchGrainState FromDomainResolvedPlayerBatch(ResolvedGamePlayerBatchState batch)
-        => new()
+    private static GameSessionResolvedPlayerBatchGrainState FromDomainResolvedPlayerBatch(
+        ResolvedGamePlayerBatchState batch
+    ) =>
+        new()
         {
             PlayerId = batch.PlayerId,
             Cards = batch.Cards.Select(FromDomainPendingBatchCard).ToList(),
-            ProducedVictory = batch.ProducedVictory
+            ProducedVictory = batch.ProducedVictory,
         };
 
-    private static GameCompletionState ToDomainCompletion(GameSessionCompletionGrainState completion)
-        => new()
+    private static GameCompletionState ToDomainCompletion(
+        GameSessionCompletionGrainState completion
+    ) =>
+        new()
         {
             Reason = completion.Reason,
             WinnerPlayerId = completion.WinnerPlayerId,
-            CompletedAtUtc = completion.CompletedAtUtc
+            CompletedAtUtc = completion.CompletedAtUtc,
         };
 
-    private static GameSessionCompletionGrainState FromDomainCompletion(GameCompletionState completion)
-        => new()
+    private static GameSessionCompletionGrainState FromDomainCompletion(
+        GameCompletionState completion
+    ) =>
+        new()
         {
             Reason = completion.Reason,
             WinnerPlayerId = completion.WinnerPlayerId,
-            CompletedAtUtc = completion.CompletedAtUtc
+            CompletedAtUtc = completion.CompletedAtUtc,
         };
 
-    private static PendingGameplayEventBatchGrainState ClonePendingGameplayEventBatch(PendingGameplayEventBatchGrainState batch)
-        => new()
+    private static PendingGameplayEventBatchGrainState ClonePendingGameplayEventBatch(
+        PendingGameplayEventBatchGrainState batch
+    ) =>
+        new()
         {
             BatchId = batch.BatchId,
             GameId = batch.GameId,
             LastResolvedBatch = batch.LastResolvedBatch,
             Completion = batch.Completion,
-            GameplayEvents = [.. batch.GameplayEvents]
+            GameplayEvents = [.. batch.GameplayEvents],
         };
 }

@@ -7,7 +7,10 @@ namespace Spx.Account.Tests;
 
 internal static class AccountHandlerTestServices
 {
-    public static ServiceProvider Create(FakeAccountIdentity identity, FakeAccountEmailSender? emailSender = null)
+    public static ServiceProvider Create(
+        FakeAccountIdentity identity,
+        FakeAccountEmailSender? emailSender = null
+    )
     {
         var services = new ServiceCollection();
         services.AddAccountApplication();
@@ -24,30 +27,33 @@ internal sealed class FakeAccountIdentity : IAccountIdentity
 
     public AccountUser? FindByIdResult { get; init; }
 
-    public AccountPasswordSignInOutcome PasswordSignInResult { get; init; } = new(AccountPasswordSignInStatus.Failed);
+    public AccountPasswordSignInOutcome PasswordSignInResult { get; init; } =
+        new(AccountPasswordSignInStatus.Failed);
 
     public AccountCreateOutcome CreateUserResult { get; init; } = new AccountCreateFailed([]);
 
     public string EmailConfirmationToken { get; init; } = string.Empty;
 
-    public AccountOperationOutcome ConfirmEmailResult { get; init; } = new AccountOperationFailed([]);
+    public AccountOperationOutcome ConfirmEmailResult { get; init; } =
+        new AccountOperationFailed([]);
 
     public bool IsEmailConfirmedResult { get; init; }
 
     public string PasswordResetToken { get; init; } = string.Empty;
 
-    public AccountOperationOutcome ResetPasswordResult { get; init; } = new AccountOperationFailed([]);
+    public AccountOperationOutcome ResetPasswordResult { get; init; } =
+        new AccountOperationFailed([]);
 
     public bool SignOutCalled { get; private set; }
 
-    public Task<AccountUser?> FindByEmailAsync(string email)
-        => Task.FromResult(FindByEmailResult);
+    public Task<AccountUser?> FindByEmailAsync(string email) => Task.FromResult(FindByEmailResult);
 
-    public Task<AccountUser?> FindByIdAsync(string userId)
-        => Task.FromResult(FindByIdResult);
+    public Task<AccountUser?> FindByIdAsync(string userId) => Task.FromResult(FindByIdResult);
 
-    public Task<AccountPasswordSignInOutcome> PasswordSignInAsync(AccountUser user, string password)
-        => Task.FromResult(PasswordSignInResult);
+    public Task<AccountPasswordSignInOutcome> PasswordSignInAsync(
+        AccountUser user,
+        string password
+    ) => Task.FromResult(PasswordSignInResult);
 
     public Task SignOutAsync()
     {
@@ -55,23 +61,26 @@ internal sealed class FakeAccountIdentity : IAccountIdentity
         return Task.CompletedTask;
     }
 
-    public Task<AccountCreateOutcome> CreateUserAsync(string email, string password)
-        => Task.FromResult(CreateUserResult);
+    public Task<AccountCreateOutcome> CreateUserAsync(string email, string password) =>
+        Task.FromResult(CreateUserResult);
 
-    public Task<string> GenerateEmailConfirmationTokenAsync(AccountUser user)
-        => Task.FromResult(EmailConfirmationToken);
+    public Task<string> GenerateEmailConfirmationTokenAsync(AccountUser user) =>
+        Task.FromResult(EmailConfirmationToken);
 
-    public Task<AccountOperationOutcome> ConfirmEmailAsync(AccountUser user, string code)
-        => Task.FromResult(ConfirmEmailResult);
+    public Task<AccountOperationOutcome> ConfirmEmailAsync(AccountUser user, string code) =>
+        Task.FromResult(ConfirmEmailResult);
 
-    public Task<bool> IsEmailConfirmedAsync(AccountUser user)
-        => Task.FromResult(IsEmailConfirmedResult);
+    public Task<bool> IsEmailConfirmedAsync(AccountUser user) =>
+        Task.FromResult(IsEmailConfirmedResult);
 
-    public Task<string> GeneratePasswordResetTokenAsync(AccountUser user)
-        => Task.FromResult(PasswordResetToken);
+    public Task<string> GeneratePasswordResetTokenAsync(AccountUser user) =>
+        Task.FromResult(PasswordResetToken);
 
-    public Task<AccountOperationOutcome> ResetPasswordAsync(AccountUser user, string code, string password)
-        => Task.FromResult(ResetPasswordResult);
+    public Task<AccountOperationOutcome> ResetPasswordAsync(
+        AccountUser user,
+        string code,
+        string password
+    ) => Task.FromResult(ResetPasswordResult);
 }
 
 internal sealed class FakeAccountEmailSender : IAccountEmailSender
@@ -94,7 +103,12 @@ internal sealed class FakeAccountEmailSender : IAccountEmailSender
 
     public string? LastPasswordResetCode { get; private set; }
 
-    public Task SendConfirmationEmailAsync(string email, string userId, string code, CancellationToken cancellationToken = default)
+    public Task SendConfirmationEmailAsync(
+        string email,
+        string userId,
+        string code,
+        CancellationToken cancellationToken = default
+    )
     {
         if (SendConfirmationException is not null)
         {
@@ -108,7 +122,11 @@ internal sealed class FakeAccountEmailSender : IAccountEmailSender
         return Task.CompletedTask;
     }
 
-    public Task SendPasswordResetEmailAsync(string email, string code, CancellationToken cancellationToken = default)
+    public Task SendPasswordResetEmailAsync(
+        string email,
+        string code,
+        CancellationToken cancellationToken = default
+    )
     {
         if (SendPasswordResetException is not null)
         {

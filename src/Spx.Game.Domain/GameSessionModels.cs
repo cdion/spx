@@ -1,21 +1,23 @@
 namespace Spx.Game.Domain;
 
-public sealed record GameSessionParticipant(
-    Guid PlayerId);
+public sealed record GameSessionParticipant(Guid PlayerId);
 
 public sealed record InitializeGameSessionCommand(
     GameSessionParticipant FirstPlayer,
-    GameSessionParticipant SecondPlayer);
+    GameSessionParticipant SecondPlayer
+);
 
 public sealed record SubmitAcquireCommand(
     Guid PlayerId,
     int ExpectedRoundNumber,
-    Guid MarketCardInstanceId);
+    Guid MarketCardInstanceId
+);
 
 public sealed record GameCardReferenceCommand(
     Guid? CardInstanceId,
     Guid? ProducedByCardInstanceId,
-    GameCardDefinition? ProducedCardDefinition);
+    GameCardDefinition? ProducedCardDefinition
+);
 
 public sealed record GameBatchCardCommand(
     Guid CardInstanceId,
@@ -23,12 +25,14 @@ public sealed record GameBatchCardCommand(
     GameCardDefinition? CraftedCardDefinition,
     GameResourceColor? TargetResourceColor,
     Guid? TargetCardInstanceId,
-    IReadOnlyList<GameCardReferenceCommand> ConsumedCards);
+    IReadOnlyList<GameCardReferenceCommand> ConsumedCards
+);
 
 public sealed record SubmitPlayBatchCommand(
     Guid PlayerId,
     int ExpectedRoundNumber,
-    IReadOnlyList<GameBatchCardCommand> Cards);
+    IReadOnlyList<GameBatchCardCommand> Cards
+);
 
 public sealed record GetGameSessionQuery(Guid PlayerId);
 
@@ -39,12 +43,14 @@ public sealed record GameCardView(
     GameCardDefinition Definition,
     string DisplayName,
     GameCardCategory Category,
-    GameResourceColor? ResourceColor);
+    GameResourceColor? ResourceColor
+);
 
 public sealed record GameCardReferenceView(
     Guid? CardInstanceId,
     Guid? ProducedByCardInstanceId,
-    GameCardDefinition? ProducedCardDefinition);
+    GameCardDefinition? ProducedCardDefinition
+);
 
 public sealed record GameBatchCardView(
     GameCardView Card,
@@ -52,7 +58,8 @@ public sealed record GameBatchCardView(
     GameCardDefinition? CraftedCardDefinition,
     GameResourceColor? TargetResourceColor,
     Guid? TargetCardInstanceId,
-    IReadOnlyList<GameCardReferenceView> ConsumedCards);
+    IReadOnlyList<GameCardReferenceView> ConsumedCards
+);
 
 public sealed record GamePlayerStateView(
     GameSessionParticipant Participant,
@@ -62,22 +69,26 @@ public sealed record GamePlayerStateView(
     int InitiativeScore,
     bool HasScoutOverride,
     bool PicksFirstInAcquirePhase,
-    IReadOnlyList<GameBatchCardView> VisibleLockedCards);
+    IReadOnlyList<GameBatchCardView> VisibleLockedCards
+);
 
 public sealed record GameResolvedPlayerBatchView(
     GameSessionParticipant Participant,
     IReadOnlyList<GameBatchCardView> PlayedCards,
-    bool ProducedVictory);
+    bool ProducedVictory
+);
 
 public sealed record GameResolvedBatchView(
     int RoundNumber,
     IReadOnlyList<GameResolvedPlayerBatchView> Players,
-    DateTime ResolvedAtUtc);
+    DateTime ResolvedAtUtc
+);
 
 public sealed record GameCompletionView(
     GameCompletionReason Reason,
     GameSessionParticipant? Winner,
-    DateTime CompletedAtUtc);
+    DateTime CompletedAtUtc
+);
 
 public sealed record GameSessionView(
     Guid GameId,
@@ -92,17 +103,19 @@ public sealed record GameSessionView(
     bool CanLockBatch,
     int MaxBatchSize,
     GameResolvedBatchView? LastResolvedBatch,
-    GameCompletionView? Completion);
+    GameCompletionView? Completion
+);
 
 public abstract record GameSessionCommandResult;
 
 public sealed record GameSessionCommandSucceededResult(
     GameSessionView Session,
-    IReadOnlyList<GameplayEvent> GameplayEvents) : GameSessionCommandResult
+    IReadOnlyList<GameplayEvent> GameplayEvents
+) : GameSessionCommandResult
 {
-    public GameSessionCommandSucceededResult(GameSessionView Session) : this(Session, [])
-    {
-    }
+    public GameSessionCommandSucceededResult(GameSessionView Session)
+        : this(Session, []) { }
 }
 
-public sealed record GameSessionCommandRejectedResult(string ErrorMessage) : GameSessionCommandResult;
+public sealed record GameSessionCommandRejectedResult(string ErrorMessage)
+    : GameSessionCommandResult;

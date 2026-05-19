@@ -1,3 +1,6 @@
+// Program.cs registers all application services and middleware — high coupling is
+// inherent to the composition root pattern and not a refactoring candidate.
+#pragma warning disable CA1506
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Server.Circuits;
 using Microsoft.AspNetCore.HttpOverrides;
@@ -5,12 +8,12 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Orleans.Configuration;
 using Spx.Account;
+using Spx.Data;
 using Spx.Game.Application;
 using Spx.Web.Adapters.Account;
 using Spx.Web.Adapters.Games;
-using Spx.Web.Components;
 using Spx.Web.Circuits;
-using Spx.Data;
+using Spx.Web.Components;
 using Spx.Web.Endpoints;
 using Spx.Web.Options;
 
@@ -23,7 +26,8 @@ builder.AddKeyedRedisClient("orleans-redis");
 builder.AddNpgsqlDbContext<ApplicationDbContext>("appdb");
 builder.Services.AddDbContextFactory<ApplicationDbContext>(options =>
 {
-    var connectionString = builder.Configuration.GetConnectionString("appdb")
+    var connectionString =
+        builder.Configuration.GetConnectionString("appdb")
         ?? builder.Configuration["APPDB_URI"]
         ?? throw new InvalidOperationException("The appdb connection string was not configured.");
 
@@ -37,18 +41,20 @@ builder.UseOrleansClient(clientBuilder =>
         options.ServiceId = orleansServiceId;
     });
 });
-builder.Services.Configure<AppUrlOptions>(builder.Configuration.GetSection(AppUrlOptions.SectionName));
-builder.Services.Configure<ResendOptions>(builder.Configuration.GetSection(ResendOptions.SectionName));
+builder.Services.Configure<AppUrlOptions>(
+    builder.Configuration.GetSection(AppUrlOptions.SectionName)
+);
+builder.Services.Configure<ResendOptions>(
+    builder.Configuration.GetSection(ResendOptions.SectionName)
+);
 
 // Add services to the container.
-builder.Services.AddRazorComponents()
-    .AddInteractiveServerComponents();
+builder.Services.AddRazorComponents().AddInteractiveServerComponents();
 builder.Services.AddScoped<CircuitConnectionEvents>();
 builder.Services.AddScoped<CircuitHandler, CircuitConnectionHandler>();
 builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddHttpContextAccessor();
-builder.Services.AddAuthentication(IdentityConstants.ApplicationScheme)
-    .AddIdentityCookies();
+builder.Services.AddAuthentication(IdentityConstants.ApplicationScheme).AddIdentityCookies();
 builder.Services.ConfigureApplicationCookie(options =>
 {
     options.LoginPath = "/login";
@@ -57,13 +63,13 @@ builder.Services.ConfigureApplicationCookie(options =>
 });
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
 {
-    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor
-        | ForwardedHeaders.XForwardedProto;
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
     options.KnownIPNetworks.Clear();
     options.KnownProxies.Clear();
 });
 builder.Services.AddAuthorization();
-builder.Services.AddIdentityCore<ApplicationUser>(options =>
+builder
+    .Services.AddIdentityCore<ApplicationUser>(options =>
     {
         options.SignIn.RequireConfirmedAccount = true;
         options.SignIn.RequireConfirmedEmail = true;
@@ -90,11 +96,12 @@ if (builder.Environment.IsDevelopment())
 else
 {
     builder.Services.AddHttpClient<ResendAccountEmailSender>(client =>
-        {
-            client.BaseAddress = new Uri("https://api.resend.com/");
-        });
+    {
+        client.BaseAddress = new Uri("https://api.resend.com/");
+    });
     builder.Services.AddScoped<IAccountEmailSender>(serviceProvider =>
-        serviceProvider.GetRequiredService<ResendAccountEmailSender>());
+        serviceProvider.GetRequiredService<ResendAccountEmailSender>()
+    );
 }
 
 builder.Services.AddAccountApplication();
@@ -128,8 +135,7 @@ app.UseAntiforgery();
 
 app.MapAccountEndpoints();
 app.MapStaticAssets();
-app.MapRazorComponents<App>()
-    .AddInteractiveServerRenderMode();
+app.MapRazorComponents<App>().AddInteractiveServerRenderMode();
 app.MapDefaultEndpoints();
 
 app.Run();

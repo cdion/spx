@@ -67,8 +67,7 @@ public sealed class GameTimelineState
         MessageError = null;
     }
 
-    public void CompleteInitialLoad()
-        => IsTimelineLoading = false;
+    public void CompleteInitialLoad() => IsTimelineLoading = false;
 
     public void ApplyInitialPage(GameTimelinePageView? page)
     {
@@ -83,22 +82,18 @@ public sealed class GameTimelineState
         }
 
         var orderedItems = page.Items.OrderBy(entry => entry.Id).ToList();
-        items.AddRange(orderedItems.Select(entry => new TimelineEntryState
-        {
-            Key = entry.Id,
-            Message = entry
-        }));
+        items.AddRange(
+            orderedItems.Select(entry => new TimelineEntryState { Key = entry.Id, Message = entry })
+        );
 
         HasOlderMessages = page.HasMore;
         OldestMessageId = orderedItems.FirstOrDefault()?.Id;
         NewestMessageId = orderedItems.LastOrDefault()?.Id;
     }
 
-    public void BeginOlderLoad()
-        => IsLoadingOlderMessages = true;
+    public void BeginOlderLoad() => IsLoadingOlderMessages = true;
 
-    public void CompleteOlderLoad()
-        => IsLoadingOlderMessages = false;
+    public void CompleteOlderLoad() => IsLoadingOlderMessages = false;
 
     public void ApplyOlderPage(GameTimelinePageView? page, TimelineScrollMetrics metrics)
     {
@@ -107,15 +102,14 @@ public sealed class GameTimelineState
             return;
         }
 
-        var existingIds = items.Where(entry => entry.Message is not null).Select(entry => entry.Message!.Id).ToHashSet();
-        var olderItems = page.Items
-            .Where(entry => !existingIds.Contains(entry.Id))
+        var existingIds = items
+            .Where(entry => entry.Message is not null)
+            .Select(entry => entry.Message!.Id)
+            .ToHashSet();
+        var olderItems = page
+            .Items.Where(entry => !existingIds.Contains(entry.Id))
             .OrderBy(entry => entry.Id)
-            .Select(entry => new TimelineEntryState
-            {
-                Key = entry.Id,
-                Message = entry
-            })
+            .Select(entry => new TimelineEntryState { Key = entry.Id, Message = entry })
             .ToList();
 
         if (olderItems.Count > 0)
@@ -143,11 +137,7 @@ public sealed class GameTimelineState
                 continue;
             }
 
-            items.Add(new TimelineEntryState
-            {
-                Key = message.Id,
-                Message = message
-            });
+            items.Add(new TimelineEntryState { Key = message.Id, Message = message });
         }
 
         SortItems();
@@ -155,7 +145,10 @@ public sealed class GameTimelineState
         NewestMessageId = items.LastOrDefault(entry => entry.Message is not null)?.Message?.Id;
     }
 
-    public void AddImmediateGameplayEntries(IReadOnlyList<string> messageBodies, DateTime createdAtUtc)
+    public void AddImmediateGameplayEntries(
+        IReadOnlyList<string> messageBodies,
+        DateTime createdAtUtc
+    )
     {
         var addedAny = false;
 
@@ -165,7 +158,8 @@ public sealed class GameTimelineState
                 entry.Message is not null
                 && entry.Message.Kind == GameMessageKind.GameplayEvent
                 && entry.Message.CreatedAtUtc == createdAtUtc
-                && string.Equals(entry.Message.Body, body, StringComparison.Ordinal));
+                && string.Equals(entry.Message.Body, body, StringComparison.Ordinal)
+            );
 
             if (alreadyExists)
             {
@@ -176,18 +170,26 @@ public sealed class GameTimelineState
                 entry.Local is not null
                 && entry.Local.Kind == GameMessageKind.GameplayEvent
                 && entry.Local.CreatedAtUtc == createdAtUtc
-                && string.Equals(entry.Local.Body, body, StringComparison.Ordinal));
+                && string.Equals(entry.Local.Body, body, StringComparison.Ordinal)
+            );
 
             if (alreadyBuffered)
             {
                 continue;
             }
 
-            items.Add(new TimelineEntryState
-            {
-                Key = Guid.NewGuid(),
-                Local = new LocalTimelineMessageState("Gameplay", body, createdAtUtc, GameMessageKind.GameplayEvent)
-            });
+            items.Add(
+                new TimelineEntryState
+                {
+                    Key = Guid.NewGuid(),
+                    Local = new LocalTimelineMessageState(
+                        "Gameplay",
+                        body,
+                        createdAtUtc,
+                        GameMessageKind.GameplayEvent
+                    ),
+                }
+            );
             addedAny = true;
         }
 
@@ -200,7 +202,12 @@ public sealed class GameTimelineState
         RequestScrollToBottom();
     }
 
-    public TimelineEntryState AddPendingMessage(string body, Guid? recipientPlayerId, string recipientDisplayName, bool isPrivate)
+    public TimelineEntryState AddPendingMessage(
+        string body,
+        Guid? recipientPlayerId,
+        string recipientDisplayName,
+        bool isPrivate
+    )
     {
         var entry = new TimelineEntryState
         {
@@ -211,7 +218,8 @@ public sealed class GameTimelineState
                 recipientDisplayName,
                 DateTime.UtcNow,
                 isPrivate,
-                false)
+                false
+            ),
         };
 
         items.Add(entry);
@@ -219,8 +227,8 @@ public sealed class GameTimelineState
         return entry;
     }
 
-    public TimelineEntryState? FindPendingMessage(Guid itemKey)
-        => items.SingleOrDefault(entry => entry.Key == itemKey && entry.Pending is not null);
+    public TimelineEntryState? FindPendingMessage(Guid itemKey) =>
+        items.SingleOrDefault(entry => entry.Key == itemKey && entry.Pending is not null);
 
     public void SetPendingMessageFailed(Guid itemKey, bool failed)
     {
@@ -233,8 +241,8 @@ public sealed class GameTimelineState
         item.Pending.Failed = failed;
     }
 
-    public void DismissPendingMessage(Guid itemKey)
-        => items.RemoveAll(entry => entry.Key == itemKey && entry.Pending is not null);
+    public void DismissPendingMessage(Guid itemKey) =>
+        items.RemoveAll(entry => entry.Key == itemKey && entry.Pending is not null);
 
     public void ReplacePendingWithPersistedMessage(Guid itemKey, GameTimelineEntryView message)
     {
@@ -255,11 +263,9 @@ public sealed class GameTimelineState
         IsSavingEdit = false;
     }
 
-    public void BeginSend()
-        => IsSendingMessage = true;
+    public void BeginSend() => IsSendingMessage = true;
 
-    public void CompleteSend()
-        => IsSendingMessage = false;
+    public void CompleteSend() => IsSendingMessage = false;
 
     public void ClearComposer()
     {
@@ -267,20 +273,15 @@ public sealed class GameTimelineState
         SelectedRecipientPlayerIdString = null;
     }
 
-    public void BeginSaveEdit()
-        => IsSavingEdit = true;
+    public void BeginSaveEdit() => IsSavingEdit = true;
 
-    public void CompleteSaveEdit()
-        => IsSavingEdit = false;
+    public void CompleteSaveEdit() => IsSavingEdit = false;
 
-    public void RequestScrollToBottom()
-        => ShouldScrollTimelineToBottom = true;
+    public void RequestScrollToBottom() => ShouldScrollTimelineToBottom = true;
 
-    public void MarkScrollToBottomHandled()
-        => ShouldScrollTimelineToBottom = false;
+    public void MarkScrollToBottomHandled() => ShouldScrollTimelineToBottom = false;
 
-    public void MarkRestoreScrollHandled()
-        => ShouldRestoreScrollAfterOlderLoad = false;
+    public void MarkRestoreScrollHandled() => ShouldRestoreScrollAfterOlderLoad = false;
 
     private void RemoveMatchingLocalTimelineItems(GameTimelineEntryView message)
     {
@@ -293,11 +294,12 @@ public sealed class GameTimelineState
             entry.Local is not null
             && entry.Local.Kind == GameMessageKind.GameplayEvent
             && entry.Local.CreatedAtUtc == message.CreatedAtUtc
-            && string.Equals(entry.Local.Body, message.Body, StringComparison.Ordinal));
+            && string.Equals(entry.Local.Body, message.Body, StringComparison.Ordinal)
+        );
     }
 
-    private void SortItems()
-        => items.Sort(static (left, right) => CompareTimelineItems(left, right));
+    private void SortItems() =>
+        items.Sort(static (left, right) => CompareTimelineItems(left, right));
 
     private static int CompareTimelineItems(TimelineEntryState left, TimelineEntryState right)
     {
@@ -313,7 +315,10 @@ public sealed class GameTimelineState
 
         if (left.Message is null && right.Message is null)
         {
-            return DateTime.Compare(left.Pending?.CreatedAtUtc ?? DateTime.MinValue, right.Pending?.CreatedAtUtc ?? DateTime.MinValue);
+            return DateTime.Compare(
+                left.Pending?.CreatedAtUtc ?? DateTime.MinValue,
+                right.Pending?.CreatedAtUtc ?? DateTime.MinValue
+            );
         }
 
         return left.Message!.Id.CompareTo(right.Message!.Id);

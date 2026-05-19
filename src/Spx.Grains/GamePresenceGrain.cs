@@ -11,11 +11,26 @@ public sealed class GamePresenceGrain : Grain, IGamePresenceGrain
     private readonly Dictionary<Guid, Dictionary<Guid, DateTime>> leasesByPlayerId = [];
     private IGrainTimer? expiryTimer;
 
-    public Task UpsertLeaseAsync(UpsertGamePresenceLeaseCommand command)
-        => ApplyMutationAsync(nowUtc => GamePresenceTracker.UpsertLease(leasesByPlayerId, command.PlayerId, command.ConnectionId, command.ExpiresAtUtc, nowUtc));
+    public Task UpsertLeaseAsync(UpsertGamePresenceLeaseCommand command) =>
+        ApplyMutationAsync(nowUtc =>
+            GamePresenceTracker.UpsertLease(
+                leasesByPlayerId,
+                command.PlayerId,
+                command.ConnectionId,
+                command.ExpiresAtUtc,
+                nowUtc
+            )
+        );
 
-    public Task RemoveLeaseAsync(RemoveGamePresenceLeaseCommand command)
-        => ApplyMutationAsync(nowUtc => GamePresenceTracker.RemoveLease(leasesByPlayerId, command.PlayerId, command.ConnectionId, nowUtc));
+    public Task RemoveLeaseAsync(RemoveGamePresenceLeaseCommand command) =>
+        ApplyMutationAsync(nowUtc =>
+            GamePresenceTracker.RemoveLease(
+                leasesByPlayerId,
+                command.PlayerId,
+                command.ConnectionId,
+                nowUtc
+            )
+        );
 
     public Task<GamePresenceSnapshot> GetSnapshotAsync()
     {
@@ -25,7 +40,10 @@ public sealed class GamePresenceGrain : Grain, IGamePresenceGrain
         return Task.FromResult(GamePresenceTracker.CreateSnapshot(leasesByPlayerId));
     }
 
-    public override Task OnDeactivateAsync(DeactivationReason reason, CancellationToken cancellationToken)
+    public override Task OnDeactivateAsync(
+        DeactivationReason reason,
+        CancellationToken cancellationToken
+    )
     {
         expiryTimer?.Dispose();
         expiryTimer = null;
@@ -43,7 +61,9 @@ public sealed class GamePresenceGrain : Grain, IGamePresenceGrain
             return;
         }
 
-        await GrainFactory.GetGrain<IGameInvalidationGrain>(this.GetPrimaryKey()).PublishPresenceInvalidated();
+        await GrainFactory
+            .GetGrain<IGameInvalidationGrain>(this.GetPrimaryKey())
+            .PublishPresenceInvalidated();
     }
 
     private void EnsureExpiryTimer(DateTime nowUtc)
@@ -56,10 +76,7 @@ public sealed class GamePresenceGrain : Grain, IGamePresenceGrain
             return;
         }
 
-        var latestExpiryUtc = leasesByPlayerId
-            .Values
-            .SelectMany(leases => leases.Values)
-            .Max();
+        var latestExpiryUtc = leasesByPlayerId.Values.SelectMany(leases => leases.Values).Max();
         var minimumLifetime = latestExpiryUtc - nowUtc + ExpiryTimerInterval;
         DelayDeactivation(minimumLifetime > TimeSpan.Zero ? minimumLifetime : ExpiryTimerInterval);
 
@@ -70,8 +87,9 @@ public sealed class GamePresenceGrain : Grain, IGamePresenceGrain
             {
                 DueTime = ExpiryTimerInterval,
                 Period = ExpiryTimerInterval,
-                KeepAlive = true
-            });
+                KeepAlive = true,
+            }
+        );
     }
 
     private async Task PruneExpiredLeasesAsync(CancellationToken cancellationToken)
@@ -87,7 +105,9 @@ public sealed class GamePresenceGrain : Grain, IGamePresenceGrain
             return;
         }
 
-        await GrainFactory.GetGrain<IGameInvalidationGrain>(this.GetPrimaryKey()).PublishPresenceInvalidated();
+        await GrainFactory
+            .GetGrain<IGameInvalidationGrain>(this.GetPrimaryKey())
+            .PublishPresenceInvalidated();
     }
 }
 
@@ -98,7 +118,8 @@ internal static class GamePresenceTracker
         Guid playerId,
         Guid connectionId,
         DateTime expiresAtUtc,
-        DateTime nowUtc)
+        DateTime nowUtc
+    )
     {
         var before = CaptureOnlinePlayerIds(leasesByPlayerId, nowUtc);
         PruneExpiredLeasesInternal(leasesByPlayerId, nowUtc);
@@ -117,7 +138,8 @@ internal static class GamePresenceTracker
         IDictionary<Guid, Dictionary<Guid, DateTime>> leasesByPlayerId,
         Guid playerId,
         Guid connectionId,
-        DateTime nowUtc)
+        DateTime nowUtc
+    )
     {
         var before = CaptureOnlinePlayerIds(leasesByPlayerId, nowUtc);
         PruneExpiredLeasesInternal(leasesByPlayerId, nowUtc);
@@ -136,17 +158,24 @@ internal static class GamePresenceTracker
         return !before.SetEquals(CaptureOnlinePlayerIds(leasesByPlayerId, nowUtc));
     }
 
-    public static bool PruneExpiredLeases(IDictionary<Guid, Dictionary<Guid, DateTime>> leasesByPlayerId, DateTime nowUtc)
+    public static bool PruneExpiredLeases(
+        IDictionary<Guid, Dictionary<Guid, DateTime>> leasesByPlayerId,
+        DateTime nowUtc
+    )
     {
         var before = CaptureRepresentedPlayerIds(leasesByPlayerId);
         PruneExpiredLeasesInternal(leasesByPlayerId, nowUtc);
         return !before.SetEquals(CaptureRepresentedPlayerIds(leasesByPlayerId));
     }
 
-    public static GamePresenceSnapshot CreateSnapshot(IDictionary<Guid, Dictionary<Guid, DateTime>> leasesByPlayerId)
-        => new(CaptureRepresentedPlayerIds(leasesByPlayerId).OrderBy(playerId => playerId).ToArray());
+    public static GamePresenceSnapshot CreateSnapshot(
+        IDictionary<Guid, Dictionary<Guid, DateTime>> leasesByPlayerId
+    ) => new(CaptureRepresentedPlayerIds(leasesByPlayerId).OrderBy(playerId => playerId).ToArray());
 
-    private static void PruneExpiredLeasesInternal(IDictionary<Guid, Dictionary<Guid, DateTime>> leasesByPlayerId, DateTime nowUtc)
+    private static void PruneExpiredLeasesInternal(
+        IDictionary<Guid, Dictionary<Guid, DateTime>> leasesByPlayerId,
+        DateTime nowUtc
+    )
     {
         List<Guid>? emptyPlayers = null;
 
@@ -180,13 +209,15 @@ internal static class GamePresenceTracker
         }
     }
 
-    private static HashSet<Guid> CaptureRepresentedPlayerIds(IDictionary<Guid, Dictionary<Guid, DateTime>> leasesByPlayerId)
-        => leasesByPlayerId.Keys.ToHashSet();
+    private static HashSet<Guid> CaptureRepresentedPlayerIds(
+        IDictionary<Guid, Dictionary<Guid, DateTime>> leasesByPlayerId
+    ) => leasesByPlayerId.Keys.ToHashSet();
 
     private static HashSet<Guid> CaptureOnlinePlayerIds(
         IDictionary<Guid, Dictionary<Guid, DateTime>> leasesByPlayerId,
-        DateTime nowUtc)
-        => leasesByPlayerId
+        DateTime nowUtc
+    ) =>
+        leasesByPlayerId
             .Where(entry => entry.Value.Any(lease => lease.Value > nowUtc))
             .Select(entry => entry.Key)
             .ToHashSet();

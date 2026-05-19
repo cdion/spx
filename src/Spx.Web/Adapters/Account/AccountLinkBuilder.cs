@@ -8,11 +8,11 @@ public sealed class AccountLinkBuilder(IOptions<AppUrlOptions> options)
 {
     private readonly Uri baseUri = CreateBaseUri(options.Value.BaseUrl);
 
-    public string BuildConfirmationLink(string userId, string code)
-        => BuildAbsoluteUri("account/confirm-email", ("userId", userId), ("code", code));
+    public string BuildConfirmationLink(string userId, string code) =>
+        BuildAbsoluteUri("account/confirm-email", ("userId", userId), ("code", code));
 
-    public string BuildPasswordResetLink(string email, string code)
-        => BuildAbsoluteUri("reset-password", ("email", email), ("code", code));
+    public string BuildPasswordResetLink(string email, string code) =>
+        BuildAbsoluteUri("reset-password", ("email", email), ("code", code));
 
     private string BuildAbsoluteUri(string path, params (string Key, string? Value)[] values)
     {
@@ -35,17 +35,23 @@ public sealed class AccountLinkBuilder(IOptions<AppUrlOptions> options)
         var normalizedBaseUrl = baseUrl.Trim();
         if (string.IsNullOrWhiteSpace(normalizedBaseUrl))
         {
-            throw new InvalidOperationException("AppUrl configuration is missing. Set AppUrl:BaseUrl.");
+            throw new InvalidOperationException(
+                "AppUrl configuration is missing. Set AppUrl:BaseUrl."
+            );
         }
 
-        var candidate = normalizedBaseUrl.EndsWith("/", StringComparison.Ordinal)
+        var candidate = normalizedBaseUrl.EndsWith('/')
             ? normalizedBaseUrl
             : $"{normalizedBaseUrl}/";
 
-        if (!Uri.TryCreate(candidate, UriKind.Absolute, out var uri)
-            || (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps))
+        if (
+            !Uri.TryCreate(candidate, UriKind.Absolute, out var uri)
+            || (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps)
+        )
         {
-            throw new InvalidOperationException("AppUrl:BaseUrl must be an absolute http or https URL.");
+            throw new InvalidOperationException(
+                "AppUrl:BaseUrl must be an absolute http or https URL."
+            );
         }
 
         return uri;

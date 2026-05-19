@@ -24,17 +24,48 @@ public sealed class AccountEndpointRouteBuilderExtensionsTests
     {
         await using var app = await CreateAppAsync(services =>
         {
-            services.AddSingleton<ILoginHandler>(new StubLoginHandler(new LoginOutcome(LoginOutcomeStatus.Succeeded, "/games")));
+            services.AddSingleton<ILoginHandler>(
+                new StubLoginHandler(new LoginOutcome(LoginOutcomeStatus.Succeeded, "/games"))
+            );
             services.AddSingleton<ILogoutHandler>(new StubLogoutHandler());
-            services.AddSingleton<IRegisterHandler>(new StubRegisterHandler(new RegisterOutcome(RegisterOutcomeStatus.ValidationFailed)));
-            services.AddSingleton<IConfirmEmailHandler>(new StubConfirmEmailHandler(new ConfirmEmailOutcome(ConfirmEmailOutcomeStatus.InvalidLink)));
-            services.AddSingleton<IForgotPasswordHandler>(new StubForgotPasswordHandler(new ForgotPasswordOutcome(ForgotPasswordOutcomeStatus.ValidationFailed)));
-            services.AddSingleton<IResetPasswordHandler>(new StubResetPasswordHandler(new ResetPasswordOutcome(ResetPasswordOutcomeStatus.IncompleteLink, string.Empty, string.Empty)));
-            services.AddSingleton<IResendConfirmationHandler>(new StubResendConfirmationHandler(new ResendConfirmationOutcome(ResendConfirmationOutcomeStatus.ValidationFailed)));
+            services.AddSingleton<IRegisterHandler>(
+                new StubRegisterHandler(new RegisterOutcome(RegisterOutcomeStatus.ValidationFailed))
+            );
+            services.AddSingleton<IConfirmEmailHandler>(
+                new StubConfirmEmailHandler(
+                    new ConfirmEmailOutcome(ConfirmEmailOutcomeStatus.InvalidLink)
+                )
+            );
+            services.AddSingleton<IForgotPasswordHandler>(
+                new StubForgotPasswordHandler(
+                    new ForgotPasswordOutcome(ForgotPasswordOutcomeStatus.ValidationFailed)
+                )
+            );
+            services.AddSingleton<IResetPasswordHandler>(
+                new StubResetPasswordHandler(
+                    new ResetPasswordOutcome(
+                        ResetPasswordOutcomeStatus.IncompleteLink,
+                        string.Empty,
+                        string.Empty
+                    )
+                )
+            );
+            services.AddSingleton<IResendConfirmationHandler>(
+                new StubResendConfirmationHandler(
+                    new ResendConfirmationOutcome(ResendConfirmationOutcomeStatus.ValidationFailed)
+                )
+            );
         });
 
         var client = app.GetTestClient();
-        var response = await client.PostAsync("/account/login", CreateFormContent(("email", "user@example.com"), ("password", "secret"), ("returnUrl", "/games")));
+        var response = await client.PostAsync(
+            "/account/login",
+            CreateFormContent(
+                ("email", "user@example.com"),
+                ("password", "secret"),
+                ("returnUrl", "/games")
+            )
+        );
 
         Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
         Assert.Equal("/games", response.Headers.Location?.OriginalString);
@@ -45,20 +76,50 @@ public sealed class AccountEndpointRouteBuilderExtensionsTests
     {
         await using var app = await CreateAppAsync(services =>
         {
-            services.AddSingleton<ILoginHandler>(new StubLoginHandler(new LoginOutcome(LoginOutcomeStatus.ValidationFailed, "/")));
+            services.AddSingleton<ILoginHandler>(
+                new StubLoginHandler(new LoginOutcome(LoginOutcomeStatus.ValidationFailed, "/"))
+            );
             services.AddSingleton<ILogoutHandler>(new StubLogoutHandler());
-            services.AddSingleton<IRegisterHandler>(new StubRegisterHandler(new RegisterOutcome(RegisterOutcomeStatus.ValidationFailed)));
-            services.AddSingleton<IConfirmEmailHandler>(new StubConfirmEmailHandler(new ConfirmEmailOutcome(ConfirmEmailOutcomeStatus.InvalidLink)));
-            services.AddSingleton<IForgotPasswordHandler>(new StubForgotPasswordHandler(new ForgotPasswordOutcome(ForgotPasswordOutcomeStatus.ValidationFailed)));
-            services.AddSingleton<IResetPasswordHandler>(new StubResetPasswordHandler(new ResetPasswordOutcome(ResetPasswordOutcomeStatus.IncompleteLink, string.Empty, string.Empty)));
-            services.AddSingleton<IResendConfirmationHandler>(new StubResendConfirmationHandler(new ResendConfirmationOutcome(ResendConfirmationOutcomeStatus.ValidationFailed)));
+            services.AddSingleton<IRegisterHandler>(
+                new StubRegisterHandler(new RegisterOutcome(RegisterOutcomeStatus.ValidationFailed))
+            );
+            services.AddSingleton<IConfirmEmailHandler>(
+                new StubConfirmEmailHandler(
+                    new ConfirmEmailOutcome(ConfirmEmailOutcomeStatus.InvalidLink)
+                )
+            );
+            services.AddSingleton<IForgotPasswordHandler>(
+                new StubForgotPasswordHandler(
+                    new ForgotPasswordOutcome(ForgotPasswordOutcomeStatus.ValidationFailed)
+                )
+            );
+            services.AddSingleton<IResetPasswordHandler>(
+                new StubResetPasswordHandler(
+                    new ResetPasswordOutcome(
+                        ResetPasswordOutcomeStatus.IncompleteLink,
+                        string.Empty,
+                        string.Empty
+                    )
+                )
+            );
+            services.AddSingleton<IResendConfirmationHandler>(
+                new StubResendConfirmationHandler(
+                    new ResendConfirmationOutcome(ResendConfirmationOutcomeStatus.ValidationFailed)
+                )
+            );
         });
 
         var client = app.GetTestClient();
-        var response = await client.PostAsync("/account/login", CreateFormContent(("email", string.Empty), ("password", string.Empty)));
+        var response = await client.PostAsync(
+            "/account/login",
+            CreateFormContent(("email", string.Empty), ("password", string.Empty))
+        );
 
         Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
-        Assert.Equal("/login?error=Email%20and%20password%20are%20required.&returnUrl=%2F", response.Headers.Location?.OriginalString);
+        Assert.Equal(
+            "/login?error=Email%20and%20password%20are%20required.&returnUrl=%2F",
+            response.Headers.Location?.OriginalString
+        );
     }
 
     [Fact]
@@ -66,20 +127,56 @@ public sealed class AccountEndpointRouteBuilderExtensionsTests
     {
         await using var app = await CreateAppAsync(services =>
         {
-            services.AddSingleton<ILoginHandler>(new StubLoginHandler(new LoginOutcome(LoginOutcomeStatus.ValidationFailed, "/")));
+            services.AddSingleton<ILoginHandler>(
+                new StubLoginHandler(new LoginOutcome(LoginOutcomeStatus.ValidationFailed, "/"))
+            );
             services.AddSingleton<ILogoutHandler>(new StubLogoutHandler());
-            services.AddSingleton<IRegisterHandler>(new StubRegisterHandler(new RegisterOutcome(RegisterOutcomeStatus.ConfirmationSent, "user@example.com")));
-            services.AddSingleton<IConfirmEmailHandler>(new StubConfirmEmailHandler(new ConfirmEmailOutcome(ConfirmEmailOutcomeStatus.InvalidLink)));
-            services.AddSingleton<IForgotPasswordHandler>(new StubForgotPasswordHandler(new ForgotPasswordOutcome(ForgotPasswordOutcomeStatus.ValidationFailed)));
-            services.AddSingleton<IResetPasswordHandler>(new StubResetPasswordHandler(new ResetPasswordOutcome(ResetPasswordOutcomeStatus.IncompleteLink, string.Empty, string.Empty)));
-            services.AddSingleton<IResendConfirmationHandler>(new StubResendConfirmationHandler(new ResendConfirmationOutcome(ResendConfirmationOutcomeStatus.ValidationFailed)));
+            services.AddSingleton<IRegisterHandler>(
+                new StubRegisterHandler(
+                    new RegisterOutcome(RegisterOutcomeStatus.ConfirmationSent, "user@example.com")
+                )
+            );
+            services.AddSingleton<IConfirmEmailHandler>(
+                new StubConfirmEmailHandler(
+                    new ConfirmEmailOutcome(ConfirmEmailOutcomeStatus.InvalidLink)
+                )
+            );
+            services.AddSingleton<IForgotPasswordHandler>(
+                new StubForgotPasswordHandler(
+                    new ForgotPasswordOutcome(ForgotPasswordOutcomeStatus.ValidationFailed)
+                )
+            );
+            services.AddSingleton<IResetPasswordHandler>(
+                new StubResetPasswordHandler(
+                    new ResetPasswordOutcome(
+                        ResetPasswordOutcomeStatus.IncompleteLink,
+                        string.Empty,
+                        string.Empty
+                    )
+                )
+            );
+            services.AddSingleton<IResendConfirmationHandler>(
+                new StubResendConfirmationHandler(
+                    new ResendConfirmationOutcome(ResendConfirmationOutcomeStatus.ValidationFailed)
+                )
+            );
         });
 
         var client = app.GetTestClient();
-        var response = await client.PostAsync("/account/register", CreateFormContent(("email", "user@example.com"), ("password", "Passw0rd!"), ("confirmPassword", "Passw0rd!")));
+        var response = await client.PostAsync(
+            "/account/register",
+            CreateFormContent(
+                ("email", "user@example.com"),
+                ("password", "Passw0rd!"),
+                ("confirmPassword", "Passw0rd!")
+            )
+        );
 
         Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
-        Assert.Equal("/login?status=Check%20your%20email%20to%20confirm%20your%20account.&email=user@example.com", response.Headers.Location?.OriginalString);
+        Assert.Equal(
+            "/login?status=Check%20your%20email%20to%20confirm%20your%20account.&email=user@example.com",
+            response.Headers.Location?.OriginalString
+        );
     }
 
     [Fact]
@@ -87,23 +184,62 @@ public sealed class AccountEndpointRouteBuilderExtensionsTests
     {
         await using var app = await CreateAppAsync(services =>
         {
-            services.AddSingleton<ILoginHandler>(new StubLoginHandler(new LoginOutcome(LoginOutcomeStatus.ValidationFailed, "/")));
+            services.AddSingleton<ILoginHandler>(
+                new StubLoginHandler(new LoginOutcome(LoginOutcomeStatus.ValidationFailed, "/"))
+            );
             services.AddSingleton<ILogoutHandler>(new StubLogoutHandler());
-            services.AddSingleton<IRegisterHandler>(new StubRegisterHandler(new RegisterOutcome(
-                RegisterOutcomeStatus.ConfirmationResendRequired,
-                "user@example.com",
-                ["Your account was created, but we could not send a confirmation email. Request a new one below."])));
-            services.AddSingleton<IConfirmEmailHandler>(new StubConfirmEmailHandler(new ConfirmEmailOutcome(ConfirmEmailOutcomeStatus.InvalidLink)));
-            services.AddSingleton<IForgotPasswordHandler>(new StubForgotPasswordHandler(new ForgotPasswordOutcome(ForgotPasswordOutcomeStatus.ValidationFailed)));
-            services.AddSingleton<IResetPasswordHandler>(new StubResetPasswordHandler(new ResetPasswordOutcome(ResetPasswordOutcomeStatus.IncompleteLink, string.Empty, string.Empty)));
-            services.AddSingleton<IResendConfirmationHandler>(new StubResendConfirmationHandler(new ResendConfirmationOutcome(ResendConfirmationOutcomeStatus.ValidationFailed)));
+            services.AddSingleton<IRegisterHandler>(
+                new StubRegisterHandler(
+                    new RegisterOutcome(
+                        RegisterOutcomeStatus.ConfirmationResendRequired,
+                        "user@example.com",
+                        [
+                            "Your account was created, but we could not send a confirmation email. Request a new one below.",
+                        ]
+                    )
+                )
+            );
+            services.AddSingleton<IConfirmEmailHandler>(
+                new StubConfirmEmailHandler(
+                    new ConfirmEmailOutcome(ConfirmEmailOutcomeStatus.InvalidLink)
+                )
+            );
+            services.AddSingleton<IForgotPasswordHandler>(
+                new StubForgotPasswordHandler(
+                    new ForgotPasswordOutcome(ForgotPasswordOutcomeStatus.ValidationFailed)
+                )
+            );
+            services.AddSingleton<IResetPasswordHandler>(
+                new StubResetPasswordHandler(
+                    new ResetPasswordOutcome(
+                        ResetPasswordOutcomeStatus.IncompleteLink,
+                        string.Empty,
+                        string.Empty
+                    )
+                )
+            );
+            services.AddSingleton<IResendConfirmationHandler>(
+                new StubResendConfirmationHandler(
+                    new ResendConfirmationOutcome(ResendConfirmationOutcomeStatus.ValidationFailed)
+                )
+            );
         });
 
         var client = app.GetTestClient();
-        var response = await client.PostAsync("/account/register", CreateFormContent(("email", "user@example.com"), ("password", "Passw0rd!"), ("confirmPassword", "Passw0rd!")));
+        var response = await client.PostAsync(
+            "/account/register",
+            CreateFormContent(
+                ("email", "user@example.com"),
+                ("password", "Passw0rd!"),
+                ("confirmPassword", "Passw0rd!")
+            )
+        );
 
         Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
-        Assert.Equal("/resend-confirmation?status=Your%20account%20was%20created,%20but%20we%20could%20not%20send%20a%20confirmation%20email.%20Request%20a%20new%20one%20below.&email=user@example.com", response.Headers.Location?.OriginalString);
+        Assert.Equal(
+            "/resend-confirmation?status=Your%20account%20was%20created,%20but%20we%20could%20not%20send%20a%20confirmation%20email.%20Request%20a%20new%20one%20below.&email=user@example.com",
+            response.Headers.Location?.OriginalString
+        );
     }
 
     [Fact]
@@ -111,23 +247,61 @@ public sealed class AccountEndpointRouteBuilderExtensionsTests
     {
         await using var app = await CreateAppAsync(services =>
         {
-            services.AddSingleton<ILoginHandler>(new StubLoginHandler(new LoginOutcome(LoginOutcomeStatus.ValidationFailed, "/")));
+            services.AddSingleton<ILoginHandler>(
+                new StubLoginHandler(new LoginOutcome(LoginOutcomeStatus.ValidationFailed, "/"))
+            );
             services.AddSingleton<ILogoutHandler>(new StubLogoutHandler());
-            services.AddSingleton<IRegisterHandler>(new StubRegisterHandler(new RegisterOutcome(RegisterOutcomeStatus.ValidationFailed)));
-            services.AddSingleton<IConfirmEmailHandler>(new StubConfirmEmailHandler(new ConfirmEmailOutcome(ConfirmEmailOutcomeStatus.InvalidLink)));
-            services.AddSingleton<IForgotPasswordHandler>(new StubForgotPasswordHandler(new ForgotPasswordOutcome(ForgotPasswordOutcomeStatus.ValidationFailed)));
-            services.AddSingleton<IResetPasswordHandler>(new StubResetPasswordHandler(new ResetPasswordOutcome(ResetPasswordOutcomeStatus.Failed, "user@example.com", "abc", ["Reset failed."])));
-            services.AddSingleton<IResendConfirmationHandler>(new StubResendConfirmationHandler(new ResendConfirmationOutcome(ResendConfirmationOutcomeStatus.ValidationFailed)));
+            services.AddSingleton<IRegisterHandler>(
+                new StubRegisterHandler(new RegisterOutcome(RegisterOutcomeStatus.ValidationFailed))
+            );
+            services.AddSingleton<IConfirmEmailHandler>(
+                new StubConfirmEmailHandler(
+                    new ConfirmEmailOutcome(ConfirmEmailOutcomeStatus.InvalidLink)
+                )
+            );
+            services.AddSingleton<IForgotPasswordHandler>(
+                new StubForgotPasswordHandler(
+                    new ForgotPasswordOutcome(ForgotPasswordOutcomeStatus.ValidationFailed)
+                )
+            );
+            services.AddSingleton<IResetPasswordHandler>(
+                new StubResetPasswordHandler(
+                    new ResetPasswordOutcome(
+                        ResetPasswordOutcomeStatus.Failed,
+                        "user@example.com",
+                        "abc",
+                        ["Reset failed."]
+                    )
+                )
+            );
+            services.AddSingleton<IResendConfirmationHandler>(
+                new StubResendConfirmationHandler(
+                    new ResendConfirmationOutcome(ResendConfirmationOutcomeStatus.ValidationFailed)
+                )
+            );
         });
 
         var client = app.GetTestClient();
-        var response = await client.PostAsync("/account/reset-password", CreateFormContent(("email", "user@example.com"), ("code", "abc"), ("password", "new-password"), ("confirmPassword", "new-password")));
+        var response = await client.PostAsync(
+            "/account/reset-password",
+            CreateFormContent(
+                ("email", "user@example.com"),
+                ("code", "abc"),
+                ("password", "new-password"),
+                ("confirmPassword", "new-password")
+            )
+        );
 
         Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
-        Assert.Equal("/reset-password?error=Reset%20failed.&email=user@example.com&code=abc", response.Headers.Location?.OriginalString);
+        Assert.Equal(
+            "/reset-password?error=Reset%20failed.&email=user@example.com&code=abc",
+            response.Headers.Location?.OriginalString
+        );
     }
 
-    private static async Task<WebApplication> CreateAppAsync(Action<IServiceCollection> configureServices)
+    private static async Task<WebApplication> CreateAppAsync(
+        Action<IServiceCollection> configureServices
+    )
     {
         var builder = WebApplication.CreateBuilder();
         builder.WebHost.UseTestServer();
@@ -139,48 +313,64 @@ public sealed class AccountEndpointRouteBuilderExtensionsTests
         return app;
     }
 
-    private static FormUrlEncodedContent CreateFormContent(params (string Key, string Value)[] values)
-        => new(values.Select(static value => KeyValuePair.Create(value.Key, value.Value)));
+    private static FormUrlEncodedContent CreateFormContent(
+        params (string Key, string Value)[] values
+    ) => new(values.Select(static value => KeyValuePair.Create(value.Key, value.Value)));
 
     private sealed record StubLoginHandler(LoginOutcome Outcome) : ILoginHandler
     {
-        public Task<LoginOutcome> HandleAsync(string email, string password, string? returnUrl)
-            => Task.FromResult(Outcome);
+        public Task<LoginOutcome> HandleAsync(string email, string password, string? returnUrl) =>
+            Task.FromResult(Outcome);
     }
 
     private sealed class StubLogoutHandler : ILogoutHandler
     {
-        public Task<LogoutOutcome> HandleAsync()
-            => Task.FromResult(new LogoutOutcome());
+        public Task<LogoutOutcome> HandleAsync() => Task.FromResult(new LogoutOutcome());
     }
 
     private sealed record StubRegisterHandler(RegisterOutcome Outcome) : IRegisterHandler
     {
-        public Task<RegisterOutcome> HandleAsync(string email, string password, string confirmPassword, CancellationToken cancellationToken = default)
-            => Task.FromResult(Outcome);
+        public Task<RegisterOutcome> HandleAsync(
+            string email,
+            string password,
+            string confirmPassword,
+            CancellationToken cancellationToken = default
+        ) => Task.FromResult(Outcome);
     }
 
-    private sealed record StubConfirmEmailHandler(ConfirmEmailOutcome Outcome) : IConfirmEmailHandler
+    private sealed record StubConfirmEmailHandler(ConfirmEmailOutcome Outcome)
+        : IConfirmEmailHandler
     {
-        public Task<ConfirmEmailOutcome> HandleAsync(string userId, string code)
-            => Task.FromResult(Outcome);
+        public Task<ConfirmEmailOutcome> HandleAsync(string userId, string code) =>
+            Task.FromResult(Outcome);
     }
 
-    private sealed record StubForgotPasswordHandler(ForgotPasswordOutcome Outcome) : IForgotPasswordHandler
+    private sealed record StubForgotPasswordHandler(ForgotPasswordOutcome Outcome)
+        : IForgotPasswordHandler
     {
-        public Task<ForgotPasswordOutcome> HandleAsync(string email, CancellationToken cancellationToken = default)
-            => Task.FromResult(Outcome);
+        public Task<ForgotPasswordOutcome> HandleAsync(
+            string email,
+            CancellationToken cancellationToken = default
+        ) => Task.FromResult(Outcome);
     }
 
-    private sealed record StubResetPasswordHandler(ResetPasswordOutcome Outcome) : IResetPasswordHandler
+    private sealed record StubResetPasswordHandler(ResetPasswordOutcome Outcome)
+        : IResetPasswordHandler
     {
-        public Task<ResetPasswordOutcome> HandleAsync(string email, string code, string password, string confirmPassword)
-            => Task.FromResult(Outcome);
+        public Task<ResetPasswordOutcome> HandleAsync(
+            string email,
+            string code,
+            string password,
+            string confirmPassword
+        ) => Task.FromResult(Outcome);
     }
 
-    private sealed record StubResendConfirmationHandler(ResendConfirmationOutcome Outcome) : IResendConfirmationHandler
+    private sealed record StubResendConfirmationHandler(ResendConfirmationOutcome Outcome)
+        : IResendConfirmationHandler
     {
-        public Task<ResendConfirmationOutcome> HandleAsync(string email, CancellationToken cancellationToken = default)
-            => Task.FromResult(Outcome);
+        public Task<ResendConfirmationOutcome> HandleAsync(
+            string email,
+            CancellationToken cancellationToken = default
+        ) => Task.FromResult(Outcome);
     }
 }

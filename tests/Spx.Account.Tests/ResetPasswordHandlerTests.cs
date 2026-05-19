@@ -13,7 +13,12 @@ public sealed class ResetPasswordHandlerTests
         using var services = AccountHandlerTestServices.Create(new FakeAccountIdentity());
 
         var handler = services.GetRequiredService<IResetPasswordHandler>();
-        var outcome = await handler.HandleAsync(string.Empty, string.Empty, "Password1", "Password1");
+        var outcome = await handler.HandleAsync(
+            string.Empty,
+            string.Empty,
+            "Password1",
+            "Password1"
+        );
 
         Assert.Equal(ResetPasswordOutcomeStatus.IncompleteLink, outcome.Status);
     }
@@ -24,7 +29,12 @@ public sealed class ResetPasswordHandlerTests
         using var services = AccountHandlerTestServices.Create(new FakeAccountIdentity());
 
         var handler = services.GetRequiredService<IResetPasswordHandler>();
-        var outcome = await handler.HandleAsync("user@example.com", "code", "Password1", "Password2");
+        var outcome = await handler.HandleAsync(
+            "user@example.com",
+            "code",
+            "Password1",
+            "Password2"
+        );
 
         Assert.Equal(ResetPasswordOutcomeStatus.PasswordMismatch, outcome.Status);
     }
@@ -35,7 +45,12 @@ public sealed class ResetPasswordHandlerTests
         using var services = AccountHandlerTestServices.Create(new FakeAccountIdentity());
 
         var handler = services.GetRequiredService<IResetPasswordHandler>();
-        var outcome = await handler.HandleAsync("user@example.com", "code", "Password1", "Password1");
+        var outcome = await handler.HandleAsync(
+            "user@example.com",
+            "code",
+            "Password1",
+            "Password1"
+        );
 
         Assert.Equal(ResetPasswordOutcomeStatus.Completed, outcome.Status);
     }
@@ -46,12 +61,17 @@ public sealed class ResetPasswordHandlerTests
         var identity = new FakeAccountIdentity
         {
             FindByEmailResult = new AccountUser("user-1", "user@example.com"),
-            ResetPasswordResult = new AccountOperationFailed(["Reset failed."])
+            ResetPasswordResult = new AccountOperationFailed(["Reset failed."]),
         };
         using var services = AccountHandlerTestServices.Create(identity);
 
         var handler = services.GetRequiredService<IResetPasswordHandler>();
-        var outcome = await handler.HandleAsync("user@example.com", "code", "Password1", "Password1");
+        var outcome = await handler.HandleAsync(
+            "user@example.com",
+            "code",
+            "Password1",
+            "Password1"
+        );
 
         Assert.Equal(ResetPasswordOutcomeStatus.Failed, outcome.Status);
         Assert.Equal(["Reset failed."], outcome.Errors);
@@ -63,12 +83,17 @@ public sealed class ResetPasswordHandlerTests
         var identity = new FakeAccountIdentity
         {
             FindByEmailResult = new AccountUser("user-1", "user@example.com"),
-            ResetPasswordResult = new AccountOperationSucceeded()
+            ResetPasswordResult = new AccountOperationSucceeded(),
         };
         using var services = AccountHandlerTestServices.Create(identity);
 
         var handler = services.GetRequiredService<IResetPasswordHandler>();
-        var outcome = await handler.HandleAsync("user@example.com", "code", "Password1", "Password1");
+        var outcome = await handler.HandleAsync(
+            "user@example.com",
+            "code",
+            "Password1",
+            "Password1"
+        );
 
         Assert.Equal(ResetPasswordOutcomeStatus.Completed, outcome.Status);
     }

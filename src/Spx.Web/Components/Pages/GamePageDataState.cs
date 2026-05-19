@@ -40,27 +40,19 @@ internal sealed class GamePageDataState
         IsLoading = false;
     }
 
-    public void ApplyPresence(GamePresenceView presence)
-        => Presence = presence;
+    public void ApplyPresence(GamePresenceView presence) => Presence = presence;
 
-    public void ClearPresence()
-        => Presence = GamePresenceView.Empty;
+    public void ClearPresence() => Presence = GamePresenceView.Empty;
 
-    public void ApplySession(GameSessionView? session)
-        => Session = session;
+    public void ApplySession(GameSessionView? session) => Session = session;
 
-    public void ClearErrorMessage()
-        => ErrorMessage = null;
+    public void ClearErrorMessage() => ErrorMessage = null;
 
-    public void SetErrorMessage(string message)
-        => ErrorMessage = message;
+    public void SetErrorMessage(string message) => ErrorMessage = message;
 
-    public void ClearGameplayError()
-        => GameplayError = null;
+    public void ClearGameplayError() => GameplayError = null;
 
-    public void SetGameplayError(string message)
-        => GameplayError = message;
+    public void SetGameplayError(string message) => GameplayError = message;
 
-    public void TrySetGameplayError(string message)
-        => GameplayError ??= message;
+    public void TrySetGameplayError(string message) => GameplayError ??= message;
 }

@@ -14,17 +14,34 @@ public sealed class JoinGameHandlerTests
         var lobbyPublisher = Substitute.For<IGameLobbyInvalidationPublisher>();
         var messagePublisher = Substitute.For<IGameMessageInvalidationPublisher>();
         var sessionService = Substitute.For<IGameSessionService>();
-        using var services = CreateServices(persistence, lobbyPublisher, messagePublisher, sessionService);
+        using var services = CreateServices(
+            persistence,
+            lobbyPublisher,
+            messagePublisher,
+            sessionService
+        );
 
         var handler = services.GetRequiredService<IJoinGameHandler>();
         var result = await handler.HandleAsync("user-1", new JoinGameRequest("abc", "Captain Red"));
 
         var failed = Assert.IsType<GameCommandFailed>(result);
         Assert.Equal("Invite codes must be six characters long.", failed.ErrorMessage);
-        await persistence.DidNotReceive().JoinGameAsync(Arg.Any<JoinGamePersistenceRequest>(), Arg.Any<CancellationToken>());
-        await sessionService.DidNotReceive().EnsureSessionAsync(Arg.Any<Guid>(), Arg.Any<IReadOnlyList<GameSessionParticipant>>(), Arg.Any<CancellationToken>());
-        await lobbyPublisher.DidNotReceive().PublishLobbyInvalidatedAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
-        await messagePublisher.DidNotReceive().PublishMessagesInvalidatedAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+        await persistence
+            .DidNotReceive()
+            .JoinGameAsync(Arg.Any<JoinGamePersistenceRequest>(), Arg.Any<CancellationToken>());
+        await sessionService
+            .DidNotReceive()
+            .EnsureSessionAsync(
+                Arg.Any<Guid>(),
+                Arg.Any<IReadOnlyList<GameSessionParticipant>>(),
+                Arg.Any<CancellationToken>()
+            );
+        await lobbyPublisher
+            .DidNotReceive()
+            .PublishLobbyInvalidatedAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+        await messagePublisher
+            .DidNotReceive()
+            .PublishMessagesInvalidatedAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -34,30 +51,68 @@ public sealed class JoinGameHandlerTests
         var activePlayers = new GameSessionParticipant[]
         {
             new(Guid.NewGuid()),
-            new(Guid.NewGuid())
+            new(Guid.NewGuid()),
         };
         var persistence = Substitute.For<IGamePersistence>();
-        persistence.JoinGameAsync(Arg.Any<JoinGamePersistenceRequest>(), Arg.Any<CancellationToken>())
-            .Returns(new JoinGamePersistenceResult(new GameCommandSucceeded(gameId), LobbyGameId: gameId, MessagesGameId: gameId));
-        persistence.GetActiveSessionPlayersAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+        persistence
+            .JoinGameAsync(Arg.Any<JoinGamePersistenceRequest>(), Arg.Any<CancellationToken>())
+            .Returns(
+                new JoinGamePersistenceResult(
+                    new GameCommandSucceeded(gameId),
+                    LobbyGameId: gameId,
+                    MessagesGameId: gameId
+                )
+            );
+        persistence
+            .GetActiveSessionPlayersAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns<IReadOnlyList<GameSessionParticipant>?>(activePlayers);
         var lobbyPublisher = Substitute.For<IGameLobbyInvalidationPublisher>();
         var messagePublisher = Substitute.For<IGameMessageInvalidationPublisher>();
         var sessionService = Substitute.For<IGameSessionService>();
-        sessionService.EnsureSessionAsync(Arg.Any<Guid>(), Arg.Any<IReadOnlyList<GameSessionParticipant>>(), Arg.Any<CancellationToken>())
+        sessionService
+            .EnsureSessionAsync(
+                Arg.Any<Guid>(),
+                Arg.Any<IReadOnlyList<GameSessionParticipant>>(),
+                Arg.Any<CancellationToken>()
+            )
             .Returns(true);
-        using var services = CreateServices(persistence, lobbyPublisher, messagePublisher, sessionService);
+        using var services = CreateServices(
+            persistence,
+            lobbyPublisher,
+            messagePublisher,
+            sessionService
+        );
 
         var handler = services.GetRequiredService<IJoinGameHandler>();
-        var result = await handler.HandleAsync("user-1", new JoinGameRequest(" abc123 ", " Captain Red "));
+        var result = await handler.HandleAsync(
+            "user-1",
+            new JoinGameRequest(" abc123 ", " Captain Red ")
+        );
 
         Assert.IsType<GameCommandSucceeded>(result);
-        await persistence.Received(1).JoinGameAsync(
-            Arg.Is<JoinGamePersistenceRequest>(r => r.InviteCode == "ABC123" && r.PlayerName == "Captain Red" && r.PlayerNameLookup == "CAPTAIN RED"),
-            Arg.Any<CancellationToken>());
-        await sessionService.Received(1).EnsureSessionAsync(gameId, Arg.Any<IReadOnlyList<GameSessionParticipant>>(), Arg.Any<CancellationToken>());
-        await lobbyPublisher.Received(1).PublishLobbyInvalidatedAsync(gameId, Arg.Any<CancellationToken>());
-        await messagePublisher.Received(1).PublishMessagesInvalidatedAsync(gameId, Arg.Any<CancellationToken>());
+        await persistence
+            .Received(1)
+            .JoinGameAsync(
+                Arg.Is<JoinGamePersistenceRequest>(r =>
+                    r.InviteCode == "ABC123"
+                    && r.PlayerName == "Captain Red"
+                    && r.PlayerNameLookup == "CAPTAIN RED"
+                ),
+                Arg.Any<CancellationToken>()
+            );
+        await sessionService
+            .Received(1)
+            .EnsureSessionAsync(
+                gameId,
+                Arg.Any<IReadOnlyList<GameSessionParticipant>>(),
+                Arg.Any<CancellationToken>()
+            );
+        await lobbyPublisher
+            .Received(1)
+            .PublishLobbyInvalidatedAsync(gameId, Arg.Any<CancellationToken>());
+        await messagePublisher
+            .Received(1)
+            .PublishMessagesInvalidatedAsync(gameId, Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -67,56 +122,111 @@ public sealed class JoinGameHandlerTests
         var activePlayers = new GameSessionParticipant[]
         {
             new(Guid.NewGuid()),
-            new(Guid.NewGuid())
+            new(Guid.NewGuid()),
         };
         var persistence = Substitute.For<IGamePersistence>();
-        persistence.JoinGameAsync(Arg.Any<JoinGamePersistenceRequest>(), Arg.Any<CancellationToken>())
-            .Returns(new JoinGamePersistenceResult(new GameCommandSucceeded(gameId), LobbyGameId: gameId, MessagesGameId: gameId));
-        persistence.GetActiveSessionPlayersAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+        persistence
+            .JoinGameAsync(Arg.Any<JoinGamePersistenceRequest>(), Arg.Any<CancellationToken>())
+            .Returns(
+                new JoinGamePersistenceResult(
+                    new GameCommandSucceeded(gameId),
+                    LobbyGameId: gameId,
+                    MessagesGameId: gameId
+                )
+            );
+        persistence
+            .GetActiveSessionPlayersAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns<IReadOnlyList<GameSessionParticipant>?>(activePlayers);
         var lobbyPublisher = Substitute.For<IGameLobbyInvalidationPublisher>();
         var messagePublisher = Substitute.For<IGameMessageInvalidationPublisher>();
         var sessionService = Substitute.For<IGameSessionService>();
-        sessionService.EnsureSessionAsync(Arg.Any<Guid>(), Arg.Any<IReadOnlyList<GameSessionParticipant>>(), Arg.Any<CancellationToken>())
+        sessionService
+            .EnsureSessionAsync(
+                Arg.Any<Guid>(),
+                Arg.Any<IReadOnlyList<GameSessionParticipant>>(),
+                Arg.Any<CancellationToken>()
+            )
             .Returns(false);
-        using var services = CreateServices(persistence, lobbyPublisher, messagePublisher, sessionService);
+        using var services = CreateServices(
+            persistence,
+            lobbyPublisher,
+            messagePublisher,
+            sessionService
+        );
 
         var handler = services.GetRequiredService<IJoinGameHandler>();
-        var result = await handler.HandleAsync("user-1", new JoinGameRequest("ABC123", "Captain Red"));
+        var result = await handler.HandleAsync(
+            "user-1",
+            new JoinGameRequest("ABC123", "Captain Red")
+        );
 
         var succeeded = Assert.IsType<GameCommandSucceeded>(result);
         Assert.Equal(gameId, succeeded.GameId);
-        await sessionService.Received(1).EnsureSessionAsync(gameId, Arg.Any<IReadOnlyList<GameSessionParticipant>>(), Arg.Any<CancellationToken>());
-        await lobbyPublisher.Received(1).PublishLobbyInvalidatedAsync(gameId, Arg.Any<CancellationToken>());
-        await messagePublisher.Received(1).PublishMessagesInvalidatedAsync(gameId, Arg.Any<CancellationToken>());
+        await sessionService
+            .Received(1)
+            .EnsureSessionAsync(
+                gameId,
+                Arg.Any<IReadOnlyList<GameSessionParticipant>>(),
+                Arg.Any<CancellationToken>()
+            );
+        await lobbyPublisher
+            .Received(1)
+            .PublishLobbyInvalidatedAsync(gameId, Arg.Any<CancellationToken>());
+        await messagePublisher
+            .Received(1)
+            .PublishMessagesInvalidatedAsync(gameId, Arg.Any<CancellationToken>());
     }
 
     [Fact]
     public async Task HandleAsync_does_not_publish_when_persistence_returns_failure_without_game_id()
     {
         var persistence = Substitute.For<IGamePersistence>();
-        persistence.JoinGameAsync(Arg.Any<JoinGamePersistenceRequest>(), Arg.Any<CancellationToken>())
-            .Returns(new JoinGamePersistenceResult(new GameCommandFailed("That player name is already taken in this game.")));
+        persistence
+            .JoinGameAsync(Arg.Any<JoinGamePersistenceRequest>(), Arg.Any<CancellationToken>())
+            .Returns(
+                new JoinGamePersistenceResult(
+                    new GameCommandFailed("That player name is already taken in this game.")
+                )
+            );
         var lobbyPublisher = Substitute.For<IGameLobbyInvalidationPublisher>();
         var messagePublisher = Substitute.For<IGameMessageInvalidationPublisher>();
         var sessionService = Substitute.For<IGameSessionService>();
-        using var services = CreateServices(persistence, lobbyPublisher, messagePublisher, sessionService);
+        using var services = CreateServices(
+            persistence,
+            lobbyPublisher,
+            messagePublisher,
+            sessionService
+        );
 
         var handler = services.GetRequiredService<IJoinGameHandler>();
-        var result = await handler.HandleAsync("user-3", new JoinGameRequest("ABC123", "Captain Red"));
+        var result = await handler.HandleAsync(
+            "user-3",
+            new JoinGameRequest("ABC123", "Captain Red")
+        );
 
         var failed = Assert.IsType<GameCommandFailed>(result);
         Assert.Equal("That player name is already taken in this game.", failed.ErrorMessage);
-        await sessionService.DidNotReceive().EnsureSessionAsync(Arg.Any<Guid>(), Arg.Any<IReadOnlyList<GameSessionParticipant>>(), Arg.Any<CancellationToken>());
-        await lobbyPublisher.DidNotReceive().PublishLobbyInvalidatedAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
-        await messagePublisher.DidNotReceive().PublishMessagesInvalidatedAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+        await sessionService
+            .DidNotReceive()
+            .EnsureSessionAsync(
+                Arg.Any<Guid>(),
+                Arg.Any<IReadOnlyList<GameSessionParticipant>>(),
+                Arg.Any<CancellationToken>()
+            );
+        await lobbyPublisher
+            .DidNotReceive()
+            .PublishLobbyInvalidatedAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+        await messagePublisher
+            .DidNotReceive()
+            .PublishMessagesInvalidatedAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
 
     private static ServiceProvider CreateServices(
         IGamePersistence persistence,
         IGameLobbyInvalidationPublisher lobbyPublisher,
         IGameMessageInvalidationPublisher messagePublisher,
-        IGameSessionService sessionService)
+        IGameSessionService sessionService
+    )
     {
         var services = new ServiceCollection();
         services.AddGameApplication();

@@ -3,12 +3,16 @@ using Spx.Account;
 
 namespace Spx.Account.Features.ForgotPassword;
 
-internal sealed class ForgotPasswordHandler(
+internal sealed partial class ForgotPasswordHandler(
     IAccountIdentity accountIdentity,
     IAccountEmailSender emailSender,
-    ILogger<ForgotPasswordHandler> logger) : IForgotPasswordHandler
+    ILogger<ForgotPasswordHandler> logger
+) : IForgotPasswordHandler
 {
-    public async Task<ForgotPasswordOutcome> HandleAsync(string email, CancellationToken cancellationToken = default)
+    public async Task<ForgotPasswordOutcome> HandleAsync(
+        string email,
+        CancellationToken cancellationToken = default
+    )
     {
         if (string.IsNullOrWhiteSpace(email))
         {
@@ -27,11 +31,21 @@ internal sealed class ForgotPasswordHandler(
                 }
                 catch (Exception exception)
                 {
-                    logger.LogWarning(exception, "Failed to send password reset email for {Email}.", email);
+                    LogSendPasswordResetEmailFailed(logger, exception, email);
                 }
             }
         }
 
         return new ForgotPasswordOutcome(ForgotPasswordOutcomeStatus.Completed);
     }
+
+    [LoggerMessage(
+        Level = LogLevel.Warning,
+        Message = "Failed to send password reset email for {Email}."
+    )]
+    private static partial void LogSendPasswordResetEmailFailed(
+        ILogger logger,
+        Exception exception,
+        string email
+    );
 }

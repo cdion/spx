@@ -15,9 +15,16 @@ public sealed class GameServiceTests(PostgresDatabaseFixture fixture) : Integrat
         await database.AddUserAsync("user-1", "user1@example.com");
         var notifier = new FakeGameLobbyNotifier();
         var messagePublisher = new FakeGameMessagePublisher();
-        var features = GameFeatureTestFactory.Create(database.ContextFactory, notifier, messagePublisher);
+        var features = GameFeatureTestFactory.Create(
+            database.ContextFactory,
+            notifier,
+            messagePublisher
+        );
 
-        var result = await features.CreateGame.HandleAsync("user-1", new CreateGameRequest("Weekend match", "Captain Red"));
+        var result = await features.CreateGame.HandleAsync(
+            "user-1",
+            new CreateGameRequest("Weekend match", "Captain Red")
+        );
 
         var succeeded = Assert.IsType<GameCommandSucceeded>(result);
 
@@ -41,17 +48,30 @@ public sealed class GameServiceTests(PostgresDatabaseFixture fixture) : Integrat
     {
         var database = Database;
         await database.AddUserAsync("user-1", "user1@example.com");
-        var game = await database.AddGameAsync("user-1", "ABC123", "Alpha", activePlayerUserId: "user-1", activePlayerName: "Captain Red");
+        var game = await database.AddGameAsync(
+            "user-1",
+            "ABC123",
+            "Alpha",
+            activePlayerUserId: "user-1",
+            activePlayerName: "Captain Red"
+        );
         var notifier = new FakeGameLobbyNotifier();
         var messagePublisher = new FakeGameMessagePublisher();
-        var features = GameFeatureTestFactory.Create(database.ContextFactory, notifier, messagePublisher);
+        var features = GameFeatureTestFactory.Create(
+            database.ContextFactory,
+            notifier,
+            messagePublisher
+        );
 
-        var result = await features.JoinGame.HandleAsync("user-1", new JoinGameRequest(game.InviteCode, "Captain Blue"));
+        var result = await features.JoinGame.HandleAsync(
+            "user-1",
+            new JoinGameRequest(game.InviteCode, "Captain Blue")
+        );
 
         Assert.IsType<GameCommandSucceeded>(result);
 
-        var players = await database.Context.GamePlayers
-            .Where(entry => entry.GameId == game.Id && entry.LeftAtUtc == null)
+        var players = await database
+            .Context.GamePlayers.Where(entry => entry.GameId == game.Id && entry.LeftAtUtc == null)
             .ToListAsync();
 
         Assert.Single(players);
@@ -66,13 +86,26 @@ public sealed class GameServiceTests(PostgresDatabaseFixture fixture) : Integrat
         await database.AddUserAsync("user-1", "user1@example.com");
         await database.AddUserAsync("user-2", "user2@example.com");
         await database.AddUserAsync("user-3", "user3@example.com");
-        var game = await database.AddGameAsync("user-1", "ABC123", "Alpha", activePlayerUserId: "user-1", activePlayerName: "Captain Red");
+        var game = await database.AddGameAsync(
+            "user-1",
+            "ABC123",
+            "Alpha",
+            activePlayerUserId: "user-1",
+            activePlayerName: "Captain Red"
+        );
         await database.AddGamePlayerAsync(game.Id, "user-2", "Captain Blue");
         var notifier = new FakeGameLobbyNotifier();
         var messagePublisher = new FakeGameMessagePublisher();
-        var features = GameFeatureTestFactory.Create(database.ContextFactory, notifier, messagePublisher);
+        var features = GameFeatureTestFactory.Create(
+            database.ContextFactory,
+            notifier,
+            messagePublisher
+        );
 
-        var result = await features.JoinGame.HandleAsync("user-3", new JoinGameRequest(game.InviteCode, "Captain Green"));
+        var result = await features.JoinGame.HandleAsync(
+            "user-3",
+            new JoinGameRequest(game.InviteCode, "Captain Green")
+        );
 
         var failed = Assert.IsType<GameCommandFailed>(result);
         Assert.Equal("That game is already full.", failed.ErrorMessage);
@@ -86,12 +119,25 @@ public sealed class GameServiceTests(PostgresDatabaseFixture fixture) : Integrat
         var database = Database;
         await database.AddUserAsync("user-1", "user1@example.com");
         await database.AddUserAsync("user-3", "user3@example.com");
-        var game = await database.AddGameAsync("user-1", "ABC123", "Alpha", activePlayerUserId: "user-1", activePlayerName: "Captain Red");
+        var game = await database.AddGameAsync(
+            "user-1",
+            "ABC123",
+            "Alpha",
+            activePlayerUserId: "user-1",
+            activePlayerName: "Captain Red"
+        );
         var notifier = new FakeGameLobbyNotifier();
         var messagePublisher = new FakeGameMessagePublisher();
-        var features = GameFeatureTestFactory.Create(database.ContextFactory, notifier, messagePublisher);
+        var features = GameFeatureTestFactory.Create(
+            database.ContextFactory,
+            notifier,
+            messagePublisher
+        );
 
-        var result = await features.JoinGame.HandleAsync("user-3", new JoinGameRequest(game.InviteCode, "Captain Red"));
+        var result = await features.JoinGame.HandleAsync(
+            "user-3",
+            new JoinGameRequest(game.InviteCode, "Captain Red")
+        );
 
         var failed = Assert.IsType<GameCommandFailed>(result);
         Assert.Equal("That player name is already taken in this game.", failed.ErrorMessage);
@@ -105,27 +151,38 @@ public sealed class GameServiceTests(PostgresDatabaseFixture fixture) : Integrat
         var database = Database;
         await database.AddUserAsync("user-1", "user1@example.com");
         await database.AddUserAsync("user-2", "user2@example.com");
-        var game = await database.AddGameAsync("user-1", "ABC123", "Alpha", activePlayerUserId: "user-1", activePlayerName: "Captain Red");
+        var game = await database.AddGameAsync(
+            "user-1",
+            "ABC123",
+            "Alpha",
+            activePlayerUserId: "user-1",
+            activePlayerName: "Captain Red"
+        );
         var notifier = new FakeGameLobbyNotifier();
         var messagePublisher = new FakeGameMessagePublisher();
-        var sessionService = new FakeGameSessionService
-        {
-            TryInitializeResult = false
-        };
-        var features = GameFeatureTestFactory.Create(database.ContextFactory, notifier, messagePublisher, sessionService);
+        var sessionService = new FakeGameSessionService { TryInitializeResult = false };
+        var features = GameFeatureTestFactory.Create(
+            database.ContextFactory,
+            notifier,
+            messagePublisher,
+            sessionService
+        );
 
-        var result = await features.JoinGame.HandleAsync("user-2", new JoinGameRequest(game.InviteCode, "Captain Blue"));
+        var result = await features.JoinGame.HandleAsync(
+            "user-2",
+            new JoinGameRequest(game.InviteCode, "Captain Blue")
+        );
 
         Assert.IsType<GameCommandSucceeded>(result);
         Assert.Equal([game.Id], notifier.PublishedGameIds);
         Assert.Equal([game.Id], messagePublisher.PublishedGameIds);
 
-        var players = await database.Context.GamePlayers
-            .Where(entry => entry.GameId == game.Id && entry.LeftAtUtc == null)
+        var players = await database
+            .Context.GamePlayers.Where(entry => entry.GameId == game.Id && entry.LeftAtUtc == null)
             .OrderBy(entry => entry.JoinedAtUtc)
             .ToListAsync();
-        var messages = await database.Context.GameMessages
-            .Where(entry => entry.GameId == game.Id)
+        var messages = await database
+            .Context.GameMessages.Where(entry => entry.GameId == game.Id)
             .ToListAsync();
 
         Assert.Equal(2, players.Count);
@@ -139,10 +196,20 @@ public sealed class GameServiceTests(PostgresDatabaseFixture fixture) : Integrat
     {
         var database = Database;
         await database.AddUserAsync("user-1", "user1@example.com");
-        var game = await database.AddGameAsync("user-1", "ABC123", "Alpha", activePlayerUserId: "user-1", activePlayerName: "Captain Red");
+        var game = await database.AddGameAsync(
+            "user-1",
+            "ABC123",
+            "Alpha",
+            activePlayerUserId: "user-1",
+            activePlayerName: "Captain Red"
+        );
         var notifier = new FakeGameLobbyNotifier();
         var messagePublisher = new FakeGameMessagePublisher();
-        var features = GameFeatureTestFactory.Create(database.ContextFactory, notifier, messagePublisher);
+        var features = GameFeatureTestFactory.Create(
+            database.ContextFactory,
+            notifier,
+            messagePublisher
+        );
 
         var result = await features.LeaveGame.HandleAsync(game.Id, "user-1");
 
@@ -155,7 +222,10 @@ public sealed class GameServiceTests(PostgresDatabaseFixture fixture) : Integrat
         Assert.Equal(GameStatus.Ended, updatedGame.Status);
         Assert.NotNull(updatedGame.EndedAtUtc);
         Assert.NotNull(player.LeftAtUtc);
-        Assert.Equal([GameMessageKind.PlayerLeft, GameMessageKind.GameEnded], messages.Select(entry => entry.Kind));
+        Assert.Equal(
+            [GameMessageKind.PlayerLeft, GameMessageKind.GameEnded],
+            messages.Select(entry => entry.Kind)
+        );
         Assert.Equal(messages[^1].Id, player.VisibleThroughMessageId);
     }
 
@@ -165,18 +235,30 @@ public sealed class GameServiceTests(PostgresDatabaseFixture fixture) : Integrat
         var database = Database;
         await database.AddUserAsync("user-1", "user1@example.com");
         await database.AddUserAsync("user-2", "user2@example.com");
-        var game = await database.AddGameAsync("user-1", "ABC123", "Alpha", activePlayerUserId: "user-1", activePlayerName: "Captain Red");
+        var game = await database.AddGameAsync(
+            "user-1",
+            "ABC123",
+            "Alpha",
+            activePlayerUserId: "user-1",
+            activePlayerName: "Captain Red"
+        );
         await database.AddGamePlayerAsync(game.Id, "user-2", "Captain Blue");
         var notifier = new FakeGameLobbyNotifier();
         var messagePublisher = new FakeGameMessagePublisher();
-        var features = GameFeatureTestFactory.Create(database.ContextFactory, notifier, messagePublisher);
+        var features = GameFeatureTestFactory.Create(
+            database.ContextFactory,
+            notifier,
+            messagePublisher
+        );
 
         var result = await features.LeaveGame.HandleAsync(game.Id, "user-1");
 
         Assert.IsType<GameCommandSucceeded>(result);
 
         var updatedGame = await database.Context.Games.SingleAsync();
-        var departingPlayer = await database.Context.GamePlayers.SingleAsync(entry => entry.GameId == game.Id && entry.UserId == "user-1");
+        var departingPlayer = await database.Context.GamePlayers.SingleAsync(entry =>
+            entry.GameId == game.Id && entry.UserId == "user-1"
+        );
         var messages = await database.Context.GameMessages.OrderBy(entry => entry.Id).ToListAsync();
 
         Assert.Equal(GameStatus.Open, updatedGame.Status);
@@ -192,9 +274,28 @@ public sealed class GameServiceTests(PostgresDatabaseFixture fixture) : Integrat
     {
         var database = Database;
         await database.AddUserAsync("user-1", "user1@example.com");
-        var openGame = await database.AddGameAsync("user-1", "OPEN01", "Open Game", activePlayerUserId: "user-1", activePlayerName: "Captain Red");
-        var endedGame = await database.AddGameAsync("user-1", "DONE01", "Ended Game", activePlayerUserId: "user-1", activePlayerName: "Captain Red", status: GameStatus.Ended, endedAtUtc: DateTime.UtcNow.AddMinutes(-5), leftAtUtc: DateTime.UtcNow.AddMinutes(-4));
-        var features = GameFeatureTestFactory.Create(database.ContextFactory, new FakeGameLobbyNotifier(), new FakeGameMessagePublisher());
+        var openGame = await database.AddGameAsync(
+            "user-1",
+            "OPEN01",
+            "Open Game",
+            activePlayerUserId: "user-1",
+            activePlayerName: "Captain Red"
+        );
+        var endedGame = await database.AddGameAsync(
+            "user-1",
+            "DONE01",
+            "Ended Game",
+            activePlayerUserId: "user-1",
+            activePlayerName: "Captain Red",
+            status: GameStatus.Ended,
+            endedAtUtc: DateTime.UtcNow.AddMinutes(-5),
+            leftAtUtc: DateTime.UtcNow.AddMinutes(-4)
+        );
+        var features = GameFeatureTestFactory.Create(
+            database.ContextFactory,
+            new FakeGameLobbyNotifier(),
+            new FakeGameMessagePublisher()
+        );
 
         var games = await features.GetUserGames.HandleAsync("user-1");
 

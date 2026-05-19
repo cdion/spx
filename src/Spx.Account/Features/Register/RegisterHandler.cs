@@ -3,16 +3,27 @@ using Spx.Account;
 
 namespace Spx.Account.Features.Register;
 
-internal sealed class RegisterHandler(
+internal sealed partial class RegisterHandler(
     IAccountIdentity accountIdentity,
     IAccountEmailSender emailSender,
-    ILogger<RegisterHandler> logger) : IRegisterHandler
+    ILogger<RegisterHandler> logger
+) : IRegisterHandler
 {
-    private const string ConfirmationResendRequiredMessage = "Your account was created, but we could not send a confirmation email. Request a new one below.";
+    private const string ConfirmationResendRequiredMessage =
+        "Your account was created, but we could not send a confirmation email. Request a new one below.";
 
-    public async Task<RegisterOutcome> HandleAsync(string email, string password, string confirmPassword, CancellationToken cancellationToken = default)
+    public async Task<RegisterOutcome> HandleAsync(
+        string email,
+        string password,
+        string confirmPassword,
+        CancellationToken cancellationToken = default
+    )
     {
-        if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(password) || string.IsNullOrWhiteSpace(confirmPassword))
+        if (
+            string.IsNullOrWhiteSpace(email)
+            || string.IsNullOrWhiteSpace(password)
+            || string.IsNullOrWhiteSpace(confirmPassword)
+        )
         {
             return new RegisterOutcome(RegisterOutcomeStatus.ValidationFailed);
         }
@@ -33,7 +44,11 @@ internal sealed class RegisterHandler(
         var code = await accountIdentity.GenerateEmailConfirmationTokenAsync(user);
         if (string.IsNullOrWhiteSpace(code))
         {
-            return new RegisterOutcome(RegisterOutcomeStatus.ConfirmationResendRequired, email, [ConfirmationResendRequiredMessage]);
+            return new RegisterOutcome(
+                RegisterOutcomeStatus.ConfirmationResendRequired,
+                email,
+                [ConfirmationResendRequiredMessage]
+            );
         }
 
         try
@@ -42,10 +57,24 @@ internal sealed class RegisterHandler(
         }
         catch (Exception exception)
         {
-            logger.LogWarning(exception, "Failed to send registration confirmation email for {Email}.", email);
-            return new RegisterOutcome(RegisterOutcomeStatus.ConfirmationResendRequired, email, [ConfirmationResendRequiredMessage]);
+            LogSendConfirmationEmailFailed(logger, exception, email);
+            return new RegisterOutcome(
+                RegisterOutcomeStatus.ConfirmationResendRequired,
+                email,
+                [ConfirmationResendRequiredMessage]
+            );
         }
 
         return new RegisterOutcome(RegisterOutcomeStatus.ConfirmationSent, email);
     }
+
+    [LoggerMessage(
+        Level = LogLevel.Warning,
+        Message = "Failed to send registration confirmation email for {Email}."
+    )]
+    private static partial void LogSendConfirmationEmailFailed(
+        ILogger logger,
+        Exception exception,
+        string email
+    );
 }

@@ -5,7 +5,10 @@ namespace Spx.Game.Application.Tests;
 
 internal static class GameMessageHandlerTestServices
 {
-    public static ServiceProvider Create(IGameMessagePersistence persistence, IGameMessageInvalidationPublisher publisher)
+    public static ServiceProvider Create(
+        IGameMessagePersistence persistence,
+        IGameMessageInvalidationPublisher publisher
+    )
     {
         var services = new ServiceCollection();
         services.AddGameApplication();

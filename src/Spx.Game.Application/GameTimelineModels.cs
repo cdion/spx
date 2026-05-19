@@ -6,13 +6,12 @@ public sealed record UpdateGameMessageRequest(string Body);
 
 public abstract record GameMessageCommandOutcome;
 
-public sealed record GameMessageCommandSucceeded(GameTimelineEntryView Message) : GameMessageCommandOutcome;
+public sealed record GameMessageCommandSucceeded(GameTimelineEntryView Message)
+    : GameMessageCommandOutcome;
 
 public sealed record GameMessageCommandFailed(string ErrorMessage) : GameMessageCommandOutcome;
 
-public sealed record GameTimelinePageView(
-    IReadOnlyList<GameTimelineEntryView> Items,
-    bool HasMore);
+public sealed record GameTimelinePageView(IReadOnlyList<GameTimelineEntryView> Items, bool HasMore);
 
 public sealed record GameTimelineEntryView(
     Guid Id,
@@ -29,4 +28,5 @@ public sealed record GameTimelineEntryView(
     bool IsCurrentUserSender,
     bool IsPrivate,
     bool CanEdit,
-    bool CanDelete);
+    bool CanDelete
+);

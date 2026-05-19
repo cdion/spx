@@ -3,12 +3,16 @@ using Spx.Account;
 
 namespace Spx.Account.Features.ResendConfirmation;
 
-internal sealed class ResendConfirmationHandler(
+internal sealed partial class ResendConfirmationHandler(
     IAccountIdentity accountIdentity,
     IAccountEmailSender emailSender,
-    ILogger<ResendConfirmationHandler> logger) : IResendConfirmationHandler
+    ILogger<ResendConfirmationHandler> logger
+) : IResendConfirmationHandler
 {
-    public async Task<ResendConfirmationOutcome> HandleAsync(string email, CancellationToken cancellationToken = default)
+    public async Task<ResendConfirmationOutcome> HandleAsync(
+        string email,
+        CancellationToken cancellationToken = default
+    )
     {
         if (string.IsNullOrWhiteSpace(email))
         {
@@ -23,15 +27,30 @@ internal sealed class ResendConfirmationHandler(
             {
                 try
                 {
-                    await emailSender.SendConfirmationEmailAsync(email, user.Id, code, cancellationToken);
+                    await emailSender.SendConfirmationEmailAsync(
+                        email,
+                        user.Id,
+                        code,
+                        cancellationToken
+                    );
                 }
                 catch (Exception exception)
                 {
-                    logger.LogWarning(exception, "Failed to resend confirmation email for {Email}.", email);
+                    LogResendConfirmationEmailFailed(logger, exception, email);
                 }
             }
         }
 
         return new ResendConfirmationOutcome(ResendConfirmationOutcomeStatus.Completed, email);
     }
+
+    [LoggerMessage(
+        Level = LogLevel.Warning,
+        Message = "Failed to resend confirmation email for {Email}."
+    )]
+    private static partial void LogResendConfirmationEmailFailed(
+        ILogger logger,
+        Exception exception,
+        string email
+    );
 }

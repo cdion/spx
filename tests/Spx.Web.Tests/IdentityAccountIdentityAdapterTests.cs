@@ -23,9 +23,12 @@ public sealed class IdentityAccountIdentityAdapterTests : IAsyncLifetime
         serviceCollection.AddLogging();
         serviceCollection.AddDataProtection();
         serviceCollection.AddHttpContextAccessor();
-        serviceCollection.AddAuthentication(IdentityConstants.ApplicationScheme)
+        serviceCollection
+            .AddAuthentication(IdentityConstants.ApplicationScheme)
             .AddIdentityCookies();
-        serviceCollection.AddDbContext<ApplicationDbContext>(options => options.UseSqlite(connection));
+        serviceCollection.AddDbContext<ApplicationDbContext>(options =>
+            options.UseSqlite(connection)
+        );
         serviceCollection
             .AddIdentityCore<ApplicationUser>(options =>
             {
@@ -67,13 +70,21 @@ public sealed class IdentityAccountIdentityAdapterTests : IAsyncLifetime
         var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
         var accountIdentity = scope.ServiceProvider.GetRequiredService<IAccountIdentity>();
 
-        var user = new ApplicationUser { Email = "user@example.com", UserName = "user@example.com", EmailConfirmed = true };
+        var user = new ApplicationUser
+        {
+            Email = "user@example.com",
+            UserName = "user@example.com",
+            EmailConfirmed = true,
+        };
         var createResult = await userManager.CreateAsync(user, "Password1");
         Assert.True(createResult.Succeeded);
 
         await userManager.DeleteAsync(user);
 
-        var result = await accountIdentity.PasswordSignInAsync(new AccountUser(user.Id, user.Email!), "Password1");
+        var result = await accountIdentity.PasswordSignInAsync(
+            new AccountUser(user.Id, user.Email!),
+            "Password1"
+        );
 
         Assert.Equal(AccountPasswordSignInStatus.Failed, result.Status);
     }
@@ -85,17 +96,32 @@ public sealed class IdentityAccountIdentityAdapterTests : IAsyncLifetime
         var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
         var accountIdentity = scope.ServiceProvider.GetRequiredService<IAccountIdentity>();
 
-        var user = new ApplicationUser { Email = "user@example.com", UserName = "user@example.com", EmailConfirmed = true };
+        var user = new ApplicationUser
+        {
+            Email = "user@example.com",
+            UserName = "user@example.com",
+            EmailConfirmed = true,
+        };
         var createResult = await userManager.CreateAsync(user, "Password1");
         Assert.True(createResult.Succeeded);
 
         var token = await userManager.GeneratePasswordResetTokenAsync(user);
         await userManager.DeleteAsync(user);
 
-        var result = await Record.ExceptionAsync(() => accountIdentity.ResetPasswordAsync(new AccountUser(user.Id, user.Email!), token, "NewPassword1"));
+        var result = await Record.ExceptionAsync(() =>
+            accountIdentity.ResetPasswordAsync(
+                new AccountUser(user.Id, user.Email!),
+                token,
+                "NewPassword1"
+            )
+        );
 
         Assert.Null(result);
-        var operation = await accountIdentity.ResetPasswordAsync(new AccountUser(user.Id, user.Email!), token, "NewPassword1");
+        var operation = await accountIdentity.ResetPasswordAsync(
+            new AccountUser(user.Id, user.Email!),
+            token,
+            "NewPassword1"
+        );
         Assert.IsType<AccountOperationFailed>(operation);
     }
 

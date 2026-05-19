@@ -1,0 +1,9 @@
+# Test projects: suppress naming rules that conflict with the standard
+# Method_Scenario_Expected test naming convention, and coupling rules
+# that are not meaningful for test methods which naturally touch many types.
+
+[*.cs]
+dotnet_diagnostic.CA1707.severity = none
+dotnet_diagnostic.CA1506.severity = none
+dotnet_diagnostic.CA1711.severity = none
+dotnet_diagnostic.CA1001.severity = none

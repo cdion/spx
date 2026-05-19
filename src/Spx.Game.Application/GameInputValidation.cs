@@ -2,7 +2,11 @@ namespace Spx.Game.Application;
 
 internal static class GameInputValidation
 {
-    public static bool TryNormalizeGameName(string value, out string normalizedValue, out string errorMessage)
+    public static bool TryNormalizeGameName(
+        string value,
+        out string normalizedValue,
+        out string errorMessage
+    )
     {
         normalizedValue = GameInputNormalizer.NormalizeDisplayText(value);
 
@@ -22,7 +26,12 @@ internal static class GameInputValidation
         return true;
     }
 
-    public static bool TryNormalizePlayerName(string value, out string normalizedValue, out string normalizedLookupValue, out string errorMessage)
+    public static bool TryNormalizePlayerName(
+        string value,
+        out string normalizedValue,
+        out string normalizedLookupValue,
+        out string errorMessage
+    )
     {
         normalizedValue = GameInputNormalizer.NormalizeDisplayText(value);
         normalizedLookupValue = GameInputNormalizer.NormalizeLookupKey(value);

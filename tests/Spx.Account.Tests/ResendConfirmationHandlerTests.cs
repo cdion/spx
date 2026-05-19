@@ -25,7 +25,7 @@ public sealed class ResendConfirmationHandlerTests
         {
             FindByEmailResult = new AccountUser("user-1", "user@example.com"),
             IsEmailConfirmedResult = false,
-            EmailConfirmationToken = "confirm-token"
+            EmailConfirmationToken = "confirm-token",
         };
         var emailSender = new FakeAccountEmailSender();
         using var services = AccountHandlerTestServices.Create(identity, emailSender);
@@ -47,7 +47,7 @@ public sealed class ResendConfirmationHandlerTests
         {
             FindByEmailResult = new AccountUser("user-1", "user@example.com"),
             IsEmailConfirmedResult = true,
-            EmailConfirmationToken = "confirm-token"
+            EmailConfirmationToken = "confirm-token",
         };
         var emailSender = new FakeAccountEmailSender();
         using var services = AccountHandlerTestServices.Create(identity, emailSender);
@@ -63,7 +63,10 @@ public sealed class ResendConfirmationHandlerTests
     public async Task HandleAsync_completes_without_sending_when_user_is_missing()
     {
         var emailSender = new FakeAccountEmailSender();
-        using var services = AccountHandlerTestServices.Create(new FakeAccountIdentity(), emailSender);
+        using var services = AccountHandlerTestServices.Create(
+            new FakeAccountIdentity(),
+            emailSender
+        );
 
         var handler = services.GetRequiredService<IResendConfirmationHandler>();
         var outcome = await handler.HandleAsync("user@example.com");
@@ -79,7 +82,7 @@ public sealed class ResendConfirmationHandlerTests
         {
             FindByEmailResult = new AccountUser("user-1", "user@example.com"),
             IsEmailConfirmedResult = false,
-            EmailConfirmationToken = string.Empty
+            EmailConfirmationToken = string.Empty,
         };
         var emailSender = new FakeAccountEmailSender();
         using var services = AccountHandlerTestServices.Create(identity, emailSender);
@@ -98,11 +101,11 @@ public sealed class ResendConfirmationHandlerTests
         {
             FindByEmailResult = new AccountUser("user-1", "user@example.com"),
             IsEmailConfirmedResult = false,
-            EmailConfirmationToken = "confirm-token"
+            EmailConfirmationToken = "confirm-token",
         };
         var emailSender = new FakeAccountEmailSender
         {
-            SendConfirmationException = new InvalidOperationException("mail failed")
+            SendConfirmationException = new InvalidOperationException("mail failed"),
         };
         using var services = AccountHandlerTestServices.Create(identity, emailSender);
 

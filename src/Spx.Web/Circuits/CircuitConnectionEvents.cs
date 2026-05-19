@@ -8,11 +8,9 @@ public sealed class CircuitConnectionEvents
 
     public event Func<Task>? ConnectionUp;
 
-    internal Task NotifyConnectionDownAsync()
-        => NotifyAsync(ConnectionDown);
+    internal Task NotifyConnectionDownAsync() => NotifyAsync(ConnectionDown);
 
-    internal Task NotifyConnectionUpAsync()
-        => NotifyAsync(ConnectionUp);
+    internal Task NotifyConnectionUpAsync() => NotifyAsync(ConnectionUp);
 
     private static Task NotifyAsync(Func<Task>? handlers)
     {
@@ -21,18 +19,27 @@ public sealed class CircuitConnectionEvents
             return Task.CompletedTask;
         }
 
-        return Task.WhenAll(handlers.GetInvocationList().Cast<Func<Task>>().Select(handler => handler()));
+        return Task.WhenAll(
+            handlers.GetInvocationList().Cast<Func<Task>>().Select(handler => handler())
+        );
     }
 }
 
-internal sealed class CircuitConnectionHandler(CircuitConnectionEvents connectionEvents) : CircuitHandler
+internal sealed class CircuitConnectionHandler(CircuitConnectionEvents connectionEvents)
+    : CircuitHandler
 {
-    public override Task OnConnectionDownAsync(Circuit circuit, CancellationToken cancellationToken)
-        => connectionEvents.NotifyConnectionDownAsync();
+    public override Task OnConnectionDownAsync(
+        Circuit circuit,
+        CancellationToken cancellationToken
+    ) => connectionEvents.NotifyConnectionDownAsync();
 
-    public override Task OnConnectionUpAsync(Circuit circuit, CancellationToken cancellationToken)
-        => connectionEvents.NotifyConnectionUpAsync();
+    public override Task OnConnectionUpAsync(
+        Circuit circuit,
+        CancellationToken cancellationToken
+    ) => connectionEvents.NotifyConnectionUpAsync();
 
-    public override Task OnCircuitClosedAsync(Circuit circuit, CancellationToken cancellationToken)
-        => connectionEvents.NotifyConnectionDownAsync();
+    public override Task OnCircuitClosedAsync(
+        Circuit circuit,
+        CancellationToken cancellationToken
+    ) => connectionEvents.NotifyConnectionDownAsync();
 }
