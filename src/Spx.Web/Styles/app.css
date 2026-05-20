@@ -203,7 +203,7 @@
   /* Game card component */
 
   .ui-game-card {
-    @apply relative flex aspect-[5/7] w-full flex-col overflow-hidden rounded-2xl border transition;
+    @apply relative flex aspect-5/7 w-full flex-col overflow-hidden rounded-2xl border transition;
   }
 
   .ui-game-card-interactive {
