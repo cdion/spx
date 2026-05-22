@@ -14,9 +14,7 @@
     <div class="ui-actions">
         @if (Lobby.IsCurrentUserActive)
         {
-            <button class="ui-button-danger"
-                    @onclick="() => OnLeave.InvokeAsync()"
-                    disabled="@IsLeaving">
+            <button class="ui-button-danger" @onclick="() => OnLeave.InvokeAsync()" disabled="@IsLeaving">
                 @(IsLeaving ? "Leaving..." : "Leave game")
             </button>
         }

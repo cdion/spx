@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using Orleans;
 using Spx.Contracts;
 
@@ -20,5 +21,7 @@ public sealed class GamePresenceGrain : Grain, IGamePresenceGrain
     }
 
     public Task<GamePresenceSnapshot> GetSnapshotAsync() =>
-        Task.FromResult(new GamePresenceSnapshot(onlinePlayers.OrderBy(id => id).ToArray()));
+        Task.FromResult(
+            new GamePresenceSnapshot(onlinePlayers.OrderBy(id => id).ToImmutableArray())
+        );
 }

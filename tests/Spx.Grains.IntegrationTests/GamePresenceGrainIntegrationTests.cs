@@ -16,7 +16,7 @@ public sealed class GamePresenceGrainIntegrationTests(OrleansClusterFixture fixt
         await grain.SetOnlineAsync(playerId);
 
         var snapshot = await grain.GetSnapshotAsync();
-        Assert.Equal([playerId], snapshot.OnlinePlayerIds);
+        Assert.Equal([playerId], snapshot.OnlinePlayerIds.ToArray());
     }
 
     [Fact]
@@ -30,7 +30,7 @@ public sealed class GamePresenceGrainIntegrationTests(OrleansClusterFixture fixt
         await grain.SetOnlineAsync(playerId);
 
         var snapshot = await grain.GetSnapshotAsync();
-        Assert.Equal([playerId], snapshot.OnlinePlayerIds);
+        Assert.Equal([playerId], snapshot.OnlinePlayerIds.ToArray());
     }
 
     [Fact]
@@ -73,6 +73,6 @@ public sealed class GamePresenceGrainIntegrationTests(OrleansClusterFixture fixt
         await grain.SetOfflineAsync(playerA);
 
         var snapshot = await grain.GetSnapshotAsync();
-        Assert.Equal([playerB], snapshot.OnlinePlayerIds);
+        Assert.Equal([playerB], snapshot.OnlinePlayerIds.ToArray());
     }
 }

@@ -1,9 +1,7 @@
 ---
 description: 'Use when editing AppHost or shared local orchestration code, wiring Aspire resources, adjusting startup dependencies, or validating the distributed dev loop.'
 name: 'Spx AppHost Dev Loop'
-applyTo:
-  - 'src/Spx.AppHost/**'
-  - 'src/Spx.ServiceDefaults/**'
+applyTo: '{src/Spx.AppHost/**,src/Spx.ServiceDefaults/**}'
 ---
 
 # Spx AppHost Dev Loop

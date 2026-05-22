@@ -17,10 +17,10 @@
     private string CssClass => Tone switch
     {
         BadgeTone.Success => $"{BaseClass} border-emerald-400/30 bg-emerald-500/10 text-emerald-200",
-        BadgeTone.Info    => $"{BaseClass} border-sky-400/30 bg-sky-400/10 text-sky-200",
+        BadgeTone.Info => $"{BaseClass} border-sky-400/30 bg-sky-400/10 text-sky-200",
         BadgeTone.Warning => $"{BaseClass} border-amber-400/30 bg-amber-500/10 text-amber-200",
-        BadgeTone.Danger  => $"{BaseClass} border-red-400/30 bg-red-500/10 text-red-100",
+        BadgeTone.Danger => $"{BaseClass} border-red-400/30 bg-red-500/10 text-red-100",
         BadgeTone.Offline => $"{BaseClass} border-slate-500/30 bg-slate-500/10 text-slate-300",
-        _                 => BaseClass
+        _ => BaseClass
     };
 }

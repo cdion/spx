@@ -1,9 +1,7 @@
 ---
 description: 'Use when writing or editing tests, deciding unit vs integration, choosing the correct test project, or selecting the narrowest validation command for this repo.'
 name: 'Spx Testing And Validation'
-applyTo:
-  - 'tests/**/*.cs'
-  - 'tests/**/*.csproj'
+applyTo: 'tests/**'
 ---
 
 # Spx Testing And Validation

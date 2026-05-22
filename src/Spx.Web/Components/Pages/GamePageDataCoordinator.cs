@@ -1,13 +1,11 @@
 using Spx.Game.Application;
 using Spx.Game.Application.Features.GetGamePage;
 using Spx.Game.Application.Features.GetGamePresence;
-using Spx.Game.Application.Features.GetGameSession;
 
 namespace Spx.Web.Components.Pages;
 
 internal sealed partial class GamePageDataCoordinator(
     IGetGamePageHandler getGamePageHandler,
-    IGetGameSessionHandler getGameSessionHandler,
     IGetGamePresenceHandler getGamePresenceHandler,
     ILogger<GamePageDataCoordinator> logger,
     GamePageDataState state
@@ -51,27 +49,6 @@ internal sealed partial class GamePageDataCoordinator(
         }
     }
 
-    public async Task ReloadSessionAsync(
-        Guid gameId,
-        Guid playerId,
-        CancellationToken cancellationToken = default
-    )
-    {
-        try
-        {
-            state.ApplySession(
-                await getGameSessionHandler.HandleAsync(gameId, playerId, cancellationToken)
-            );
-        }
-        catch (Exception exception)
-        {
-            LogRefreshSessionFailed(logger, exception, gameId, playerId);
-            state.TrySetGameplayError(
-                "We couldn't refresh the game state right now. Please try again."
-            );
-        }
-    }
-
     [LoggerMessage(
         Level = LogLevel.Error,
         Message = "Failed to load game page {GameId} for user {UserId}."
@@ -91,16 +68,5 @@ internal sealed partial class GamePageDataCoordinator(
         ILogger logger,
         Exception exception,
         Guid gameId
-    );
-
-    [LoggerMessage(
-        Level = LogLevel.Error,
-        Message = "Failed to refresh session state for game {GameId} player {PlayerId}."
-    )]
-    private static partial void LogRefreshSessionFailed(
-        ILogger logger,
-        Exception exception,
-        Guid gameId,
-        Guid playerId
     );
 }

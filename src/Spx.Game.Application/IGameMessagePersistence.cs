@@ -47,4 +47,10 @@ public interface IGameMessagePersistence
         Guid messageId,
         CancellationToken cancellationToken
     );
+
+    Task WriteGameplayEventsAsync(
+        Guid gameId,
+        IReadOnlyList<string> bodies,
+        CancellationToken cancellationToken = default
+    );
 }

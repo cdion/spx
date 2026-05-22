@@ -1,4 +1,5 @@
 using Spx.Game.Application;
+using Spx.Game.Domain;
 
 namespace Spx.Web.Components.Pages;
 
@@ -6,7 +7,7 @@ internal sealed class GamePageDataState
 {
     public GameLobbyView? Lobby { get; private set; }
 
-    public GameSessionView? Session { get; private set; }
+    public NexusGameView? Session { get; private set; }
 
     public GamePresenceView Presence { get; private set; } = GamePresenceView.Empty;
 
@@ -44,7 +45,7 @@ internal sealed class GamePageDataState
 
     public void ClearPresence() => Presence = GamePresenceView.Empty;
 
-    public void ApplySession(GameSessionView? session) => Session = session;
+    public void ApplySession(NexusGameView? session) => Session = session;
 
     public void ClearErrorMessage() => ErrorMessage = null;
 

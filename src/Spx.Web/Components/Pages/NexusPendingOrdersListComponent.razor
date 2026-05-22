@@ -1,0 +1,53 @@
+@if (!Orders.Any())
+{
+    <p class="text-xs text-slate-500">
+        No fleet orders yet. Select a fleet on the map to assign move or colonize orders.
+    </p>
+}
+else
+{
+    <ul class="space-y-2">
+        @foreach (var order in Orders)
+        {
+            var sourceHex = Hexes.FirstOrDefault(h => h.Fleets.Any(f => f.FleetId == order.FleetId));
+            var description = GetOrderDescription(order, sourceHex?.Coord);
+            <li class="flex items-center justify-between gap-2 rounded-xl border border-white/10 bg-slate-950/60 px-3 py-2">
+                <span class="text-xs text-slate-200">@description</span>
+                @if (IsEditable)
+                {
+                    <button class="text-sm text-slate-500 transition-colors hover:text-rose-400" title="Remove order"
+                            @onclick="() => HandleRemove(order.FleetId)">
+                        ×
+                    </button>
+                }
+            </li>
+        }
+    </ul>
+}
+
+@code {
+    [Parameter, EditorRequired]
+    public IReadOnlyList<NexusHexView> Hexes { get; set; } = [];
+
+    [Parameter, EditorRequired]
+    public IReadOnlyList<NexusFleetOrder> Orders { get; set; } = [];
+
+    [Parameter]
+    public bool IsEditable { get; set; }
+
+    [Parameter]
+    public EventCallback<Guid> OnRemoveOrder { get; set; }
+
+    private static string GetOrderDescription(NexusFleetOrder order, HexCoord? sourceCoord) =>
+        order switch
+        {
+            NexusMoveOrder move when sourceCoord.HasValue =>
+                $"Move {sourceCoord.Value} → {move.Destination}",
+            NexusMoveOrder move => $"Move → {move.Destination}",
+            NexusColonizeOrder when sourceCoord.HasValue => $"Colonize {sourceCoord.Value}",
+            NexusColonizeOrder => "Colonize",
+            _ => order.GetType().Name,
+        };
+
+    private Task HandleRemove(Guid fleetId) => OnRemoveOrder.InvokeAsync(fleetId);
+}

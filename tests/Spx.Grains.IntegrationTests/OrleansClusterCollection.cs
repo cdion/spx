@@ -25,7 +25,7 @@ public sealed class OrleansClusterFixture : IAsyncLifetime
                     options.CollectionQuantum = TimeSpan.FromSeconds(1);
                     options.ClassSpecificCollectionAge[typeof(GamePresenceGrain).FullName!] =
                         TimeSpan.FromSeconds(2);
-                    options.ClassSpecificCollectionAge[typeof(GameSessionGrain).FullName!] =
+                    options.ClassSpecificCollectionAge[typeof(NexusGameSessionGrain).FullName!] =
                         TimeSpan.FromSeconds(2);
                 });
             }

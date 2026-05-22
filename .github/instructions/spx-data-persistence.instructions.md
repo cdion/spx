@@ -1,9 +1,7 @@
 ---
 description: 'Use when editing EF Core entities, DbContext, migrations, persistence adapters, or EF-backed integration tests in this repo.'
 name: 'Spx Data And Persistence'
-applyTo:
-  - 'src/Spx.Data/**'
-  - 'tests/Spx.Game.Application.IntegrationTests/**'
+applyTo: '{src/Spx.Data/**,tests/Spx.Game.Application.IntegrationTests/**}'
 ---
 
 # Spx Data And Persistence

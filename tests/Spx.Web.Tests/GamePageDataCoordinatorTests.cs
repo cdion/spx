@@ -2,7 +2,6 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Spx.Game.Application;
 using Spx.Game.Application.Features.GetGamePage;
 using Spx.Game.Application.Features.GetGamePresence;
-using Spx.Game.Application.Features.GetGameSession;
 using Spx.Web.Components.Pages;
 using Xunit;
 
@@ -24,7 +23,6 @@ public sealed class GamePageDataCoordinatorTests
 
         var coordinator = new GamePageDataCoordinator(
             new StubGetGamePageHandler { Result = expectedPage },
-            new StubGetGameSessionHandler(),
             new StubGetGamePresenceHandler(),
             NullLogger<GamePageDataCoordinator>.Instance,
             state
@@ -54,7 +52,6 @@ public sealed class GamePageDataCoordinatorTests
 
         var coordinator = new GamePageDataCoordinator(
             new StubGetGamePageHandler { Exception = new InvalidOperationException("boom") },
-            new StubGetGameSessionHandler(),
             new StubGetGamePresenceHandler(),
             NullLogger<GamePageDataCoordinator>.Instance,
             state
@@ -84,7 +81,6 @@ public sealed class GamePageDataCoordinatorTests
 
         var coordinator = new GamePageDataCoordinator(
             new StubGetGamePageHandler(),
-            new StubGetGameSessionHandler(),
             new StubGetGamePresenceHandler { Result = expectedPresence },
             NullLogger<GamePageDataCoordinator>.Instance,
             state
@@ -93,48 +89,6 @@ public sealed class GamePageDataCoordinatorTests
         await coordinator.ReloadPresenceAsync(gameId);
 
         Assert.Equal(expectedPresence, state.Presence);
-    }
-
-    [Fact]
-    public async Task ReloadSessionAsync_updates_session()
-    {
-        var gameId = Guid.NewGuid();
-        var expectedSession = GamePageCoordinatorTestData.CreateSession(gameId, roundNumber: 4);
-        var state = new GamePageDataState();
-
-        var coordinator = new GamePageDataCoordinator(
-            new StubGetGamePageHandler(),
-            new StubGetGameSessionHandler { Result = expectedSession },
-            new StubGetGamePresenceHandler(),
-            NullLogger<GamePageDataCoordinator>.Instance,
-            state
-        );
-
-        await coordinator.ReloadSessionAsync(gameId, GamePageCoordinatorTestData.CurrentPlayerId);
-
-        Assert.Equal(expectedSession, state.Session);
-    }
-
-    [Fact]
-    public async Task ReloadSessionAsync_sets_gameplay_error_when_refresh_fails()
-    {
-        var gameId = Guid.NewGuid();
-        var state = new GamePageDataState();
-
-        var coordinator = new GamePageDataCoordinator(
-            new StubGetGamePageHandler(),
-            new StubGetGameSessionHandler { Exception = new InvalidOperationException("boom") },
-            new StubGetGamePresenceHandler(),
-            NullLogger<GamePageDataCoordinator>.Instance,
-            state
-        );
-
-        await coordinator.ReloadSessionAsync(gameId, GamePageCoordinatorTestData.CurrentPlayerId);
-
-        Assert.Equal(
-            "We couldn't refresh the game state right now. Please try again.",
-            state.GameplayError
-        );
     }
 
     private sealed class StubGetGamePageHandler : IGetGamePageHandler
@@ -151,22 +105,6 @@ public sealed class GamePageDataCoordinatorTests
             Exception is null
                 ? Task.FromResult(Result)
                 : Task.FromException<GamePageView?>(Exception);
-    }
-
-    private sealed class StubGetGameSessionHandler : IGetGameSessionHandler
-    {
-        public GameSessionView? Result { get; init; }
-
-        public Exception? Exception { get; init; }
-
-        public Task<GameSessionView?> HandleAsync(
-            Guid gameId,
-            Guid playerId,
-            CancellationToken cancellationToken = default
-        ) =>
-            Exception is null
-                ? Task.FromResult(Result)
-                : Task.FromException<GameSessionView?>(Exception);
     }
 
     private sealed class StubGetGamePresenceHandler : IGetGamePresenceHandler

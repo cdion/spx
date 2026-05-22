@@ -46,7 +46,7 @@ public sealed class GetGamePageHandlerTests
             true
         );
 
-        var session = CreateSession(gameId, 3, waitingForOpponent: true);
+        var session = CreateSession(gameId, 3);
 
         var persistence = new FakeGamePersistence { Lobby = lobby };
         var sessionService = new FakeGameSessionService { Session = session };
@@ -119,28 +119,44 @@ public sealed class GetGamePageHandlerTests
         return services.BuildServiceProvider();
     }
 
-    private static GameSessionView CreateSession(
-        Guid gameId,
-        int roundNumber,
-        bool waitingForOpponent
-    )
+    private static NexusGameView CreateSession(Guid gameId, int roundNumber)
     {
-        var currentPlayer = new GameSessionParticipant(CurrentPlayerId);
-        var opponentPlayer = new GameSessionParticipant(OpponentPlayerId);
+        var currentPlayer = new NexusPlayerView(
+            CurrentPlayerId,
+            NexusFactionColor.Red,
+            0,
+            0,
+            0,
+            NexusGateProgress.None,
+            false,
+            true,
+            [],
+            false,
+            false
+        );
+        var opponentPlayer = new NexusPlayerView(
+            OpponentPlayerId,
+            NexusFactionColor.Blue,
+            0,
+            0,
+            0,
+            NexusGateProgress.None,
+            false,
+            true,
+            null,
+            false,
+            false
+        );
 
-        return new GameSessionView(
+        return new NexusGameView(
             gameId,
             roundNumber,
-            GamePhase.Play,
-            new GamePlayerStateView(currentPlayer, [], false, 0, 0, false, false, []),
-            new GamePlayerStateView(opponentPlayer, [], false, 0, 0, false, true, []),
+            NexusGamePhase.Planning,
             [],
-            0,
-            waitingForOpponent,
-            false,
-            false,
-            GameCardCatalog.MaxBatchSize,
-            null,
+            [],
+            currentPlayer,
+            opponentPlayer,
+            [],
             null
         );
     }
@@ -182,13 +198,16 @@ public sealed class GetGamePageHandlerTests
             string userId,
             CancellationToken cancellationToken
         ) => throw new NotSupportedException();
+
+        public Task<IReadOnlyList<GamePlayerView>> GetActivePlayersAsync(
+            Guid gameId,
+            CancellationToken cancellationToken = default
+        ) => throw new NotSupportedException();
     }
 
     private sealed class FakeGameSessionService : IGameSessionService
     {
-        public GameSessionView? Session { get; set; }
-
-        public GameSessionView? SessionAfterInitialize { get; init; }
+        public NexusGameView? Session { get; set; }
 
         public int InitializeCalls { get; private set; }
 
@@ -201,35 +220,18 @@ public sealed class GetGamePageHandlerTests
         )
         {
             InitializeCalls++;
-            if (TryInitializeResult)
-            {
-                Session = SessionAfterInitialize ?? Session;
-            }
-
             return Task.FromResult(TryInitializeResult);
         }
 
-        public Task<GameSessionView?> GetSessionAsync(
+        public Task<NexusGameView?> GetSessionAsync(
             Guid gameId,
             Guid playerId,
             CancellationToken cancellationToken = default
         ) => Task.FromResult(Session);
 
-        public Task AcknowledgeGameplayEventBatchAsync(
+        public Task<GameSessionCommandOutcome> SubmitOrdersAsync(
             Guid gameId,
-            Guid gameplayEventBatchId,
-            CancellationToken cancellationToken = default
-        ) => Task.CompletedTask;
-
-        public Task<GameSessionCommandOutcome> SubmitAcquireAsync(
-            Guid gameId,
-            SubmitAcquireCommand command,
-            CancellationToken cancellationToken = default
-        ) => throw new NotSupportedException();
-
-        public Task<GameSessionCommandOutcome> SubmitPlayBatchAsync(
-            Guid gameId,
-            SubmitPlayBatchCommand command,
+            NexusTurnOrdersCommand command,
             CancellationToken cancellationToken = default
         ) => throw new NotSupportedException();
 

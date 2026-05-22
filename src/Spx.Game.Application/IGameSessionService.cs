@@ -8,27 +8,15 @@ public interface IGameSessionService
         CancellationToken cancellationToken = default
     );
 
-    Task<GameSessionView?> GetSessionAsync(
+    Task<NexusGameView?> GetSessionAsync(
         Guid gameId,
         Guid playerId,
         CancellationToken cancellationToken = default
     );
 
-    Task<GameSessionCommandOutcome> SubmitAcquireAsync(
+    Task<GameSessionCommandOutcome> SubmitOrdersAsync(
         Guid gameId,
-        SubmitAcquireCommand command,
-        CancellationToken cancellationToken = default
-    );
-
-    Task<GameSessionCommandOutcome> SubmitPlayBatchAsync(
-        Guid gameId,
-        SubmitPlayBatchCommand command,
-        CancellationToken cancellationToken = default
-    );
-
-    Task AcknowledgeGameplayEventBatchAsync(
-        Guid gameId,
-        Guid gameplayEventBatchId,
+        NexusTurnOrdersCommand command,
         CancellationToken cancellationToken = default
     );
 

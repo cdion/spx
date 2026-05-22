@@ -7,7 +7,6 @@
 @using Microsoft.AspNetCore.SignalR.Client
 @inject IGetGamePageHandler GetGamePageHandler
 @inject IGetGamePresenceHandler GetGamePresenceHandler
-@inject IGetGameSessionHandler GetGameSessionHandler
 @inject ILeaveGameHandler LeaveGameHandler
 @inject IGetMessagesHandler GetMessagesHandler
 @inject IGetMessageUpdatesHandler GetMessageUpdatesHandler
@@ -15,9 +14,7 @@
 @inject ISendPrivateMessageHandler SendPrivateMessageHandler
 @inject IEditMessageHandler EditMessageHandler
 @inject IDeleteMessageHandler DeleteMessageHandler
-@inject ISubmitAcquireCardHandler SubmitAcquireCardHandler
-@inject ISubmitPlayBatchHandler SubmitPlayBatchHandler
-@inject IGameplayEventMessageFormatter GameplayEventMessageFormatter
+@inject ISubmitOrdersHandler SubmitOrdersHandler
 @inject ILogger<GamePage> Logger
 @inject ILogger<GamePageActionCoordinator> ActionCoordinatorLogger
 @inject ILogger<GamePageDataCoordinator> DataCoordinatorLogger
@@ -84,7 +81,7 @@ else
         }
 
         <GameSessionPanel Lobby="@lobby" Session="@session" IsSubmittingAction="@isSubmittingGameplayAction"
-                          GameplayError="@gameplayError" OnAcquireCard="AcquireCardAsync" OnLockBatch="LockBatchAsync" />
+                          GameplayError="@gameplayError" OnSubmitOrders="SubmitOrdersAsync" />
 
         <section class="ui-surface-form-tight">
             <div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
@@ -145,7 +142,7 @@ else
 
     private GameLobbyView? lobby => data.Lobby;
 
-    private GameSessionView? session => data.Session;
+    private NexusGameView? session => data.Session;
 
     private GamePresenceView presence => data.Presence;
 
@@ -163,16 +160,12 @@ else
     {
         actionCoordinator = new GamePageActionCoordinator(
             LeaveGameHandler,
-            SubmitAcquireCardHandler,
-            SubmitPlayBatchHandler,
-            GameplayEventMessageFormatter,
+            SubmitOrdersHandler,
             ActionCoordinatorLogger,
             data,
-            actions,
-            timeline);
+            actions);
         dataCoordinator = new GamePageDataCoordinator(
             GetGamePageHandler,
-            GetGameSessionHandler,
             GetGamePresenceHandler,
             DataCoordinatorLogger,
             data);
@@ -318,11 +311,8 @@ else
         }
     }
 
-    private Task AcquireCardAsync(Guid marketCardInstanceId)
-        => actionCoordinator!.AcquireCardAsync(GameId, currentPlayerId, marketCardInstanceId);
-
-    private Task LockBatchAsync(IReadOnlyList<GameBatchCardCommand> cards)
-        => actionCoordinator!.LockBatchAsync(GameId, currentPlayerId, cards);
+    private Task SubmitOrdersAsync(NexusTurnOrdersCommand command)
+        => actionCoordinator!.SubmitOrdersAsync(GameId, command);
 
     private async Task LoadInitialMessagesAsync()
     {

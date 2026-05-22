@@ -350,4 +350,23 @@ internal sealed class EfGameMessagePersistence(
             )
         );
     }
+
+    public async Task WriteGameplayEventsAsync(
+        Guid gameId,
+        IReadOnlyList<string> bodies,
+        CancellationToken cancellationToken
+    )
+    {
+        if (bodies.Count == 0)
+            return;
+
+        await using var dbContext = await contextFactory.CreateDbContextAsync(cancellationToken);
+        var now = DateTime.UtcNow;
+        foreach (var body in bodies)
+        {
+            dbContext.GameMessages.Add(GameMessageFactory.CreateGameplayEvent(gameId, body, now));
+        }
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
 }

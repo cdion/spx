@@ -21,9 +21,7 @@
         <div class="space-y-4">
             <div class="space-y-2">
                 <label class="ui-panel-label" for="message-recipient">Recipient</label>
-                <select id="message-recipient"
-                        class="ui-select"
-                        value="@SelectedRecipientPlayerIdString"
+                <select id="message-recipient" class="ui-select" value="@SelectedRecipientPlayerIdString"
                         @onchange="HandleRecipientChanged">
                     <option value="">All active players</option>
                     @foreach (var player in Players.Where(player => player.PlayerId != CurrentPlayerId))
@@ -35,11 +33,8 @@
 
             <div class="space-y-2">
                 <label class="ui-panel-label" for="message-composer">Message</label>
-                <textarea id="message-composer"
-                          class="ui-textarea min-h-32"
-                          placeholder="Write something for the game timeline..."
-                          value="@Text"
-                          @oninput="HandleTextInput"
+                <textarea id="message-composer" class="ui-textarea min-h-32"
+                          placeholder="Write something for the game timeline..." value="@Text" @oninput="HandleTextInput"
                           @ref="composerTextArea"></textarea>
             </div>
 
@@ -47,9 +42,7 @@
                 <p class="text-xs uppercase tracking-[0.2em] text-slate-500">
                     @Text.Length / 1024 characters
                 </p>
-                <button class="ui-button-primary"
-                        @onclick="() => OnSend.InvokeAsync()"
-                        disabled="@IsSendingMessage">
+                <button class="ui-button-primary" @onclick="() => OnSend.InvokeAsync()" disabled="@IsSendingMessage">
                     @(IsSendingMessage ? "Sending..." : "Send message")
                 </button>
             </div>

@@ -81,30 +81,15 @@ internal sealed class FakeGameSessionService : IGameSessionService
         CancellationToken cancellationToken = default
     ) => Task.FromResult(TryInitializeResult);
 
-    public Task AcknowledgeGameplayEventBatchAsync(
-        Guid gameId,
-        Guid gameplayEventBatchId,
-        CancellationToken cancellationToken = default
-    ) => Task.CompletedTask;
-
-    public Task<GameSessionView?> GetSessionAsync(
+    public Task<NexusGameView?> GetSessionAsync(
         Guid gameId,
         Guid playerId,
         CancellationToken cancellationToken = default
-    ) => Task.FromResult<GameSessionView?>(null);
+    ) => Task.FromResult<NexusGameView?>(null);
 
-    public Task<GameSessionCommandOutcome> SubmitAcquireAsync(
+    public Task<GameSessionCommandOutcome> SubmitOrdersAsync(
         Guid gameId,
-        SubmitAcquireCommand command,
-        CancellationToken cancellationToken = default
-    ) =>
-        Task.FromResult<GameSessionCommandOutcome>(
-            new GameSessionCommandFailed("Not implemented in integration test factory.")
-        );
-
-    public Task<GameSessionCommandOutcome> SubmitPlayBatchAsync(
-        Guid gameId,
-        SubmitPlayBatchCommand command,
+        NexusTurnOrdersCommand command,
         CancellationToken cancellationToken = default
     ) =>
         Task.FromResult<GameSessionCommandOutcome>(

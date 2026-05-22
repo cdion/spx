@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using Orleans;
 
 namespace Spx.Contracts;
@@ -12,4 +13,4 @@ public interface IGamePresenceGrain : IGrainWithGuidKey
 }
 
 [GenerateSerializer]
-public sealed record GamePresenceSnapshot([property: Id(0)] IReadOnlyList<Guid> OnlinePlayerIds);
+public sealed record GamePresenceSnapshot([property: Id(0)] ImmutableArray<Guid> OnlinePlayerIds);

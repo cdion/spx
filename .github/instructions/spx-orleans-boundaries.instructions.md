@@ -1,10 +1,7 @@
 ---
 description: 'Use when editing Orleans grains, contracts, silo code, grain observers, or runtime-specific boundaries in this repo.'
 name: 'Spx Orleans Boundaries'
-applyTo:
-  - 'src/Spx.Grains/**'
-  - 'src/Spx.Contracts/**'
-  - 'src/Spx.Silo/**'
+applyTo: '{src/Spx.Grains/**,src/Spx.Contracts/**,src/Spx.Silo/**}'
 ---
 
 # Spx Orleans Boundaries
@@ -20,16 +17,20 @@ applyTo:
 - Do not rely on PostgreSQL grain storage through the Aspire Orleans hosting integration in this repo.
 - Grains and adapters that log must be `public sealed partial class` (or `internal sealed partial class`) with `[LoggerMessage]` static partial methods to satisfy CA1848, which is a build error in this repo.
 
-## Domain Type Surrogates
+## Domain Type Serialization
 
-Every Domain type used in a grain interface method signature must have a surrogate pair in `src/Spx.Contracts/GameSessionDomainSurrogates.cs`. Without it, Orleans throws a serialization exception at runtime.
+**Owned domain types** (types defined in `Spx.Game.Domain` that this repo controls) are annotated directly with `[GenerateSerializer]` and `[Id(N)]` on each property. The domain project references `Microsoft.Orleans.Core.Abstractions` for these attributes — it is a thin, attribute-only package with no runtime. This is the idiomatic C# approach: attribute packages (like `System.Text.Json`, EF Core's `[Key]`) exist so types can opt into serialization without a runtime dependency.
 
-A surrogate pair consists of:
+- Apply `[GenerateSerializer]` to every class, record, or struct that crosses the grain boundary (method signatures or grain state).
+- Apply `[Id(N)]` to every property/field, zero-indexed, never skip or reuse IDs.
+- For **polymorphic hierarchies** (abstract record bases with multiple subtypes), add `[DerivedType(N, typeof(ConcreteSubtype))]` to the abstract base so Orleans can deserialize the correct concrete type. Never skip a `[DerivedType]` index — it corrupts serialized data.
 
-1. A `[GenerateSerializer]` struct named `{Type}Surrogate` with an `[Id(N)]` attribute on each property (zero-indexed, never reuse or skip an ID).
+**Surrogate pairs are only for foreign types** — types defined in third-party packages or the BCL that you cannot annotate directly. If you find yourself writing a surrogate for a type you own, stop and annotate the type directly instead.
+
+A surrogate pair (only for foreign types) consists of:
+
+1. A `[GenerateSerializer]` struct named `{Type}Surrogate` with an `[Id(N)]` attribute on each property.
 2. A `[RegisterConverter]` `sealed class` named `{Type}Converter` implementing `IConverter<TDomain, TSurrogate>` with `ConvertFromSurrogate` and `ConvertToSurrogate` methods.
-
-Types defined in `Spx.Contracts` itself (not in `Spx.Game.Domain`) use `[GenerateSerializer]` directly and do not need a surrogate.
 
 ## Grain Observer Subscription Lifecycle
 

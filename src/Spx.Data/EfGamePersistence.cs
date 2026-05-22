@@ -491,4 +491,18 @@ internal sealed partial class EfGamePersistence(
         Message = "A uniqueness constraint blocked joining the game."
     )]
     private partial void LogJoinGameConflict(Exception exception);
+
+    public async Task<IReadOnlyList<GamePlayerView>> GetActivePlayersAsync(
+        Guid gameId,
+        CancellationToken cancellationToken
+    )
+    {
+        await using var dbContext = await contextFactory.CreateDbContextAsync(cancellationToken);
+        return await dbContext
+            .GamePlayers.AsNoTracking()
+            .Where(entry => entry.GameId == gameId && entry.LeftAtUtc == null)
+            .OrderBy(entry => entry.JoinedAtUtc)
+            .Select(entry => new GamePlayerView(entry.Id, entry.Name, entry.JoinedAtUtc))
+            .ToListAsync(cancellationToken);
+    }
 }

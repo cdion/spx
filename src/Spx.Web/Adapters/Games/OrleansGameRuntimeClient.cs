@@ -8,7 +8,6 @@ namespace Spx.Web.Adapters.Games;
 
 public sealed partial class OrleansGameRuntimeClient(
     IClusterClient clusterClient,
-    IServiceScopeFactory scopeFactory,
     ILogger<OrleansGameRuntimeClient> logger
 )
     : IGameLobbyInvalidationPublisher,
@@ -118,7 +117,7 @@ public sealed partial class OrleansGameRuntimeClient(
             await clusterClient
                 .GetGrain<IGameSessionGrain>(gameId)
                 .InitializeAsync(
-                    new InitializeGameSessionCommand(
+                    new InitializeNexusGameCommand(
                         new GameSessionParticipant(players[0].PlayerId),
                         new GameSessionParticipant(players[1].PlayerId)
                     )
@@ -137,7 +136,7 @@ public sealed partial class OrleansGameRuntimeClient(
         }
     }
 
-    public async Task<GameSessionView?> GetSessionAsync(
+    public async Task<NexusGameView?> GetSessionAsync(
         Guid gameId,
         Guid playerId,
         CancellationToken cancellationToken = default
@@ -145,10 +144,7 @@ public sealed partial class OrleansGameRuntimeClient(
     {
         try
         {
-            await TryPersistPendingGameplayEventBatchesAsync(gameId, cancellationToken);
-            return await clusterClient
-                .GetGrain<IGameSessionGrain>(gameId)
-                .GetPlayerViewAsync(new GetGameSessionQuery(playerId));
+            return await clusterClient.GetGrain<IGameSessionGrain>(gameId).GetViewAsync(playerId);
         }
         catch (OrleansException exception)
         {
@@ -162,9 +158,9 @@ public sealed partial class OrleansGameRuntimeClient(
         }
     }
 
-    public async Task<GameSessionCommandOutcome> SubmitAcquireAsync(
+    public async Task<GameSessionCommandOutcome> SubmitOrdersAsync(
         Guid gameId,
-        SubmitAcquireCommand command,
+        NexusTurnOrdersCommand command,
         CancellationToken cancellationToken = default
     )
     {
@@ -172,42 +168,25 @@ public sealed partial class OrleansGameRuntimeClient(
         {
             var result = await clusterClient
                 .GetGrain<IGameSessionGrain>(gameId)
-                .SubmitAcquireAsync(command);
-            return MapSessionCommandResult(gameId, command.PlayerId, result);
-        }
-        catch (OrleansException exception)
-        {
-            LogSubmitAcquireFailed(logger, exception, gameId, command.PlayerId);
-            throw;
-        }
-        catch (TimeoutException exception)
-        {
-            LogSubmitAcquireFailed(logger, exception, gameId, command.PlayerId);
-            throw;
-        }
-    }
+                .SubmitOrdersAsync(command);
 
-    public async Task<GameSessionCommandOutcome> SubmitPlayBatchAsync(
-        Guid gameId,
-        SubmitPlayBatchCommand command,
-        CancellationToken cancellationToken = default
-    )
-    {
-        try
-        {
-            var result = await clusterClient
-                .GetGrain<IGameSessionGrain>(gameId)
-                .SubmitPlayBatchAsync(command);
-            return MapSessionCommandResult(gameId, command.PlayerId, result);
+            if (result is NexusTurnOrdersRejected rejected)
+            {
+                LogSubmitOrdersRejected(logger, gameId, command.PlayerId, rejected.ErrorMessage);
+                return new GameSessionCommandFailed(rejected.ErrorMessage);
+            }
+
+            var view = await GetSessionAsync(gameId, command.PlayerId, cancellationToken);
+            return new GameSessionCommandSucceeded(view!);
         }
         catch (OrleansException exception)
         {
-            LogSubmitPlayBatchFailed(logger, exception, gameId, command.PlayerId);
+            LogSubmitOrdersFailed(logger, exception, gameId, command.PlayerId);
             throw;
         }
         catch (TimeoutException exception)
         {
-            LogSubmitPlayBatchFailed(logger, exception, gameId, command.PlayerId);
+            LogSubmitOrdersFailed(logger, exception, gameId, command.PlayerId);
             throw;
         }
     }
@@ -218,108 +197,7 @@ public sealed partial class OrleansGameRuntimeClient(
         CancellationToken cancellationToken = default
     )
     {
-        await clusterClient
-            .GetGrain<IGameSessionGrain>(gameId)
-            .AbandonAsync(new AbandonGameSessionCommand(playerId));
-    }
-
-    public Task AcknowledgeGameplayEventBatchAsync(
-        Guid gameId,
-        Guid gameplayEventBatchId,
-        CancellationToken cancellationToken = default
-    ) =>
-        clusterClient
-            .GetGrain<IGameSessionGrain>(gameId)
-            .AcknowledgeGameplayEventBatchesAsync(
-                new AcknowledgeGameplayEventBatchesGrainCommand([gameplayEventBatchId])
-            );
-
-    private GameSessionCommandOutcome MapSessionCommandResult(
-        Guid gameId,
-        Guid playerId,
-        GameSessionGrainCommandResult result
-    ) =>
-        result switch
-        {
-            GameSessionGrainCommandSucceededResult succeeded => new GameSessionCommandSucceeded(
-                succeeded.Session,
-                succeeded.GameplayEvents,
-                succeeded.PendingGameplayEventBatchId
-            ),
-            GameSessionGrainCommandRejectedResult rejected => LogRejectedCommand(
-                gameId,
-                playerId,
-                rejected
-            ),
-            _ => throw new InvalidOperationException("Unknown game session command result type."),
-        };
-
-    private GameSessionCommandFailed LogRejectedCommand(
-        Guid gameId,
-        Guid playerId,
-        GameSessionGrainCommandRejectedResult rejected
-    )
-    {
-        LogGameCommandRejected(logger, gameId, playerId, rejected.ErrorMessage);
-        return new GameSessionCommandFailed(rejected.ErrorMessage);
-    }
-
-    private async Task TryPersistPendingGameplayEventBatchesAsync(
-        Guid gameId,
-        CancellationToken cancellationToken
-    )
-    {
-        var grain = clusterClient.GetGrain<IGameSessionGrain>(gameId);
-        var batches = await grain.GetPendingGameplayEventBatchesAsync();
-        if (batches.Count == 0)
-        {
-            return;
-        }
-
-        await using var scope = scopeFactory.CreateAsyncScope();
-        var gameplayEventMessageWriter =
-            scope.ServiceProvider.GetRequiredService<IGameplayEventMessageWriter>();
-        var acknowledgedBatchIds = new List<Guid>(batches.Count);
-        var persistedGameplayMessageCount = 0;
-
-        foreach (var batch in batches)
-        {
-            try
-            {
-                persistedGameplayMessageCount +=
-                    await gameplayEventMessageWriter.PersistResolvedBatchAsync(
-                        batch.GameId,
-                        batch.LastResolvedBatch,
-                        batch.Completion,
-                        batch.GameplayEvents,
-                        cancellationToken
-                    );
-                acknowledgedBatchIds.Add(batch.BatchId);
-            }
-            catch (Exception exception)
-            {
-                LogPersistPendingBatchFailed(logger, exception, batch.BatchId, gameId);
-            }
-        }
-
-        if (acknowledgedBatchIds.Count > 0)
-        {
-            try
-            {
-                await grain.AcknowledgeGameplayEventBatchesAsync(
-                    new AcknowledgeGameplayEventBatchesGrainCommand(acknowledgedBatchIds)
-                );
-            }
-            catch (Exception exception)
-            {
-                LogAcknowledgePendingBatchesFailed(logger, exception, gameId);
-            }
-        }
-
-        if (persistedGameplayMessageCount > 0)
-        {
-            await PublishMessagesInvalidatedAsync(gameId, cancellationToken);
-        }
+        await clusterClient.GetGrain<IGameSessionGrain>(gameId).AbandonAsync(playerId);
     }
 
     [LoggerMessage(
@@ -384,32 +262,10 @@ public sealed partial class OrleansGameRuntimeClient(
     );
 
     [LoggerMessage(
-        Level = LogLevel.Warning,
-        Message = "Failed to submit acquire choice for game {GameId} player {PlayerId}."
-    )]
-    private static partial void LogSubmitAcquireFailed(
-        ILogger logger,
-        Exception exception,
-        Guid gameId,
-        Guid playerId
-    );
-
-    [LoggerMessage(
-        Level = LogLevel.Warning,
-        Message = "Failed to submit play batch for game {GameId} player {PlayerId}."
-    )]
-    private static partial void LogSubmitPlayBatchFailed(
-        ILogger logger,
-        Exception exception,
-        Guid gameId,
-        Guid playerId
-    );
-
-    [LoggerMessage(
         Level = LogLevel.Information,
-        Message = "Gameplay command was rejected for game {GameId} player {PlayerId}: {ErrorMessage}"
+        Message = "Orders rejected for game {GameId} player {PlayerId}: {ErrorMessage}"
     )]
-    private static partial void LogGameCommandRejected(
+    private static partial void LogSubmitOrdersRejected(
         ILogger logger,
         Guid gameId,
         Guid playerId,
@@ -418,22 +274,12 @@ public sealed partial class OrleansGameRuntimeClient(
 
     [LoggerMessage(
         Level = LogLevel.Warning,
-        Message = "Failed to persist pending gameplay event batch {BatchId} for game {GameId}."
+        Message = "Failed to submit orders for game {GameId} player {PlayerId}."
     )]
-    private static partial void LogPersistPendingBatchFailed(
+    private static partial void LogSubmitOrdersFailed(
         ILogger logger,
         Exception exception,
-        Guid batchId,
-        Guid gameId
-    );
-
-    [LoggerMessage(
-        Level = LogLevel.Warning,
-        Message = "Failed to acknowledge persisted gameplay event batches for game {GameId}."
-    )]
-    private static partial void LogAcknowledgePendingBatchesFailed(
-        ILogger logger,
-        Exception exception,
-        Guid gameId
+        Guid gameId,
+        Guid playerId
     );
 }

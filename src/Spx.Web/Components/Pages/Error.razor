@@ -1,9 +1,10 @@
-﻿@page "/Error"
+@page "/Error"
 @using System.Diagnostics
 
 <PageTitle>Error</PageTitle>
 
-<div class="mx-auto max-w-3xl space-y-5 rounded-3xl border border-red-400/25 bg-red-500/10 p-8 text-slate-100 shadow-2xl shadow-slate-950/40">
+<div
+    class="mx-auto max-w-3xl space-y-5 rounded-3xl border border-red-400/25 bg-red-500/10 p-8 text-slate-100 shadow-2xl shadow-slate-950/40">
     <h1 class="text-3xl font-semibold tracking-tight text-red-100">Error</h1>
     <h2 class="text-lg text-red-200">An error occurred while processing your request.</h2>
 
@@ -17,17 +18,20 @@
 
     <h3 class="text-xl font-semibold text-white">Development Mode</h3>
     <p class="leading-7 text-slate-300">
-        Swapping to <strong class="text-white">Development</strong> environment will display more detailed information about the error that occurred.
+        Swapping to <strong class="text-white">Development</strong> environment will display more detailed information
+        about the error that occurred.
     </p>
     <p class="leading-7 text-slate-300">
         <strong class="text-white">The Development environment shouldn't be enabled for deployed applications.</strong>
         It can result in displaying sensitive information from exceptions to end users.
-        For local debugging, enable the <strong class="text-white">Development</strong> environment by setting the <strong class="text-white">ASPNETCORE_ENVIRONMENT</strong> environment variable to <strong class="text-white">Development</strong>
+        For local debugging, enable the <strong class="text-white">Development</strong> environment by setting the
+        <strong class="text-white">ASPNETCORE_ENVIRONMENT</strong> environment variable to <strong
+        class="text-white">Development</strong>
         and restarting the app.
     </p>
 </div>
 
-@code{
+@code {
     [CascadingParameter]
     private HttpContext? HttpContext { get; set; }
 

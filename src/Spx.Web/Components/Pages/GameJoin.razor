@@ -7,40 +7,32 @@
 
 <PageTitle>Join Game</PageTitle>
 
-<FormPage Eyebrow="Lobby" Title="Join a game" Description="Enter the invite code and the player name you want to use inside that game.">
-            @if (!string.IsNullOrWhiteSpace(errorMessage))
-            {
-                <AlertBanner>@errorMessage</AlertBanner>
-            }
+<FormPage Eyebrow="Lobby" Title="Join a game"
+          Description="Enter the invite code and the player name you want to use inside that game.">
+    @if (!string.IsNullOrWhiteSpace(errorMessage))
+    {
+        <AlertBanner>@errorMessage</AlertBanner>
+    }
 
-            <div class="ui-field">
-                <label class="ui-label" for="invite-code">Invite code</label>
-                <input id="invite-code"
-                       class="ui-input uppercase tracking-[0.35em]"
-                       maxlength="6"
-                       placeholder="ABC123"
-                       @bind="inviteCode" />
-            </div>
+    <div class="ui-field">
+        <label class="ui-label" for="invite-code">Invite code</label>
+        <input id="invite-code" class="ui-input uppercase tracking-[0.35em]" maxlength="6" placeholder="ABC123"
+               @bind="inviteCode" />
+    </div>
 
-            <div class="ui-field">
-                <label class="ui-label" for="join-player-name">Player name</label>
-                <input id="join-player-name"
-                       class="ui-input"
-                       maxlength="40"
-                       placeholder="Captain Blue"
-                       @bind="playerName" />
-            </div>
+    <div class="ui-field">
+        <label class="ui-label" for="join-player-name">Player name</label>
+        <input id="join-player-name" class="ui-input" maxlength="40" placeholder="Captain Blue" @bind="playerName" />
+    </div>
 
-            <div class="ui-actions">
-                <button class="ui-button-primary"
-                        @onclick="JoinGameAsync"
-                        disabled="@isSubmitting">
-                    @(isSubmitting ? "Joining game..." : "Join game")
-                </button>
-                <a class="ui-button-secondary" href="/games">
-                    Cancel
-                </a>
-            </div>
+    <div class="ui-actions">
+        <button class="ui-button-primary" @onclick="JoinGameAsync" disabled="@isSubmitting">
+            @(isSubmitting ? "Joining game..." : "Join game")
+        </button>
+        <a class="ui-button-secondary" href="/games">
+            Cancel
+        </a>
+    </div>
 </FormPage>
 
 @code {

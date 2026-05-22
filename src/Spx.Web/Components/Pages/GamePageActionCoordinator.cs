@@ -1,20 +1,16 @@
-using Spx.Contracts;
 using Spx.Game.Application;
 using Spx.Game.Application.Features.LeaveGame;
-using Spx.Game.Application.Features.SubmitAcquireCard;
-using Spx.Game.Application.Features.SubmitPlayBatch;
+using Spx.Game.Application.Features.SubmitOrders;
+using Spx.Game.Domain;
 
 namespace Spx.Web.Components.Pages;
 
 internal sealed partial class GamePageActionCoordinator(
     ILeaveGameHandler leaveGameHandler,
-    ISubmitAcquireCardHandler submitAcquireCardHandler,
-    ISubmitPlayBatchHandler submitPlayBatchHandler,
-    IGameplayEventMessageFormatter gameplayEventMessageFormatter,
+    ISubmitOrdersHandler submitOrdersHandler,
     ILogger<GamePageActionCoordinator> logger,
     GamePageDataState data,
-    GamePageActionState actions,
-    GameTimelineState timeline
+    GamePageActionState actions
 )
 {
     public async Task<bool> LeaveGameAsync(
@@ -54,10 +50,9 @@ internal sealed partial class GamePageActionCoordinator(
         }
     }
 
-    public async Task AcquireCardAsync(
+    public async Task SubmitOrdersAsync(
         Guid gameId,
-        Guid playerId,
-        Guid marketCardInstanceId,
+        NexusTurnOrdersCommand command,
         CancellationToken cancellationToken = default
     )
     {
@@ -77,13 +72,7 @@ internal sealed partial class GamePageActionCoordinator(
 
         try
         {
-            var result = await submitAcquireCardHandler.HandleAsync(
-                gameId,
-                playerId,
-                session.RoundNumber,
-                marketCardInstanceId,
-                cancellationToken
-            );
+            var result = await submitOrdersHandler.HandleAsync(gameId, command, cancellationToken);
             if (result is not GameSessionCommandSucceeded succeeded)
             {
                 data.SetGameplayError(((GameSessionCommandFailed)result).ErrorMessage);
@@ -94,97 +83,13 @@ internal sealed partial class GamePageActionCoordinator(
         }
         catch (Exception exception)
         {
-            LogAcquireCardFailed(logger, exception, gameId, playerId);
-            data.SetGameplayError(
-                "We couldn't lock your acquire choice right now. Please try again."
-            );
+            LogSubmitOrdersFailed(logger, exception, gameId, command.PlayerId);
+            data.SetGameplayError("We couldn't submit your orders right now. Please try again.");
         }
         finally
         {
             actions.CompleteGameplayAction();
         }
-    }
-
-    public async Task LockBatchAsync(
-        Guid gameId,
-        Guid playerId,
-        IReadOnlyList<GameBatchCardCommand> cards,
-        CancellationToken cancellationToken = default
-    )
-    {
-        var lobby = data.Lobby;
-        var session = data.Session;
-        if (
-            lobby is null
-            || session is null
-            || !lobby.IsCurrentUserActive
-            || !actions.TryBeginGameplayAction()
-        )
-        {
-            return;
-        }
-
-        data.ClearGameplayError();
-
-        try
-        {
-            var result = await submitPlayBatchHandler.HandleAsync(
-                gameId,
-                playerId,
-                session.RoundNumber,
-                cards,
-                cancellationToken
-            );
-            if (result is not GameSessionCommandSucceeded succeeded)
-            {
-                data.SetGameplayError(((GameSessionCommandFailed)result).ErrorMessage);
-                return;
-            }
-
-            data.ApplySession(succeeded.Session);
-            AddImmediateGameplayEntries(lobby, succeeded.Session, succeeded.GameplayEvents);
-        }
-        catch (Exception exception)
-        {
-            LogLockBatchFailed(logger, exception, gameId, playerId);
-            data.SetGameplayError("We couldn't lock your play batch right now. Please try again.");
-        }
-        finally
-        {
-            actions.CompleteGameplayAction();
-        }
-    }
-
-    private void AddImmediateGameplayEntries(
-        GameLobbyView lobby,
-        GameSessionView updatedSession,
-        IReadOnlyList<GameplayEvent> gameplayEvents
-    )
-    {
-        if (updatedSession.LastResolvedBatch is null || gameplayEvents.Count == 0)
-        {
-            return;
-        }
-
-        var playerNames = lobby.Players.ToDictionary(
-            player => player.PlayerId,
-            player => player.Name
-        );
-        var messageBodies = gameplayEventMessageFormatter.CreateMessageBodies(
-            updatedSession.LastResolvedBatch,
-            updatedSession.Completion,
-            gameplayEvents,
-            playerNames
-        );
-        if (messageBodies.Count == 0)
-        {
-            return;
-        }
-
-        timeline.AddImmediateGameplayEntries(
-            messageBodies,
-            updatedSession.LastResolvedBatch.ResolvedAtUtc
-        );
     }
 
     [LoggerMessage(
@@ -200,20 +105,9 @@ internal sealed partial class GamePageActionCoordinator(
 
     [LoggerMessage(
         Level = LogLevel.Error,
-        Message = "Failed to submit an acquire choice for game {GameId} player {PlayerId}."
+        Message = "Failed to submit orders for game {GameId} player {PlayerId}."
     )]
-    private static partial void LogAcquireCardFailed(
-        ILogger logger,
-        Exception exception,
-        Guid gameId,
-        Guid playerId
-    );
-
-    [LoggerMessage(
-        Level = LogLevel.Error,
-        Message = "Failed to submit a play batch for game {GameId} player {PlayerId}."
-    )]
-    private static partial void LogLockBatchFailed(
+    private static partial void LogSubmitOrdersFailed(
         ILogger logger,
         Exception exception,
         Guid gameId,

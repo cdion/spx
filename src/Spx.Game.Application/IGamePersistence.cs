@@ -30,6 +30,11 @@ public interface IGamePersistence
     );
 
     Task<UserGamesView> GetUserGamesAsync(string userId, CancellationToken cancellationToken);
+
+    Task<IReadOnlyList<GamePlayerView>> GetActivePlayersAsync(
+        Guid gameId,
+        CancellationToken cancellationToken = default
+    );
 }
 
 public sealed record CreateGamePersistenceRequest(

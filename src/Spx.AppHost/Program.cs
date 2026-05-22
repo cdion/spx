@@ -16,7 +16,11 @@ var postgres = builder
 var appDb = postgres.AddDatabase("appdb");
 var orleansDb = postgres.AddDatabase("orleansdb");
 
-var orleans = builder.AddOrleans("cluster").WithClustering(redis);
+var orleans = builder
+    .AddOrleans("cluster")
+    .WithClustering(redis)
+    .WithServiceId("spx-local-service")
+    .WithClusterId("spx-local-cluster");
 
 var silo = builder
     .AddProject<Projects.Spx_Silo>("silo")

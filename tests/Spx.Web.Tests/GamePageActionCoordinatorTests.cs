@@ -1,9 +1,7 @@
 using Microsoft.Extensions.Logging.Abstractions;
-using Spx.Contracts;
 using Spx.Game.Application;
 using Spx.Game.Application.Features.LeaveGame;
-using Spx.Game.Application.Features.SubmitAcquireCard;
-using Spx.Game.Application.Features.SubmitPlayBatch;
+using Spx.Game.Application.Features.SubmitOrders;
 using Spx.Web.Components.Pages;
 using Xunit;
 
@@ -17,7 +15,6 @@ public sealed class GamePageActionCoordinatorTests
         var coordinator = CreateCoordinator(
             out var data,
             out var actions,
-            out _,
             leaveHandler: new StubLeaveGameHandler
             {
                 Result = new GameCommandSucceeded(Guid.NewGuid()),
@@ -37,7 +34,6 @@ public sealed class GamePageActionCoordinatorTests
         var coordinator = CreateCoordinator(
             out var data,
             out var actions,
-            out _,
             leaveHandler: new StubLeaveGameHandler
             {
                 Result = new GameCommandFailed("Cannot leave."),
@@ -52,7 +48,7 @@ public sealed class GamePageActionCoordinatorTests
     }
 
     [Fact]
-    public async Task AcquireCardAsync_updates_session_when_command_succeeds()
+    public async Task SubmitOrdersAsync_updates_session_when_command_succeeds()
     {
         var gameId = Guid.NewGuid();
         var initialSession = GamePageCoordinatorTestData.CreateSession(gameId, roundNumber: 2);
@@ -60,20 +56,22 @@ public sealed class GamePageActionCoordinatorTests
         var coordinator = CreateCoordinator(
             out var data,
             out var actions,
-            out _,
             lobby: GamePageCoordinatorTestData.CreateLobby(gameId),
             session: initialSession,
-            acquireHandler: new StubSubmitAcquireCardHandler
+            submitOrdersHandler: new StubSubmitOrdersHandler
             {
                 Result = new GameSessionCommandSucceeded(updatedSession),
             }
         );
 
-        await coordinator.AcquireCardAsync(
-            gameId,
+        var command = new NexusTurnOrdersCommand(
             GamePageCoordinatorTestData.CurrentPlayerId,
-            Guid.NewGuid()
+            2,
+            [],
+            false,
+            false
         );
+        await coordinator.SubmitOrdersAsync(gameId, command);
 
         Assert.Equal(updatedSession, data.Session);
         Assert.False(actions.IsSubmittingGameplayAction);
@@ -81,10 +79,38 @@ public sealed class GamePageActionCoordinatorTests
     }
 
     [Fact]
-    public async Task AcquireCardAsync_skips_handler_when_current_user_is_inactive()
+    public async Task SubmitOrdersAsync_sets_gameplay_error_when_command_fails()
     {
         var gameId = Guid.NewGuid();
-        var acquireHandler = new StubSubmitAcquireCardHandler
+        var coordinator = CreateCoordinator(
+            out var data,
+            out var actions,
+            lobby: GamePageCoordinatorTestData.CreateLobby(gameId),
+            session: GamePageCoordinatorTestData.CreateSession(gameId, roundNumber: 2),
+            submitOrdersHandler: new StubSubmitOrdersHandler
+            {
+                Result = new GameSessionCommandFailed("Orders rejected."),
+            }
+        );
+
+        var command = new NexusTurnOrdersCommand(
+            GamePageCoordinatorTestData.CurrentPlayerId,
+            2,
+            [],
+            false,
+            false
+        );
+        await coordinator.SubmitOrdersAsync(gameId, command);
+
+        Assert.Equal("Orders rejected.", data.GameplayError);
+        Assert.False(actions.IsSubmittingGameplayAction);
+    }
+
+    [Fact]
+    public async Task SubmitOrdersAsync_skips_handler_when_current_user_is_inactive()
+    {
+        var gameId = Guid.NewGuid();
+        var submitHandler = new StubSubmitOrdersHandler
         {
             Result = new GameSessionCommandSucceeded(
                 GamePageCoordinatorTestData.CreateSession(gameId, roundNumber: 3)
@@ -93,109 +119,35 @@ public sealed class GamePageActionCoordinatorTests
         var coordinator = CreateCoordinator(
             out var data,
             out _,
-            out _,
             lobby: GamePageCoordinatorTestData.CreateLobby(gameId, isCurrentUserActive: false),
             session: GamePageCoordinatorTestData.CreateSession(gameId, roundNumber: 2),
-            acquireHandler: acquireHandler
+            submitOrdersHandler: submitHandler
         );
 
-        await coordinator.AcquireCardAsync(
-            gameId,
+        var command = new NexusTurnOrdersCommand(
             GamePageCoordinatorTestData.CurrentPlayerId,
-            Guid.NewGuid()
+            2,
+            [],
+            false,
+            false
         );
+        await coordinator.SubmitOrdersAsync(gameId, command);
 
-        Assert.Equal(0, acquireHandler.CallCount);
+        Assert.Equal(0, submitHandler.CallCount);
         Assert.Equal(2, data.Session!.RoundNumber);
-    }
-
-    [Fact]
-    public async Task LockBatchAsync_sets_gameplay_error_when_command_fails()
-    {
-        var gameId = Guid.NewGuid();
-        var coordinator = CreateCoordinator(
-            out var data,
-            out var actions,
-            out _,
-            lobby: GamePageCoordinatorTestData.CreateLobby(gameId),
-            session: GamePageCoordinatorTestData.CreateSession(gameId, roundNumber: 2),
-            playBatchHandler: new StubSubmitPlayBatchHandler
-            {
-                Result = new GameSessionCommandFailed("Batch rejected."),
-            }
-        );
-
-        await coordinator.LockBatchAsync(
-            gameId,
-            GamePageCoordinatorTestData.CurrentPlayerId,
-            GamePageCoordinatorTestData.CreateBatchSelection()
-        );
-
-        Assert.Equal("Batch rejected.", data.GameplayError);
-        Assert.False(actions.IsSubmittingGameplayAction);
-    }
-
-    [Fact]
-    public async Task LockBatchAsync_updates_session_and_adds_immediate_gameplay_entries()
-    {
-        var gameId = Guid.NewGuid();
-        var resolvedAtUtc = new DateTime(2026, 5, 17, 12, 0, 0, DateTimeKind.Utc);
-        var updatedSession = GamePageCoordinatorTestData.CreateSession(
-            gameId,
-            roundNumber: 3,
-            lastResolvedBatch: GamePageCoordinatorTestData.CreateResolvedBatch(3, resolvedAtUtc)
-        );
-        var formatter = new StubGameplayEventMessageFormatter
-        {
-            Result = ["Captain Red resolved Extract."],
-        };
-        var coordinator = CreateCoordinator(
-            out var data,
-            out var actions,
-            out var timeline,
-            lobby: GamePageCoordinatorTestData.CreateLobby(gameId),
-            session: GamePageCoordinatorTestData.CreateSession(gameId, roundNumber: 2),
-            playBatchHandler: new StubSubmitPlayBatchHandler
-            {
-                Result = new GameSessionCommandSucceeded(
-                    updatedSession,
-                    [GamePageCoordinatorTestData.CreateGameplayEvent()]
-                ),
-            },
-            formatter: formatter
-        );
-
-        await coordinator.LockBatchAsync(
-            gameId,
-            GamePageCoordinatorTestData.CurrentPlayerId,
-            GamePageCoordinatorTestData.CreateBatchSelection()
-        );
-
-        Assert.Equal(updatedSession, data.Session);
-        Assert.False(actions.IsSubmittingGameplayAction);
-        Assert.True(timeline.ShouldScrollTimelineToBottom);
-        var localEntry = Assert.Single(timeline.Items);
-        Assert.Equal("Captain Red resolved Extract.", localEntry.Local?.Body);
-        Assert.Equal(GameMessageKind.GameplayEvent, localEntry.Local?.Kind);
-        Assert.Equal(resolvedAtUtc, localEntry.Local?.CreatedAtUtc);
-        Assert.Equal(1, formatter.CallCount);
     }
 
     private static GamePageActionCoordinator CreateCoordinator(
         out GamePageDataState data,
         out GamePageActionState actions,
-        out GameTimelineState timeline,
         GameLobbyView? lobby = null,
-        GameSessionView? session = null,
+        NexusGameView? session = null,
         StubLeaveGameHandler? leaveHandler = null,
-        StubSubmitAcquireCardHandler? acquireHandler = null,
-        StubSubmitPlayBatchHandler? playBatchHandler = null,
-        StubGameplayEventMessageFormatter? formatter = null
+        StubSubmitOrdersHandler? submitOrdersHandler = null
     )
     {
         data = new GamePageDataState();
         actions = new GamePageActionState();
-        timeline = new GameTimelineState();
 
         if (lobby is not null || session is not null)
         {
@@ -211,25 +163,16 @@ public sealed class GamePageActionCoordinatorTests
         return new GamePageActionCoordinator(
             leaveHandler
                 ?? new StubLeaveGameHandler { Result = new GameCommandSucceeded(Guid.NewGuid()) },
-            acquireHandler
-                ?? new StubSubmitAcquireCardHandler
+            submitOrdersHandler
+                ?? new StubSubmitOrdersHandler
                 {
                     Result = new GameSessionCommandSucceeded(
                         session ?? GamePageCoordinatorTestData.CreateSession(Guid.NewGuid())
                     ),
                 },
-            playBatchHandler
-                ?? new StubSubmitPlayBatchHandler
-                {
-                    Result = new GameSessionCommandSucceeded(
-                        session ?? GamePageCoordinatorTestData.CreateSession(Guid.NewGuid())
-                    ),
-                },
-            formatter ?? new StubGameplayEventMessageFormatter(),
             NullLogger<GamePageActionCoordinator>.Instance,
             data,
-            actions,
-            timeline
+            actions
         );
     }
 
@@ -254,7 +197,7 @@ public sealed class GamePageActionCoordinatorTests
         }
     }
 
-    private sealed class StubSubmitAcquireCardHandler : ISubmitAcquireCardHandler
+    private sealed class StubSubmitOrdersHandler : ISubmitOrdersHandler
     {
         public GameSessionCommandOutcome Result { get; init; } =
             new GameSessionCommandFailed("No result configured.");
@@ -265,9 +208,7 @@ public sealed class GamePageActionCoordinatorTests
 
         public Task<GameSessionCommandOutcome> HandleAsync(
             Guid gameId,
-            Guid playerId,
-            int expectedRoundNumber,
-            Guid marketCardInstanceId,
+            NexusTurnOrdersCommand command,
             CancellationToken cancellationToken = default
         )
         {
@@ -275,48 +216,6 @@ public sealed class GamePageActionCoordinatorTests
             return Exception is null
                 ? Task.FromResult(Result)
                 : Task.FromException<GameSessionCommandOutcome>(Exception);
-        }
-    }
-
-    private sealed class StubSubmitPlayBatchHandler : ISubmitPlayBatchHandler
-    {
-        public GameSessionCommandOutcome Result { get; init; } =
-            new GameSessionCommandFailed("No result configured.");
-
-        public Exception? Exception { get; init; }
-
-        public int CallCount { get; private set; }
-
-        public Task<GameSessionCommandOutcome> HandleAsync(
-            Guid gameId,
-            Guid playerId,
-            int expectedRoundNumber,
-            IReadOnlyList<GameBatchCardCommand> cards,
-            CancellationToken cancellationToken = default
-        )
-        {
-            CallCount++;
-            return Exception is null
-                ? Task.FromResult(Result)
-                : Task.FromException<GameSessionCommandOutcome>(Exception);
-        }
-    }
-
-    private sealed class StubGameplayEventMessageFormatter : IGameplayEventMessageFormatter
-    {
-        public IReadOnlyList<string> Result { get; init; } = [];
-
-        public int CallCount { get; private set; }
-
-        public IReadOnlyList<string> CreateMessageBodies(
-            GameResolvedBatchView? lastResolvedBatch,
-            GameCompletionView? completion,
-            IReadOnlyList<GameplayEvent> gameplayEvents,
-            IReadOnlyDictionary<Guid, string> playerNames
-        )
-        {
-            CallCount++;
-            return Result;
         }
     }
 }
