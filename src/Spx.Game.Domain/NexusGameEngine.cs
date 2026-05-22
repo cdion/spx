@@ -946,6 +946,19 @@ public static class NexusGameEngine
             var hexDef = NexusMap.ByCoord[hexState.Coord];
             if (hexDef.Color == NexusColonyColor.None)
                 continue;
+
+            // Opposing-color colonies generate nothing — only deny opponent income.
+            // Gold is neutral: either player earns it.
+            if (hexDef.Color != NexusColonyColor.Gold)
+            {
+                var ownerColor =
+                    hexState.ColonyOwnerId == redPlayerId
+                        ? NexusColonyColor.Red
+                        : NexusColonyColor.Blue;
+                if (hexDef.Color != ownerColor)
+                    continue;
+            }
+
             var amount = hexDef.IsHome ? 2 : 1;
             acc.Apply(hexState.ColonyOwnerId.Value, redPlayerId, hexDef.Color, amount);
         }

@@ -485,4 +485,60 @@ public class NexusGameEngineTests
         Assert.Equal(NexusGameOutcome.Victory, state.Completion!.Outcome);
         Assert.Equal(red.PlayerId, state.Completion.WinnerId);
     }
+
+    [Fact]
+    public void Resolve_OpposingColorColony_GeneratesNoDirectIncomeForOwner()
+    {
+        // Red colonizes a Blue hex that is isolated from Blue's fleet positions so no trade
+        // route forms — confirms that base income from an opposing-color colony is zero.
+        var state = MakeInitializedState();
+        var red = state.RedPlayer!;
+        var blue = state.BluePlayer!;
+
+        // (1,1) is a Blue hex far from both home hexes (distance 3 from Red home, 4 from Blue home)
+        // so no trade route can form with either player's starting fleets
+        var blueHex = state.Hexes.First(h => h.Coord == new HexCoord(1, 1));
+        blueHex.ColonyOwnerId = red.PlayerId;
+
+        NexusGameEngine.SubmitOrders(
+            state,
+            new NexusTurnOrdersCommand(red.PlayerId, 1, [], false, false)
+        );
+        NexusGameEngine.SubmitOrders(
+            state,
+            new NexusTurnOrdersCommand(blue.PlayerId, 1, [], false, false)
+        );
+
+        // Red gets Red home income (+2 Red) only — no Blue credit from opposing-color colony
+        Assert.Equal(2, state.RedPlayer!.RedCredits);
+        Assert.Equal(0, state.RedPlayer.BlueCredits);
+        // Blue gets Blue home income (+2 Blue) only — loses the denied colony income
+        Assert.Equal(2, state.BluePlayer!.BlueCredits);
+        Assert.Equal(0, state.BluePlayer.RedCredits);
+    }
+
+    [Fact]
+    public void Resolve_GoldColony_GeneratesGoldForAnyOwner()
+    {
+        // Gold hexes should generate Gold for whoever owns them
+        var state = MakeInitializedState();
+        var red = state.RedPlayer!;
+        var blue = state.BluePlayer!;
+
+        var goldHex = state.Hexes.First(h =>
+            NexusMap.ByCoord[h.Coord].Color == NexusColonyColor.Gold
+        );
+        goldHex.ColonyOwnerId = red.PlayerId;
+
+        NexusGameEngine.SubmitOrders(
+            state,
+            new NexusTurnOrdersCommand(red.PlayerId, 1, [], false, false)
+        );
+        NexusGameEngine.SubmitOrders(
+            state,
+            new NexusTurnOrdersCommand(blue.PlayerId, 1, [], false, false)
+        );
+
+        Assert.Equal(1, state.RedPlayer!.GoldCredits);
+    }
 }
