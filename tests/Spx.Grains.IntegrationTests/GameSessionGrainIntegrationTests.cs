@@ -106,14 +106,21 @@ public sealed class GameSessionGrainIntegrationTests(OrleansClusterFixture fixtu
         Assert.NotNull(view);
 
         var currentPlayerId = view!.CurrentPlayer.PlayerId;
-        var fleet = view.Hexes.SelectMany(h => h.Fleets).First(f => f.OwnerId == currentPlayerId);
-        var destination = NexusGameViewQueries.GetValidMoveDestinations(view, fleet.FleetId)[0];
+        var currentFaction = view.CurrentPlayer.Faction;
+        var hexWithFleet = view.Hexes.First(h =>
+            (currentFaction == NexusFactionColor.Red ? h.RedFleetCount : h.BlueFleetCount) > 0
+        );
+        var destination = NexusGameViewQueries.GetValidMoveDestinations(
+            view,
+            currentPlayerId,
+            hexWithFleet.Coord
+        )[0];
 
         var result = await grain.SubmitOrdersAsync(
             new NexusTurnOrdersCommand(
                 currentPlayerId,
                 1,
-                [new NexusMoveOrder(fleet.FleetId, destination)],
+                [new NexusMoveOrder(hexWithFleet.Coord, destination, 1)],
                 false,
                 false
             )

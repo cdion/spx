@@ -22,6 +22,11 @@ internal sealed class SubmitOrdersHandler(
 
         if (outcome is GameSessionCommandSucceeded { Session: { } session })
         {
+            if (session.ResolveEvents.Length > 0)
+            {
+                await WriteResolveEventsAsync(gameId, session, cancellationToken);
+            }
+
             await sessionInvalidationPublisher.PublishSessionInvalidatedAsync(
                 gameId,
                 cancellationToken
@@ -29,7 +34,6 @@ internal sealed class SubmitOrdersHandler(
 
             if (session.ResolveEvents.Length > 0)
             {
-                await WriteResolveEventsAsync(gameId, session, cancellationToken);
                 await messageInvalidationPublisher.PublishMessagesInvalidatedAsync(
                     gameId,
                     cancellationToken

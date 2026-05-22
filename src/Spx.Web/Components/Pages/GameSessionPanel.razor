@@ -68,7 +68,7 @@
                 </p>
                 <div class="min-h-0 flex-1">
                     <NexusHexGridComponent Hexes="@Session.Hexes" TradeRoutes="@Session.ActiveTradeRoutes"
-                                           CurrentPlayerId="@Session.CurrentPlayer.PlayerId" SelectedFleetHex="@GetSelectedFleetHex()"
+                                           CurrentPlayerFaction="@Session.CurrentPlayer.Faction" SelectedFleetHex="@GetSelectedFleetHex()"
                                            ValidMoveTargets="@GetValidMoveTargets()" PendingOrders="@_pendingOrders"
                                            PlayerHomeHex="@GetPlayerHomeHex()" PendingBuildFleet="@_pendingBuildFleet"
                                            PendingBeginNexusGate="@_pendingBeginNexusGate" SelectionCycleLabel="@GetCycleLabel()"
@@ -148,7 +148,7 @@
                             </button>
                         </div>
 
-                        <NexusPendingOrdersListComponent Hexes="@Session.Hexes" Orders="@_pendingOrders" IsEditable
+                        <NexusPendingOrdersListComponent Orders="@_pendingOrders" IsEditable
                                                          OnRemoveOrder="RemoveOrder" />
 
                         <div class="flex flex-wrap gap-3">
@@ -197,7 +197,7 @@
     public EventCallback<NexusTurnOrdersCommand> OnSubmitOrders { get; set; }
 
     private HexCoord? _selectionHex;
-    private int _selectionCycleIndex = -1; // -1 = all my fleets on hex; ≥0 = specific fleet (stable sorted by FleetId)
+    private int _selectionCycleIndex = -1; // -1 = all my fleets on hex; ≥1 = specific count
     private bool _pendingBuildFleet;
     private bool _pendingBeginNexusGate;
     private readonly List<NexusFleetOrder> _pendingOrders = [];
@@ -266,8 +266,16 @@
         _playbackCts?.Dispose();
     }
 
-    private int GetPlayerFleetCount(Guid playerId) =>
-        Session?.Hexes.Sum(h => h.Fleets.Count(f => f.OwnerId == playerId)) ?? 0;
+    private int GetPlayerFleetCount(Guid playerId)
+    {
+        if (Session is null) return 0;
+        var faction = Session.CurrentPlayer.PlayerId == playerId
+            ? Session.CurrentPlayer.Faction
+            : Session.OpponentPlayer.Faction;
+        return Session.Hexes.Sum(h =>
+            faction == NexusFactionColor.Red ? h.RedFleetCount : h.BlueFleetCount
+        );
+    }
 
     private bool ShowOrdersForm =>
         Lobby.IsCurrentUserActive
@@ -294,27 +302,29 @@
 
     private HexCoord? GetSelectedFleetHex() => _selectionHex;
 
-    private IReadOnlyList<Guid> GetSelectedFleetIds()
+    private int GetMyFleetCountOnHex(NexusHexView hex) =>
+        Session?.CurrentPlayer.Faction == NexusFactionColor.Red
+            ? hex.RedFleetCount
+            : hex.BlueFleetCount;
+
+    private int GetSelectedCount()
     {
-        if (_selectionHex is null || Session is null) return [];
+        if (_selectionHex is null || Session is null) return 0;
         var hex = Session.Hexes.FirstOrDefault(h => h.Coord == _selectionHex);
-        if (hex is null) return [];
-        var myFleets = hex.Fleets
-            .Where(f => f.OwnerId == Session.CurrentPlayer.PlayerId)
-            .OrderBy(f => f.FleetId)
-            .ToList();
-        if (_selectionCycleIndex < 0) return myFleets.Select(f => f.FleetId).ToList();
-        if (_selectionCycleIndex < myFleets.Count) return [myFleets[_selectionCycleIndex].FleetId];
-        return [];
+        if (hex is null) return 0;
+        var total = GetMyFleetCountOnHex(hex);
+        if (total == 0) return 0;
+        return _selectionCycleIndex < 0 ? total : Math.Min(_selectionCycleIndex, total);
     }
 
     private IReadOnlyList<HexCoord> GetValidMoveTargets()
     {
         if (_selectionHex is null || Session is null) return [];
-        return GetSelectedFleetIds()
-            .SelectMany(id => NexusGameViewQueries.GetValidMoveDestinations(Session, id))
-            .Distinct()
-            .ToList();
+        return NexusGameViewQueries.GetValidMoveDestinations(
+            Session,
+            Session.CurrentPlayer.PlayerId,
+            _selectionHex.Value
+        );
     }
 
     private HexCoord? GetPlayerHomeHex() =>
@@ -325,19 +335,19 @@
         if (_selectionHex is null || Session is null) return null;
         var hex = Session.Hexes.FirstOrDefault(h => h.Coord == _selectionHex);
         if (hex is null) return null;
-        var count = hex.Fleets.Count(f => f.OwnerId == Session.CurrentPlayer.PlayerId);
+        var count = GetMyFleetCountOnHex(hex);
         if (count <= 1) return null;
-        return _selectionCycleIndex < 0 ? $"×{count}" : $"{_selectionCycleIndex + 1}/{count}";
+        return _selectionCycleIndex < 0 ? $"×{count}" : $"{_selectionCycleIndex}/{count}";
     }
 
     private string GetSelectionHint()
     {
         if (_selectionHex is null) return string.Empty;
-        var ids = GetSelectedFleetIds();
-        if (ids.Count == 0) return string.Empty;
-        if (ids.Count > 1)
-            return $"×{ids.Count} fleets — click destination to move all, click hex again to cycle individually.";
-        return Session is not null && NexusGameViewQueries.CanColonize(Session, ids[0])
+        var count = GetSelectedCount();
+        if (count == 0) return string.Empty;
+        if (count > 1)
+            return $"×{count} fleets — click destination to move all, click hex again to select fewer.";
+        return NexusGameViewQueries.CanColonize(Session!, Session!.CurrentPlayer.PlayerId, _selectionHex.Value)
             ? "Fleet selected — click to move, or click hex again to colonize."
             : "Fleet selected — click to move, or click hex again to deselect.";
     }
@@ -349,31 +359,25 @@
         var hex = Session.Hexes.FirstOrDefault(h => h.Coord == coord);
         if (hex is null) return;
 
-        var myFleetsOnHex = hex.Fleets
-            .Where(f => f.OwnerId == Session.CurrentPlayer.PlayerId)
-            .OrderBy(f => f.FleetId)
-            .ToList();
+        var myCountOnHex = GetMyFleetCountOnHex(hex);
 
         // ── Clicking the currently selected hex: cycle or colonize ─────────────────
         if (_selectionHex == coord)
         {
             if (_selectionCycleIndex < 0) // “all” selected
             {
-                if (myFleetsOnHex.Count > 0 &&
-                    NexusGameViewQueries.CanColonize(Session, myFleetsOnHex[0].FleetId))
+                if (myCountOnHex > 0 &&
+                    NexusGameViewQueries.CanColonize(Session, Session.CurrentPlayer.PlayerId, coord))
                 {
-                    foreach (var fleet in myFleetsOnHex)
-                    {
-                        _pendingOrders.RemoveAll(o => o.FleetId == fleet.FleetId);
-                        _pendingOrders.Add(new NexusColonizeOrder(fleet.FleetId));
-                    }
+                    _pendingOrders.RemoveAll(o => o.From == coord && o is NexusColonizeOrder);
+                    _pendingOrders.Add(new NexusColonizeOrder(coord));
                     _selectionHex = null;
                     return;
                 }
 
-                if (myFleetsOnHex.Count > 1)
+                if (myCountOnHex > 1)
                 {
-                    _selectionCycleIndex = 0;
+                    _selectionCycleIndex = myCountOnHex - 1;
                     return;
                 }
 
@@ -383,9 +387,9 @@
             }
             else
             {
-                if (_selectionCycleIndex < myFleetsOnHex.Count - 1)
+                if (_selectionCycleIndex > 1)
                 {
-                    _selectionCycleIndex++;
+                    _selectionCycleIndex--;
                     return;
                 }
 
@@ -396,7 +400,7 @@
         }
 
         // ── Different hex: fleet selection takes priority over move target ─────
-        if (myFleetsOnHex.Count > 0)
+        if (myCountOnHex > 0)
         {
             _selectionHex = coord;
             _selectionCycleIndex = -1;
@@ -409,11 +413,9 @@
             var validTargets = GetValidMoveTargets();
             if (validTargets.Contains(coord))
             {
-                foreach (var fleetId in GetSelectedFleetIds())
-                {
-                    _pendingOrders.RemoveAll(o => o.FleetId == fleetId);
-                    _pendingOrders.Add(new NexusMoveOrder(fleetId, coord));
-                }
+                var count = GetSelectedCount();
+                _pendingOrders.RemoveAll(o => o is NexusMoveOrder m && m.From == _selectionHex && m.To == coord);
+                _pendingOrders.Add(new NexusMoveOrder(_selectionHex.Value, coord, count));
             }
             _selectionHex = null;
             return;
@@ -433,7 +435,7 @@
             _pendingBeginNexusGate = !_pendingBeginNexusGate;
     }
 
-    private void RemoveOrder(Guid fleetId) => _pendingOrders.RemoveAll(o => o.FleetId == fleetId);
+    private void RemoveOrder(NexusFleetOrder order) => _pendingOrders.Remove(order);
 
     private string GetHeadline() =>
         Session switch

@@ -53,7 +53,7 @@ Resources are abstract colors. Each player is assigned a faction color at game s
 - One unit type: **Fleets** (uniform strength: 1 each)
 - Both players start with **2 fleets** on their home system
 - Multiple fleets may stack on one hex
-- New fleets built at home system only: **2 Red + 2 Blue + 2 Gold**; fleet appears the following turn
+- New fleets built at home system only: **2 [faction color] + 2 Gold**; fleet appears the following turn
 
 ---
 
@@ -92,7 +92,7 @@ Player-level orders (not fleet-specific):
 
 | Order | Effect |
 |---|---|
-| **Build fleet** | At home system only; costs 2 Red + 2 Blue + 2 Gold; at most one fleet may be built per turn; fleet appears at end of Resolve and can receive orders the following turn |
+| **Build fleet** | At home system only; costs 2 [faction color] + 2 Gold; at most one fleet may be built per turn; fleet appears at end of Resolve and can receive orders the following turn |
 | **Begin Nexus Gate** | Fleet must occupy the Nexus hex; commits resources toward construction |
 
 ---

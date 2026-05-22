@@ -8,23 +8,35 @@ namespace Spx.Game.Domain;
 public static class NexusGameViewQueries
 {
     /// <summary>
-    /// Returns the set of map hexes the given fleet may legally move to this turn.
-    /// Distance-1 (adjacent) moves are always included. Distance-2 moves are included
-    /// when the fleet is standing on an active trade-route endpoint it owns.
+    /// Returns the set of map hexes the given player may legally move a fleet FROM the
+    /// specified hex to this turn. Distance-1 (adjacent) moves are always included.
+    /// Distance-2 moves are included when the player has an active trade-route endpoint
+    /// at that hex.
     /// </summary>
-    public static IReadOnlyList<HexCoord> GetValidMoveDestinations(NexusGameView view, Guid fleetId)
+    public static IReadOnlyList<HexCoord> GetValidMoveDestinations(
+        NexusGameView view,
+        Guid playerId,
+        HexCoord fromHex
+    )
     {
-        var fleetHex = view.Hexes.FirstOrDefault(h => h.Fleets.Any(f => f.FleetId == fleetId));
-        if (fleetHex is null)
+        var hex = view.Hexes.FirstOrDefault(h => h.Coord == fromHex);
+        if (hex is null)
             return [];
 
-        var ownerId = fleetHex.Fleets.First(f => f.FleetId == fleetId).OwnerId;
+        var faction =
+            view.CurrentPlayer.PlayerId == playerId
+                ? view.CurrentPlayer.Faction
+                : view.OpponentPlayer.Faction;
+        var fleetCount = faction == NexusFactionColor.Red ? hex.RedFleetCount : hex.BlueFleetCount;
+        if (fleetCount == 0)
+            return [];
+
         var mapCoords = new HashSet<HexCoord>(view.Hexes.Select(h => h.Coord));
-        var targets = fleetHex.Coord.GetNeighbours().Where(n => mapCoords.Contains(n)).ToList();
+        var targets = fromHex.GetNeighbours().Where(n => mapCoords.Contains(n)).ToList();
 
         var hasSpeedBonus = view.ActiveTradeRoutes.Any(r =>
-            (r.Hex1 == fleetHex.Coord && r.Owner1 == ownerId)
-            || (r.Hex2 == fleetHex.Coord && r.Owner2 == ownerId)
+            (r.Hex1 == fromHex && r.Owner1 == playerId)
+            || (r.Hex2 == fromHex && r.Owner2 == playerId)
         );
 
         if (hasSpeedBonus)
@@ -33,7 +45,7 @@ public static class NexusGameViewQueries
             {
                 foreach (var twoAway in neighbour.GetNeighbours())
                 {
-                    if (mapCoords.Contains(twoAway) && twoAway != fleetHex.Coord)
+                    if (mapCoords.Contains(twoAway) && twoAway != fromHex)
                         targets.Add(twoAway);
                 }
             }
@@ -43,17 +55,15 @@ public static class NexusGameViewQueries
     }
 
     /// <summary>
-    /// Returns <see langword="true"/> when the fleet may issue a colonize order for
-    /// its current hex: the hex must not be the Nexus and must not already be owned
-    /// by the fleet's player.
+    /// Returns <see langword="true"/> when the player may issue a colonize order for the
+    /// given hex: the hex must not be the Nexus and must not already be owned by the player.
     /// </summary>
-    public static bool CanColonize(NexusGameView view, Guid fleetId)
+    public static bool CanColonize(NexusGameView view, Guid playerId, HexCoord fromHex)
     {
-        var fleetHex = view.Hexes.FirstOrDefault(h => h.Fleets.Any(f => f.FleetId == fleetId));
-        if (fleetHex is null)
+        var hex = view.Hexes.FirstOrDefault(h => h.Coord == fromHex);
+        if (hex is null)
             return false;
 
-        var ownerId = fleetHex.Fleets.First(f => f.FleetId == fleetId).OwnerId;
-        return !fleetHex.IsNexus && fleetHex.ColonyOwnerId != ownerId;
+        return !hex.IsNexus && hex.ColonyOwnerId != playerId;
     }
 }

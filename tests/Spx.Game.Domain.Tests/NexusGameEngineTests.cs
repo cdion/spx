@@ -138,22 +138,22 @@ public class NexusGameEngineTests
     public void Initialize_EachPlayerHasTwoFleets()
     {
         var state = MakeInitializedState();
-        Assert.Equal(2, state.Fleets.Count(f => f.OwnerId == state.RedPlayer!.PlayerId));
-        Assert.Equal(2, state.Fleets.Count(f => f.OwnerId == state.BluePlayer!.PlayerId));
+        var redHome = state.Hexes.First(h => h.Coord == NexusMap.RedHomeCoord);
+        var blueHome = state.Hexes.First(h => h.Coord == NexusMap.BlueHomeCoord);
+        Assert.Equal(2, redHome.RedFleets);
+        Assert.Equal(2, blueHome.BlueFleets);
     }
 
     [Fact]
     public void Initialize_FleetsAreAtHomeHex()
     {
         var state = MakeInitializedState();
-        Assert.All(
-            state.Fleets.Where(f => f.OwnerId == state.RedPlayer!.PlayerId),
-            f => Assert.Equal(NexusMap.RedHomeCoord, f.Position)
-        );
-        Assert.All(
-            state.Fleets.Where(f => f.OwnerId == state.BluePlayer!.PlayerId),
-            f => Assert.Equal(NexusMap.BlueHomeCoord, f.Position)
-        );
+        // All red fleets are on red home, all blue fleets are on blue home
+        // (verified by Initialize_EachPlayerHasTwoFleets; here we confirm no stray fleets)
+        var totalRedFleets = state.Hexes.Sum(h => h.RedFleets);
+        var totalBlueFleets = state.Hexes.Sum(h => h.BlueFleets);
+        Assert.Equal(2, totalRedFleets);
+        Assert.Equal(2, totalBlueFleets);
     }
 
     [Fact]
@@ -260,13 +260,12 @@ public class NexusGameEngineTests
         var blue = state.BluePlayer!;
 
         // Move a Red fleet to an adjacent unclaimed hex, then colonize next turn
-        var redFleet = state.Fleets.First(f => f.OwnerId == red.PlayerId);
         var target = new HexCoord(2, -1); // adjacent to Red home (2,-2)
 
         var moveCmd = new NexusTurnOrdersCommand(
             red.PlayerId,
             1,
-            [new NexusMoveOrder(redFleet.FleetId, target)],
+            [new NexusMoveOrder(NexusMap.RedHomeCoord, target, 1)],
             false,
             false
         );
@@ -276,14 +275,11 @@ public class NexusGameEngineTests
             new NexusTurnOrdersCommand(blue.PlayerId, 1, [], false, false)
         );
 
-        // Round 2: colonize
-        var fleetAtTarget = state.Fleets.First(f =>
-            f.OwnerId == red.PlayerId && f.Position == target
-        );
+        // Round 2: colonize from the target hex
         var colonizeCmd = new NexusTurnOrdersCommand(
             red.PlayerId,
             2,
-            [new NexusColonizeOrder(fleetAtTarget.FleetId)],
+            [new NexusColonizeOrder(target)],
             false,
             false
         );
@@ -304,35 +300,31 @@ public class NexusGameEngineTests
         var red = state.RedPlayer!;
         var blue = state.BluePlayer!;
 
-        // Give Red a 3rd fleet (simulate by adding directly)
-        var nexusHex = new HexCoord(1, 0); // valid map hex
-        state.Fleets.Add(
-            new NexusFleetState
-            {
-                FleetId = Guid.NewGuid(),
-                OwnerId = red.PlayerId,
-                Position = NexusMap.RedHomeCoord,
-            }
-        );
+        // Give Red a 3rd fleet by adding directly to hex
+        var redHome = state.Hexes.First(h => h.Coord == NexusMap.RedHomeCoord);
+        redHome.RedFleets++;
 
-        // Move all 3 Red fleets and 2 Blue fleets to (1,-1)
+        // Stage red from (1,0) adjacent to contestedHex, blue from (0,-1)
+        var redStaging = new HexCoord(1, 0);
+        var blueStaging = new HexCoord(0, -1);
         var contestedHex = new HexCoord(1, -1);
-        var redFleets = state.Fleets.Where(f => f.OwnerId == red.PlayerId).ToList();
-        var blueFleets = state.Fleets.Where(f => f.OwnerId == blue.PlayerId).ToList();
 
-        // Set positions directly (bypassing move validation)
-        foreach (var f in redFleets)
-            f.Position = new HexCoord(1, 0);
-        foreach (var f in blueFleets)
-            f.Position = new HexCoord(0, -1);
+        // Move all fleets to staging hexes first (bypass: set counts directly)
+        redHome.RedFleets -= 3;
+        var redStagingHex = state.Hexes.First(h => h.Coord == redStaging);
+        redStagingHex.RedFleets = 3;
+        var blueHome = state.Hexes.First(h => h.Coord == NexusMap.BlueHomeCoord);
+        blueHome.BlueFleets -= 2;
+        var blueStagingHex = state.Hexes.First(h => h.Coord == blueStaging);
+        blueStagingHex.BlueFleets = 2;
 
         // Move all to contested hex
-        var redOrders = redFleets
-            .Select(f => (NexusFleetOrder)new NexusMoveOrder(f.FleetId, contestedHex))
-            .ToImmutableArray();
-        var blueOrders = blueFleets
-            .Select(f => (NexusFleetOrder)new NexusMoveOrder(f.FleetId, contestedHex))
-            .ToImmutableArray();
+        var redOrders = ImmutableArray.Create<NexusFleetOrder>(
+            new NexusMoveOrder(redStaging, contestedHex, 3)
+        );
+        var blueOrders = ImmutableArray.Create<NexusFleetOrder>(
+            new NexusMoveOrder(blueStaging, contestedHex, 2)
+        );
 
         NexusGameEngine.SubmitOrders(
             state,
@@ -343,12 +335,10 @@ public class NexusGameEngineTests
             new NexusTurnOrdersCommand(blue.PlayerId, 1, blueOrders, false, false)
         );
 
-        var redSurvivors = state.Fleets.Count(f => f.OwnerId == red.PlayerId);
-        var blueSurvivors = state.Fleets.Count(f => f.OwnerId == blue.PlayerId);
-
+        var contested = state.Hexes.First(h => h.Coord == contestedHex);
         // 3 Red vs 2 Blue: Red wins, loses 2, Blue loses all
-        Assert.Equal(1, redSurvivors);
-        Assert.Equal(0, blueSurvivors);
+        Assert.Equal(1, contested.RedFleets);
+        Assert.Equal(0, contested.BlueFleets);
     }
 
     [Fact]
@@ -359,18 +349,23 @@ public class NexusGameEngineTests
         var blue = state.BluePlayer!;
 
         var contestedHex = new HexCoord(0, -1);
-        var redFleet = state.Fleets.First(f => f.OwnerId == red.PlayerId);
-        var blueFleet = state.Fleets.First(f => f.OwnerId == blue.PlayerId);
+        var redStaging = new HexCoord(0, 0);
+        var blueStaging = new HexCoord(1, -1);
 
-        redFleet.Position = new HexCoord(0, 0);
-        blueFleet.Position = new HexCoord(1, -1);
+        // Reposition fleets via counts
+        var redHome = state.Hexes.First(h => h.Coord == NexusMap.RedHomeCoord);
+        redHome.RedFleets--;
+        state.Hexes.First(h => h.Coord == redStaging).RedFleets = 1;
+        var blueHome = state.Hexes.First(h => h.Coord == NexusMap.BlueHomeCoord);
+        blueHome.BlueFleets--;
+        state.Hexes.First(h => h.Coord == blueStaging).BlueFleets = 1;
 
         NexusGameEngine.SubmitOrders(
             state,
             new NexusTurnOrdersCommand(
                 red.PlayerId,
                 1,
-                [new NexusMoveOrder(redFleet.FleetId, contestedHex)],
+                [new NexusMoveOrder(redStaging, contestedHex, 1)],
                 false,
                 false
             )
@@ -380,13 +375,15 @@ public class NexusGameEngineTests
             new NexusTurnOrdersCommand(
                 blue.PlayerId,
                 1,
-                [new NexusMoveOrder(blueFleet.FleetId, contestedHex)],
+                [new NexusMoveOrder(blueStaging, contestedHex, 1)],
                 false,
                 false
             )
         );
 
-        Assert.Equal(0, state.Fleets.Count(f => f.Position == contestedHex));
+        var contested = state.Hexes.First(h => h.Coord == contestedHex);
+        Assert.Equal(0, contested.RedFleets);
+        Assert.Equal(0, contested.BlueFleets);
     }
 
     [Fact]
@@ -397,51 +394,41 @@ public class NexusGameEngineTests
         var blue = state.BluePlayer!;
 
         var contestedHex = new HexCoord(0, -1);
-        var redFleet = state.Fleets.First(f => f.OwnerId == red.PlayerId);
-        var blueFleet = state.Fleets.First(f => f.OwnerId == blue.PlayerId);
-        var redFleet2 = state.Fleets.Skip(1).First(f => f.OwnerId == red.PlayerId);
+        var redStaging = new HexCoord(0, 0);
+        var blueStaging = new HexCoord(1, -1);
 
-        // Position fleets so Red wins combat and also has a colonize order
-        redFleet.Position = new HexCoord(0, 0);
-        redFleet2.Position = new HexCoord(1, -1);
-        blueFleet.Position = new HexCoord(0, 0);
+        // Give red 2 fleets at staging, blue 1
+        var redHome = state.Hexes.First(h => h.Coord == NexusMap.RedHomeCoord);
+        redHome.RedFleets -= 2;
+        state.Hexes.First(h => h.Coord == redStaging).RedFleets = 2;
+        var blueHome = state.Hexes.First(h => h.Coord == NexusMap.BlueHomeCoord);
+        blueHome.BlueFleets--;
+        state.Hexes.First(h => h.Coord == blueStaging).BlueFleets = 1;
 
-        // Red sends 2 to contested, Blue sends 1 — Red wins (loses 1)
-        // Red's surviving fleet has colonize
+        // Red sends 2 to contested with colonize intent; Blue sends 1 — Red wins (loses 1)
         NexusGameEngine.SubmitOrders(
             state,
             new NexusTurnOrdersCommand(
                 red.PlayerId,
                 1,
-                [
-                    new NexusMoveOrder(redFleet.FleetId, contestedHex),
-                    new NexusMoveOrder(redFleet2.FleetId, contestedHex),
-                ],
+                [new NexusMoveOrder(redStaging, contestedHex, 2)],
                 false,
                 false
             )
         );
-
-        // Blue fleet stays with colonize on a different hex (already pre-colonized for blue — this is fine)
         NexusGameEngine.SubmitOrders(
             state,
             new NexusTurnOrdersCommand(
                 blue.PlayerId,
                 1,
-                [new NexusMoveOrder(blueFleet.FleetId, contestedHex)],
+                [new NexusMoveOrder(blueStaging, contestedHex, 1)],
                 false,
                 false
             )
         );
 
-        // The contested hex should NOT be colonized by red
+        // The contested hex should NOT be colonized by red (combat happened there)
         var hexState = state.Hexes.First(h => h.Coord == contestedHex);
-        Assert.Null(hexState.ColonyOwnerId);
-
-        // ColonizeFailedEvent should be in resolve events
-        var failed = state.ResolveEvents.OfType<NexusColonizeFailedEvent>().ToList();
-        // In this scenario Red didn't actually submit a colonize order, so no failed event
-        // The hex is just unclaimed after combat
         Assert.Null(hexState.ColonyOwnerId);
     }
 

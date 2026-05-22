@@ -76,7 +76,7 @@
             }
 
             @* Colonize order marker *@
-            @if (PendingOrders.OfType<NexusColonizeOrder>().Any(o => HexContainsFleet(hex, o.FleetId)))
+            @if (PendingOrders.OfType<NexusColonizeOrder>().Any(o => o.From == hex.Coord))
             {
                 <circle cx="@Fmt(center.X)" cy="@Fmt(center.Y)" r="5" fill="rgba(52,211,153,0.35)" stroke="#34d399"
                         stroke-width="1.5" pointer-events="none" />
@@ -102,21 +102,17 @@
         @* Pass 3: Move order arrows — rendered above hexes *@
         @foreach (var order in PendingOrders.OfType<NexusMoveOrder>())
         {
-            var fromHex = Hexes.FirstOrDefault(h => h.Fleets.Any(f => f.FleetId == order.FleetId));
-            @if (fromHex is not null)
+            var from = HexCenter(order.From);
+            var to = HexCenter(order.To);
+            var dx = to.X - from.X;
+            var dy = to.Y - from.Y;
+            var len = Math.Sqrt(dx * dx + dy * dy);
+            @if (len >= 1)
             {
-                var from = HexCenter(fromHex.Coord);
-                var to = HexCenter(order.Destination);
-                var dx = to.X - from.X;
-                var dy = to.Y - from.Y;
-                var len = Math.Sqrt(dx * dx + dy * dy);
-                @if (len >= 1)
-                {
-                    var ex = to.X - dx / len * 12;
-                    var ey = to.Y - dy / len * 12;
-                    <line x1="@Fmt(from.X)" y1="@Fmt(from.Y)" x2="@Fmt(ex)" y2="@Fmt(ey)" stroke="rgba(251,191,36,0.85)"
-                          stroke-width="2" stroke-linecap="round" marker-end="url(#nexus-arrow)" />
-                }
+                var ex = to.X - dx / len * 12;
+                var ey = to.Y - dy / len * 12;
+                <line x1="@Fmt(from.X)" y1="@Fmt(from.Y)" x2="@Fmt(ex)" y2="@Fmt(ey)" stroke="rgba(251,191,36,0.85)"
+                      stroke-width="2" stroke-linecap="round" marker-end="url(#nexus-arrow)" />
             }
         }
     </svg>
@@ -133,7 +129,7 @@
     public IReadOnlyList<NexusTradeRouteView> TradeRoutes { get; set; } = [];
 
     [Parameter]
-    public Guid? CurrentPlayerId { get; set; }
+    public NexusFactionColor? CurrentPlayerFaction { get; set; }
 
     [Parameter]
     public HexCoord? SelectedFleetHex { get; set; }
@@ -200,8 +196,8 @@
                 + $"{hex.Coord.Q},{hex.Coord.R}</text>"
         );
 
-        var redCount = hex.Fleets.Count(f => f.OwnerFaction == NexusFactionColor.Red);
-        var blueCount = hex.Fleets.Count(f => f.OwnerFaction == NexusFactionColor.Blue);
+        var redCount = hex.RedFleetCount;
+        var blueCount = hex.BlueFleetCount;
 
         // On the Nexus hex, move fleet counts below the NEXUS label to avoid overlap.
         var countY = hex.IsNexus ? center.Y + 16 : center.Y + 5;
@@ -256,12 +252,13 @@
         };
 
     private bool HexHasMyFleet(NexusHexView hex) =>
-        CurrentPlayerId.HasValue && hex.Fleets.Any(f => f.OwnerId == CurrentPlayerId.Value);
+        CurrentPlayerFaction.HasValue && (
+            CurrentPlayerFaction.Value == NexusFactionColor.Red
+                ? hex.RedFleetCount > 0
+                : hex.BlueFleetCount > 0
+        );
 
     private bool IsValidMoveTarget(HexCoord coord) => ValidMoveTargets.Any(t => t == coord);
-
-    private static bool HexContainsFleet(NexusHexView hex, Guid fleetId) =>
-        hex.Fleets.Any(f => f.FleetId == fleetId);
 
     private Task HandleHexClick(HexCoord coord) =>
         IsEditable ? OnHexClicked.InvokeAsync(coord) : Task.CompletedTask;

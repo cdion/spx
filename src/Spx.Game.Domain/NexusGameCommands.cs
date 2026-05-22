@@ -17,16 +17,19 @@ public sealed record InitializeNexusGameCommand(
 
 [GenerateSerializer]
 [Immutable]
-public abstract record NexusFleetOrder([property: Id(0)] Guid FleetId);
+public abstract record NexusFleetOrder([property: Id(0)] HexCoord From);
 
 [GenerateSerializer]
 [Immutable]
-public sealed record NexusMoveOrder(Guid FleetId, [property: Id(1)] HexCoord Destination)
-    : NexusFleetOrder(FleetId);
+public sealed record NexusMoveOrder(
+    HexCoord From,
+    [property: Id(1)] HexCoord To,
+    [property: Id(2)] int Count
+) : NexusFleetOrder(From);
 
 [GenerateSerializer]
 [Immutable]
-public sealed record NexusColonizeOrder(Guid FleetId) : NexusFleetOrder(FleetId);
+public sealed record NexusColonizeOrder(HexCoord From) : NexusFleetOrder(From);
 
 [GenerateSerializer]
 [Immutable]

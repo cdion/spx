@@ -78,37 +78,10 @@ public static class NexusGameEngine
                 ColonyOwnerId = h.IsHome
                     ? (h.Color == NexusColonyColor.Red ? redPlayerId : bluePlayerId)
                     : null,
+                RedFleets = h.Coord == NexusMap.RedHomeCoord ? StartingFleets : 0,
+                BlueFleets = h.Coord == NexusMap.BlueHomeCoord ? StartingFleets : 0,
             })
             .ToList();
-
-        // Starting fleets (2 per player, at home)
-        state.Fleets =
-        [
-            new NexusFleetState
-            {
-                FleetId = Guid.NewGuid(),
-                OwnerId = redPlayerId,
-                Position = NexusMap.RedHomeCoord,
-            },
-            new NexusFleetState
-            {
-                FleetId = Guid.NewGuid(),
-                OwnerId = redPlayerId,
-                Position = NexusMap.RedHomeCoord,
-            },
-            new NexusFleetState
-            {
-                FleetId = Guid.NewGuid(),
-                OwnerId = bluePlayerId,
-                Position = NexusMap.BlueHomeCoord,
-            },
-            new NexusFleetState
-            {
-                FleetId = Guid.NewGuid(),
-                OwnerId = bluePlayerId,
-                Position = NexusMap.BlueHomeCoord,
-            },
-        ];
     }
 
     // -------------------------------------------------------------------------
@@ -140,9 +113,8 @@ public static class NexusGameEngine
         if (player.HasSubmittedOrders)
             return new NexusTurnOrdersRejected("Orders already submitted this round.");
 
-        var playerFleets = state.Fleets.Where(f => f.OwnerId == command.PlayerId).ToList();
-        var playerFleetIds = playerFleets.Select(f => f.FleetId).ToHashSet();
-        var orderedFleetIds = new HashSet<Guid>();
+        var assignedCounts = new Dictionary<HexCoord, int>();
+        var colonizeHexes = new HashSet<HexCoord>();
 
         foreach (var order in command.FleetOrders)
         {
@@ -150,9 +122,9 @@ public static class NexusGameEngine
                 state,
                 command.PlayerId,
                 order,
-                playerFleets,
-                playerFleetIds,
-                orderedFleetIds
+                player,
+                assignedCounts,
+                colonizeHexes
             );
             if (err is not null)
                 return err;
@@ -167,7 +139,7 @@ public static class NexusGameEngine
 
         if (command.BeginNexusGate)
         {
-            var err = ValidateBeginNexusGate(command, player, playerFleets);
+            var err = ValidateBeginNexusGate(command, player, state);
             if (err is not null)
                 return err;
         }
@@ -188,22 +160,40 @@ public static class NexusGameEngine
         NexusGameState state,
         Guid playerId,
         NexusFleetOrder order,
-        List<NexusFleetState> playerFleets,
-        HashSet<Guid> playerFleetIds,
-        HashSet<Guid> orderedFleetIds
+        NexusPlayerState player,
+        Dictionary<HexCoord, int> assignedCounts,
+        HashSet<HexCoord> colonizeHexes
     )
     {
-        if (!playerFleetIds.Contains(order.FleetId))
+        if (!NexusMap.IsValidCoord(order.From))
             return new NexusTurnOrdersRejected(
-                $"Fleet {order.FleetId} not found or not owned by this player."
+                $"Fleet order source {order.From} is not a valid map hex."
             );
-        if (!orderedFleetIds.Add(order.FleetId))
-            return new NexusTurnOrdersRejected($"Fleet {order.FleetId} has duplicate orders.");
+
+        var hexState = state.Hexes.First(h => h.Coord == order.From);
+        var fleetCount =
+            player.Faction == NexusFactionColor.Red ? hexState.RedFleets : hexState.BlueFleets;
+
+        if (fleetCount == 0)
+            return new NexusTurnOrdersRejected($"No fleets at {order.From}.");
 
         return order switch
         {
-            NexusMoveOrder move => ValidateMoveOrder(state, playerId, move, playerFleets),
-            NexusColonizeOrder colonize => ValidateColonizeOrder(state, colonize, playerFleets),
+            NexusMoveOrder move => ValidateMoveOrder(
+                state,
+                playerId,
+                move,
+                fleetCount,
+                assignedCounts
+            ),
+            NexusColonizeOrder colonize => ValidateColonizeOrder(
+                state,
+                colonize,
+                player,
+                fleetCount,
+                assignedCounts,
+                colonizeHexes
+            ),
             _ => null,
         };
     }
@@ -212,86 +202,114 @@ public static class NexusGameEngine
         NexusGameState state,
         Guid playerId,
         NexusMoveOrder move,
-        List<NexusFleetState> playerFleets
+        int fleetCount,
+        Dictionary<HexCoord, int> assignedCounts
     )
     {
-        if (!NexusMap.IsValidCoord(move.Destination))
+        if (move.Count <= 0)
+            return new NexusTurnOrdersRejected("Move count must be at least 1.");
+
+        var alreadyAssigned = assignedCounts.GetValueOrDefault(move.From, 0);
+        if (alreadyAssigned + move.Count > fleetCount)
             return new NexusTurnOrdersRejected(
-                $"Move destination {move.Destination} is not a valid map hex."
+                $"Not enough fleets at {move.From}: requested {alreadyAssigned + move.Count} but only {fleetCount} available."
             );
 
-        var fleet = playerFleets.First(f => f.FleetId == move.FleetId);
-        var distance = fleet.Position.DistanceTo(move.Destination);
+        if (!NexusMap.IsValidCoord(move.To))
+            return new NexusTurnOrdersRejected(
+                $"Move destination {move.To} is not a valid map hex."
+            );
+
+        var distance = move.From.DistanceTo(move.To);
 
         if (distance == 0)
             return new NexusTurnOrdersRejected(
-                $"Fleet {move.FleetId} move destination is the same as its current position."
+                $"Move destination is the same as its source hex {move.From}."
             );
+
         if (distance == 1)
-            return null; // normal adjacency move — always valid
+        {
+            assignedCounts[move.From] = alreadyAssigned + move.Count;
+            return null;
+        }
 
         if (distance == 2)
         {
             var hasBonus = state.ActiveTradeRoutes.Any(r =>
-                (r.Hex1 == fleet.Position && r.Owner1 == playerId)
-                || (r.Hex2 == fleet.Position && r.Owner2 == playerId)
+                (r.Hex1 == move.From && r.Owner1 == playerId)
+                || (r.Hex2 == move.From && r.Owner2 == playerId)
             );
-            return hasBonus
-                ? null
-                : new NexusTurnOrdersRejected(
-                    $"Fleet {move.FleetId} cannot move 2 hexes: not on an active trade-route endpoint."
+            if (!hasBonus)
+                return new NexusTurnOrdersRejected(
+                    $"Cannot move 2 hexes from {move.From}: not on an active trade-route endpoint."
                 );
+
+            assignedCounts[move.From] = alreadyAssigned + move.Count;
+            return null;
         }
 
         return new NexusTurnOrdersRejected(
-            $"Fleet {move.FleetId} move distance {distance} exceeds maximum allowed."
+            $"Move distance {distance} from {move.From} exceeds maximum allowed."
         );
     }
 
     private static NexusTurnOrdersRejected? ValidateColonizeOrder(
         NexusGameState state,
         NexusColonizeOrder colonize,
-        List<NexusFleetState> playerFleets
+        NexusPlayerState player,
+        int fleetCount,
+        Dictionary<HexCoord, int> assignedCounts,
+        HashSet<HexCoord> colonizeHexes
     )
     {
-        var fleet = playerFleets.First(f => f.FleetId == colonize.FleetId);
-        if (NexusMap.ByCoord[fleet.Position].IsNexus)
+        if (!colonizeHexes.Add(colonize.From))
+            return new NexusTurnOrdersRejected($"Duplicate colonize order for {colonize.From}.");
+
+        var assigned = assignedCounts.GetValueOrDefault(colonize.From, 0);
+        if (assigned >= fleetCount)
+            return new NexusTurnOrdersRejected(
+                $"No fleets remaining at {colonize.From} to colonize (all assigned to move)."
+            );
+
+        if (NexusMap.ByCoord[colonize.From].IsNexus)
             return new NexusTurnOrdersRejected("Cannot colonize the Nexus hex.");
 
-        var hexState = state.Hexes.First(h => h.Coord == fleet.Position);
-        return hexState.ColonyOwnerId == fleet.OwnerId
+        var hexState = state.Hexes.First(h => h.Coord == colonize.From);
+        return hexState.ColonyOwnerId == player.PlayerId
+            ? new NexusTurnOrdersRejected($"Hex {colonize.From} is already owned by you.")
+            : null;
+    }
+
+    private static NexusTurnOrdersRejected? ValidateBuildFleet(NexusPlayerState player)
+    {
+        var factionCost =
+            player.Faction == NexusFactionColor.Red ? player.RedCredits : player.BlueCredits;
+        var factionColor = player.Faction == NexusFactionColor.Red ? "Red" : "Blue";
+        return factionCost < BuildFleetCostPerColor || player.GoldCredits < BuildFleetCostPerColor
             ? new NexusTurnOrdersRejected(
-                $"Fleet {colonize.FleetId}: hex {fleet.Position} is already owned by you."
+                $"Insufficient resources to build fleet (requires 2 {factionColor} + 2 Gold)."
             )
             : null;
     }
 
-    private static NexusTurnOrdersRejected? ValidateBuildFleet(NexusPlayerState player) =>
-        player.RedCredits < BuildFleetCostPerColor
-        || player.BlueCredits < BuildFleetCostPerColor
-        || player.GoldCredits < BuildFleetCostPerColor
-            ? new NexusTurnOrdersRejected(
-                "Insufficient resources to build fleet (requires 2 Red + 2 Blue + 2 Gold)."
-            )
-            : null;
-
     private static NexusTurnOrdersRejected? ValidateBeginNexusGate(
         NexusTurnOrdersCommand command,
         NexusPlayerState player,
-        List<NexusFleetState> playerFleets
+        NexusGameState state
     )
     {
         if (player.GateProgress == NexusGateProgress.Completed)
             return new NexusTurnOrdersRejected("Nexus Gate is already completed.");
 
-        var movingFleetIds = command
+        var nexusHex = state.Hexes.First(h => h.Coord == NexusMap.NexusCoord);
+        var fleetCount =
+            player.Faction == NexusFactionColor.Red ? nexusHex.RedFleets : nexusHex.BlueFleets;
+        var movingFromNexus = command
             .FleetOrders.OfType<NexusMoveOrder>()
-            .Select(o => o.FleetId)
-            .ToHashSet();
-        var stayingFleetOnNexus = playerFleets.Any(f =>
-            f.Position == NexusMap.NexusCoord && !movingFleetIds.Contains(f.FleetId)
-        );
-        if (!stayingFleetOnNexus)
+            .Where(o => o.From == NexusMap.NexusCoord)
+            .Sum(o => o.Count);
+
+        if (fleetCount - movingFromNexus <= 0)
             return new NexusTurnOrdersRejected(
                 "Begin Nexus Gate requires a fleet staying on the Nexus hex."
             );
@@ -374,6 +392,10 @@ public static class NexusGameEngine
         var red = state.RedPlayer!;
         var blue = state.BluePlayer!;
 
+        // Pre-compute staying hexes before moves alter fleet counts
+        var redStayingHexes = ComputeStayingHexes(state, red);
+        var blueStayingHexes = ComputeStayingHexes(state, blue);
+
         // Step 1: Deduct build/gate costs
         ProcessBuildAndGateDeductions(state, red, blue, events);
 
@@ -388,7 +410,7 @@ public static class NexusGameEngine
         ProcessColonization(state, red, blue, events, combatHexes);
 
         // Step 5: Income (includes trade route computation)
-        ProcessIncome(state, red, blue, events);
+        ProcessIncome(state, red, blue, events, redStayingHexes, blueStayingHexes);
 
         // Step 6: Deploy newly built fleets
         ProcessFleetDeployment(state, red, blue, events);
@@ -429,8 +451,10 @@ public static class NexusGameEngine
         {
             if (player.PendingBuildFleet)
             {
-                player.RedCredits -= BuildFleetCostPerColor;
-                player.BlueCredits -= BuildFleetCostPerColor;
+                if (player.Faction == NexusFactionColor.Red)
+                    player.RedCredits -= BuildFleetCostPerColor;
+                else
+                    player.BlueCredits -= BuildFleetCostPerColor;
                 player.GoldCredits -= BuildFleetCostPerColor;
                 player.PendingFleetDeployment = true;
             }
@@ -485,14 +509,6 @@ public static class NexusGameEngine
         List<NexusResolveEvent> events
     )
     {
-        // Build lookup: fleetId -> MoveOrder
-        var moveOrders = new Dictionary<Guid, NexusMoveOrder>();
-        foreach (var player in new[] { red, blue })
-        {
-            foreach (var order in player.PendingFleetOrders.OfType<NexusMoveOrder>())
-                moveOrders[order.FleetId] = order;
-        }
-
         // Track which hexes were active trade-route endpoints for speed-bonus determination
         var speedBonusEndpoints = state
             .ActiveTradeRoutes.SelectMany<NexusTradeRoute, (HexCoord, Guid)>(r =>
@@ -500,69 +516,67 @@ public static class NexusGameEngine
             )
             .ToHashSet();
 
-        // Apply all moves simultaneously
-        foreach (var fleet in state.Fleets)
+        // Apply all move orders simultaneously
+        foreach (var player in new[] { red, blue })
         {
-            if (!moveOrders.TryGetValue(fleet.FleetId, out var move))
-                continue;
+            foreach (var move in player.PendingFleetOrders.OfType<NexusMoveOrder>())
+            {
+                var fromState = state.Hexes.First(h => h.Coord == move.From);
+                var toState = state.Hexes.First(h => h.Coord == move.To);
 
-            var from = fleet.Position;
-            var to = move.Destination;
-            var isSpeedBonus =
-                from.DistanceTo(to) == 2 && speedBonusEndpoints.Contains((from, fleet.OwnerId));
+                if (player.Faction == NexusFactionColor.Red)
+                {
+                    fromState.RedFleets -= move.Count;
+                    toState.RedFleets += move.Count;
+                }
+                else
+                {
+                    fromState.BlueFleets -= move.Count;
+                    toState.BlueFleets += move.Count;
+                }
 
-            fleet.Position = to;
+                var isSpeedBonus =
+                    move.From.DistanceTo(move.To) == 2
+                    && speedBonusEndpoints.Contains((move.From, player.PlayerId));
 
-            var faction = GetFactionForPlayer(state, fleet.OwnerId);
-            if (isSpeedBonus)
-                events.Add(
-                    new NexusSpeedBonusMoveEvent(
-                        fleet.FleetId,
-                        fleet.OwnerId,
-                        faction,
-                        from,
-                        to,
-                        from
-                    )
-                );
-            else
-                events.Add(new NexusMoveEvent(fleet.FleetId, fleet.OwnerId, faction, from, to));
+                if (isSpeedBonus)
+                    events.Add(
+                        new NexusSpeedBonusMoveEvent(
+                            player.PlayerId,
+                            player.Faction,
+                            move.From,
+                            move.To,
+                            move.From
+                        )
+                    );
+                else
+                    events.Add(
+                        new NexusMoveEvent(player.PlayerId, player.Faction, move.From, move.To)
+                    );
+            }
         }
 
         // Determine contested hexes (both players have fleets there)
-        var hexFleetCounts = state
-            .Fleets.GroupBy(f => f.Position)
-            .ToDictionary(
-                g => g.Key,
-                g => g.GroupBy(f => f.OwnerId).ToDictionary(x => x.Key, x => x.Count())
-            );
-
         var combatHexes = new HashSet<HexCoord>(
-            hexFleetCounts.Where(kv => kv.Value.Count >= 2).Select(kv => kv.Key)
+            state.Hexes.Where(h => h.RedFleets > 0 && h.BlueFleets > 0).Select(h => h.Coord)
         );
 
         // Undefended entry: fleet moved into opponent-controlled hex with no opponent fleet
-        foreach (var fleet in state.Fleets)
+        foreach (var player in new[] { red, blue })
         {
-            if (!moveOrders.ContainsKey(fleet.FleetId))
-                continue; // didn't move
-
-            if (combatHexes.Contains(fleet.Position))
-                continue; // will be handled by combat
-
-            var hexState = state.Hexes.First(h => h.Coord == fleet.Position);
-            if (hexState.ColonyOwnerId is not null && hexState.ColonyOwnerId != fleet.OwnerId)
+            foreach (var move in player.PendingFleetOrders.OfType<NexusMoveOrder>())
             {
-                hexState.ColonyOwnerId = null;
-                var faction = GetFactionForPlayer(state, fleet.OwnerId);
-                events.Add(
-                    new NexusUndefendedEntryEvent(
-                        fleet.FleetId,
-                        fleet.OwnerId,
-                        faction,
-                        fleet.Position
-                    )
-                );
+                if (combatHexes.Contains(move.To))
+                    continue; // will be handled by combat
+
+                var hexState = state.Hexes.First(h => h.Coord == move.To);
+                if (hexState.ColonyOwnerId is not null && hexState.ColonyOwnerId != player.PlayerId)
+                {
+                    hexState.ColonyOwnerId = null;
+                    events.Add(
+                        new NexusUndefendedEntryEvent(player.PlayerId, player.Faction, move.To)
+                    );
+                }
             }
         }
 
@@ -583,12 +597,9 @@ public static class NexusGameEngine
     {
         foreach (var hex in combatHexes)
         {
-            var fleetsHere = state.Fleets.Where(f => f.Position == hex).ToList();
-            var redFleets = fleetsHere.Where(f => f.OwnerId == red.PlayerId).ToList();
-            var blueFleets = fleetsHere.Where(f => f.OwnerId == blue.PlayerId).ToList();
-
-            var redCount = redFleets.Count;
-            var blueCount = blueFleets.Count;
+            var hexState = state.Hexes.First(h => h.Coord == hex);
+            var redCount = hexState.RedFleets;
+            var blueCount = hexState.BlueFleets;
 
             Guid? winnerId;
             int redLosses;
@@ -628,33 +639,25 @@ public static class NexusGameEngine
                 )
             );
 
-            // Remove losing fleets (or all on mutual destruction)
             if (winnerId == red.PlayerId)
             {
-                state.Fleets.RemoveAll(f => f.OwnerId == blue.PlayerId && f.Position == hex);
-                RemoveFleets(state, redFleets, redLosses);
+                hexState.BlueFleets = 0;
+                hexState.RedFleets -= redLosses;
             }
             else if (winnerId == blue.PlayerId)
             {
-                state.Fleets.RemoveAll(f => f.OwnerId == red.PlayerId && f.Position == hex);
-                RemoveFleets(state, blueFleets, blueLosses);
+                hexState.RedFleets = 0;
+                hexState.BlueFleets -= blueLosses;
             }
             else
             {
-                // Mutual destruction
-                state.Fleets.RemoveAll(f => f.Position == hex);
+                hexState.RedFleets = 0;
+                hexState.BlueFleets = 0;
             }
 
             // Colony reverts to unclaimed after combat
-            var hexState = state.Hexes.First(h => h.Coord == hex);
             hexState.ColonyOwnerId = null;
         }
-    }
-
-    private static void RemoveFleets(NexusGameState state, List<NexusFleetState> fleets, int count)
-    {
-        for (var i = 0; i < count; i++)
-            state.Fleets.Remove(fleets[i]);
     }
 
     // -------------------------------------------------------------------------
@@ -673,9 +676,11 @@ public static class NexusGameEngine
             if (!player.PendingBeginNexusGate)
                 continue;
 
-            var fleetOnNexus = state.Fleets.Any(f =>
-                f.OwnerId == player.PlayerId && f.Position == NexusMap.NexusCoord
-            );
+            var nexusHex = state.Hexes.First(h => h.Coord == NexusMap.NexusCoord);
+            var fleetOnNexus =
+                player.Faction == NexusFactionColor.Red
+                    ? nexusHex.RedFleets > 0
+                    : nexusHex.BlueFleets > 0;
 
             if (!fleetOnNexus)
             {
@@ -709,33 +714,26 @@ public static class NexusGameEngine
         {
             foreach (var order in player.PendingFleetOrders.OfType<NexusColonizeOrder>())
             {
-                var fleet = state.Fleets.FirstOrDefault(f => f.FleetId == order.FleetId);
-                if (fleet is null)
-                    continue; // fleet was destroyed in combat
+                var hex = order.From;
+                var hexState = state.Hexes.First(h => h.Coord == hex);
+                var fleetCount =
+                    player.Faction == NexusFactionColor.Red
+                        ? hexState.RedFleets
+                        : hexState.BlueFleets;
 
-                var hex = fleet.Position;
-                var faction = player.Faction;
+                if (fleetCount == 0)
+                    continue; // fleet destroyed in combat
 
                 if (combatHexes.Contains(hex))
                 {
-                    events.Add(
-                        new NexusColonizeFailedEvent(fleet.FleetId, player.PlayerId, faction, hex)
-                    );
+                    events.Add(new NexusColonizeFailedEvent(player.PlayerId, player.Faction, hex));
                     continue;
                 }
 
-                var hexState = state.Hexes.First(h => h.Coord == hex);
                 hexState.ColonyOwnerId = player.PlayerId;
-
                 var hexDef = NexusMap.ByCoord[hex];
                 events.Add(
-                    new NexusColonizeEvent(
-                        fleet.FleetId,
-                        player.PlayerId,
-                        faction,
-                        hex,
-                        hexDef.Color
-                    )
+                    new NexusColonizeEvent(player.PlayerId, player.Faction, hex, hexDef.Color)
                 );
             }
         }
@@ -749,26 +747,34 @@ public static class NexusGameEngine
         NexusGameState state,
         NexusPlayerState red,
         NexusPlayerState blue,
-        List<NexusResolveEvent> events
+        List<NexusResolveEvent> events,
+        HashSet<HexCoord> redStayingHexes,
+        HashSet<HexCoord> blueStayingHexes
     )
     {
-        var movingFleetIds = new HashSet<Guid>(
-            new[] { red, blue }.SelectMany(p =>
-                p.PendingFleetOrders.OfType<NexusMoveOrder>().Select(o => o.FleetId)
-            )
-        );
-        bool IsStaying(NexusFleetState f) =>
-            !movingFleetIds.Contains(f.FleetId) && state.Fleets.Contains(f);
+        // Filter staying hexes to those where the fleet survived combat
+        var redSurviving = redStayingHexes
+            .Where(h => state.Hexes.First(hs => hs.Coord == h).RedFleets > 0)
+            .ToHashSet();
+        var blueSurviving = blueStayingHexes
+            .Where(h => state.Hexes.First(hs => hs.Coord == h).BlueFleets > 0)
+            .ToHashSet();
 
-        var (newRoutes, newRouteKeys) = ComputeNewTradeRoutes(state, red, blue, IsStaying);
+        var (newRoutes, newRouteKeys) = ComputeNewTradeRoutes(
+            state,
+            red,
+            blue,
+            redSurviving,
+            blueSurviving
+        );
         EmitTradeRouteChangedEvents(state, newRoutes, newRouteKeys, events);
         state.ActiveTradeRoutes = newRoutes;
 
         var acc = new IncomeAccumulator();
         ComputeHexBaseIncome(state, red.PlayerId, blue.PlayerId, acc);
 
-        var redStaying = GetStayingColonyPositions(state, red, IsStaying);
-        var blueStaying = GetStayingColonyPositions(state, blue, IsStaying);
+        var redStaying = GetStayingColonyPositions(state, red, redSurviving);
+        var blueStaying = GetStayingColonyPositions(state, blue, blueSurviving);
         ComputeRouteIncome(newRoutes, redStaying, blueStaying, red.PlayerId, acc);
 
         red.RedCredits += acc.RedR;
@@ -800,6 +806,27 @@ public static class NexusGameEngine
             );
     }
 
+    private static HashSet<HexCoord> ComputeStayingHexes(
+        NexusGameState state,
+        NexusPlayerState player
+    )
+    {
+        var movingCounts = player
+            .PendingFleetOrders.OfType<NexusMoveOrder>()
+            .GroupBy(o => o.From)
+            .ToDictionary(g => g.Key, g => g.Sum(o => o.Count));
+
+        return state
+            .Hexes.Where(h =>
+            {
+                var total = player.Faction == NexusFactionColor.Red ? h.RedFleets : h.BlueFleets;
+                var moving = movingCounts.GetValueOrDefault(h.Coord, 0);
+                return total - moving > 0;
+            })
+            .Select(h => h.Coord)
+            .ToHashSet();
+    }
+
     private static (
         List<NexusTradeRoute> Routes,
         HashSet<(HexCoord, HexCoord)> Keys
@@ -807,27 +834,22 @@ public static class NexusGameEngine
         NexusGameState state,
         NexusPlayerState red,
         NexusPlayerState blue,
-        Func<NexusFleetState, bool> isStaying
+        HashSet<HexCoord> redSurvivingStaying,
+        HashSet<HexCoord> blueSurvivingStaying
     )
     {
         var routes = new List<NexusTradeRoute>();
         var keys = new HashSet<(HexCoord, HexCoord)>();
 
-        foreach (var player in new[] { red, blue })
+        foreach (
+            var (player, staying) in new[]
+            {
+                (red, redSurvivingStaying),
+                (blue, blueSurvivingStaying),
+            }
+        )
         {
-            var stayingPositions = state
-                .Fleets.Where(f => f.OwnerId == player.PlayerId && isStaying(f))
-                .Select(f => f.Position)
-                .ToHashSet();
-
-            var colonizingHexes = player
-                .PendingFleetOrders.OfType<NexusColonizeOrder>()
-                .Select(o => state.Fleets.FirstOrDefault(f => f.FleetId == o.FleetId)?.Position)
-                .OfType<HexCoord?>()
-                .Select(h => h!.Value)
-                .ToHashSet();
-
-            foreach (var pos in stayingPositions.Union(colonizingHexes))
+            foreach (var pos in staying)
                 AddTradeRoutesForPosition(state, player, pos, routes, keys);
         }
 
@@ -967,15 +989,12 @@ public static class NexusGameEngine
     private static HashSet<HexCoord> GetStayingColonyPositions(
         NexusGameState state,
         NexusPlayerState player,
-        Func<NexusFleetState, bool> isStaying
+        HashSet<HexCoord> survivingStayingHexes
     ) =>
-        state
-            .Fleets.Where(f =>
-                f.OwnerId == player.PlayerId
-                && isStaying(f)
-                && state.Hexes.Any(h => h.Coord == f.Position && h.ColonyOwnerId == player.PlayerId)
+        survivingStayingHexes
+            .Where(pos =>
+                state.Hexes.Any(h => h.Coord == pos && h.ColonyOwnerId == player.PlayerId)
             )
-            .Select(f => f.Position)
             .ToHashSet();
 
     private static void ComputeRouteIncome(
@@ -1066,21 +1085,13 @@ public static class NexusGameEngine
                 continue;
 
             var homeCoord = NexusMap.GetHomeCoord(player.Faction);
-            var newFleet = new NexusFleetState
-            {
-                FleetId = Guid.NewGuid(),
-                OwnerId = player.PlayerId,
-                Position = homeCoord,
-            };
-            state.Fleets.Add(newFleet);
-            events.Add(
-                new NexusFleetDeployedEvent(
-                    newFleet.FleetId,
-                    player.PlayerId,
-                    player.Faction,
-                    homeCoord
-                )
-            );
+            var homeHex = state.Hexes.First(h => h.Coord == homeCoord);
+            if (player.Faction == NexusFactionColor.Red)
+                homeHex.RedFleets++;
+            else
+                homeHex.BlueFleets++;
+
+            events.Add(new NexusFleetDeployedEvent(player.PlayerId, player.Faction, homeCoord));
         }
     }
 
@@ -1166,26 +1177,11 @@ public static class NexusGameEngine
     // View helpers
     // -------------------------------------------------------------------------
 
-    private static ImmutableArray<NexusHexView> BuildHexViews(NexusGameState state)
-    {
-        var fleetsByHex = state
-            .Fleets.GroupBy(f => f.Position)
-            .ToDictionary(
-                g => g.Key,
-                g =>
-                    g.Select(f => new NexusFleetView(
-                            f.FleetId,
-                            f.OwnerId,
-                            GetFactionForPlayer(state, f.OwnerId)
-                        ))
-                        .ToImmutableArray()
-            );
-
-        return NexusMap
+    private static ImmutableArray<NexusHexView> BuildHexViews(NexusGameState state) =>
+        NexusMap
             .Hexes.Select(def =>
             {
                 var hexState = state.Hexes.First(h => h.Coord == def.Coord);
-                fleetsByHex.TryGetValue(def.Coord, out var fleets);
                 NexusFactionColor? ownerFaction = hexState.ColonyOwnerId is { } ownerId
                     ? GetFactionForPlayer(state, ownerId)
                     : null;
@@ -1197,11 +1193,11 @@ public static class NexusGameEngine
                     def.IsHome,
                     hexState.ColonyOwnerId,
                     ownerFaction,
-                    fleetsByHex.GetValueOrDefault(def.Coord, ImmutableArray<NexusFleetView>.Empty)
+                    hexState.RedFleets,
+                    hexState.BlueFleets
                 );
             })
             .ToImmutableArray();
-    }
 
     private static NexusPlayerView BuildPlayerView(
         NexusGameState state,

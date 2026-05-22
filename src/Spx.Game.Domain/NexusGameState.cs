@@ -89,19 +89,6 @@ public sealed class NexusPlayerState
 }
 
 [GenerateSerializer]
-public sealed class NexusFleetState
-{
-    [Id(0)]
-    public Guid FleetId { get; set; }
-
-    [Id(1)]
-    public Guid OwnerId { get; set; }
-
-    [Id(2)]
-    public HexCoord Position { get; set; }
-}
-
-[GenerateSerializer]
 public sealed class NexusHexState
 {
     [Id(0)]
@@ -109,6 +96,12 @@ public sealed class NexusHexState
 
     [Id(1)]
     public Guid? ColonyOwnerId { get; set; }
+
+    [Id(2)]
+    public int RedFleets { get; set; }
+
+    [Id(3)]
+    public int BlueFleets { get; set; }
 }
 
 [GenerateSerializer]
@@ -121,23 +114,20 @@ public sealed class NexusGameState
     public NexusPlayerState? BluePlayer { get; set; }
 
     [Id(2)]
-    public List<NexusFleetState> Fleets { get; set; } = [];
-
-    [Id(3)]
     public List<NexusHexState> Hexes { get; set; } = [];
 
-    [Id(4)]
+    [Id(3)]
     public int RoundNumber { get; set; } = 1;
 
-    [Id(5)]
+    [Id(4)]
     public NexusGamePhase Phase { get; set; } = NexusGamePhase.Planning;
 
-    [Id(6)]
+    [Id(5)]
     public List<NexusResolveEvent> ResolveEvents { get; set; } = [];
 
-    [Id(7)]
+    [Id(6)]
     public List<NexusTradeRoute> ActiveTradeRoutes { get; set; } = [];
 
-    [Id(8)]
+    [Id(7)]
     public NexusGameCompletion? Completion { get; set; }
 }

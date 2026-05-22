@@ -5,14 +5,6 @@ namespace Spx.Game.Domain;
 
 [GenerateSerializer]
 [Immutable]
-public sealed record NexusFleetView(
-    [property: Id(0)] Guid FleetId,
-    [property: Id(1)] Guid OwnerId,
-    [property: Id(2)] NexusFactionColor OwnerFaction
-);
-
-[GenerateSerializer]
-[Immutable]
 public sealed record NexusHexView(
     [property: Id(0)] HexCoord Coord,
     [property: Id(1)] NexusColonyColor Color,
@@ -20,7 +12,8 @@ public sealed record NexusHexView(
     [property: Id(3)] bool IsHome,
     [property: Id(4)] Guid? ColonyOwnerId,
     [property: Id(5)] NexusFactionColor? ColonyOwnerFaction,
-    [property: Id(6)] ImmutableArray<NexusFleetView> Fleets
+    [property: Id(6)] int RedFleetCount,
+    [property: Id(7)] int BlueFleetCount
 );
 
 [GenerateSerializer]

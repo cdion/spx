@@ -12,31 +12,28 @@ public abstract record NexusResolveEvent;
 [GenerateSerializer]
 [Immutable]
 public sealed record NexusMoveEvent(
-    [property: Id(0)] Guid FleetId,
-    [property: Id(1)] Guid OwnerId,
-    [property: Id(2)] NexusFactionColor Faction,
-    [property: Id(3)] HexCoord From,
-    [property: Id(4)] HexCoord To
+    [property: Id(0)] Guid OwnerId,
+    [property: Id(1)] NexusFactionColor Faction,
+    [property: Id(2)] HexCoord From,
+    [property: Id(3)] HexCoord To
 ) : NexusResolveEvent;
 
 [GenerateSerializer]
 [Immutable]
 public sealed record NexusSpeedBonusMoveEvent(
-    [property: Id(0)] Guid FleetId,
-    [property: Id(1)] Guid OwnerId,
-    [property: Id(2)] NexusFactionColor Faction,
-    [property: Id(3)] HexCoord From,
-    [property: Id(4)] HexCoord To,
-    [property: Id(5)] HexCoord TradeRouteEndpoint
+    [property: Id(0)] Guid OwnerId,
+    [property: Id(1)] NexusFactionColor Faction,
+    [property: Id(2)] HexCoord From,
+    [property: Id(3)] HexCoord To,
+    [property: Id(4)] HexCoord TradeRouteEndpoint
 ) : NexusResolveEvent;
 
 [GenerateSerializer]
 [Immutable]
 public sealed record NexusUndefendedEntryEvent(
-    [property: Id(0)] Guid FleetId,
-    [property: Id(1)] Guid OwnerId,
-    [property: Id(2)] NexusFactionColor Faction,
-    [property: Id(3)] HexCoord Hex
+    [property: Id(0)] Guid OwnerId,
+    [property: Id(1)] NexusFactionColor Faction,
+    [property: Id(2)] HexCoord Hex
 ) : NexusResolveEvent;
 
 // --- Combat ---
@@ -61,20 +58,18 @@ public sealed record NexusCombatEvent(
 [GenerateSerializer]
 [Immutable]
 public sealed record NexusColonizeEvent(
-    [property: Id(0)] Guid FleetId,
-    [property: Id(1)] Guid OwnerId,
-    [property: Id(2)] NexusFactionColor Faction,
-    [property: Id(3)] HexCoord Hex,
-    [property: Id(4)] NexusColonyColor HexColor
+    [property: Id(0)] Guid OwnerId,
+    [property: Id(1)] NexusFactionColor Faction,
+    [property: Id(2)] HexCoord Hex,
+    [property: Id(3)] NexusColonyColor HexColor
 ) : NexusResolveEvent;
 
 [GenerateSerializer]
 [Immutable]
 public sealed record NexusColonizeFailedEvent(
-    [property: Id(0)] Guid FleetId,
-    [property: Id(1)] Guid OwnerId,
-    [property: Id(2)] NexusFactionColor Faction,
-    [property: Id(3)] HexCoord Hex
+    [property: Id(0)] Guid OwnerId,
+    [property: Id(1)] NexusFactionColor Faction,
+    [property: Id(2)] HexCoord Hex
 ) : NexusResolveEvent;
 
 // --- Trade Routes ---
@@ -118,10 +113,9 @@ public sealed record NexusIncomeEvent(
 [GenerateSerializer]
 [Immutable]
 public sealed record NexusFleetDeployedEvent(
-    [property: Id(0)] Guid FleetId,
-    [property: Id(1)] Guid OwnerId,
-    [property: Id(2)] NexusFactionColor Faction,
-    [property: Id(3)] HexCoord HomeHex
+    [property: Id(0)] Guid OwnerId,
+    [property: Id(1)] NexusFactionColor Faction,
+    [property: Id(2)] HexCoord HomeHex
 ) : NexusResolveEvent;
 
 [GenerateSerializer]

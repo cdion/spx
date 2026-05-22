@@ -28,7 +28,7 @@ public sealed class NexusGameSessionGrainStateTests
         Assert.NotNull(grainState.Game.BluePlayer);
         Assert.Equal(1, grainState.Game.RoundNumber);
         Assert.Equal(NexusGamePhase.Planning, grainState.Game.Phase);
-        Assert.Equal(4, grainState.Game.Fleets.Count);
+        Assert.Equal(4, grainState.Game.Hexes.Sum(h => h.RedFleets + h.BlueFleets));
     }
 
     [Fact]
