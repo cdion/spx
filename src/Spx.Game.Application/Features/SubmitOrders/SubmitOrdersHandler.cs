@@ -52,23 +52,14 @@ internal sealed class SubmitOrdersHandler(
     {
         var players = await persistence.GetActivePlayersAsync(gameId, cancellationToken);
 
-        var redPlayer =
-            session.CurrentPlayer.Faction == NexusFactionColor.Red
-                ? session.CurrentPlayer
-                : session.OpponentPlayer;
-        var bluePlayer =
-            session.CurrentPlayer.Faction == NexusFactionColor.Blue
-                ? session.CurrentPlayer
-                : session.OpponentPlayer;
-
-        var redName = players.FirstOrDefault(p => p.PlayerId == redPlayer.PlayerId)?.Name ?? "Red";
-        var blueName =
-            players.FirstOrDefault(p => p.PlayerId == bluePlayer.PlayerId)?.Name ?? "Blue";
+        var allSessionPlayers = new[] { session.CurrentPlayer }.Concat(session.Opponents);
+        var playerNames = allSessionPlayers.ToDictionary(
+            p => p.Faction,
+            p => players.FirstOrDefault(x => x.PlayerId == p.PlayerId)?.Name ?? p.Faction.ToString()
+        );
 
         var bodies = session
-            .ResolveEvents.Select(evt =>
-                NexusResolveEventMessageFormatter.Format(evt, redName, blueName)
-            )
+            .ResolveEvents.Select(evt => NexusResolveEventMessageFormatter.Format(evt, playerNames))
             .ToList();
 
         await messagesPersistence.WriteGameplayEventsAsync(gameId, bodies, cancellationToken);

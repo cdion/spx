@@ -40,17 +40,19 @@ public sealed record NexusUndefendedEntryEvent(
 
 [GenerateSerializer]
 [Immutable]
+public sealed record NexusCombatParticipant(
+    [property: Id(0)] Guid PlayerId,
+    [property: Id(1)] NexusFactionColor Faction,
+    [property: Id(2)] int Count,
+    [property: Id(3)] int Losses
+);
+
+[GenerateSerializer]
+[Immutable]
 public sealed record NexusCombatEvent(
     [property: Id(0)] HexCoord Hex,
-    [property: Id(1)] Guid AttackerId,
-    [property: Id(2)] NexusFactionColor AttackerFaction,
-    [property: Id(3)] int AttackerCount,
-    [property: Id(4)] Guid DefenderId,
-    [property: Id(5)] NexusFactionColor DefenderFaction,
-    [property: Id(6)] int DefenderCount,
-    [property: Id(7)] Guid? WinnerId,
-    [property: Id(8)] int AttackerLosses,
-    [property: Id(9)] int DefenderLosses
+    [property: Id(1)] List<NexusCombatParticipant> Participants,
+    [property: Id(2)] Guid? WinnerId
 ) : NexusResolveEvent;
 
 // --- Colonization ---
@@ -103,9 +105,7 @@ public sealed record NexusTradeRouteClosedEvent(
 public sealed record NexusIncomeEvent(
     [property: Id(0)] Guid PlayerId,
     [property: Id(1)] NexusFactionColor Faction,
-    [property: Id(2)] int RedIncome,
-    [property: Id(3)] int BlueIncome,
-    [property: Id(4)] int GoldIncome
+    [property: Id(2)] Dictionary<NexusColonyColor, int> Amounts
 ) : NexusResolveEvent;
 
 // --- Fleet / Gate ---
@@ -124,9 +124,7 @@ public sealed record NexusGateBegunEvent(
     [property: Id(0)] Guid OwnerId,
     [property: Id(1)] NexusFactionColor Faction,
     [property: Id(2)] HexCoord Hex,
-    [property: Id(3)] int RedCost,
-    [property: Id(4)] int BlueCost,
-    [property: Id(5)] int GoldCost
+    [property: Id(3)] Dictionary<NexusColonyColor, int> Cost
 ) : NexusResolveEvent;
 
 [GenerateSerializer]
@@ -135,9 +133,7 @@ public sealed record NexusGateProgressedEvent(
     [property: Id(0)] Guid OwnerId,
     [property: Id(1)] NexusFactionColor Faction,
     [property: Id(2)] HexCoord Hex,
-    [property: Id(3)] int RedCost,
-    [property: Id(4)] int BlueCost,
-    [property: Id(5)] int GoldCost
+    [property: Id(3)] Dictionary<NexusColonyColor, int> Cost
 ) : NexusResolveEvent;
 
 [GenerateSerializer]

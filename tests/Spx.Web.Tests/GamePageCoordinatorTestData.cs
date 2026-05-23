@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using Spx.Contracts;
 using Spx.Game.Application;
 
@@ -40,9 +41,7 @@ internal static class GamePageCoordinatorTestData
             new NexusPlayerView(
                 CurrentPlayerId,
                 NexusFactionColor.Red,
-                0,
-                0,
-                0,
+                ImmutableDictionary<NexusColonyColor, int>.Empty,
                 NexusGateProgress.None,
                 false,
                 true,
@@ -50,18 +49,18 @@ internal static class GamePageCoordinatorTestData
                 false,
                 false
             ),
-            new NexusPlayerView(
-                OpponentPlayerId,
-                NexusFactionColor.Blue,
-                0,
-                0,
-                0,
-                NexusGateProgress.None,
-                false,
-                true,
-                null,
-                false,
-                false
+            ImmutableArray.Create(
+                new NexusPlayerView(
+                    OpponentPlayerId,
+                    NexusFactionColor.Blue,
+                    ImmutableDictionary<NexusColonyColor, int>.Empty,
+                    NexusGateProgress.None,
+                    false,
+                    true,
+                    null,
+                    false,
+                    false
+                )
             ),
             [],
             null

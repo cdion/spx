@@ -35,7 +35,7 @@ public sealed partial class NexusGameSessionGrain(
 
     public Task<NexusGameView?> GetViewAsync(Guid playerId)
     {
-        if (state.State.Game.RedPlayer is null)
+        if (state.State.Game.Players.Count == 0)
             return Task.FromResult<NexusGameView?>(null);
 
         var view = NexusGameEngine.BuildView(state.State.Game, _gameId, playerId);

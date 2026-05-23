@@ -1,0 +1,512 @@
+@using System.Collections.Immutable
+@implements IDisposable
+
+<SectionHeader Eyebrow="Gameplay" Title="@GetHeadline()">
+    <p class="text-sm leading-6 text-slate-300">@GetDescription()</p>
+</SectionHeader>
+
+@if (!string.IsNullOrWhiteSpace(GameplayError))
+{
+    <AlertBanner>@GameplayError</AlertBanner>
+}
+
+<div class="grid gap-3 lg:grid-cols-3">
+    <article class="ui-panel-row items-start">
+        <div>
+            <p class="ui-panel-label">Round</p>
+            <p class="mt-2 text-2xl font-semibold text-white">@Session.RoundNumber</p>
+        </div>
+        <StatusBadge>@Session.Phase</StatusBadge>
+    </article>
+
+    <article class="ui-panel-row items-start">
+        <div class="space-y-1">
+            <p class="ui-panel-label">Your faction</p>
+            <p class="text-base font-semibold text-white">@CurrentPlayerName</p>
+            <p class="text-sm text-slate-400">vs @OpponentPlayerName</p>
+        </div>
+        <StatusBadge>@Session.CurrentPlayer.Faction</StatusBadge>
+    </article>
+
+    <article class="ui-panel-row items-start">
+        <div>
+            <p class="ui-panel-label">Nexus gate</p>
+            <p class="mt-2 text-base font-semibold text-white">@Session.CurrentPlayer.GateProgress</p>
+        </div>
+        @if (Session.CurrentPlayer.HasSubmittedOrders)
+        {
+            <StatusBadge Tone="StatusBadge.BadgeTone.Success">Orders in</StatusBadge>
+        }
+        else if (Session.Opponents.Any(p => p.HasSubmittedOrders))
+        {
+            <StatusBadge Tone="StatusBadge.BadgeTone.Warning">Waiting</StatusBadge>
+        }
+    </article>
+</div>
+
+@if (Session.Completion is not null)
+{
+    <AlertBanner Tone="AlertBanner.AlertTone.Success" Role="status">
+        @GetCompletionMessage()
+    </AlertBanner>
+}
+
+<div class="grid gap-4 lg:grid-cols-[1fr_0.55fr]">
+    <section class="ui-surface-section flex flex-col p-4 lg:p-5">
+        <p class="ui-panel-label mb-4">Hex map</p>
+        <p class="mb-3 text-xs text-sky-300 @(_selectionHex.HasValue ? "visible" : "invisible")">
+            @GetSelectionHint()
+        </p>
+        <div class="min-h-0 flex-1">
+            <NexusHexGridComponent Hexes="@Session.Hexes" TradeRoutes="@Session.ActiveTradeRoutes"
+                                   CurrentPlayerFaction="@Session.CurrentPlayer.Faction" SelectedFleetHex="@GetSelectedFleetHex()"
+                                   ValidMoveTargets="@GetValidMoveTargets()" PendingOrders="@_pendingOrders"
+                                   PlayerHomeHex="@GetPlayerHomeHex()" PendingBuildFleet="@_pendingBuildFleet"
+                                   PendingBeginNexusGate="@_pendingBeginNexusGate" SelectionCycleLabel="@GetCycleLabel()"
+                                   IsEditable="@ShowOrdersForm" OnHexClicked="OnHexClicked" />
+        </div>
+    </section>
+
+    <aside class="space-y-4">
+        <section class="ui-surface-section p-4 lg:p-5">
+            <p class="ui-panel-label mb-3">Resources</p>
+            <div class="space-y-3">
+                <div class="ui-panel-card-inner space-y-2">
+                    <div class="flex items-center justify-between gap-2">
+                        <p class="text-sm font-semibold text-white">@CurrentPlayerName</p>
+                        <StatusBadge>@Session.CurrentPlayer.Faction</StatusBadge>
+                    </div>
+                    <div class="flex flex-wrap gap-3 text-sm text-slate-300">
+                        <span>
+                            <span
+                                class="font-semibold text-red-400">@Session.CurrentPlayer.Credits.GetValueOrDefault(NexusColonyColor.Red,
+                                                                0)</span> red
+                            </span>
+                            <span>
+                                <span
+                                    class="font-semibold text-sky-400">@Session.CurrentPlayer.Credits.GetValueOrDefault(NexusColonyColor.Blue,
+                                                                    0)</span> blue
+                                </span>
+                                <span>
+                                    <span
+                                        class="font-semibold text-yellow-400">@Session.CurrentPlayer.Credits.GetValueOrDefault(NexusColonyColor.Gold,
+                                                                        0)</span> gold
+                                    </span>
+                                </div>
+                                <p class="text-xs text-slate-400">
+                                    @GetPlayerFleetCount(Session.CurrentPlayer.PlayerId) fleet(s) deployed
+                                </p>
+                            </div>
+                            <div class="ui-panel-card-inner space-y-2">
+                                <div class="flex items-center justify-between gap-2">
+                                    <p class="text-sm font-semibold text-white">@OpponentPlayerName</p>
+                                    <StatusBadge>@Session.Opponents[0].Faction</StatusBadge>
+                                </div>
+                                <div class="flex flex-wrap gap-3 text-sm text-slate-300">
+                                    <span>
+                                        <span
+                                            class="font-semibold text-red-400">@Session.Opponents[0].Credits.GetValueOrDefault(NexusColonyColor.Red,
+                                                                            0)</span> red
+                                        </span>
+                                        <span>
+                                            <span
+                                                class="font-semibold text-sky-400">@Session.Opponents[0].Credits.GetValueOrDefault(NexusColonyColor.Blue,
+                                                                                0)</span> blue
+                                            </span>
+                                            <span>
+                                                <span
+                                                    class="font-semibold text-yellow-400">@Session.Opponents[0].Credits.GetValueOrDefault(NexusColonyColor.Gold,
+                                                                                    0)</span> gold
+                                                </span>
+                                            </div>
+                                            <p class="text-xs text-slate-400">
+                                                @GetPlayerFleetCount(Session.Opponents[0].PlayerId) fleet(s) deployed
+                                            </p>
+                                        </div>
+                                    </div>
+                                </section>
+
+                                @if (ShowOrdersForm)
+                                {
+                                    <section class="ui-surface-section space-y-4 p-4 lg:p-5">
+                                        <div class="flex items-center justify-between gap-2">
+                                            <p class="ui-panel-label">Your orders</p>
+                                            <StatusBadge Tone="StatusBadge.BadgeTone.Info">Your turn</StatusBadge>
+                                        </div>
+
+                                        <div class="flex gap-2">
+                                            <button class="ui-button-secondary flex-1 text-sm @(_pendingBuildFleet ? "" : "opacity-40")"
+                                                    @onclick="() => _pendingBuildFleet = !_pendingBuildFleet" disabled="@(!CanAffordBuildFleet)">
+                                                @(_pendingBuildFleet ? "✓ " : "")Build fleet
+                                            </button>
+                                            <button class="ui-button-secondary flex-1 text-sm @(_pendingBeginNexusGate ? "" : "opacity-40")"
+                                                    @onclick="() => _pendingBeginNexusGate = !_pendingBeginNexusGate">
+                                                @(_pendingBeginNexusGate ? "✓ " : "")Nexus gate
+                                            </button>
+                                        </div>
+
+                                        <NexusPendingOrdersListComponent Orders="@_pendingOrders" IsEditable OnRemoveOrder="RemoveOrder" />
+
+                                        <div class="flex flex-wrap gap-3">
+                                            <button class="ui-button-primary" @onclick="SubmitOrdersAsync" disabled="@IsSubmittingAction">
+                                                @(IsSubmittingAction ? "Submitting..." : "Submit orders")
+                                            </button>
+                                        </div>
+                                    </section>
+                                }
+                            </aside>
+                        </div>
+
+                        @if (_resolveDisplayIndex > 0)
+                        {
+                            <section class="ui-surface-section space-y-3 p-4 lg:p-5">
+                                <p class="ui-panel-label">Last round events</p>
+                                @foreach (var evt in Session.ResolveEvents.Take(_resolveDisplayIndex))
+                                {
+                                    <p class="text-sm text-slate-300">
+                                        @NexusResolveEventMessageFormatter.Format(evt, GetFactionNames())
+                                    </p>
+                                }
+                                @if (_resolveDisplayIndex < Session.ResolveEvents.Length)
+                                {
+                                    <p class="animate-pulse text-xs text-slate-500">Resolving...</p>
+                                }
+                            </section>
+                        }
+
+@code {
+    [Parameter, EditorRequired]
+    public NexusGameView Session { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public GameLobbyView Lobby { get; set; } = default!;
+
+    [Parameter]
+    public bool IsSubmittingAction { get; set; }
+
+    [Parameter]
+    public string? GameplayError { get; set; }
+
+    [Parameter]
+    public EventCallback<NexusTurnOrdersCommand> OnSubmitOrders { get; set; }
+
+    private HexCoord? _selectionHex;
+    private int _selectionCycleIndex = -1; // -1 = all my fleets on hex; ≥1 = specific count
+    private bool _pendingBuildFleet;
+    private bool _pendingBeginNexusGate;
+    private readonly List<NexusFleetOrder> _pendingOrders = [];
+    private int _resolveDisplayIndex;
+    private int? _lastKnownRound;
+    private CancellationTokenSource? _playbackCts;
+
+    protected override void OnParametersSet()
+    {
+        if (Session.RoundNumber == _lastKnownRound)
+            return;
+
+        _lastKnownRound = Session.RoundNumber;
+        _pendingOrders.Clear();
+        _selectionHex = null;
+        _selectionCycleIndex = -1;
+        _pendingBuildFleet = false;
+        _pendingBeginNexusGate = false;
+
+        if (Session.ResolveEvents.Length > 0)
+            StartResolvePlayback(Session.ResolveEvents.Length);
+        else
+            _resolveDisplayIndex = 0;
+    }
+
+    private void StartResolvePlayback(int count)
+    {
+        _playbackCts?.Cancel();
+        _playbackCts?.Dispose();
+        _playbackCts = new CancellationTokenSource();
+        var token = _playbackCts.Token;
+        _resolveDisplayIndex = 0;
+        _ = InvokeAsync(async () =>
+        {
+            for (var i = 1; i <= count; i++)
+            {
+                try
+                {
+                    await Task.Delay(400, token);
+                }
+                catch (OperationCanceledException)
+                {
+                    break;
+                }
+
+                if (token.IsCancellationRequested)
+                    break;
+
+                _resolveDisplayIndex = i;
+                StateHasChanged();
+            }
+        });
+    }
+
+    public void Dispose()
+    {
+        _playbackCts?.Cancel();
+        _playbackCts?.Dispose();
+    }
+
+    private int GetPlayerFleetCount(Guid playerId)
+    {
+        var playerView = Session.CurrentPlayer.PlayerId == playerId
+            ? Session.CurrentPlayer
+            : Session.Opponents.FirstOrDefault(p => p.PlayerId == playerId);
+        if (playerView is null)
+            return 0;
+        return Session.Hexes.Sum(h => h.FleetCounts.GetValueOrDefault(playerView.Faction, 0));
+    }
+
+    private bool CanAffordBuildFleet
+    {
+        get
+        {
+            var p = Session.CurrentPlayer;
+            var factionColor = p.Faction.ToColonyColor();
+            return p.Credits.GetValueOrDefault(factionColor, 0) >= 2
+                && p.Credits.GetValueOrDefault(NexusColonyColor.Gold, 0) >= 2;
+        }
+    }
+
+    private bool ShowOrdersForm =>
+        Lobby.IsCurrentUserActive
+        && Session.Phase == NexusGamePhase.Planning
+        && !Session.CurrentPlayer.HasSubmittedOrders
+        && Session.Completion is null;
+
+    private string CurrentPlayerName => Lobby.CurrentPlayerName;
+
+    private string OpponentPlayerName =>
+        Lobby.Players.FirstOrDefault(p => p.PlayerId != Lobby.CurrentPlayerId)?.Name
+        ?? "your opponent";
+
+    private IReadOnlyDictionary<NexusFactionColor, string> GetFactionNames()
+    {
+        var result = new Dictionary<NexusFactionColor, string>
+        {
+            [Session.CurrentPlayer.Faction] = CurrentPlayerName,
+        };
+        foreach (var opp in Session.Opponents)
+        {
+            var oppName =
+                Lobby.Players.FirstOrDefault(p => p.PlayerId == opp.PlayerId)?.Name
+                ?? opp.Faction.ToString();
+            result[opp.Faction] = oppName;
+        }
+        return result;
+    }
+
+    private HexCoord? GetSelectedFleetHex() => _selectionHex;
+
+    private int GetMyFleetCountOnHex(NexusHexView hex) =>
+        hex.FleetCounts.GetValueOrDefault(Session.CurrentPlayer.Faction, 0);
+
+    private int GetSelectedCount()
+    {
+        if (_selectionHex is null)
+            return 0;
+        var hex = Session.Hexes.FirstOrDefault(h => h.Coord == _selectionHex);
+        if (hex is null)
+            return 0;
+        var total = GetMyFleetCountOnHex(hex);
+        if (total == 0)
+            return 0;
+        return _selectionCycleIndex < 0 ? total : Math.Min(_selectionCycleIndex, total);
+    }
+
+    private IReadOnlyList<HexCoord> GetValidMoveTargets()
+    {
+        if (_selectionHex is null)
+            return [];
+        return NexusGameViewQueries.GetValidMoveDestinations(
+            Session,
+            Session.CurrentPlayer.PlayerId,
+            _selectionHex.Value
+        );
+    }
+
+    private HexCoord GetPlayerHomeHex() => NexusMap.GetHomeCoord(Session.CurrentPlayer.Faction);
+
+    private string? GetCycleLabel()
+    {
+        if (_selectionHex is null)
+            return null;
+        var hex = Session.Hexes.FirstOrDefault(h => h.Coord == _selectionHex);
+        if (hex is null)
+            return null;
+        var count = GetMyFleetCountOnHex(hex);
+        if (count <= 1)
+            return null;
+        return _selectionCycleIndex < 0 ? $"×{count}" : $"{_selectionCycleIndex}/{count}";
+    }
+
+    private string GetSelectionHint()
+    {
+        if (_selectionHex is null)
+            return string.Empty;
+        var count = GetSelectedCount();
+        if (count == 0)
+            return string.Empty;
+        if (count > 1)
+            return $"×{count} fleets — click destination to move all, click hex again to select fewer.";
+        return NexusGameViewQueries.CanColonize(Session, Session.CurrentPlayer.PlayerId, _selectionHex.Value)
+            ? "Fleet selected — click to move, or click hex again to colonize."
+            : "Fleet selected — click to move, or click hex again to deselect.";
+    }
+
+    private void OnHexClicked(HexCoord coord)
+    {
+        if (!ShowOrdersForm)
+            return;
+
+        var hex = Session.Hexes.FirstOrDefault(h => h.Coord == coord);
+        if (hex is null)
+            return;
+
+        var myCountOnHex = GetMyFleetCountOnHex(hex);
+
+        // ── Clicking the currently selected hex: cycle or colonize ─────────────────
+        if (_selectionHex == coord)
+        {
+            if (_selectionCycleIndex < 0) // "all" selected
+            {
+                if (myCountOnHex > 0
+                    && NexusGameViewQueries.CanColonize(
+                        Session,
+                        Session.CurrentPlayer.PlayerId,
+                        coord
+                    ))
+                {
+                    _pendingOrders.RemoveAll(o => o.From == coord && o is NexusColonizeOrder);
+                    _pendingOrders.Add(new NexusColonizeOrder(coord));
+                    _selectionHex = null;
+                    return;
+                }
+
+                if (myCountOnHex > 1)
+                {
+                    _selectionCycleIndex = myCountOnHex - 1;
+                    return;
+                }
+
+                _selectionHex = null;
+                TryToggleFlag(coord);
+                return;
+            }
+            else
+            {
+                if (_selectionCycleIndex > 1)
+                {
+                    _selectionCycleIndex--;
+                    return;
+                }
+
+                _selectionHex = null;
+                TryToggleFlag(coord);
+                return;
+            }
+        }
+
+        // ── Different hex: fleet selection takes priority over move target ─────
+        if (myCountOnHex > 0)
+        {
+            _selectionHex = coord;
+            _selectionCycleIndex = -1;
+            return;
+        }
+
+        // Issue move if valid target and something is selected
+        if (_selectionHex.HasValue)
+        {
+            var validTargets = GetValidMoveTargets();
+            if (validTargets.Contains(coord))
+            {
+                var count = GetSelectedCount();
+                _pendingOrders.RemoveAll(o =>
+                    o is NexusMoveOrder m && m.From == _selectionHex && m.To == coord
+                );
+                _pendingOrders.Add(new NexusMoveOrder(_selectionHex.Value, coord, count));
+            }
+            _selectionHex = null;
+            return;
+        }
+
+        // No active selection → flag toggle
+        TryToggleFlag(coord);
+    }
+
+    private void TryToggleFlag(HexCoord coord)
+    {
+        var homeCoord = NexusMap.GetHomeCoord(Session.CurrentPlayer.Faction);
+        if (coord == homeCoord)
+        {
+            if (CanAffordBuildFleet || _pendingBuildFleet)
+                _pendingBuildFleet = !_pendingBuildFleet;
+        }
+        else if (coord == NexusMap.NexusCoord)
+            _pendingBeginNexusGate = !_pendingBeginNexusGate;
+    }
+
+    private void RemoveOrder(NexusFleetOrder order) => _pendingOrders.Remove(order);
+
+    private string GetHeadline() =>
+        Session switch
+        {
+            { Completion: not null } => "Match complete",
+            { Phase: NexusGamePhase.Planning, CurrentPlayer.HasSubmittedOrders: false } =>
+                "Submit your orders",
+            { Phase: NexusGamePhase.Planning } => "Waiting for opponent",
+            _ => "Gameplay",
+        };
+
+    private string GetDescription() =>
+        Session switch
+        {
+            { Completion: not null } => GetCompletionMessage(),
+            { Phase: NexusGamePhase.Planning, CurrentPlayer.HasSubmittedOrders: false } =>
+                "Choose your orders and submit. Both players resolve simultaneously once both have submitted.",
+            { Phase: NexusGamePhase.Planning } =>
+                $"Waiting for {OpponentPlayerName} to submit their orders.",
+            _ => "Game state is resolving.",
+        };
+
+    private string GetCompletionMessage()
+    {
+        if (Session.Completion is null)
+            return string.Empty;
+
+        return Session.Completion.Outcome switch
+        {
+            NexusGameOutcome.Victory
+                when Session.Completion.WinnerId == Session.CurrentPlayer.PlayerId =>
+                "You activated the Nexus gate. Victory!",
+            NexusGameOutcome.Victory => $"{OpponentPlayerName} activated the Nexus gate.",
+            NexusGameOutcome.Draw => "The match ended in a draw.",
+            _ => "The match has ended.",
+        };
+    }
+
+    private Task SubmitOrdersAsync()
+    {
+        var command = new NexusTurnOrdersCommand(
+            Session.CurrentPlayer.PlayerId,
+            Session.RoundNumber,
+            _pendingOrders.ToImmutableArray(),
+            _pendingBuildFleet,
+            _pendingBeginNexusGate
+        );
+
+        _pendingOrders.Clear();
+        _selectionHex = null;
+        _selectionCycleIndex = -1;
+        _pendingBuildFleet = false;
+        _pendingBeginNexusGate = false;
+
+        return OnSubmitOrders.InvokeAsync(command);
+    }
+}

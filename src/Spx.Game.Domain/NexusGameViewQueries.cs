@@ -26,8 +26,9 @@ public static class NexusGameViewQueries
         var faction =
             view.CurrentPlayer.PlayerId == playerId
                 ? view.CurrentPlayer.Faction
-                : view.OpponentPlayer.Faction;
-        var fleetCount = faction == NexusFactionColor.Red ? hex.RedFleetCount : hex.BlueFleetCount;
+                : view.Opponents.FirstOrDefault(p => p.PlayerId == playerId)?.Faction
+                    ?? view.CurrentPlayer.Faction;
+        var fleetCount = hex.FleetCounts.GetValueOrDefault(faction, 0);
         if (fleetCount == 0)
             return [];
 

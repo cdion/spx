@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using Microsoft.Extensions.DependencyInjection;
 using Spx.Game.Application;
 using Spx.Game.Application.Features.GetGamePage;
@@ -124,9 +125,7 @@ public sealed class GetGamePageHandlerTests
         var currentPlayer = new NexusPlayerView(
             CurrentPlayerId,
             NexusFactionColor.Red,
-            0,
-            0,
-            0,
+            ImmutableDictionary<NexusColonyColor, int>.Empty,
             NexusGateProgress.None,
             false,
             true,
@@ -137,9 +136,7 @@ public sealed class GetGamePageHandlerTests
         var opponentPlayer = new NexusPlayerView(
             OpponentPlayerId,
             NexusFactionColor.Blue,
-            0,
-            0,
-            0,
+            ImmutableDictionary<NexusColonyColor, int>.Empty,
             NexusGateProgress.None,
             false,
             true,
@@ -155,7 +152,7 @@ public sealed class GetGamePageHandlerTests
             [],
             [],
             currentPlayer,
-            opponentPlayer,
+            ImmutableArray.Create(opponentPlayer),
             [],
             null
         );

@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using Spx.Game.Application;
 using Spx.Game.Application.Features.SubmitOrders;
 using Xunit;
@@ -91,8 +92,16 @@ public sealed class SubmitOrdersHandlerTests
     {
         var resolveEvents = new NexusResolveEvent[]
         {
-            new NexusIncomeEvent(RedPlayerId, NexusFactionColor.Red, 1, 0, 0),
-            new NexusIncomeEvent(BluePlayerId, NexusFactionColor.Blue, 0, 1, 0),
+            new NexusIncomeEvent(
+                RedPlayerId,
+                NexusFactionColor.Red,
+                new Dictionary<NexusColonyColor, int> { { NexusColonyColor.Red, 1 } }
+            ),
+            new NexusIncomeEvent(
+                BluePlayerId,
+                NexusFactionColor.Blue,
+                new Dictionary<NexusColonyColor, int> { { NexusColonyColor.Blue, 1 } }
+            ),
         };
 
         var session = CreateSession(resolveEvents: resolveEvents);
@@ -145,7 +154,11 @@ public sealed class SubmitOrdersHandlerTests
     {
         var resolveEvents = new NexusResolveEvent[]
         {
-            new NexusIncomeEvent(RedPlayerId, NexusFactionColor.Red, 1, 0, 0),
+            new NexusIncomeEvent(
+                RedPlayerId,
+                NexusFactionColor.Red,
+                new Dictionary<NexusColonyColor, int> { { NexusColonyColor.Red, 1 } }
+            ),
         };
 
         var session = CreateSession(resolveEvents: resolveEvents);
@@ -194,9 +207,7 @@ public sealed class SubmitOrdersHandlerTests
         var currentPlayer = new NexusPlayerView(
             RedPlayerId,
             NexusFactionColor.Red,
-            0,
-            0,
-            0,
+            ImmutableDictionary<NexusColonyColor, int>.Empty,
             NexusGateProgress.None,
             false,
             true,
@@ -207,9 +218,7 @@ public sealed class SubmitOrdersHandlerTests
         var opponentPlayer = new NexusPlayerView(
             BluePlayerId,
             NexusFactionColor.Blue,
-            0,
-            0,
-            0,
+            ImmutableDictionary<NexusColonyColor, int>.Empty,
             NexusGateProgress.None,
             false,
             true,
@@ -224,7 +233,7 @@ public sealed class SubmitOrdersHandlerTests
             [],
             [],
             currentPlayer,
-            opponentPlayer,
+            ImmutableArray.Create(opponentPlayer),
             resolveEvents.ToImmutableArray(),
             null
         );

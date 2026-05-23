@@ -6,6 +6,8 @@ public enum NexusFactionColor
 {
     Red = 0,
     Blue = 1,
+    Green = 2,
+    Yellow = 3,
 }
 
 public enum NexusGamePhase
@@ -53,39 +55,46 @@ public sealed class NexusPlayerState
     public NexusFactionColor Faction { get; set; }
 
     [Id(2)]
-    public int RedCredits { get; set; }
+    public Dictionary<NexusColonyColor, int> Credits { get; set; } = [];
 
     [Id(3)]
-    public int BlueCredits { get; set; }
-
-    [Id(4)]
-    public int GoldCredits { get; set; }
-
-    [Id(5)]
     public NexusGateProgress GateProgress { get; set; }
 
-    [Id(6)]
+    [Id(4)]
     public bool IsActive { get; set; }
 
-    [Id(7)]
+    [Id(5)]
     public bool HasSubmittedOrders { get; set; }
 
     // Stored between first-player submit and resolve
-    [Id(8)]
+    [Id(6)]
     public List<NexusFleetOrder> PendingFleetOrders { get; set; } = [];
 
-    [Id(9)]
+    [Id(7)]
     public bool PendingBuildFleet { get; set; }
 
-    [Id(10)]
+    [Id(8)]
     public bool PendingBeginNexusGate { get; set; }
 
     // Transient during resolve — not persisted beyond the resolve step
-    [Id(11)]
+    [Id(9)]
     public bool PendingFleetDeployment { get; set; }
 
-    [Id(12)]
+    [Id(10)]
     public NexusGateProgress GateProgressBeforeThisTurn { get; set; }
+
+    public int GetCredits(NexusColonyColor color) =>
+        Credits.TryGetValue(color, out var value) ? value : 0;
+
+    public void AddCredits(NexusColonyColor color, int amount)
+    {
+        Credits[color] = GetCredits(color) + amount;
+    }
+
+    public void DeductCredits(NexusColonyColor color, int amount)
+    {
+        Credits[color] = GetCredits(color) - amount;
+    }
 }
 
 [GenerateSerializer]
@@ -98,36 +107,51 @@ public sealed class NexusHexState
     public Guid? ColonyOwnerId { get; set; }
 
     [Id(2)]
-    public int RedFleets { get; set; }
+    public Dictionary<NexusFactionColor, int> Fleets { get; set; } = [];
 
-    [Id(3)]
-    public int BlueFleets { get; set; }
+    public int GetFleets(NexusFactionColor faction) =>
+        Fleets.TryGetValue(faction, out var value) ? value : 0;
+
+    public void AddFleets(NexusFactionColor faction, int count)
+    {
+        Fleets[faction] = GetFleets(faction) + count;
+    }
+
+    public void SetFleets(NexusFactionColor faction, int count)
+    {
+        if (count == 0)
+            Fleets.Remove(faction);
+        else
+            Fleets[faction] = count;
+    }
+
+    public void RemoveFleets(NexusFactionColor faction, int count)
+    {
+        SetFleets(faction, GetFleets(faction) - count);
+    }
 }
 
 [GenerateSerializer]
 public sealed class NexusGameState
 {
     [Id(0)]
-    public NexusPlayerState? RedPlayer { get; set; }
+    public List<NexusPlayerState> Players { get; set; } = [];
 
     [Id(1)]
-    public NexusPlayerState? BluePlayer { get; set; }
-
-    [Id(2)]
     public List<NexusHexState> Hexes { get; set; } = [];
 
-    [Id(3)]
+    [Id(2)]
     public int RoundNumber { get; set; } = 1;
 
-    [Id(4)]
+    [Id(3)]
     public NexusGamePhase Phase { get; set; } = NexusGamePhase.Planning;
 
-    [Id(5)]
+    [Id(4)]
     public List<NexusResolveEvent> ResolveEvents { get; set; } = [];
 
-    [Id(6)]
+    [Id(5)]
     public List<NexusTradeRoute> ActiveTradeRoutes { get; set; } = [];
 
-    [Id(7)]
+    [Id(6)]
     public NexusGameCompletion? Completion { get; set; }
 }

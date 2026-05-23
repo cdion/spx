@@ -11,8 +11,7 @@ public sealed record GameSessionParticipant([property: Id(0)] Guid PlayerId);
 [GenerateSerializer]
 [Immutable]
 public sealed record InitializeNexusGameCommand(
-    [property: Id(0)] GameSessionParticipant FirstPlayer,
-    [property: Id(1)] GameSessionParticipant SecondPlayer
+    [property: Id(0)] ImmutableArray<GameSessionParticipant> Players
 );
 
 [GenerateSerializer]

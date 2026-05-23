@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using Orleans;
 using Spx.Contracts;
 using Spx.Game.Domain;
@@ -15,7 +16,12 @@ public sealed class GameSessionGrainIntegrationTests(OrleansClusterFixture fixtu
     );
 
     private static InitializeNexusGameCommand MakeInitCommand() =>
-        new(new GameSessionParticipant(FirstPlayerId), new GameSessionParticipant(SecondPlayerId));
+        new(
+            ImmutableArray.Create(
+                new GameSessionParticipant(FirstPlayerId),
+                new GameSessionParticipant(SecondPlayerId)
+            )
+        );
 
     [Fact]
     public async Task GetViewAsync_returns_null_before_initialize()
@@ -73,7 +79,7 @@ public sealed class GameSessionGrainIntegrationTests(OrleansClusterFixture fixtu
         var view = await grain.GetViewAsync(FirstPlayerId);
         Assert.NotNull(view);
         var firstTurnPlayerId = view!.CurrentPlayer.PlayerId;
-        var secondTurnPlayerId = view.OpponentPlayer.PlayerId;
+        var secondTurnPlayerId = view.Opponents[0].PlayerId;
 
         // Both players submit empty orders to advance the round
         await grain.SubmitOrdersAsync(
@@ -108,7 +114,7 @@ public sealed class GameSessionGrainIntegrationTests(OrleansClusterFixture fixtu
         var currentPlayerId = view!.CurrentPlayer.PlayerId;
         var currentFaction = view.CurrentPlayer.Faction;
         var hexWithFleet = view.Hexes.First(h =>
-            (currentFaction == NexusFactionColor.Red ? h.RedFleetCount : h.BlueFleetCount) > 0
+            h.FleetCounts.GetValueOrDefault(currentFaction, 0) > 0
         );
         var destination = NexusGameViewQueries.GetValidMoveDestinations(
             view,
@@ -140,7 +146,7 @@ public sealed class GameSessionGrainIntegrationTests(OrleansClusterFixture fixtu
         var view = await grain.GetViewAsync(FirstPlayerId);
         Assert.NotNull(view);
         var abandoningPlayerId = view!.CurrentPlayer.PlayerId;
-        var expectedWinnerId = view.OpponentPlayer.PlayerId;
+        var expectedWinnerId = view.Opponents[0].PlayerId;
 
         await grain.AbandonAsync(abandoningPlayerId);
 

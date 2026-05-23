@@ -196,8 +196,8 @@
                 + $"{hex.Coord.Q},{hex.Coord.R}</text>"
         );
 
-        var redCount = hex.RedFleetCount;
-        var blueCount = hex.BlueFleetCount;
+        var redCount = hex.FleetCounts.GetValueOrDefault(NexusFactionColor.Red, 0);
+        var blueCount = hex.FleetCounts.GetValueOrDefault(NexusFactionColor.Blue, 0);
 
         // On the Nexus hex, move fleet counts below the NEXUS label to avoid overlap.
         var countY = hex.IsNexus ? center.Y + 16 : center.Y + 5;
@@ -252,11 +252,8 @@
         };
 
     private bool HexHasMyFleet(NexusHexView hex) =>
-        CurrentPlayerFaction.HasValue && (
-            CurrentPlayerFaction.Value == NexusFactionColor.Red
-                ? hex.RedFleetCount > 0
-                : hex.BlueFleetCount > 0
-        );
+        CurrentPlayerFaction.HasValue
+        && hex.FleetCounts.GetValueOrDefault(CurrentPlayerFaction.Value, 0) > 0;
 
     private bool IsValidMoveTarget(HexCoord coord) => ValidMoveTargets.Any(t => t == coord);
 

@@ -1,3 +1,5 @@
+using System.Collections.Immutable;
+
 namespace Spx.Game.Domain.Tests;
 
 public class NexusGameViewQueriesTests
@@ -12,25 +14,29 @@ public class NexusGameViewQueriesTests
         Guid? colonyOwnerId = null,
         int redFleets = 0,
         int blueFleets = 0
-    ) =>
-        new(
+    )
+    {
+        var fleets = ImmutableDictionary<NexusFactionColor, int>.Empty;
+        if (redFleets > 0)
+            fleets = fleets.Add(NexusFactionColor.Red, redFleets);
+        if (blueFleets > 0)
+            fleets = fleets.Add(NexusFactionColor.Blue, blueFleets);
+        return new(
             coord,
             NexusColonyColor.None,
             isNexus,
             IsHome: false,
             colonyOwnerId,
             ColonyOwnerFaction: null,
-            redFleets,
-            blueFleets
+            fleets
         );
+    }
 
     private static NexusPlayerView Player(Guid playerId, NexusFactionColor faction) =>
         new(
             playerId,
             faction,
-            RedCredits: 0,
-            BlueCredits: 0,
-            GoldCredits: 0,
+            ImmutableDictionary<NexusColonyColor, int>.Empty,
             NexusGateProgress.None,
             HasSubmittedOrders: false,
             IsActive: true,
@@ -55,7 +61,7 @@ public class NexusGameViewQueriesTests
             hexes.ToImmutableArray(),
             (tradeRoutes ?? []).ToImmutableArray(),
             currentPlayer ?? Player(red, NexusFactionColor.Red),
-            opponentPlayer ?? Player(blue, NexusFactionColor.Blue),
+            ImmutableArray.Create(opponentPlayer ?? Player(blue, NexusFactionColor.Blue)),
             ResolveEvents: [],
             Completion: null
         );

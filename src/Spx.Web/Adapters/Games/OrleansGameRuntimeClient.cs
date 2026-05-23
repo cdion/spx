@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using Orleans;
 using Orleans.Runtime;
 using Spx.Contracts;
@@ -107,7 +108,7 @@ public sealed partial class OrleansGameRuntimeClient(
         CancellationToken cancellationToken = default
     )
     {
-        if (players.Count != 2)
+        if (players.Count is < 2 or > 4)
         {
             return false;
         }
@@ -118,8 +119,9 @@ public sealed partial class OrleansGameRuntimeClient(
                 .GetGrain<IGameSessionGrain>(gameId)
                 .InitializeAsync(
                     new InitializeNexusGameCommand(
-                        new GameSessionParticipant(players[0].PlayerId),
-                        new GameSessionParticipant(players[1].PlayerId)
+                        players
+                            .Select(p => new GameSessionParticipant(p.PlayerId))
+                            .ToImmutableArray()
                     )
                 );
             return true;

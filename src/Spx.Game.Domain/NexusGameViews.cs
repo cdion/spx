@@ -12,8 +12,7 @@ public sealed record NexusHexView(
     [property: Id(3)] bool IsHome,
     [property: Id(4)] Guid? ColonyOwnerId,
     [property: Id(5)] NexusFactionColor? ColonyOwnerFaction,
-    [property: Id(6)] int RedFleetCount,
-    [property: Id(7)] int BlueFleetCount
+    [property: Id(6)] ImmutableDictionary<NexusFactionColor, int> FleetCounts
 );
 
 [GenerateSerializer]
@@ -21,16 +20,14 @@ public sealed record NexusHexView(
 public sealed record NexusPlayerView(
     [property: Id(0)] Guid PlayerId,
     [property: Id(1)] NexusFactionColor Faction,
-    [property: Id(2)] int RedCredits,
-    [property: Id(3)] int BlueCredits,
-    [property: Id(4)] int GoldCredits,
-    [property: Id(5)] NexusGateProgress GateProgress,
-    [property: Id(6)] bool HasSubmittedOrders,
-    [property: Id(7)] bool IsActive,
+    [property: Id(2)] ImmutableDictionary<NexusColonyColor, int> Credits,
+    [property: Id(3)] NexusGateProgress GateProgress,
+    [property: Id(4)] bool HasSubmittedOrders,
+    [property: Id(5)] bool IsActive,
     // Only populated for the current player, null for opponent
-    [property: Id(8)] ImmutableArray<NexusFleetOrder>? PendingFleetOrders,
-    [property: Id(9)] bool PendingBuildFleet,
-    [property: Id(10)] bool PendingBeginNexusGate
+    [property: Id(6)] ImmutableArray<NexusFleetOrder>? PendingFleetOrders,
+    [property: Id(7)] bool PendingBuildFleet,
+    [property: Id(8)] bool PendingBeginNexusGate
 );
 
 [GenerateSerializer]
@@ -53,7 +50,7 @@ public sealed record NexusGameView(
     [property: Id(3)] ImmutableArray<NexusHexView> Hexes,
     [property: Id(4)] ImmutableArray<NexusTradeRouteView> ActiveTradeRoutes,
     [property: Id(5)] NexusPlayerView CurrentPlayer,
-    [property: Id(6)] NexusPlayerView OpponentPlayer,
+    [property: Id(6)] ImmutableArray<NexusPlayerView> Opponents,
     [property: Id(7)] ImmutableArray<NexusResolveEvent> ResolveEvents,
     [property: Id(8)] NexusGameCompletion? Completion
 );

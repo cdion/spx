@@ -4,60 +4,73 @@ namespace Spx.Game.Application;
 
 public static class NexusResolveEventMessageFormatter
 {
-    public static string Format(NexusResolveEvent evt, string redName, string blueName) =>
+    public static string Format(
+        NexusResolveEvent evt,
+        IReadOnlyDictionary<NexusFactionColor, string> playerNames
+    ) =>
         evt switch
         {
             NexusMoveEvent e =>
-                $"{FactionName(e.Faction, redName, blueName)}'s fleet moved from {e.From} to {e.To}",
+                $"{FactionName(e.Faction, playerNames)}'s fleet moved from {e.From} to {e.To}",
             NexusSpeedBonusMoveEvent e =>
-                $"{FactionName(e.Faction, redName, blueName)}'s fleet advanced 2 hexes along the trade corridor from {e.From} to {e.To}",
+                $"{FactionName(e.Faction, playerNames)}'s fleet advanced 2 hexes along the trade corridor from {e.From} to {e.To}",
             NexusUndefendedEntryEvent e =>
-                $"{FactionName(e.Faction, redName, blueName)}'s fleet entered {e.Hex} — colony reverts to unclaimed",
-            NexusCombatEvent e => FormatCombat(e, redName, blueName),
+                $"{FactionName(e.Faction, playerNames)}'s fleet entered {e.Hex} — colony reverts to unclaimed",
+            NexusCombatEvent e => FormatCombat(e, playerNames),
             NexusColonizeEvent e =>
-                $"{FactionName(e.Faction, redName, blueName)} colonized {e.Hex} ({e.HexColor}) — income next turn",
+                $"{FactionName(e.Faction, playerNames)} colonized {e.Hex} ({e.HexColor}) — income next turn",
             NexusColonizeFailedEvent e =>
-                $"{FactionName(e.Faction, redName, blueName)}'s Colonize at {e.Hex} failed — hex was contested this turn",
+                $"{FactionName(e.Faction, playerNames)}'s Colonize at {e.Hex} failed — hex was contested this turn",
             NexusTradeRouteOpenedEvent e =>
-                $"A trade route opened between {FactionName(e.Faction1, redName, blueName)}'s {e.Hex1} and {FactionName(e.Faction2, redName, blueName)}'s {e.Hex2}",
+                $"A trade route opened between {FactionName(e.Faction1, playerNames)}'s {e.Hex1} and {FactionName(e.Faction2, playerNames)}'s {e.Hex2}",
             NexusTradeRouteClosedEvent e =>
-                $"The trade route between {FactionName(e.Faction1, redName, blueName)}'s {e.Hex1} and {FactionName(e.Faction2, redName, blueName)}'s {e.Hex2} has closed",
+                $"The trade route between {FactionName(e.Faction1, playerNames)}'s {e.Hex1} and {FactionName(e.Faction2, playerNames)}'s {e.Hex2} has closed",
             NexusIncomeEvent e =>
-                $"{FactionName(e.Faction, redName, blueName)} receives +{e.RedIncome} Red, +{e.BlueIncome} Blue, +{e.GoldIncome} Gold this turn",
+                $"{FactionName(e.Faction, playerNames)} receives +{e.Amounts.GetValueOrDefault(NexusColonyColor.Red, 0)} Red, +{e.Amounts.GetValueOrDefault(NexusColonyColor.Blue, 0)} Blue, +{e.Amounts.GetValueOrDefault(NexusColonyColor.Gold, 0)} Gold this turn",
             NexusFleetDeployedEvent e =>
-                $"{FactionName(e.Faction, redName, blueName)}'s new fleet deployed at {e.HomeHex}",
+                $"{FactionName(e.Faction, playerNames)}'s new fleet deployed at {e.HomeHex}",
             NexusGateBegunEvent e =>
-                $"{FactionName(e.Faction, redName, blueName)} began Nexus Gate construction — committed {e.RedCost}R {e.BlueCost}B {e.GoldCost}G",
+                $"{FactionName(e.Faction, playerNames)} began Nexus Gate construction — committed {e.Cost.GetValueOrDefault(NexusColonyColor.Red, 0)}R {e.Cost.GetValueOrDefault(NexusColonyColor.Blue, 0)}B {e.Cost.GetValueOrDefault(NexusColonyColor.Gold, 0)}G",
             NexusGateProgressedEvent e =>
-                $"{FactionName(e.Faction, redName, blueName)} completed Nexus Gate construction at {e.Hex}",
+                $"{FactionName(e.Faction, playerNames)} completed Nexus Gate construction at {e.Hex}",
             NexusGateCancelledEvent e =>
-                $"{FactionName(e.Faction, redName, blueName)}'s Nexus Gate construction cancelled — committed resources lost",
+                $"{FactionName(e.Faction, playerNames)}'s Nexus Gate construction cancelled — committed resources lost",
             NexusVictoryEvent e =>
-                $"{FactionName(e.WinnerFaction, redName, blueName)} activated the Nexus Gate — victory!",
+                $"{FactionName(e.WinnerFaction, playerNames)} activated the Nexus Gate — victory!",
             NexusDrawEvent e => $"Match ended in a draw: {e.Reason}",
             NexusTiebreakerVictoryEvent e =>
-                $"{FactionName(e.WinnerFaction, redName, blueName)} wins the tiebreaker ({e.WinnerSystems} vs {e.LoserSystems} systems)",
+                $"{FactionName(e.WinnerFaction, playerNames)} wins the tiebreaker ({e.WinnerSystems} vs {e.LoserSystems} systems)",
             NexusTiebreakerDrawEvent e =>
                 $"Tiebreaker draw — both players control {e.SystemCount} systems",
             _ => evt.GetType().Name,
         };
 
-    private static string FormatCombat(NexusCombatEvent e, string redName, string blueName)
+    private static string FormatCombat(
+        NexusCombatEvent e,
+        IReadOnlyDictionary<NexusFactionColor, string> names
+    )
     {
-        var attacker = FactionName(e.AttackerFaction, redName, blueName);
-        var defender = FactionName(e.DefenderFaction, redName, blueName);
+        if (e.Participants.Count != 2)
+            return $"Combat at {e.Hex} (multi-faction — {e.Participants.Count} factions)";
+
+        var p0 = e.Participants[0];
+        var p1 = e.Participants[1];
+        var name0 = FactionName(p0.Faction, names);
+        var name1 = FactionName(p1.Faction, names);
         var header =
-            $"{attacker}'s {e.AttackerCount} fleet(s) clashed with {defender}'s {e.DefenderCount} fleet(s) at {e.Hex}";
+            $"{name0}'s {p0.Count} fleet(s) clashed with {name1}'s {p1.Count} fleet(s) at {e.Hex}";
 
         if (e.WinnerId is null)
             return $"{header} — mutual destruction, all fleets lost";
 
-        if (e.WinnerId == e.AttackerId)
-            return $"{header} — {attacker} takes {e.Hex} (losses: {attacker} {e.AttackerLosses}, {defender} {e.DefenderLosses})";
+        if (e.WinnerId == p0.PlayerId)
+            return $"{header} — {name0} takes {e.Hex} (losses: {name0} {p0.Losses}, {name1} {p1.Losses})";
 
-        return $"{header} — {defender} holds {e.Hex} (losses: {attacker} {e.AttackerLosses}, {defender} {e.DefenderLosses})";
+        return $"{header} — {name1} holds {e.Hex} (losses: {name0} {p0.Losses}, {name1} {p1.Losses})";
     }
 
-    private static string FactionName(NexusFactionColor faction, string redName, string blueName) =>
-        faction == NexusFactionColor.Red ? redName : blueName;
+    private static string FactionName(
+        NexusFactionColor faction,
+        IReadOnlyDictionary<NexusFactionColor, string> names
+    ) => names.TryGetValue(faction, out var name) ? name : faction.ToString();
 }

@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using Spx.Grains;
 using Xunit;
 
@@ -11,8 +12,7 @@ public sealed class NexusGameSessionGrainStateTests
         var grainState = new NexusGameSessionGrainState();
 
         Assert.NotNull(grainState.Game);
-        Assert.Null(grainState.Game.RedPlayer);
-        Assert.Null(grainState.Game.BluePlayer);
+        Assert.Empty(grainState.Game.Players);
     }
 
     [Fact]
@@ -22,13 +22,15 @@ public sealed class NexusGameSessionGrainStateTests
         var first = new GameSessionParticipant(Guid.NewGuid());
         var second = new GameSessionParticipant(Guid.NewGuid());
 
-        NexusGameEngine.Initialize(grainState.Game, new InitializeNexusGameCommand(first, second));
+        NexusGameEngine.Initialize(
+            grainState.Game,
+            new InitializeNexusGameCommand(ImmutableArray.Create(first, second))
+        );
 
-        Assert.NotNull(grainState.Game.RedPlayer);
-        Assert.NotNull(grainState.Game.BluePlayer);
+        Assert.Equal(2, grainState.Game.Players.Count);
         Assert.Equal(1, grainState.Game.RoundNumber);
         Assert.Equal(NexusGamePhase.Planning, grainState.Game.Phase);
-        Assert.Equal(4, grainState.Game.Hexes.Sum(h => h.RedFleets + h.BlueFleets));
+        Assert.Equal(4, grainState.Game.Hexes.Sum(h => h.Fleets.Values.Sum()));
     }
 
     [Fact]
@@ -38,14 +40,14 @@ public sealed class NexusGameSessionGrainStateTests
         var first = new GameSessionParticipant(Guid.NewGuid());
         var second = new GameSessionParticipant(Guid.NewGuid());
 
-        NexusGameEngine.Initialize(grainState.Game, new InitializeNexusGameCommand(first, second));
+        NexusGameEngine.Initialize(
+            grainState.Game,
+            new InitializeNexusGameCommand(ImmutableArray.Create(first, second))
+        );
 
-        Assert.NotEqual(grainState.Game.RedPlayer!.Faction, grainState.Game.BluePlayer!.Faction);
-        var playerIds = new[]
-        {
-            grainState.Game.RedPlayer.PlayerId,
-            grainState.Game.BluePlayer.PlayerId,
-        };
+        Assert.Equal(2, grainState.Game.Players.Count);
+        Assert.NotEqual(grainState.Game.Players[0].Faction, grainState.Game.Players[1].Faction);
+        var playerIds = grainState.Game.Players.Select(p => p.PlayerId).ToHashSet();
         Assert.Contains(first.PlayerId, playerIds);
         Assert.Contains(second.PlayerId, playerIds);
     }
