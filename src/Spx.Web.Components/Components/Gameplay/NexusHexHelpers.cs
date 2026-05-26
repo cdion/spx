@@ -1,7 +1,7 @@
 using System.Text;
 using Spx.Game.Domain;
 
-namespace Spx.Web.Components.Pages;
+namespace Spx.Web.Components.Gameplay;
 
 internal static class NexusHexHelpers
 {
