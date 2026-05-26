@@ -13,24 +13,23 @@
         @foreach (var system in Systems)
         {
             var center = NexusHexHelpers.HexCenter(system.Coord);
-            <NexusHexCellComponent System="system" Center="center"
-                CurrentPlayerId="CurrentPlayerId" OpponentPlayerId="@OpponentPlayerId"
-                CurrentPlayerGateProgress="CurrentPlayerGateProgress"
-                IsClickable="IsEditable" OnClicked="OnSystemClicked" />
+            <NexusHexCellComponent System="system" Center="center" CurrentPlayerId="CurrentPlayerId"
+                                   OpponentPlayerId="@OpponentPlayerId" CurrentPlayerGateProgress="CurrentPlayerGateProgress"
+                                   IsClickable="IsEditable" OnClicked="OnSystemClicked" />
         }
 
         @* Pass 2a: Valid-target rings *@
         @foreach (var coord in ValidMoveTargets)
         {
-            <polygon points="@NexusHexHelpers.HexPoints(NexusHexHelpers.HexCenter(coord))" fill="none"
-                     stroke="#38bdf8" stroke-width="2" pointer-events="none" />
+            <polygon points="@NexusHexHelpers.HexPoints(NexusHexHelpers.HexCenter(coord))" fill="none" stroke="#38bdf8"
+                     stroke-width="2" pointer-events="none" />
         }
 
         @* Pass 2b: Selection ring *@
         @if (SelectedSystem.HasValue)
         {
-            <polygon points="@NexusHexHelpers.HexPoints(NexusHexHelpers.HexCenter(SelectedSystem.Value))"
-                     fill="none" stroke="rgba(226,232,240,0.9)" stroke-width="2.5" pointer-events="none" />
+            <polygon points="@NexusHexHelpers.HexPoints(NexusHexHelpers.HexCenter(SelectedSystem.Value))" fill="none"
+                     stroke="rgba(226,232,240,0.9)" stroke-width="2.5" pointer-events="none" />
         }
 
         @* Pass 3: Move order arrows *@
@@ -45,9 +44,8 @@
             {
                 var ex = to.X - dx / len * 12;
                 var ey = to.Y - dy / len * 12;
-                <line x1="@NexusHexHelpers.Fmt(from.X)" y1="@NexusHexHelpers.Fmt(from.Y)"
-                      x2="@NexusHexHelpers.Fmt(ex)" y2="@NexusHexHelpers.Fmt(ey)"
-                      stroke="rgba(251,191,36,0.85)" stroke-width="2" stroke-linecap="round"
+                <line x1="@NexusHexHelpers.Fmt(from.X)" y1="@NexusHexHelpers.Fmt(from.Y)" x2="@NexusHexHelpers.Fmt(ex)"
+                      y2="@NexusHexHelpers.Fmt(ey)" stroke="rgba(251,191,36,0.85)" stroke-width="2" stroke-linecap="round"
                       marker-end="url(#nexus-arrow)" />
             }
         }

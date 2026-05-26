@@ -282,11 +282,14 @@
       "command": "${workspaceFolder}/tools/tailwind/bin/tailwindcss-linux-x64",
       "args": [
         "-i",
-        "${workspaceFolder}/src/Spx.Web/Styles/app.css",
+        "${workspaceFolder}/src/Spx.Web.Components/Styles/app.css",
         "-o",
-        "${workspaceFolder}/src/Spx.Web/wwwroot/app.css",
+        "${workspaceFolder}/src/Spx.Web.Components/wwwroot/app.css",
         "--minify"
       ],
+      "options": {
+        "cwd": "${workspaceFolder}/src/Spx.Web.Components"
+      },
       "problemMatcher": [],
       "group": "build"
     },
@@ -296,11 +299,14 @@
       "command": "${workspaceFolder}/tools/tailwind/bin/tailwindcss-linux-x64",
       "args": [
         "-i",
-        "${workspaceFolder}/src/Spx.Web/Styles/app.css",
+        "${workspaceFolder}/src/Spx.Web.Components/Styles/app.css",
         "-o",
-        "${workspaceFolder}/src/Spx.Web/wwwroot/app.css",
+        "${workspaceFolder}/src/Spx.Web.Components/wwwroot/app.css",
         "--watch"
       ],
+      "options": {
+        "cwd": "${workspaceFolder}/src/Spx.Web.Components"
+      },
       "isBackground": true,
       "problemMatcher": {
         "owner": "tailwind",
@@ -347,7 +353,7 @@
     {
       "label": "apphost: watch",
       "type": "shell",
-      "command": "${workspaceFolder}/tools/dev/run-apphost-watch.fish",
+      "command": "systemctl --user stop spx-apphost.scope 2>/dev/null; env DOTNET_USE_POLLING_FILE_WATCHER=1 systemd-run --user --scope --unit=spx-apphost dotnet watch --project ${workspaceFolder}/src/Spx.AppHost/Spx.AppHost.csproj run",
       "isBackground": true,
       "problemMatcher": {
         "owner": "apphost-watch",
@@ -370,6 +376,36 @@
       "dependsOn": [
         "tailwind: watch css",
         "apphost: watch"
+      ],
+      "dependsOrder": "parallel",
+      "problemMatcher": []
+    },
+    {
+      "label": "playground: run",
+      "type": "shell",
+      "command": "env DOTNET_USE_POLLING_FILE_WATCHER=1 dotnet watch --project ${workspaceFolder}/src/Spx.Web.Playground/Spx.Web.Playground.csproj",
+      "isBackground": true,
+      "problemMatcher": {
+        "owner": "playground-watch",
+        "pattern": {
+          "regexp": ".+"
+        },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": ".*dotnet watch.*",
+          "endsPattern": ".*Application started\\..*|.*Now listening on.*"
+        }
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      }
+    },
+    {
+      "label": "dev: watch playground + tailwind",
+      "dependsOn": [
+        "tailwind: watch css",
+        "playground: run"
       ],
       "dependsOrder": "parallel",
       "problemMatcher": []

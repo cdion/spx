@@ -1,0 +1,36 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Spx.Web</RootNamespace>
+    <TailwindCli>$(MSBuildProjectDirectory)/../../tools/tailwind/bin/tailwindcss-linux-x64</TailwindCli>
+    <TailwindInput>$(MSBuildProjectDirectory)/Styles/app.css</TailwindInput>
+    <TailwindOutput>$(MSBuildProjectDirectory)/wwwroot/app.css</TailwindOutput>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <ProjectReference Include="../Spx.Game.Application/Spx.Game.Application.csproj" />
+    <ProjectReference Include="../Spx.Game.Domain/Spx.Game.Domain.csproj" />
+  </ItemGroup>
+
+  <Target Name="EnsureTailwindCli" BeforeTargets="Build;Publish">
+    <Error
+      Condition="!Exists('$(TailwindCli)')"
+      Text="Tailwind standalone binary not found at $(TailwindCli)."
+    />
+  </Target>
+
+  <Target
+    Name="BuildTailwindCss"
+    BeforeTargets="Build;Publish"
+    DependsOnTargets="EnsureTailwindCli"
+  >
+    <MakeDir Directories="$(MSBuildProjectDirectory)/wwwroot" />
+    <Exec
+      Command="&quot;$(TailwindCli)&quot; -i &quot;$(TailwindInput)&quot; -o &quot;$(TailwindOutput)&quot; --minify"
+      WorkingDirectory="$(MSBuildProjectDirectory)"
+    />
+  </Target>
+</Project>

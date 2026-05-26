@@ -1,0 +1,41 @@
+@inherits LayoutComponentBase
+
+<div class="flex min-h-screen bg-[radial-gradient(circle_at_top,#0f172a_0%,#020617_60%)] text-slate-100">
+    <nav class="w-52 shrink-0 border-r border-white/10 bg-slate-900/60 p-4">
+        <p class="mb-3 text-xs font-semibold uppercase tracking-widest text-slate-500">Playground</p>
+        <ul class="space-y-0.5">
+            <li>
+                <NavLink href="/stories/hex-grid"
+                         class="block rounded-md px-3 py-2 text-sm text-slate-400 transition-colors hover:bg-white/5 hover:text-slate-200"
+                         ActiveClass="bg-white/10 text-white">
+                    Hex Grid
+                </NavLink>
+            </li>
+            <li>
+                <NavLink href="/stories/gameplay-panel"
+                         class="block rounded-md px-3 py-2 text-sm text-slate-400 transition-colors hover:bg-white/5 hover:text-slate-200"
+                         ActiveClass="bg-white/10 text-white">
+                    Gameplay Panel
+                </NavLink>
+            </li>
+            <li>
+                <NavLink href="/stories/unit-selection"
+                         class="block rounded-md px-3 py-2 text-sm text-slate-400 transition-colors hover:bg-white/5 hover:text-slate-200"
+                         ActiveClass="bg-white/10 text-white">
+                    Unit Selection
+                </NavLink>
+            </li>
+            <li>
+                <NavLink href="/stories/pending-orders"
+                         class="block rounded-md px-3 py-2 text-sm text-slate-400 transition-colors hover:bg-white/5 hover:text-slate-200"
+                         ActiveClass="bg-white/10 text-white">
+                    Pending Orders
+                </NavLink>
+            </li>
+        </ul>
+    </nav>
+
+    <main class="min-w-0 flex-1 overflow-auto p-6">
+        @Body
+    </main>
+</div>

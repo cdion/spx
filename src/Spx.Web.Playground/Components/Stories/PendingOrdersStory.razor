@@ -1,0 +1,93 @@
+@page "/stories/pending-orders"
+@rendermode InteractiveServer
+
+<h1 class="mb-1 text-xl font-semibold text-white">Pending Orders</h1>
+<p class="mb-5 text-sm text-slate-400">
+    <code class="text-sky-300">NexusPendingOrdersListComponent</code> — editable and read-only modes.
+</p>
+
+<div class="grid gap-6 lg:grid-cols-2">
+    <section class="ui-surface-section p-4 lg:p-5 space-y-4">
+        <div class="flex items-center justify-between">
+            <p class="ui-panel-label">Editable</p>
+            <StatusBadge Tone="StatusBadge.BadgeTone.Info">Your turn</StatusBadge>
+        </div>
+
+        <NexusPendingOrdersListComponent MoveOrders="@_moveOrders" BuildOrders="@_buildOrders" BeginNexusGate="@_gate"
+                                         IsEditable OnRemoveMoveOrder="RemoveMove" OnRemoveBuildOrder="RemoveBuild"
+                                         OnRemoveGateOrder="() => _gate = false" />
+
+        <div class="border-t border-white/10 pt-3 space-y-2">
+            <p class="text-xs font-semibold text-slate-400">Add orders</p>
+            <button class="rounded-md border border-white/10 px-3 py-1.5 text-xs text-slate-300 hover:bg-white/5"
+                    @onclick="AddMove">
+                + Move (Home → adjacent)
+            </button>
+            <button class="rounded-md border border-white/10 px-3 py-1.5 text-xs text-slate-300 hover:bg-white/5"
+                    @onclick="AddBuild">
+                + Build 1 Infantry
+            </button>
+            <button class="rounded-md border border-white/10 px-3 py-1.5 text-xs text-slate-300 hover:bg-white/5"
+                    @onclick="() => _gate = true" disabled="@_gate">
+                + Begin Gate
+            </button>
+        </div>
+    </section>
+
+    <section class="ui-surface-section p-4 lg:p-5 space-y-4">
+        <div class="flex items-center justify-between">
+            <p class="ui-panel-label">Read-only (opponent committed)</p>
+            <StatusBadge Tone="StatusBadge.BadgeTone.Warning">Waiting</StatusBadge>
+        </div>
+
+        <NexusPendingOrdersListComponent MoveOrders="@_readOnlyMoves" BuildOrders="@_readOnlyBuilds"
+                                         BeginNexusGate="true" IsEditable="false" />
+    </section>
+</div>
+
+@code {
+    private static readonly Guid P1 = Guid.Parse("aaaaaaaa-0000-0000-0000-000000000001");
+
+    // Editable state
+    private readonly List<NexusMoveOrder> _moveOrders =
+    [
+        new(NexusMap.Player1HomeCoord, new HexCoord(1, -2),
+            ImmutableDictionary<NexusUnitType, int>.Empty
+                .Add(NexusUnitType.Carrier, 1)
+                .Add(NexusUnitType.Infantry, 2)),
+    ];
+
+    private readonly List<NexusBuildOrder> _buildOrders = [];
+    private bool _gate;
+
+    // Read-only fixed state
+    private static readonly IReadOnlyList<NexusMoveOrder> _readOnlyMoves =
+    [
+        new(NexusMap.Player2HomeCoord, new HexCoord(-1, 2),
+            ImmutableDictionary<NexusUnitType, int>.Empty
+                .Add(NexusUnitType.Carrier, 1)
+                .Add(NexusUnitType.Infantry, 4)),
+        new(new HexCoord(-1, 2), new HexCoord(0, 1),
+            ImmutableDictionary<NexusUnitType, int>.Empty
+                .Add(NexusUnitType.Infantry, 2)),
+    ];
+
+    private static readonly IReadOnlyList<NexusBuildOrder> _readOnlyBuilds =
+    [
+        new(NexusUnitType.Frigate, 1),
+        new(NexusUnitType.Infantry, 2),
+    ];
+
+    private void RemoveMove(NexusMoveOrder order) => _moveOrders.Remove(order);
+    private void RemoveBuild(NexusBuildOrder order) => _buildOrders.Remove(order);
+
+    private void AddMove()
+    {
+        _moveOrders.Add(new NexusMoveOrder(
+            NexusMap.Player1HomeCoord,
+            new HexCoord(2, -1),
+            ImmutableDictionary<NexusUnitType, int>.Empty.Add(NexusUnitType.Fighter, 1)));
+    }
+
+    private void AddBuild() => _buildOrders.Add(new NexusBuildOrder(NexusUnitType.Infantry, 1));
+}

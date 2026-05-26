@@ -47,7 +47,7 @@ public class NexusMapTests
     public void GenerateMap_Has19Systems() => Assert.Equal(19, Map.Count);
 
     [Fact]
-    public void GenerateMap_HasExactlyOneNexus() => Assert.Single(Map.Where(s => s.IsNexus));
+    public void GenerateMap_HasExactlyOneNexus() => Assert.Single(Map, s => s.IsNexus);
 
     [Fact]
     public void GenerateMap_NexusAtCenter() =>
@@ -289,7 +289,7 @@ public class NexusMoveValidationTests
     private static readonly HexCoord Adjacent1 = new(1, -2);
     private static readonly HexCoord Adjacent2 = new(2, -1);
 
-    private NexusGameState MakeState()
+    private static NexusGameState MakeState()
     {
         var state = new NexusGameState();
         NexusGameEngine.Initialize(
@@ -454,7 +454,7 @@ public class NexusRoundResolutionTests
     private static readonly Guid P1Id = Guid.Parse("aaaaaaaa-0000-0000-0000-000000000001");
     private static readonly Guid P2Id = Guid.Parse("bbbbbbbb-0000-0000-0000-000000000002");
 
-    private NexusGameState MakeState()
+    private static NexusGameState MakeState()
     {
         var state = new NexusGameState();
         NexusGameEngine.Initialize(
@@ -673,7 +673,7 @@ public class NexusGateTests
     private static readonly Guid P1Id = Guid.Parse("aaaaaaaa-0000-0000-0000-000000000001");
     private static readonly Guid P2Id = Guid.Parse("bbbbbbbb-0000-0000-0000-000000000002");
 
-    private NexusGameState MakeState()
+    private static NexusGameState MakeState()
     {
         var state = new NexusGameState();
         NexusGameEngine.Initialize(

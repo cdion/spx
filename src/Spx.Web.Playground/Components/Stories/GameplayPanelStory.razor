@@ -1,0 +1,152 @@
+@page "/stories/gameplay-panel"
+@rendermode InteractiveServer
+
+<h1 class="mb-1 text-xl font-semibold text-white">Gameplay Panel</h1>
+<p class="mb-4 text-sm text-slate-400">Full <code class="text-sky-300">NexusGameplayPanel</code> with fixture game
+    state.</p>
+
+    <div class="mb-5 flex flex-wrap gap-2">
+        @foreach (var (label, index) in _scenarios.Select((s, i) => (s.Label, i)))
+        {
+            <button class="@ScenarioBtnClass(index)" @onclick="() => SelectScenario(index)">
+                @label
+            </button>
+        }
+    </div>
+
+    <p class="mb-4 text-xs text-slate-500">@_scenarios[_scenarioIndex].Description</p>
+
+    <NexusGameplayPanel Session="@_scenarios[_scenarioIndex].View" Lobby="@_lobby" IsSubmittingAction="@_submitting"
+                        GameplayError="@_error" OnSubmitOrders="OnSubmitOrders" />
+
+    @if (_lastCommand is not null)
+    {
+        <div class="mt-4 rounded-xl border border-emerald-500/20 bg-emerald-900/10 p-4">
+            <p class="text-xs font-semibold text-emerald-400">Orders submitted (playground capture)</p>
+            <p class="mt-1 text-xs text-slate-300">
+                Round @_lastCommand.ExpectedRoundNumber — @_lastCommand.MoveOrders.Length move(s),
+                @_lastCommand.BuildOrders.Length build(s), gate: @_lastCommand.BeginNexusGate
+            </p>
+        </div>
+    }
+
+@code {
+    private static readonly Guid P1 = Guid.Parse("aaaaaaaa-0000-0000-0000-000000000001");
+    private static readonly Guid P2 = Guid.Parse("bbbbbbbb-0000-0000-0000-000000000002");
+
+    private record Scenario(string Label, string Description, NexusGameView View);
+
+    private Scenario[] _scenarios = null!;
+    private GameLobbyView _lobby = null!;
+    private int _scenarioIndex;
+    private bool _submitting;
+    private string? _error;
+    private NexusTurnOrdersCommand? _lastCommand;
+
+    protected override void OnInitialized()
+    {
+        _scenarios =
+        [
+            BuildScenario("Round 1", "Fresh game: 0 energy, can't build or start a gate.", rounds: 0),
+            BuildScenario("Round 2", "After one round of income: 3 energy each.", rounds: 1),
+            BuildScenario("Round 5", "Five rounds in: more energy, multiple controlled systems.", rounds: 4),
+            BuildWaitingScenario(),
+            BuildEndedScenario(),
+        ];
+
+        _lobby = new GameLobbyView(
+            _scenarios[0].View.GameId,
+            "Playground Game",
+            "PLAY01",
+            GameStatus.Open,
+            2,
+            DateTime.UtcNow.AddHours(-1),
+            null,
+            "Player One",
+            P1,
+            [
+                new GamePlayerView(P1, "Player One", DateTime.UtcNow.AddHours(-1)),
+                new GamePlayerView(P2, "Player Two", DateTime.UtcNow.AddMinutes(-58)),
+            ],
+            true);
+    }
+
+    private static Scenario BuildScenario(string label, string description, int rounds)
+    {
+        var state = new NexusGameState();
+        NexusGameEngine.Initialize(
+            state,
+            new InitializeNexusGameCommand(
+                ImmutableArray.Create(new GameSessionParticipant(P1), new GameSessionParticipant(P2))),
+            new Random(42));
+
+        var rng = new Random(0);
+        for (var i = 0; i < rounds; i++)
+        {
+            NexusGameEngine.SubmitOrders(state, new NexusTurnOrdersCommand(P1, state.RoundNumber, [], [], false), rng);
+            NexusGameEngine.SubmitOrders(state, new NexusTurnOrdersCommand(P2, state.RoundNumber, [], [], false), rng);
+        }
+
+        return new Scenario(label, description, NexusGameEngine.BuildView(state, Guid.NewGuid(), P1));
+    }
+
+    private static Scenario BuildWaitingScenario()
+    {
+        var state = new NexusGameState();
+        NexusGameEngine.Initialize(
+            state,
+            new InitializeNexusGameCommand(
+                ImmutableArray.Create(new GameSessionParticipant(P1), new GameSessionParticipant(P2))),
+            new Random(42));
+
+        // Advance to round 2 and have P2 submit only (P1 is waiting)
+        var rng = new Random(0);
+        NexusGameEngine.SubmitOrders(state, new NexusTurnOrdersCommand(P1, 1, [], [], false), rng);
+        NexusGameEngine.SubmitOrders(state, new NexusTurnOrdersCommand(P2, 1, [], [], false), rng);
+        NexusGameEngine.SubmitOrders(state, new NexusTurnOrdersCommand(P2, 2, [], [], false), rng);
+
+        return new Scenario(
+            "Waiting",
+            "P2 has already submitted orders; P1 still needs to commit.",
+            NexusGameEngine.BuildView(state, Guid.NewGuid(), P1));
+    }
+
+    private static Scenario BuildEndedScenario()
+    {
+        var state = new NexusGameState();
+        NexusGameEngine.Initialize(
+            state,
+            new InitializeNexusGameCommand(
+                ImmutableArray.Create(new GameSessionParticipant(P1), new GameSessionParticipant(P2))),
+            new Random(42));
+
+        NexusGameEngine.Abandon(state, P2);
+
+        return new Scenario(
+            "Ended",
+            "P2 abandoned; P1 wins.",
+            NexusGameEngine.BuildView(state, Guid.NewGuid(), P1));
+    }
+
+    private void SelectScenario(int index)
+    {
+        _scenarioIndex = index;
+        _lastCommand = null;
+        _error = null;
+        _submitting = false;
+    }
+
+    private async Task OnSubmitOrders(NexusTurnOrdersCommand command)
+    {
+        _submitting = true;
+        _lastCommand = null;
+        await Task.Delay(600); // simulate latency
+        _submitting = false;
+        _lastCommand = command;
+    }
+
+    private string ScenarioBtnClass(int index) =>
+        index == _scenarioIndex
+            ? "rounded-lg border border-sky-500/40 bg-sky-900/20 px-4 py-1.5 text-sm text-sky-200"
+            : "rounded-lg border border-white/10 px-4 py-1.5 text-sm text-slate-400 hover:bg-white/5";
+}

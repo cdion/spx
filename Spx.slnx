@@ -10,6 +10,8 @@
     <Project Path="src/Spx.Silo/Spx.Silo.csproj" />
     <Project Path="src/Spx.ServiceDefaults/Spx.ServiceDefaults.csproj" />
     <Project Path="src/Spx.Web/Spx.Web.csproj" />
+    <Project Path="src/Spx.Web.Components/Spx.Web.Components.csproj" />
+    <Project Path="src/Spx.Web.Playground/Spx.Web.Playground.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Spx.Account.Tests/Spx.Account.Tests.csproj" />

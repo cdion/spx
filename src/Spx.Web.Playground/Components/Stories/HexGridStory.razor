@@ -1,0 +1,147 @@
+@page "/stories/hex-grid"
+@rendermode InteractiveServer
+
+<h1 class="mb-1 text-xl font-semibold text-white">Hex Grid</h1>
+<p class="mb-5 text-sm text-slate-400">
+    Click a system to select it and see valid move destinations highlighted.
+</p>
+
+<div class="grid gap-4 lg:grid-cols-[1fr_0.28fr]">
+    <section class="ui-surface-section flex flex-col p-4 lg:p-5">
+        <p class="ui-panel-label mb-4">Map — P1 perspective (Red)</p>
+        <div class="min-h-0" style="height:560px">
+            <NexusHexGridComponent Systems="@_view.Systems" CurrentPlayerId="@P1" OpponentPlayerId="@P2"
+                                   CurrentPlayerFaction="NexusFactionColor.Red" CurrentPlayerGateProgress="@_gateProgress"
+                                   IsEditable="true" PendingMoveOrders="@_pendingMoves" SelectedSystem="@_selected"
+                                   ValidMoveTargets="@_validTargets" OnSystemClicked="OnSystemClicked" />
+        </div>
+    </section>
+
+    <aside class="space-y-4">
+        <section class="ui-surface-section p-4 lg:p-5 space-y-3">
+            <p class="ui-panel-label">Controls</p>
+            <div class="space-y-2">
+                <p class="text-xs text-slate-400">Gate progress</p>
+                <div class="flex flex-wrap gap-2">
+                    @foreach (var g in Enum.GetValues<NexusGateProgress>())
+                    {
+                        <button class="@GateBtnClass(g)" @onclick="() => _gateProgress = g">
+                            @g
+                        </button>
+                    }
+                </div>
+            </div>
+            <div class="space-y-2">
+                <p class="text-xs text-slate-400">Pending moves</p>
+                <button class="rounded-md border border-white/10 px-3 py-1.5 text-xs text-slate-300 hover:bg-white/5"
+                        @onclick="ClearMoves">
+                    Clear
+                </button>
+            </div>
+        </section>
+
+        <section class="ui-surface-section p-4 lg:p-5 space-y-2">
+            <p class="ui-panel-label">Selection</p>
+            @if (_selected.HasValue)
+            {
+                <p class="text-sm font-semibold text-white">@_selected.Value</p>
+                <p class="text-xs text-slate-400">@_validTargets.Count valid target(s)</p>
+            }
+            else
+            {
+                <p class="text-xs text-slate-500">Nothing selected</p>
+            }
+        </section>
+
+        <section class="ui-surface-section p-4 lg:p-5 space-y-2">
+            <p class="ui-panel-label">Pending moves</p>
+            @if (_pendingMoves.Count == 0)
+            {
+                <p class="text-xs text-slate-500">None</p>
+            }
+            else
+            {
+                <ul class="space-y-1">
+                    @foreach (var m in _pendingMoves)
+                    {
+                        <li class="text-xs text-slate-300">@m.From → @m.To</li>
+                    }
+                </ul>
+            }
+        </section>
+    </aside>
+</div>
+
+@code {
+    private static readonly Guid P1 = Guid.Parse("aaaaaaaa-0000-0000-0000-000000000001");
+    private static readonly Guid P2 = Guid.Parse("bbbbbbbb-0000-0000-0000-000000000002");
+
+    private NexusGameView _view = null!;
+    private HexCoord? _selected;
+    private IReadOnlyList<HexCoord> _validTargets = [];
+    private readonly List<NexusMoveOrder> _pendingMoves = [];
+    private HexCoord? _pendingFrom;
+    private NexusGateProgress _gateProgress = NexusGateProgress.None;
+
+    protected override void OnInitialized()
+    {
+        var state = new NexusGameState();
+        NexusGameEngine.Initialize(
+            state,
+            new InitializeNexusGameCommand(
+                ImmutableArray.Create(new GameSessionParticipant(P1), new GameSessionParticipant(P2))),
+            new Random(42));
+        _view = NexusGameEngine.BuildView(state, Guid.NewGuid(), P1);
+    }
+
+    private void OnSystemClicked(HexCoord coord)
+    {
+        if (_pendingFrom.HasValue)
+        {
+            // Second click — queue a move if valid target, then clear
+            if (_validTargets.Contains(coord))
+            {
+                var units = _view.Systems.FirstOrDefault(s => s.Coord == _pendingFrom.Value)
+                    ?.Units.GetValueOrDefault(P1);
+                if (units is { Count: > 0 })
+                {
+                    _pendingMoves.Add(new NexusMoveOrder(
+                        _pendingFrom.Value,
+                        coord,
+                        units.ToImmutableDictionary()));
+                }
+            }
+
+            _pendingFrom = null;
+            _selected = null;
+            _validTargets = [];
+            return;
+        }
+
+        if (_selected == coord)
+        {
+            _selected = null;
+            _validTargets = [];
+            return;
+        }
+
+        _selected = coord;
+        _validTargets = NexusGameViewQueries.GetValidMoveDestinations(_view, P1, coord);
+
+        if (_validTargets.Count > 0)
+            _pendingFrom = coord;
+    }
+
+    private void ClearMoves()
+    {
+        _pendingMoves.Clear();
+        _selected = null;
+        _pendingFrom = null;
+        _validTargets = [];
+    }
+
+    private string GateBtnClass(NexusGateProgress g) =>
+        g == _gateProgress
+            ? "rounded-md border border-sky-500/50 bg-sky-900/30 px-3 py-1 text-xs text-sky-200"
+            : "rounded-md border border-white/10 px-3 py-1 text-xs text-slate-400 hover:bg-white/5";
+}

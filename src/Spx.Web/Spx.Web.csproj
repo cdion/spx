@@ -4,9 +4,6 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <BlazorDisableThrowNavigationException>true</BlazorDisableThrowNavigationException>
-    <TailwindCli>$(MSBuildProjectDirectory)/../../tools/tailwind/bin/tailwindcss-linux-x64</TailwindCli>
-    <TailwindInput>$(MSBuildProjectDirectory)/Styles/app.css</TailwindInput>
-    <TailwindOutput>$(MSBuildProjectDirectory)/wwwroot/app.css</TailwindOutput>
   </PropertyGroup>
 
   <ItemGroup>
@@ -16,6 +13,7 @@
     <ProjectReference Include="..\Spx.Game.Application\Spx.Game.Application.csproj" />
     <ProjectReference Include="..\Spx.Game.Domain\Spx.Game.Domain.csproj" />
     <ProjectReference Include="..\Spx.ServiceDefaults\Spx.ServiceDefaults.csproj" />
+    <ProjectReference Include="..\Spx.Web.Components\Spx.Web.Components.csproj" />
   </ItemGroup>
 
   <ItemGroup>
@@ -34,22 +32,4 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
   </ItemGroup>
-
-  <Target Name="EnsureTailwindCli" BeforeTargets="Build;Publish">
-    <Error
-      Condition="!Exists('$(TailwindCli)')"
-      Text="Tailwind standalone binary not found at $(TailwindCli)."
-    />
-  </Target>
-
-  <Target
-    Name="BuildTailwindCss"
-    BeforeTargets="Build;Publish"
-    DependsOnTargets="EnsureTailwindCli"
-  >
-    <Exec
-      Command="&quot;$(TailwindCli)&quot; -i &quot;$(TailwindInput)&quot; -o &quot;$(TailwindOutput)&quot; --minify"
-      WorkingDirectory="$(MSBuildProjectDirectory)"
-    />
-  </Target>
 </Project>
