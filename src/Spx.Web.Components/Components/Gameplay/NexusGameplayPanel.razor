@@ -62,28 +62,31 @@
         <NexusSidebarPanelShell>
             <HeaderContent>
                 <Tabs TItem="SidebarTab" Items="@SidebarTabs" SelectedItem="@_activeSidebarTab"
+                        ItemIdSelector="GetSidebarTabId" PanelIdSelector="GetSidebarPanelId"
                         ActiveItemClass="rounded-md border border-white/15 bg-white/10 px-3.5 py-2 text-base font-semibold text-white"
                         InactiveItemClass="rounded-md border border-white/10 px-3.5 py-2 text-base text-slate-400 transition-colors hover:text-slate-200"
                       ItemLabelSelector="GetSidebarTabLabel" DisabledSelector="IsSidebarTabDisabled"
                       OnSelected="SetTab" AriaLabel="Sidebar view" />
             </HeaderContent>
             <ChildContent>
-                @if (_activeSidebarTab == SidebarTab.Events)
-                {
-                    <NexusResolveEventsPanel Events="@Session.LastResolveEvents" PlayerNames="@GetPlayerNames()"
-                                            RowClassSelector="GetEventRowClass" OnEventClicked="OnEventClicked"
-                                            OnEventHovered="OnEventHovered" OnEventHoverCleared="OnEventHoverCleared" />
-                }
-                else
-                {
-                    <NexusOrdersPanel MoveOrders="@_pendingMoveOrders" BuildOrders="@_pendingBuildOrders"
-                                      CurrentPlayerName="@CurrentPlayerName" CurrentPlayerHomeCoord="@CurrentPlayerHomeCoord"
-                                      BeginNexusGate="@_pendingBeginNexusGate" IsEditable="@ShowOrdersForm"
-                                      ShowSubmitButton="@ShowOrdersForm" IsSubmittingAction="@IsSubmittingAction"
-                                      OnRemoveMoveOrder="RemoveMoveOrder" OnRemoveBuildOrder="RemoveBuildOrder"
-                                      OnRemoveGateOrder="() => _pendingBeginNexusGate = false"
-                                      OnSubmitOrders="SubmitOrdersAsync" />
-                }
+                <div id="@ActiveSidebarPanelId" role="tabpanel" aria-labelledby="@ActiveSidebarTabId" class="h-full">
+                    @if (_activeSidebarTab == SidebarTab.Events)
+                    {
+                        <NexusResolveEventsPanel Events="@Session.LastResolveEvents" PlayerNames="@GetPlayerNames()"
+                                                RowClassSelector="GetEventRowClass" OnEventClicked="OnEventClicked"
+                                                OnEventHovered="OnEventHovered" OnEventHoverCleared="OnEventHoverCleared" />
+                    }
+                    else
+                    {
+                        <NexusOrdersPanel MoveOrders="@_pendingMoveOrders" BuildOrders="@_pendingBuildOrders"
+                                          CurrentPlayerName="@CurrentPlayerName" CurrentPlayerHomeCoord="@CurrentPlayerHomeCoord"
+                                          BeginNexusGate="@_pendingBeginNexusGate" IsEditable="@ShowOrdersForm"
+                                          ShowSubmitButton="@ShowOrdersForm" IsSubmittingAction="@IsSubmittingAction"
+                                          OnRemoveMoveOrder="RemoveMoveOrder" OnRemoveBuildOrder="RemoveBuildOrder"
+                                          OnRemoveGateOrder="() => _pendingBeginNexusGate = false"
+                                          OnSubmitOrders="SubmitOrdersAsync" />
+                    }
+                </div>
             </ChildContent>
         </NexusSidebarPanelShell>
     </aside>
@@ -108,6 +111,7 @@
     private readonly List<NexusMoveOrder> _pendingMoveOrders = [];
     private readonly List<NexusBuildOrder> _pendingBuildOrders = [];
     private bool _pendingBeginNexusGate;
+    private Guid? _lastKnownGameId;
     private int? _lastKnownRound;
     private HexCoord? _selectedSystem;
     private ImmutableDictionary<NexusUnitType, int> _stagedMoveUnits =
@@ -120,9 +124,15 @@
 
     protected override void OnParametersSet()
     {
-        if (Session.RoundNumber == _lastKnownRound)
+        if (!NexusGameplayPanelState.ShouldResetUiState(
+                Session.GameId,
+                Session.RoundNumber,
+                _lastKnownGameId,
+                _lastKnownRound
+            ))
             return;
 
+        _lastKnownGameId = Session.GameId;
         _lastKnownRound = Session.RoundNumber;
         _pendingMoveOrders.Clear();
         _pendingBuildOrders.Clear();
@@ -303,7 +313,7 @@
 
     private int ProjectedEnergy => Session.CurrentPlayer.Energy - ProjectedSpend;
 
-    private Task SubmitOrdersAsync()
+    private async Task SubmitOrdersAsync()
     {
         var command = new NexusTurnOrdersCommand(
             Session.CurrentPlayer.PlayerId,
@@ -313,11 +323,11 @@
             _pendingBeginNexusGate
         );
 
+        await OnSubmitOrders.InvokeAsync(command);
+
         _pendingMoveOrders.Clear();
         _pendingBuildOrders.Clear();
         _pendingBeginNexusGate = false;
-
-        return OnSubmitOrders.InvokeAsync(command);
     }
 
     private void SetTab(SidebarTab tab)
@@ -338,6 +348,14 @@
 
     private bool IsSidebarTabDisabled(SidebarTab tab) =>
         tab == SidebarTab.Events && Session.LastResolveEvents.Length == 0;
+
+    private string GetSidebarTabId(SidebarTab tab) => $"nexus-sidebar-tab-{tab.ToString().ToLowerInvariant()}";
+
+    private string GetSidebarPanelId(SidebarTab tab) => $"nexus-sidebar-panel-{tab.ToString().ToLowerInvariant()}";
+
+    private string ActiveSidebarTabId => GetSidebarTabId(_activeSidebarTab);
+
+    private string ActiveSidebarPanelId => GetSidebarPanelId(_activeSidebarTab);
 
     private void OnEventHovered(NexusResolveEvent evt)
     {
@@ -376,16 +394,23 @@
 
     private string GetEventRowClass(NexusResolveEvent evt)
     {
+        const string baseRowClass =
+            "w-full rounded-lg px-3 py-2.5 text-left text-base transition-colors";
+        const string neutralRowClass =
+            baseRowClass + " border border-white/10 bg-slate-950/40 text-slate-300 hover:border-amber-400/30 hover:text-slate-100";
+        const string activeRowClass =
+            baseRowClass + " border border-amber-400/40 bg-amber-500/10 text-amber-100";
+
         var focus = GetEventFocus(evt);
         if (!focus.HasTarget)
-            return "w-full rounded-lg border border-white/10 bg-slate-950/40 px-3 py-2.5 text-left text-base text-slate-300";
+            return neutralRowClass;
 
         var isHovered = IsSameFocus(_hoverEventFocus, focus);
         var isPinned = IsSameFocus(_pinnedEventFocus, focus);
         if (isHovered || isPinned)
-            return "w-full rounded-lg border border-amber-400/40 bg-amber-500/10 px-3 py-2.5 text-left text-base text-amber-100";
+            return activeRowClass;
 
-        return "w-full rounded-lg border border-white/10 bg-slate-950/40 px-3 py-2.5 text-left text-base text-slate-300 transition-colors hover:border-amber-400/30 hover:text-slate-100";
+        return neutralRowClass;
     }
 
     private IReadOnlyList<HexCoord> ActiveEventFocusSystems =>

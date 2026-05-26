@@ -1,12 +1,16 @@
 @typeparam TItem
 
 <div class="@ContainerClass" role="tablist" aria-label="@AriaLabel">
-    @foreach (var item in Items)
+    @for (var i = 0; i < Items.Count; i++)
     {
+        var item = Items[i];
         var selected = EqualityComparer<TItem>.Default.Equals(item, SelectedItem);
         var disabled = DisabledSelector?.Invoke(item) ?? false;
+        var tabId = GetTabId(item, i);
+        var panelId = GetPanelId(item, i);
         <button type="button" class="@(selected ? ActiveItemClass : InactiveItemClass)"
-                role="tab" aria-selected="@selected" disabled="@disabled"
+            id="@tabId" role="tab" aria-selected="@(selected ? "true" : "false")" aria-controls="@panelId" tabindex="@(selected ? 0 : -1)"
+                disabled="@disabled" @onkeydown="e => OnTabKeyDownAsync(e, i)"
                 @onclick="() => OnSelected.InvokeAsync(item)">
             @ItemLabelSelector(item)
         </button>
@@ -30,6 +34,12 @@
     public EventCallback<TItem> OnSelected { get; set; }
 
     [Parameter]
+    public Func<TItem, string>? ItemIdSelector { get; set; }
+
+    [Parameter]
+    public Func<TItem, string>? PanelIdSelector { get; set; }
+
+    [Parameter]
     public string ContainerClass { get; set; } = "flex items-center gap-2";
 
     [Parameter]
@@ -42,4 +52,74 @@
 
     [Parameter]
     public string AriaLabel { get; set; } = "Tabs";
+
+    private string GetTabId(TItem item, int index)
+    {
+        if (ItemIdSelector is not null)
+            return ItemIdSelector(item);
+
+        return $"tabs-{AriaLabel.ToLowerInvariant().Replace(' ', '-')}-tab-{index}";
+    }
+
+    private string GetPanelId(TItem item, int index)
+    {
+        if (PanelIdSelector is not null)
+            return PanelIdSelector(item);
+
+        return $"tabs-{AriaLabel.ToLowerInvariant().Replace(' ', '-')}-panel-{index}";
+    }
+
+    private async Task OnTabKeyDownAsync(KeyboardEventArgs e, int currentIndex)
+    {
+        if (Items.Count == 0)
+            return;
+
+        var nextIndex = e.Key switch
+        {
+            "ArrowRight" => FindNextEnabledIndex(currentIndex, 1),
+            "ArrowLeft" => FindNextEnabledIndex(currentIndex, -1),
+            "Home" => FindFirstEnabledIndex(),
+            "End" => FindLastEnabledIndex(),
+            _ => -1,
+        };
+
+        if (nextIndex < 0 || nextIndex == currentIndex)
+            return;
+
+        await OnSelected.InvokeAsync(Items[nextIndex]);
+    }
+
+    private int FindNextEnabledIndex(int startIndex, int direction)
+    {
+        for (var step = 1; step <= Items.Count; step++)
+        {
+            var idx = (startIndex + direction * step + Items.Count) % Items.Count;
+            if (!(DisabledSelector?.Invoke(Items[idx]) ?? false))
+                return idx;
+        }
+
+        return startIndex;
+    }
+
+    private int FindFirstEnabledIndex()
+    {
+        for (var i = 0; i < Items.Count; i++)
+        {
+            if (!(DisabledSelector?.Invoke(Items[i]) ?? false))
+                return i;
+        }
+
+        return -1;
+    }
+
+    private int FindLastEnabledIndex()
+    {
+        for (var i = Items.Count - 1; i >= 0; i--)
+        {
+            if (!(DisabledSelector?.Invoke(Items[i]) ?? false))
+                return i;
+        }
+
+        return -1;
+    }
 }
