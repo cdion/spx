@@ -35,7 +35,6 @@ internal static class GamePageCoordinatorTestData
         new(
             gameId,
             roundNumber,
-            NexusGamePhase.Planning,
             [],
             new NexusPlayerView(
                 CurrentPlayerId,

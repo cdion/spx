@@ -294,7 +294,7 @@
       "group": "build"
     },
     {
-      "label": "tailwind: watch css",
+      "label": "dev: watch tailwind",
       "type": "shell",
       "command": "${workspaceFolder}/tools/tailwind/bin/tailwindcss-linux-x64",
       "args": [
@@ -351,7 +351,7 @@
       }
     },
     {
-      "label": "apphost: watch",
+      "label": "dev: watch apphost",
       "type": "shell",
       "command": "systemctl --user stop spx-apphost.scope 2>/dev/null; env DOTNET_USE_POLLING_FILE_WATCHER=1 systemd-run --user --scope --unit=spx-apphost dotnet watch --project ${workspaceFolder}/src/Spx.AppHost/Spx.AppHost.csproj run",
       "isBackground": true,
@@ -374,14 +374,14 @@
     {
       "label": "dev: watch apphost + tailwind",
       "dependsOn": [
-        "tailwind: watch css",
-        "apphost: watch"
+        "dev: watch tailwind",
+        "dev: watch apphost"
       ],
       "dependsOrder": "parallel",
       "problemMatcher": []
     },
     {
-      "label": "playground: run",
+      "label": "dev: watch playground",
       "type": "shell",
       "command": "env DOTNET_USE_POLLING_FILE_WATCHER=1 dotnet watch --project ${workspaceFolder}/src/Spx.Web.Playground/Spx.Web.Playground.csproj",
       "isBackground": true,
@@ -404,8 +404,8 @@
     {
       "label": "dev: watch playground + tailwind",
       "dependsOn": [
-        "tailwind: watch css",
-        "playground: run"
+        "dev: watch tailwind",
+        "dev: watch playground"
       ],
       "dependsOrder": "parallel",
       "problemMatcher": []

@@ -109,8 +109,27 @@
         @apply block text-sm font-medium text-slate-200;
     }
 
+    /* Typography scale */
+
+    .ui-type-overline {
+        @apply text-sm font-semibold uppercase text-slate-400;
+        letter-spacing: 0.2em;
+    }
+
+    .ui-type-body {
+        @apply text-base leading-6 text-slate-200;
+    }
+
+    .ui-type-meta {
+        @apply text-sm text-slate-400;
+    }
+
+    .ui-type-muted {
+        @apply text-sm text-slate-500;
+    }
+
     .ui-panel-label {
-        @apply text-xs font-semibold uppercase text-slate-400;
+        @apply text-sm font-semibold uppercase text-slate-400;
         letter-spacing: 0.2em;
     }
 
@@ -172,12 +191,12 @@
     }
 
     .ui-status-badge {
-        @apply rounded-full border border-white/10 px-3 py-1 text-xs font-semibold uppercase text-slate-300;
+        @apply rounded-full border border-white/10 px-3 py-1.5 text-sm font-semibold uppercase text-slate-300;
         letter-spacing: 0.2em;
     }
 
     .ui-inline-badge {
-        @apply rounded-full px-2 py-1 text-xs font-semibold uppercase;
+        @apply rounded-full px-2 py-1.5 text-sm font-semibold uppercase;
         letter-spacing: 0.2em;
     }
 

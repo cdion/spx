@@ -223,7 +223,7 @@ public class NexusGameEngineInitTests
     {
         var s = MakeState();
         Assert.Equal(1, s.RoundNumber);
-        Assert.Equal(NexusGamePhase.Planning, s.Phase);
+        Assert.Null(s.Completion);
     }
 
     [Fact]
@@ -506,7 +506,7 @@ public class NexusRoundResolutionTests
         var s = MakeState();
         SubmitBoth(s);
         Assert.Equal(2, s.RoundNumber);
-        Assert.Equal(NexusGamePhase.Planning, s.Phase);
+        Assert.Null(s.Completion);
         Assert.All(s.Players, p => Assert.False(p.HasSubmittedOrders));
     }
 
@@ -662,7 +662,6 @@ public class NexusRoundResolutionTests
         NexusGameEngine.Abandon(s, P1Id);
         Assert.Equal(NexusGameOutcome.Victory, s.Completion!.Outcome);
         Assert.Equal(P2Id, s.Completion.WinnerId);
-        Assert.Equal(NexusGamePhase.Ended, s.Phase);
     }
 }
 

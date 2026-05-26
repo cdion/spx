@@ -31,12 +31,7 @@
     }
 
 @code {
-    private static readonly Guid P1 = Guid.Parse("aaaaaaaa-0000-0000-0000-000000000001");
-    private static readonly Guid P2 = Guid.Parse("bbbbbbbb-0000-0000-0000-000000000002");
-
-    private record Scenario(string Label, string Description, NexusGameView View);
-
-    private Scenario[] _scenarios = null!;
+    private IReadOnlyList<NexusStoryFixtures.GameplayScenario> _scenarios = null!;
     private GameLobbyView _lobby = null!;
     private int _scenarioIndex;
     private bool _submitting;
@@ -45,87 +40,8 @@
 
     protected override void OnInitialized()
     {
-        _scenarios =
-        [
-            BuildScenario("Round 1", "Fresh game: 0 energy, can't build or start a gate.", rounds: 0),
-            BuildScenario("Round 2", "After one round of income: 3 energy each.", rounds: 1),
-            BuildScenario("Round 5", "Five rounds in: more energy, multiple controlled systems.", rounds: 4),
-            BuildWaitingScenario(),
-            BuildEndedScenario(),
-        ];
-
-        _lobby = new GameLobbyView(
-            _scenarios[0].View.GameId,
-            "Playground Game",
-            "PLAY01",
-            GameStatus.Open,
-            2,
-            DateTime.UtcNow.AddHours(-1),
-            null,
-            "Player One",
-            P1,
-            [
-                new GamePlayerView(P1, "Player One", DateTime.UtcNow.AddHours(-1)),
-                new GamePlayerView(P2, "Player Two", DateTime.UtcNow.AddMinutes(-58)),
-            ],
-            true);
-    }
-
-    private static Scenario BuildScenario(string label, string description, int rounds)
-    {
-        var state = new NexusGameState();
-        NexusGameEngine.Initialize(
-            state,
-            new InitializeNexusGameCommand(
-                ImmutableArray.Create(new GameSessionParticipant(P1), new GameSessionParticipant(P2))),
-            new Random(42));
-
-        var rng = new Random(0);
-        for (var i = 0; i < rounds; i++)
-        {
-            NexusGameEngine.SubmitOrders(state, new NexusTurnOrdersCommand(P1, state.RoundNumber, [], [], false), rng);
-            NexusGameEngine.SubmitOrders(state, new NexusTurnOrdersCommand(P2, state.RoundNumber, [], [], false), rng);
-        }
-
-        return new Scenario(label, description, NexusGameEngine.BuildView(state, Guid.NewGuid(), P1));
-    }
-
-    private static Scenario BuildWaitingScenario()
-    {
-        var state = new NexusGameState();
-        NexusGameEngine.Initialize(
-            state,
-            new InitializeNexusGameCommand(
-                ImmutableArray.Create(new GameSessionParticipant(P1), new GameSessionParticipant(P2))),
-            new Random(42));
-
-        // Advance to round 2 and have P2 submit only (P1 is waiting)
-        var rng = new Random(0);
-        NexusGameEngine.SubmitOrders(state, new NexusTurnOrdersCommand(P1, 1, [], [], false), rng);
-        NexusGameEngine.SubmitOrders(state, new NexusTurnOrdersCommand(P2, 1, [], [], false), rng);
-        NexusGameEngine.SubmitOrders(state, new NexusTurnOrdersCommand(P2, 2, [], [], false), rng);
-
-        return new Scenario(
-            "Waiting",
-            "P2 has already submitted orders; P1 still needs to commit.",
-            NexusGameEngine.BuildView(state, Guid.NewGuid(), P1));
-    }
-
-    private static Scenario BuildEndedScenario()
-    {
-        var state = new NexusGameState();
-        NexusGameEngine.Initialize(
-            state,
-            new InitializeNexusGameCommand(
-                ImmutableArray.Create(new GameSessionParticipant(P1), new GameSessionParticipant(P2))),
-            new Random(42));
-
-        NexusGameEngine.Abandon(state, P2);
-
-        return new Scenario(
-            "Ended",
-            "P2 abandoned; P1 wins.",
-            NexusGameEngine.BuildView(state, Guid.NewGuid(), P1));
+        _scenarios = NexusStoryFixtures.CreateGameplayScenarios();
+        _lobby = NexusStoryFixtures.CreateLobby(_scenarios[0].View.GameId);
     }
 
     private void SelectScenario(int index)

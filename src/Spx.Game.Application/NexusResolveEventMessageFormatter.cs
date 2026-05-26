@@ -12,28 +12,28 @@ public static class NexusResolveEventMessageFormatter
         evt switch
         {
             NexusUnitsMovedEvent e =>
-                $"{PlayerName(e.PlayerId, playerNames)}'s units moved from {e.From} to {e.To}: {FormatUnits(e.Units)}",
+                $"{PlayerName(e.PlayerId, playerNames)}'s units moved from {SectorName(e.From)} to {SectorName(e.To)}: {FormatUnits(e.Units)}",
             NexusGroundForcesControlEvent e =>
-                $"{PlayerName(e.PlayerId, playerNames)} took control of system {e.System}",
+                $"{PlayerName(e.PlayerId, playerNames)} took control of {SectorName(e.System)}",
             NexusSystemContestedEvent e =>
-                $"System {e.System} is contested — ground forces on both sides",
+                $"{SectorName(e.System)} is contested — ground forces on both sides",
             NexusSystemUncontrolledEvent e =>
-                $"System {e.System} is now uncontrolled — no ground forces present",
+                $"{SectorName(e.System)} is now uncontrolled — no ground forces present",
             NexusCombatBeganEvent e =>
-                $"Combat erupted at {e.System} between {PlayerName(e.Player1Id, playerNames)} and {PlayerName(e.Player2Id, playerNames)}",
+                $"Combat erupted at {SectorName(e.System)} between {PlayerName(e.Player1Id, playerNames)} and {PlayerName(e.Player2Id, playerNames)}",
             NexusPhaseResultEvent e => FormatPhaseResult(e, playerNames),
             NexusSystemClearedEvent e =>
-                $"{PlayerName(e.VictorId, playerNames)} cleared system {e.System}",
+                $"{PlayerName(e.VictorId, playerNames)} cleared {SectorName(e.System)}",
             NexusIncomeEvent e =>
                 $"{PlayerName(e.PlayerId, playerNames)} collected +{e.Amount}⚡ from {e.Sources.Length} system(s)",
             NexusUnitDeployedEvent e =>
-                $"{PlayerName(e.PlayerId, playerNames)} deployed {e.Count}× {e.UnitType} at {e.HomeSystem}",
+                $"{PlayerName(e.PlayerId, playerNames)} deployed {e.Count}× {e.UnitType} at {SectorName(e.HomeSystem)}",
             NexusGateStartedEvent e =>
-                $"{PlayerName(e.PlayerId, playerNames)} began Nexus Gate construction at {e.System}",
+                $"{PlayerName(e.PlayerId, playerNames)} began Nexus Gate construction at {SectorName(e.System)}",
             NexusGateCompletedEvent e =>
-                $"{PlayerName(e.PlayerId, playerNames)} completed the Nexus Gate at {e.System}!",
+                $"{PlayerName(e.PlayerId, playerNames)} completed the Nexus Gate at {SectorName(e.System)}!",
             NexusGateCancelledEvent e =>
-                $"{PlayerName(e.PlayerId, playerNames)}'s Nexus Gate construction at {e.System} was cancelled",
+                $"{PlayerName(e.PlayerId, playerNames)}'s Nexus Gate construction at {SectorName(e.System)} was cancelled",
             NexusVictoryEvent e =>
                 $"{PlayerName(e.WinnerId, playerNames)} activated the Nexus Gate — victory!",
             NexusDrawEvent e => $"The game ended in a draw: {e.Reason}",
@@ -70,7 +70,7 @@ public static class NexusResolveEventMessageFormatter
         var attackSummary = e.AttackRolls.Length > 0 ? string.Join(" | ", rollLines) : "no attacks";
 
         if (e.Losses.Length == 0)
-            return $"{phaseName} phase at {e.System} — {attackSummary}. No losses.";
+            return $"{phaseName} phase at {SectorName(e.System)} — {attackSummary}. No losses.";
 
         var lossSummary = string.Join(
             ", ",
@@ -81,8 +81,10 @@ public static class NexusResolveEventMessageFormatter
                 )
         );
 
-        return $"{phaseName} phase at {e.System} — {attackSummary}. {lossSummary}.";
+        return $"{phaseName} phase at {SectorName(e.System)} — {attackSummary}. {lossSummary}.";
     }
+
+    private static string SectorName(HexCoord coord) => NexusMap.GetSectorDisplayName(coord);
 
     private static string FormatUnits(ImmutableDictionary<NexusUnitType, int> units) =>
         units.Count == 0

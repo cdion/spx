@@ -41,6 +41,46 @@ public static class NexusMap
         new(2, -1),
     ];
 
+    /// <summary>Maps each of the 16 neutral systems to its assigned Greek-letter sector name.</summary>
+    public static readonly IReadOnlyDictionary<HexCoord, string> SectorNames = new Dictionary<
+        HexCoord,
+        string
+    >
+    {
+        // Ring 1 — clockwise from NE
+        [new(1, -1)] = "Alpha",
+        [new(1, 0)] = "Beta",
+        [new(0, 1)] = "Gamma",
+        [new(-1, 1)] = "Delta",
+        [new(-1, 0)] = "Epsilon",
+        [new(0, -1)] = "Zeta",
+        // Ring 2 — clockwise from NE, homes at (2,-2) and (-2,2) skipped
+        [new(2, -1)] = "Eta",
+        [new(2, 0)] = "Theta",
+        [new(1, 1)] = "Iota",
+        [new(0, 2)] = "Kappa",
+        [new(-1, 2)] = "Lambda",
+        [new(-2, 1)] = "Mu",
+        [new(-2, 0)] = "Nu",
+        [new(-1, -1)] = "Xi",
+        [new(0, -2)] = "Omicron",
+        [new(1, -2)] = "Pi",
+    };
+
+    /// <summary>
+    /// Returns a human-readable display name for <paramref name="coord"/>:
+    /// the Greek sector name for neutral systems, <c>"Nexus"</c> for the central system,
+    /// and <c>"home system"</c> for the two home systems.
+    /// </summary>
+    public static string GetSectorDisplayName(HexCoord coord)
+    {
+        if (coord == NexusCoord)
+            return "Nexus";
+        if (coord == Player1HomeCoord || coord == Player2HomeCoord)
+            return "home system";
+        return SectorNames.TryGetValue(coord, out var name) ? name : coord.ToString();
+    }
+
     /// <summary>Returns <c>true</c> when <paramref name="coord"/> is a valid system on the map.</summary>
     public static bool IsValidCoord(HexCoord coord) => AllCoords.Contains(coord);
 

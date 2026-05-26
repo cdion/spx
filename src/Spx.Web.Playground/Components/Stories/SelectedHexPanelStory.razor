@@ -1,0 +1,143 @@
+@page "/stories/selected-hex-panel"
+@rendermode InteractiveServer
+
+<h1 class="mb-1 text-xl font-semibold text-white">Selected Hex Panel</h1>
+<p class="mb-5 text-sm text-slate-400">
+    <code class="text-sky-300">NexusSelectedHexPanel</code> gesture interactions and home/nexus states.
+</p>
+
+<div class="mb-4 flex flex-wrap gap-2">
+    @foreach (var (label, index) in _scenarios.Select((s, i) => (s.Label, i)))
+    {
+        <button class="@ScenarioClass(index)" @onclick="() => SetScenario(index)">@label</button>
+    }
+</div>
+
+<div class="grid gap-6 lg:grid-cols-[1fr_260px]">
+    <NexusSelectedHexPanel System="@CurrentScenario.System" CurrentPlayerId="@NexusStoryFixtures.Player1Id"
+                           CurrentPlayerName="@NexusStoryFixtures.PlayerNames[NexusStoryFixtures.Player1Id]"
+                           OpponentPlayerId="@NexusStoryFixtures.Player2Id"
+                           OpponentPlayerName="@NexusStoryFixtures.PlayerNames[NexusStoryFixtures.Player2Id]"
+                           CurrentPlayerFaction="NexusFactionColor.Blue" CurrentPlayerGateProgress="@CurrentScenario.GateProgress"
+                           PendingBeginNexusGate="@_pendingGate" IsEditable="true" ProjectedEnergy="@ProjectedEnergy"
+                           AvailableUnits="@CurrentScenario.AvailableUnits" PendingBuildOrders="@_buildOrders"
+                           OnFleetSelectionChanged="OnFleetSelectionChanged" OnBuildAddOne="AddBuildOne" OnBuildAddMax="AddBuildMax"
+                           OnBuildRemoveOne="RemoveBuildOne" OnBuildRemoveAll="RemoveBuildAll" OnToggleNexusGate="ToggleGate" />
+
+    <section class="ui-surface-section space-y-3 p-4 lg:p-5">
+        <p class="ui-panel-label">Live state</p>
+        <p class="text-xs text-slate-400">Fleet selection:</p>
+        @if (_fleetSelection.Count == 0)
+        {
+            <p class="text-xs text-slate-500">None</p>
+        }
+        else
+        {
+            @foreach (var (unit, count) in _fleetSelection)
+            {
+                <p class="text-xs text-slate-300">@count× @unit</p>
+            }
+        }
+
+        <div class="border-t border-white/10 pt-2">
+            <p class="text-xs text-slate-400">Build queue:</p>
+            @if (_buildOrders.Count == 0)
+            {
+                <p class="text-xs text-slate-500">None</p>
+            }
+            else
+            {
+                @foreach (var order in _buildOrders)
+                {
+                    <p class="text-xs text-slate-300">@order.Count× @order.UnitType</p>
+                }
+            }
+        </div>
+
+        <p class="text-xs text-slate-400">Projected energy: @ProjectedEnergy⚡</p>
+        <p class="text-xs text-slate-400">Gate order: @(_pendingGate ? "On" : "Off")</p>
+    </section>
+</div>
+
+@code {
+    private const int BaseEnergy = 20;
+
+    private readonly List<NexusBuildOrder> _buildOrders = [];
+    private ImmutableDictionary<NexusUnitType, int> _fleetSelection = ImmutableDictionary<NexusUnitType, int>.Empty;
+    private bool _pendingGate;
+    private int _scenarioIndex;
+
+    private readonly IReadOnlyList<NexusStoryFixtures.SelectedHexScenario> _scenarios =
+        NexusStoryFixtures.CreateSelectedHexScenarios();
+
+    private NexusStoryFixtures.SelectedHexScenario CurrentScenario => _scenarios[_scenarioIndex];
+
+    private int ProjectedEnergy =>
+        BaseEnergy - _buildOrders.Sum(order => order.Count * order.UnitType.Cost()) - (_pendingGate ? 12 : 0);
+
+    private void SetScenario(int index)
+    {
+        _scenarioIndex = index;
+        _fleetSelection = ImmutableDictionary<NexusUnitType, int>.Empty;
+        _buildOrders.Clear();
+        _pendingGate = false;
+    }
+
+    private string ScenarioClass(int index) =>
+        index == _scenarioIndex
+            ? "rounded-lg border border-sky-500/40 bg-sky-900/20 px-4 py-1.5 text-sm text-sky-200"
+            : "rounded-lg border border-white/10 px-4 py-1.5 text-sm text-slate-400 hover:bg-white/5";
+
+    private Task OnFleetSelectionChanged(ImmutableDictionary<NexusUnitType, int> selected)
+    {
+        _fleetSelection = selected;
+        return Task.CompletedTask;
+    }
+
+    private Task AddBuildOne(NexusUnitType unit)
+    {
+        if (ProjectedEnergy < unit.Cost())
+            return Task.CompletedTask;
+
+        var idx = _buildOrders.FindIndex(o => o.UnitType == unit);
+        if (idx >= 0)
+            _buildOrders[idx] = _buildOrders[idx] with { Count = _buildOrders[idx].Count + 1 };
+        else
+            _buildOrders.Add(new NexusBuildOrder(unit, 1));
+
+        return Task.CompletedTask;
+    }
+
+    private async Task AddBuildMax(NexusUnitType unit)
+    {
+        var maxAdd = ProjectedEnergy / unit.Cost();
+        for (var i = 0; i < maxAdd; i++)
+            await AddBuildOne(unit);
+    }
+
+    private Task RemoveBuildOne(NexusUnitType unit)
+    {
+        var idx = _buildOrders.FindIndex(o => o.UnitType == unit);
+        if (idx < 0)
+            return Task.CompletedTask;
+
+        if (_buildOrders[idx].Count <= 1)
+            _buildOrders.RemoveAt(idx);
+        else
+            _buildOrders[idx] = _buildOrders[idx] with { Count = _buildOrders[idx].Count - 1 };
+
+        return Task.CompletedTask;
+    }
+
+    private Task RemoveBuildAll(NexusUnitType unit)
+    {
+        _buildOrders.RemoveAll(o => o.UnitType == unit);
+        return Task.CompletedTask;
+    }
+
+    private Task ToggleGate()
+    {
+        _pendingGate = !_pendingGate;
+        return Task.CompletedTask;
+    }
+}

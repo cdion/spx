@@ -214,7 +214,6 @@ public sealed class SubmitOrdersHandlerTests
         return new NexusGameView(
             GameId,
             2,
-            NexusGamePhase.Planning,
             [],
             currentPlayer,
             opponentPlayer,

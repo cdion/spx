@@ -1,49 +1,20 @@
 @using System.Collections.Immutable
-@implements IDisposable
-
-<SectionHeader Eyebrow="Gameplay" Title="@GetHeadline()">
-    <p class="text-sm leading-6 text-slate-300">@GetDescription()</p>
-</SectionHeader>
 
 @if (!string.IsNullOrWhiteSpace(GameplayError))
 {
     <AlertBanner>@GameplayError</AlertBanner>
 }
 
-@* Top info bar *@
-<div class="grid gap-3 lg:grid-cols-3">
-    <article class="ui-panel-row items-start">
-        <div>
-            <p class="ui-panel-label">Round</p>
-            <p class="mt-2 text-2xl font-semibold text-white">@Session.RoundNumber</p>
-        </div>
-        <StatusBadge>@Session.Phase</StatusBadge>
-    </article>
-
-    <article class="ui-panel-row items-start">
-        <div class="space-y-1">
-            <p class="ui-panel-label">Your faction</p>
-            <p class="text-base font-semibold text-white">@CurrentPlayerName</p>
-            <p class="text-sm text-slate-400">vs @OpponentPlayerName</p>
-        </div>
-        <StatusBadge>@Session.CurrentPlayer.Faction</StatusBadge>
-    </article>
-
-    <article class="ui-panel-row items-start">
-        <div>
-            <p class="ui-panel-label">Nexus gate</p>
-            <p class="mt-2 text-base font-semibold text-white">@Session.CurrentPlayer.GateProgress</p>
-        </div>
-        @if (Session.CurrentPlayer.HasSubmittedOrders)
-        {
-            <StatusBadge Tone="StatusBadge.BadgeTone.Success">Orders in</StatusBadge>
-        }
-        else if (Session.Opponent.HasSubmittedOrders)
-        {
-            <StatusBadge Tone="StatusBadge.BadgeTone.Warning">Waiting</StatusBadge>
-        }
-    </article>
-</div>
+<NexusGameplayTopInfoBar RoundNumber="@Session.RoundNumber"
+                        CurrentPlayerName="@CurrentPlayerName" OpponentPlayerName="@OpponentPlayerName"
+                        CurrentPlayerFaction="@Session.CurrentPlayer.Faction"
+                        CurrentPlayerEnergy="@Session.CurrentPlayer.Energy"
+                        CurrentPlayerIsActive="@Session.CurrentPlayer.IsActive"
+                        CurrentPlayerHasSubmittedOrders="@Session.CurrentPlayer.HasSubmittedOrders"
+                        OpponentFaction="@Session.Opponent.Faction"
+                        OpponentPlayerEnergy="@Session.Opponent.Energy"
+                        OpponentIsActive="@Session.Opponent.IsActive"
+                        OpponentHasSubmittedOrders="@Session.Opponent.HasSubmittedOrders" />
 
 @if (Session.Completion is not null)
 {
@@ -53,127 +24,8 @@
     </AlertBanner>
 }
 
-@* Main 3-column layout *@
-<div class="grid gap-4 lg:grid-cols-[0.3fr_1fr_0.38fr]">
-    @* Left sidebar: energy + pending orders *@
-    <aside class="space-y-4">
-        <section class="ui-surface-section p-4 lg:p-5">
-            <p class="ui-panel-label mb-3">Energy</p>
-            <div class="space-y-3">
-                <div class="ui-panel-card-inner">
-                    <div class="flex items-center justify-between gap-2">
-                        <p class="text-sm font-semibold text-white">@CurrentPlayerName</p>
-                        <StatusBadge>@Session.CurrentPlayer.Faction</StatusBadge>
-                    </div>
-                    <p class="mt-1 text-2xl font-semibold text-yellow-400">@Session.CurrentPlayer.Energy⚡</p>
-                    @if (ProjectedSpend > 0)
-                    {
-                        <p class="mt-1 text-xs text-slate-400">After orders: @ProjectedEnergy⚡</p>
-                    }
-                </div>
-                <div class="ui-panel-card-inner">
-                    <div class="flex items-center justify-between gap-2">
-                        <p class="text-sm font-semibold text-white">@OpponentPlayerName</p>
-                        <StatusBadge>@Session.Opponent.Faction</StatusBadge>
-                    </div>
-                    <p class="mt-1 text-sm text-slate-400">
-                        @(Session.Opponent.HasSubmittedOrders ? "Orders submitted" : "Waiting...")
-                    </p>
-                </div>
-            </div>
-        </section>
-
-        @if (ShowOrdersForm)
-        {
-            @if (_pickingMoveDest)
-            {
-                <section class="ui-surface-section space-y-3 p-4 lg:p-5">
-                    <p class="ui-panel-label">Select destination</p>
-                    <p class="text-xs text-slate-300">Click a highlighted system on the map.</p>
-                    <button
-                        class="w-full rounded-lg border border-white/10 py-1.5 text-xs text-slate-400 transition-colors hover:text-slate-200"
-                        @onclick="CancelDestPick">
-                        Cancel
-                    </button>
-                </section>
-            }
-            else if (_selectedSystem.HasValue
-                && Session.Systems.FirstOrDefault(s => s.Coord == _selectedSystem.Value) is { } selSys)
-            {
-                <section class="ui-surface-section space-y-4 p-4 lg:p-5">
-                    <div class="flex items-center justify-between gap-2">
-                        <p class="ui-panel-label">@_selectedSystem.Value</p>
-                        <button class="text-xs text-slate-500 transition-colors hover:text-slate-300"
-                                @onclick="ClearSelection">✕</button>
-                    </div>
-
-                    @if (GetAvailableUnits(_selectedSystem.Value).Count > 0)
-                    {
-                        <div class="space-y-2">
-                            <p class="text-xs font-semibold text-slate-400">Move units</p>
-                            <NexusUnitSelectionPanel Source="selSys" AvailableUnits="@GetAvailableUnits(_selectedSystem.Value)"
-                                                     OnConfirmed="OnMoveUnitsConfirmed" OnCancelled="ClearSelection" />
-                        </div>
-                    }
-
-                    @if (selSys.HomePlayerId == Session.CurrentPlayer.PlayerId)
-                    {
-                        <div class="space-y-2">
-                            <p class="text-xs font-semibold text-slate-400">Build units</p>
-                            @foreach (var unitType in Enum.GetValues<NexusUnitType>())
-                            {
-                                var cost = unitType.Cost();
-                                var count = _pendingBuildOrders.FirstOrDefault(o => o.UnitType == unitType)?.Count ?? 0;
-                                <div class="flex items-center justify-between gap-2">
-                                    <div class="flex-1">
-                                        <span class="text-xs text-slate-200">@unitType</span>
-                                        <span class="ml-1 text-xs text-yellow-400">@cost⚡</span>
-                                    </div>
-                                    <div class="flex items-center gap-1">
-                                        <button
-                                        class="flex h-5 w-5 items-center justify-center rounded text-xs text-slate-400 transition-colors enabled:hover:text-white disabled:opacity-30"
-                                        disabled="@(count <= 0)" @onclick="() => RemoveBuildOrder(unitType)">−</button>
-                                        <span class="w-4 text-center text-xs font-semibold text-white">@count</span>
-                                        <button
-                                        class="flex h-5 w-5 items-center justify-center rounded text-xs text-slate-400 transition-colors enabled:hover:text-white disabled:opacity-30"
-                                        disabled="@(ProjectedEnergy < cost)" @onclick="() => AddBuildOrder(unitType)">+</button>
-                                    </div>
-                                </div>
-                            }
-                        </div>
-                    }
-
-                    @if (CanShowGateOption(_selectedSystem.Value))
-                    {
-                        <div class="space-y-2">
-                            <p class="text-xs font-semibold text-slate-400">Nexus Gate</p>
-                            <button class="@GateButtonClass()" @onclick="() => _pendingBeginNexusGate = !_pendingBeginNexusGate">
-                                <span>Begin Nexus Gate</span>
-                                <span class="text-yellow-400">12⚡</span>
-                            </button>
-                        </div>
-                    }
-                </section>
-            }
-
-            <section class="ui-surface-section space-y-4 p-4 lg:p-5">
-                <div class="flex items-center justify-between gap-2">
-                    <p class="ui-panel-label">Your orders</p>
-                    <StatusBadge Tone="StatusBadge.BadgeTone.Info">Your turn</StatusBadge>
-                </div>
-
-                <NexusPendingOrdersListComponent MoveOrders="@_pendingMoveOrders" BuildOrders="@_pendingBuildOrders"
-                                                 BeginNexusGate="@_pendingBeginNexusGate" IsEditable OnRemoveMoveOrder="RemoveMoveOrder"
-                                                 OnRemoveBuildOrder="RemoveBuildOrder" OnRemoveGateOrder="() => _pendingBeginNexusGate = false" />
-
-                <button class="ui-button-primary w-full" @onclick="SubmitOrdersAsync" disabled="@IsSubmittingAction">
-                    @(IsSubmittingAction ? "Submitting..." : "Submit orders")
-                </button>
-            </section>
-        }
-    </aside>
-
-    @* Center: hex map *@
+@* Main layout *@
+<div class="grid gap-4 lg:grid-cols-[3fr_2fr]">
     <section class="ui-surface-section flex flex-col p-4 lg:p-5">
         <p class="ui-panel-label mb-4">Hex map</p>
         <div class="min-h-0 flex-1">
@@ -181,28 +33,59 @@
                                    OpponentPlayerId="@Session.Opponent.PlayerId" CurrentPlayerFaction="@Session.CurrentPlayer.Faction"
                                    CurrentPlayerGateProgress="@Session.CurrentPlayer.GateProgress" IsEditable="@ShowOrdersForm"
                                    PendingMoveOrders="@_pendingMoveOrders" SelectedSystem="@_selectedSystem"
-                                   ValidMoveTargets="@_validMoveTargets" OnSystemClicked="OnSystemClicked" />
+                                   ValidMoveTargets="@_validMoveTargets" EventFocusSystems="@ActiveEventFocusSystems"
+                                   EventFocusFrom="@ActiveEventFocusFrom" EventFocusTo="@ActiveEventFocusTo"
+                                   OnSystemClicked="OnSystemClicked" OnMapBackgroundClicked="OnMapBackgroundClicked" />
         </div>
     </section>
 
-    @* Right sidebar: resolve events *@
-    <aside class="space-y-4">
-        @if (_resolveDisplayIndex > 0)
+    <aside class="grid gap-4 lg:h-full lg:min-h-0 lg:grid-rows-[2fr_1fr]">
+        @if (_selectedSystem.HasValue && Session.Systems.FirstOrDefault(s => s.Coord == _selectedSystem.Value) is { } selectedSystem)
         {
-            <section class="ui-surface-section space-y-3 p-4 lg:p-5">
-                <p class="ui-panel-label">Last round</p>
-                @foreach (var evt in Session.LastResolveEvents.Take(_resolveDisplayIndex))
-                {
-                    <p class="text-sm text-slate-300">
-                        @NexusResolveEventMessageFormatter.Format(evt, GetPlayerNames())
-                    </p>
-                }
-                @if (_resolveDisplayIndex < Session.LastResolveEvents.Length)
-                {
-                    <p class="animate-pulse text-xs text-slate-500">Resolving...</p>
-                }
-            </section>
+            <NexusSelectedHexPanel System="selectedSystem" CurrentPlayerId="@Session.CurrentPlayer.PlayerId"
+                                   CurrentPlayerName="@CurrentPlayerName"
+                                   OpponentPlayerId="@Session.Opponent.PlayerId" CurrentPlayerFaction="@Session.CurrentPlayer.Faction"
+                                   OpponentPlayerName="@OpponentPlayerName"
+                                   CurrentPlayerGateProgress="@Session.CurrentPlayer.GateProgress" PendingBeginNexusGate="@_pendingBeginNexusGate"
+                                   IsEditable="@(ShowOrdersForm && _activeSidebarTab == SidebarTab.Orders)"
+                                   ProjectedEnergy="@ProjectedEnergy" AvailableUnits="@GetAvailableUnits(selectedSystem.Coord)"
+                                   PendingBuildOrders="@_pendingBuildOrders" OnFleetSelectionChanged="OnFleetSelectionChanged"
+                                   OnBuildAddOne="AddBuildOrder" OnBuildAddMax="AddBuildOrderMax"
+                                   OnBuildRemoveOne="RemoveBuildOrder" OnBuildRemoveAll="RemoveBuildOrdersForUnit"
+                                   OnToggleNexusGate="ToggleNexusGate" />
         }
+        else
+        {
+            <NexusEmptySelectionState />
+        }
+
+        <NexusSidebarPanelShell>
+            <HeaderContent>
+                <Tabs TItem="SidebarTab" Items="@SidebarTabs" SelectedItem="@_activeSidebarTab"
+                        ActiveItemClass="rounded-md border border-white/15 bg-white/10 px-3.5 py-2 text-base font-semibold text-white"
+                        InactiveItemClass="rounded-md border border-white/10 px-3.5 py-2 text-base text-slate-400 transition-colors hover:text-slate-200"
+                      ItemLabelSelector="GetSidebarTabLabel" DisabledSelector="IsSidebarTabDisabled"
+                      OnSelected="SetTab" AriaLabel="Sidebar view" />
+            </HeaderContent>
+            <ChildContent>
+                @if (_activeSidebarTab == SidebarTab.Events)
+                {
+                    <NexusResolveEventsPanel Events="@Session.LastResolveEvents" PlayerNames="@GetPlayerNames()"
+                                            RowClassSelector="GetEventRowClass" OnEventClicked="OnEventClicked"
+                                            OnEventHovered="OnEventHovered" OnEventHoverCleared="OnEventHoverCleared" />
+                }
+                else
+                {
+                    <NexusOrdersPanel MoveOrders="@_pendingMoveOrders" BuildOrders="@_pendingBuildOrders"
+                                      CurrentPlayerName="@CurrentPlayerName" CurrentPlayerHomeCoord="@CurrentPlayerHomeCoord"
+                                      BeginNexusGate="@_pendingBeginNexusGate" IsEditable="@ShowOrdersForm"
+                                      ShowSubmitButton="@ShowOrdersForm" IsSubmittingAction="@IsSubmittingAction"
+                                      OnRemoveMoveOrder="RemoveMoveOrder" OnRemoveBuildOrder="RemoveBuildOrder"
+                                      OnRemoveGateOrder="() => _pendingBeginNexusGate = false"
+                                      OnSubmitOrders="SubmitOrdersAsync" />
+                }
+            </ChildContent>
+        </NexusSidebarPanelShell>
     </aside>
 </div>
 
@@ -225,13 +108,15 @@
     private readonly List<NexusMoveOrder> _pendingMoveOrders = [];
     private readonly List<NexusBuildOrder> _pendingBuildOrders = [];
     private bool _pendingBeginNexusGate;
-    private int _resolveDisplayIndex;
     private int? _lastKnownRound;
-    private CancellationTokenSource? _playbackCts;
     private HexCoord? _selectedSystem;
-    private bool _pickingMoveDest;
-    private ImmutableDictionary<NexusUnitType, int> _stagedMoveUnits = ImmutableDictionary<NexusUnitType, int>.Empty;
+    private ImmutableDictionary<NexusUnitType, int> _stagedMoveUnits =
+        ImmutableDictionary<NexusUnitType, int>.Empty;
     private IReadOnlyList<HexCoord> _validMoveTargets = [];
+    private static readonly SidebarTab[] SidebarTabs = [SidebarTab.Orders, SidebarTab.Events];
+    private SidebarTab _activeSidebarTab = SidebarTab.Orders;
+    private EventFocus _hoverEventFocus = EventFocus.None;
+    private EventFocus _pinnedEventFocus = EventFocus.None;
 
     protected override void OnParametersSet()
     {
@@ -244,50 +129,29 @@
         _pendingBeginNexusGate = false;
         ClearSelection();
 
-        if (Session.LastResolveEvents.Length > 0)
-            StartResolvePlayback(Session.LastResolveEvents.Length);
-        else
-            _resolveDisplayIndex = 0;
-    }
+        _hoverEventFocus = EventFocus.None;
+        _pinnedEventFocus = EventFocus.None;
 
-    private void StartResolvePlayback(int count)
-    {
-        _playbackCts?.Cancel();
-        _playbackCts?.Dispose();
-        _playbackCts = new CancellationTokenSource();
-        var token = _playbackCts.Token;
-        _resolveDisplayIndex = 0;
-        _ = InvokeAsync(async () =>
+        if (Session.LastResolveEvents.Length == 0)
         {
-            for (var i = 1; i <= count; i++)
-            {
-                try
-                {
-                    await Task.Delay(400, token);
-                }
-                catch (OperationCanceledException)
-                {
-                    break;
-                }
+            _activeSidebarTab = SidebarTab.Orders;
+            return;
+        }
 
-                if (token.IsCancellationRequested)
-                    break;
-
-                _resolveDisplayIndex = i;
-                StateHasChanged();
-            }
-        });
-    }
-
-    public void Dispose()
-    {
-        _playbackCts?.Cancel();
-        _playbackCts?.Dispose();
+        _activeSidebarTab = SidebarTab.Events;
+        var firstFocusable = Session.LastResolveEvents
+            .Select(GetEventFocus)
+            .FirstOrDefault(f => f.HasTarget);
+        if (firstFocusable is not null)
+        {
+            _pinnedEventFocus = firstFocusable;
+            if (firstFocusable.Primary.HasValue)
+                _selectedSystem = firstFocusable.Primary.Value;
+        }
     }
 
     private bool ShowOrdersForm =>
         Lobby.IsCurrentUserActive
-        && Session.Phase == NexusGamePhase.Planning
         && !Session.CurrentPlayer.HasSubmittedOrders
         && Session.Completion is null;
 
@@ -296,6 +160,9 @@
     private string OpponentPlayerName =>
         Lobby.Players.FirstOrDefault(p => p.PlayerId != Lobby.CurrentPlayerId)?.Name
         ?? "your opponent";
+
+    private HexCoord? CurrentPlayerHomeCoord =>
+        Session.Systems.FirstOrDefault(s => s.HomePlayerId == Session.CurrentPlayer.PlayerId)?.Coord;
 
     private IReadOnlyDictionary<Guid, string> GetPlayerNames() =>
         new Dictionary<Guid, string>
@@ -309,15 +176,22 @@
         if (!ShowOrdersForm)
             return;
 
-        if (_pickingMoveDest)
+        if (_selectedSystem.HasValue && !_stagedMoveUnits.IsEmpty && _validMoveTargets.Contains(coord))
         {
-            if (_validMoveTargets.Contains(coord))
-                ConfirmMoveOrder(coord);
-            // else: click outside valid targets — do nothing
+            _pendingMoveOrders.Add(new NexusMoveOrder(_selectedSystem.Value, coord, _stagedMoveUnits));
+            _stagedMoveUnits = ImmutableDictionary<NexusUnitType, int>.Empty;
+            _validMoveTargets = [];
             return;
         }
 
-        _selectedSystem = _selectedSystem == coord ? null : (HexCoord?)coord;
+        _selectedSystem = _selectedSystem == coord ? null : coord;
+        _stagedMoveUnits = ImmutableDictionary<NexusUnitType, int>.Empty;
+        _validMoveTargets = [];
+    }
+
+    private void OnMapBackgroundClicked()
+    {
+        ClearSelection();
     }
 
     private void RemoveMoveOrder(NexusMoveOrder order) => _pendingMoveOrders.Remove(order);
@@ -341,33 +215,22 @@
     private void ClearSelection()
     {
         _selectedSystem = null;
-        _pickingMoveDest = false;
         _stagedMoveUnits = ImmutableDictionary<NexusUnitType, int>.Empty;
         _validMoveTargets = [];
     }
 
-    private void OnMoveUnitsConfirmed(ImmutableDictionary<NexusUnitType, int> units)
+    private void OnFleetSelectionChanged(ImmutableDictionary<NexusUnitType, int> units)
     {
         _stagedMoveUnits = units;
+
+        if (_selectedSystem is null || units.Count == 0)
+        {
+            _validMoveTargets = [];
+            return;
+        }
+
         _validMoveTargets = NexusGameViewQueries.GetValidMoveDestinations(
             Session, Session.CurrentPlayer.PlayerId, _selectedSystem!.Value);
-        _pickingMoveDest = true;
-    }
-
-    private void ConfirmMoveOrder(HexCoord destination)
-    {
-        if (_selectedSystem is null)
-            return;
-
-        _pendingMoveOrders.Add(new NexusMoveOrder(_selectedSystem.Value, destination, _stagedMoveUnits));
-        ClearSelection();
-    }
-
-    private void CancelDestPick()
-    {
-        _stagedMoveUnits = ImmutableDictionary<NexusUnitType, int>.Empty;
-        _pickingMoveDest = false;
-        _validMoveTargets = [];
     }
 
     private void AddBuildOrder(NexusUnitType unit)
@@ -379,6 +242,26 @@
             _pendingBuildOrders[idx] = _pendingBuildOrders[idx] with { Count = _pendingBuildOrders[idx].Count + 1 };
         else
             _pendingBuildOrders.Add(new NexusBuildOrder(unit, 1));
+    }
+
+    private void AddBuildOrderMax(NexusUnitType unit)
+    {
+        var maxAdd = ProjectedEnergy / unit.Cost();
+        for (var i = 0; i < maxAdd; i++)
+            AddBuildOrder(unit);
+    }
+
+    private void RemoveBuildOrdersForUnit(NexusUnitType unit)
+    {
+        _pendingBuildOrders.RemoveAll(o => o.UnitType == unit);
+    }
+
+    private void ToggleNexusGate()
+    {
+        if (_selectedSystem is null || !CanShowGateOption(_selectedSystem.Value))
+            return;
+
+        _pendingBeginNexusGate = !_pendingBeginNexusGate;
     }
 
     private bool CanShowGateOption(HexCoord coord)
@@ -420,11 +303,6 @@
 
     private int ProjectedEnergy => Session.CurrentPlayer.Energy - ProjectedSpend;
 
-    private string GateButtonClass() =>
-        _pendingBeginNexusGate
-            ? "flex w-full items-center justify-between gap-2 rounded-lg border border-purple-500/50 bg-purple-600/20 px-3 py-1.5 text-xs text-purple-300 transition-colors"
-            : "flex w-full items-center justify-between gap-2 rounded-lg border border-white/10 bg-slate-950/60 px-3 py-1.5 text-xs text-slate-200 transition-colors hover:border-purple-500/30";
-
     private Task SubmitOrdersAsync()
     {
         var command = new NexusTurnOrdersCommand(
@@ -442,26 +320,128 @@
         return OnSubmitOrders.InvokeAsync(command);
     }
 
-    private string GetHeadline() =>
-        Session switch
+    private void SetTab(SidebarTab tab)
+    {
+        if (tab == SidebarTab.Events && Session.LastResolveEvents.Length == 0)
+            return;
+
+        _activeSidebarTab = tab;
+    }
+
+    private static string GetSidebarTabLabel(SidebarTab tab) =>
+        tab switch
         {
-            { Completion: not null } => "Match complete",
-            { Phase: NexusGamePhase.Planning, CurrentPlayer.HasSubmittedOrders: false } =>
-                "Submit your orders",
-            { Phase: NexusGamePhase.Planning } => "Waiting for opponent",
-            _ => "Gameplay",
+            SidebarTab.Orders => "Orders",
+            SidebarTab.Events => "Events",
+            _ => tab.ToString(),
         };
 
-    private string GetDescription() =>
-        Session switch
+    private bool IsSidebarTabDisabled(SidebarTab tab) =>
+        tab == SidebarTab.Events && Session.LastResolveEvents.Length == 0;
+
+    private void OnEventHovered(NexusResolveEvent evt)
+    {
+        var focus = GetEventFocus(evt);
+        if (!focus.HasTarget)
+            return;
+
+        if (IsSameFocus(_hoverEventFocus, focus))
+            return;
+
+        _hoverEventFocus = focus;
+        if (focus.Primary.HasValue)
+            _selectedSystem = focus.Primary.Value;
+    }
+
+    private void OnEventHoverCleared()
+    {
+        if (!_hoverEventFocus.HasTarget)
+            return;
+
+        _hoverEventFocus = EventFocus.None;
+        if (_pinnedEventFocus.Primary.HasValue)
+            _selectedSystem = _pinnedEventFocus.Primary.Value;
+    }
+
+    private void OnEventClicked(NexusResolveEvent evt)
+    {
+        var focus = GetEventFocus(evt);
+        if (!focus.HasTarget)
+            return;
+
+        _pinnedEventFocus = focus;
+        if (focus.Primary.HasValue)
+            _selectedSystem = focus.Primary.Value;
+    }
+
+    private string GetEventRowClass(NexusResolveEvent evt)
+    {
+        var focus = GetEventFocus(evt);
+        if (!focus.HasTarget)
+            return "w-full rounded-lg border border-white/10 bg-slate-950/40 px-3 py-2.5 text-left text-base text-slate-300";
+
+        var isHovered = IsSameFocus(_hoverEventFocus, focus);
+        var isPinned = IsSameFocus(_pinnedEventFocus, focus);
+        if (isHovered || isPinned)
+            return "w-full rounded-lg border border-amber-400/40 bg-amber-500/10 px-3 py-2.5 text-left text-base text-amber-100";
+
+        return "w-full rounded-lg border border-white/10 bg-slate-950/40 px-3 py-2.5 text-left text-base text-slate-300 transition-colors hover:border-amber-400/30 hover:text-slate-100";
+    }
+
+    private IReadOnlyList<HexCoord> ActiveEventFocusSystems =>
+        _hoverEventFocus.HasTarget ? _hoverEventFocus.Systems : _pinnedEventFocus.Systems;
+
+    private HexCoord? ActiveEventFocusFrom =>
+        _hoverEventFocus.HasTarget ? _hoverEventFocus.From : _pinnedEventFocus.From;
+
+    private HexCoord? ActiveEventFocusTo =>
+        _hoverEventFocus.HasTarget ? _hoverEventFocus.To : _pinnedEventFocus.To;
+
+    private static bool IsSameFocus(EventFocus a, EventFocus b)
+    {
+        if (!a.HasTarget || !b.HasTarget)
+            return false;
+
+        return a.Primary == b.Primary && a.From == b.From && a.To == b.To;
+    }
+
+    private static EventFocus GetEventFocus(NexusResolveEvent evt) =>
+        evt switch
         {
-            { Completion: not null } => GetCompletionMessage(),
-            { Phase: NexusGamePhase.Planning, CurrentPlayer.HasSubmittedOrders: false } =>
-                "Choose your orders and submit. Both players resolve simultaneously once both have submitted.",
-            { Phase: NexusGamePhase.Planning } =>
-                $"Waiting for {OpponentPlayerName} to submit their orders.",
-            _ => "Game state is resolving.",
+            NexusUnitsMovedEvent e =>
+                new EventFocus([e.From, e.To], e.From, e.To, e.To),
+            NexusGroundForcesControlEvent e => new EventFocus([e.System], Primary: e.System),
+            NexusSystemContestedEvent e => new EventFocus([e.System], Primary: e.System),
+            NexusSystemUncontrolledEvent e => new EventFocus([e.System], Primary: e.System),
+            NexusCombatBeganEvent e => new EventFocus([e.System], Primary: e.System),
+            NexusPhaseResultEvent e => new EventFocus([e.System], Primary: e.System),
+            NexusSystemClearedEvent e => new EventFocus([e.System], Primary: e.System),
+            NexusUnitDeployedEvent e => new EventFocus([e.HomeSystem], Primary: e.HomeSystem),
+            NexusGateStartedEvent e => new EventFocus([e.System], Primary: e.System),
+            NexusGateCompletedEvent e => new EventFocus([e.System], Primary: e.System),
+            NexusGateCancelledEvent e => new EventFocus([e.System], Primary: e.System),
+            NexusIncomeEvent e when e.Sources.Length > 0 =>
+                new EventFocus(e.Sources.ToArray(), Primary: e.Sources[0]),
+            _ => EventFocus.None,
         };
+
+    private enum SidebarTab
+    {
+        Orders,
+        Events,
+    }
+
+    private sealed record EventFocus(
+        IReadOnlyList<HexCoord> Systems,
+        HexCoord? From = null,
+        HexCoord? To = null,
+        HexCoord? Primary = null
+    )
+    {
+        public static EventFocus None { get; } = new([]);
+
+        public bool HasTarget => Systems.Count > 0 || From.HasValue || To.HasValue || Primary.HasValue;
+    }
 
     private string GetCompletionMessage()
     {

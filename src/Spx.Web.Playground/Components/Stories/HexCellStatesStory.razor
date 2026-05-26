@@ -22,7 +22,7 @@
     private static readonly Guid P2 = Guid.Parse("bbbbbbbb-0000-0000-0000-000000000002");
     private static readonly HexCoord Origin = new(0, 0);
     private static readonly HexCoord NegCoord = new(-2, 1);
-    private static readonly HexCoord NegNegCoord = new(-1, -2);
+    private static readonly HexCoord NegNegCoord = new(-1, -1);
 
     private static ImmutableDictionary<Guid, ImmutableDictionary<NexusUnitType, int>> NoUnits =>
         ImmutableDictionary<Guid, ImmutableDictionary<NexusUnitType, int>>.Empty;
@@ -63,8 +63,8 @@ NexusFactionColor Faction = NexusFactionColor.Blue);
 NexusFactionColor.Red),
         new("Nexus: gate 2/2 (red)", new(Origin, true, 0, null, null, NoUnits), NexusGateProgress.Completed,
 NexusFactionColor.Red),
-        new("Coord: -2,1", new(NegCoord, false, 3, null, null, NoUnits)),
-        new("Coord: -1,-2", new(NegNegCoord, false, 2, null, P1, NoUnits)),
+        new("Mu", new(NegCoord, false, 3, null, null, NoUnits)),
+        new("Xi", new(NegNegCoord, false, 2, null, P1, NoUnits)),
         new(
             "My units",
             new(

@@ -1,0 +1,52 @@
+<div class="space-y-4">
+    <NexusPendingOrdersListComponent MoveOrders="@MoveOrders" BuildOrders="@BuildOrders"
+                                     CurrentPlayerName="@CurrentPlayerName" CurrentPlayerHomeCoord="@CurrentPlayerHomeCoord"
+                                     BeginNexusGate="@BeginNexusGate" IsEditable="@IsEditable"
+                                     OnRemoveMoveOrder="OnRemoveMoveOrder" OnRemoveBuildOrder="OnRemoveBuildOrder"
+                                     OnRemoveGateOrder="OnRemoveGateOrder" />
+
+    @if (ShowSubmitButton)
+    {
+        <button class="ui-button-primary w-full" @onclick="OnSubmitOrders" disabled="@IsSubmittingAction">
+            @(IsSubmittingAction ? "Submitting..." : "Submit orders")
+        </button>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public string CurrentPlayerName { get; set; } = "Player";
+
+    [Parameter]
+    public HexCoord? CurrentPlayerHomeCoord { get; set; }
+
+    [Parameter, EditorRequired]
+    public IReadOnlyList<NexusMoveOrder> MoveOrders { get; set; } = [];
+
+    [Parameter, EditorRequired]
+    public IReadOnlyList<NexusBuildOrder> BuildOrders { get; set; } = [];
+
+    [Parameter]
+    public bool BeginNexusGate { get; set; }
+
+    [Parameter]
+    public bool IsEditable { get; set; }
+
+    [Parameter]
+    public bool ShowSubmitButton { get; set; }
+
+    [Parameter]
+    public bool IsSubmittingAction { get; set; }
+
+    [Parameter]
+    public EventCallback<NexusMoveOrder> OnRemoveMoveOrder { get; set; }
+
+    [Parameter]
+    public EventCallback<NexusBuildOrder> OnRemoveBuildOrder { get; set; }
+
+    [Parameter]
+    public EventCallback OnRemoveGateOrder { get; set; }
+
+    [Parameter]
+    public EventCallback OnSubmitOrders { get; set; }
+}

@@ -78,9 +78,11 @@ Useful single-purpose tasks are also checked in:
 - `silo: build`
 - `apphost: build`
 - `tailwind: build css`
-- `tailwind: watch css`
-- `apphost: watch`
+- `dev: watch tailwind`
+- `dev: watch apphost`
 - `apphost: run`
+- `dev: watch playground`
+- `dev: watch playground + tailwind`
 
 ## Application Behavior
 

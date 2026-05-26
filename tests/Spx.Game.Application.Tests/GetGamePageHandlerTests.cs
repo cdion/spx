@@ -145,16 +145,7 @@ public sealed class GetGamePageHandlerTests
             false
         );
 
-        return new NexusGameView(
-            gameId,
-            roundNumber,
-            NexusGamePhase.Planning,
-            [],
-            currentPlayer,
-            opponentPlayer,
-            [],
-            null
-        );
+        return new NexusGameView(gameId, roundNumber, [], currentPlayer, opponentPlayer, [], null);
     }
 
     private sealed class FakeGamePersistence : IGamePersistence

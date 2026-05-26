@@ -34,7 +34,6 @@ public sealed record NexusPlayerView(
 public sealed record NexusGameView(
     [property: Id(0)] Guid GameId,
     [property: Id(1)] int RoundNumber,
-    [property: Id(2)] NexusGamePhase Phase,
     [property: Id(3)] ImmutableArray<NexusSystemView> Systems,
     [property: Id(4)] NexusPlayerView CurrentPlayer,
     [property: Id(5)] NexusPlayerView Opponent,

@@ -1,0 +1,84 @@
+<div class="grid gap-3 lg:grid-cols-3">
+    <article class="ui-panel-row items-start">
+        <div class="space-y-1">
+            <p class="@PlayerNameClass(CurrentPlayerFaction)">@CurrentPlayerName</p>
+            <p class="text-2xl font-semibold text-yellow-400">@CurrentPlayerEnergy⚡</p>
+        </div>
+        <div class="flex flex-col items-end gap-1 pt-1">
+            <StatusBadge Tone="@SubmissionTone(CurrentPlayerHasSubmittedOrders)">@SubmissionLabel(CurrentPlayerHasSubmittedOrders)</StatusBadge>
+            <StatusBadge Tone="@PresenceTone(CurrentPlayerIsActive)">@PresenceLabel(CurrentPlayerIsActive)</StatusBadge>
+        </div>
+    </article>
+
+    <article class="ui-panel-row items-center justify-center">
+        <div class="text-center">
+            <p class="text-base font-semibold uppercase text-slate-300" style="letter-spacing: 0.2em;">Round</p>
+            <p class="mt-1 text-3xl font-semibold text-white">@RoundNumber</p>
+        </div>
+    </article>
+
+    <article class="ui-panel-row items-start">
+        <div class="space-y-1">
+            <p class="@PlayerNameClass(OpponentFaction)">@OpponentPlayerName</p>
+            <p class="text-2xl font-semibold text-yellow-400">@OpponentPlayerEnergy⚡</p>
+        </div>
+        <div class="flex flex-col items-end gap-1 pt-1">
+            <StatusBadge Tone="@SubmissionTone(OpponentHasSubmittedOrders)">@SubmissionLabel(OpponentHasSubmittedOrders)</StatusBadge>
+            <StatusBadge Tone="@PresenceTone(OpponentIsActive)">@PresenceLabel(OpponentIsActive)</StatusBadge>
+        </div>
+    </article>
+</div>
+
+@code {
+    [Parameter]
+    public int RoundNumber { get; set; }
+
+    [Parameter, EditorRequired]
+    public string CurrentPlayerName { get; set; } = string.Empty;
+
+    [Parameter, EditorRequired]
+    public string OpponentPlayerName { get; set; } = string.Empty;
+
+    [Parameter]
+    public NexusFactionColor CurrentPlayerFaction { get; set; }
+
+    [Parameter]
+    public int CurrentPlayerEnergy { get; set; }
+
+    [Parameter]
+    public bool CurrentPlayerIsActive { get; set; }
+
+    [Parameter]
+    public bool CurrentPlayerHasSubmittedOrders { get; set; }
+
+    [Parameter]
+    public NexusFactionColor OpponentFaction { get; set; }
+
+    [Parameter]
+    public int OpponentPlayerEnergy { get; set; }
+
+    [Parameter]
+    public bool OpponentIsActive { get; set; }
+
+    [Parameter]
+    public bool OpponentHasSubmittedOrders { get; set; }
+
+    private static string PresenceLabel(bool isActive) => isActive ? "Online" : "Offline";
+
+    private static StatusBadge.BadgeTone PresenceTone(bool isActive) =>
+        isActive ? StatusBadge.BadgeTone.Success : StatusBadge.BadgeTone.Offline;
+
+    private static string SubmissionLabel(bool hasSubmittedOrders) =>
+        hasSubmittedOrders ? "Orders in" : "Orders pending";
+
+    private static StatusBadge.BadgeTone SubmissionTone(bool hasSubmittedOrders) =>
+        hasSubmittedOrders ? StatusBadge.BadgeTone.Success : StatusBadge.BadgeTone.Warning;
+
+    private static string PlayerNameClass(NexusFactionColor faction) =>
+        faction switch
+        {
+            NexusFactionColor.Red => "text-lg font-semibold tracking-wide text-red-300",
+            NexusFactionColor.Blue => "text-lg font-semibold tracking-wide text-sky-300",
+            _ => "text-lg font-semibold tracking-wide text-slate-200",
+        };
+}

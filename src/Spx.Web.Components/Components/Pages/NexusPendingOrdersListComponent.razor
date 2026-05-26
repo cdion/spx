@@ -1,6 +1,6 @@
 @if (!MoveOrders.Any() && !BuildOrders.Any() && !BeginNexusGate)
 {
-    <p class="text-xs text-slate-500">No orders yet.</p>
+    <p class="text-base text-slate-500">No orders yet.</p>
 }
 else
 {
@@ -8,10 +8,10 @@ else
         @foreach (var order in MoveOrders)
         {
             <li class="flex items-center justify-between gap-2 rounded-xl border border-white/10 bg-slate-950/60 px-3 py-2">
-                <span class="text-xs text-slate-200">@GetMoveDescription(order)</span>
+                <span class="text-base text-slate-300">@GetMoveDescription(order)</span>
                 @if (IsEditable)
                 {
-                    <button class="text-sm text-slate-500 transition-colors hover:text-rose-400" title="Remove order"
+                    <button class="text-base text-slate-500 transition-colors hover:text-rose-400" title="Remove order"
                             @onclick="() => OnRemoveMoveOrder.InvokeAsync(order)">
                         ×
                     </button>
@@ -21,11 +21,11 @@ else
         @foreach (var order in BuildOrders)
         {
             <li class="flex items-center justify-between gap-2 rounded-xl border border-white/10 bg-slate-950/60 px-3 py-2">
-                <span class="text-xs text-slate-200">Build @order.Count× @order.UnitType (@(order.UnitType.Cost() *
+                <span class="text-base text-slate-300">Build @order.Count× @order.UnitType (@(order.UnitType.Cost() *
                                                     order.Count)⚡)</span>
                     @if (IsEditable)
                     {
-                        <button class="text-sm text-slate-500 transition-colors hover:text-rose-400" title="Remove order"
+                        <button class="text-base text-slate-500 transition-colors hover:text-rose-400" title="Remove order"
                                 @onclick="() => OnRemoveBuildOrder.InvokeAsync(order)">
                             ×
                         </button>
@@ -35,10 +35,10 @@ else
             @if (BeginNexusGate)
             {
                 <li class="flex items-center justify-between gap-2 rounded-xl border border-white/10 bg-slate-950/60 px-3 py-2">
-                    <span class="text-xs text-slate-200">Begin Nexus Gate (12⚡)</span>
+                    <span class="text-base text-slate-300">Begin Nexus Gate (12⚡)</span>
                     @if (IsEditable)
                     {
-                        <button class="text-sm text-slate-500 transition-colors hover:text-rose-400" title="Remove order"
+                        <button class="text-base text-slate-500 transition-colors hover:text-rose-400" title="Remove order"
                                 @onclick="OnRemoveGateOrder">
                             ×
                         </button>
@@ -49,6 +49,12 @@ else
     }
 
 @code {
+    [Parameter]
+    public string CurrentPlayerName { get; set; } = "Player";
+
+    [Parameter]
+    public HexCoord? CurrentPlayerHomeCoord { get; set; }
+
     [Parameter, EditorRequired]
     public IReadOnlyList<NexusMoveOrder> MoveOrders { get; set; } = [];
 
@@ -70,9 +76,17 @@ else
     [Parameter]
     public EventCallback OnRemoveGateOrder { get; set; }
 
-    private static string GetMoveDescription(NexusMoveOrder order)
+    private string GetMoveDescription(NexusMoveOrder order)
     {
         var unitSummary = string.Join(", ", order.Units.Select(kv => $"{kv.Value}× {kv.Key}"));
-        return $"{order.From} → {order.To}: {unitSummary}";
+        return $"{GetSystemDisplayName(order.From)} → {GetSystemDisplayName(order.To)}: {unitSummary}";
+    }
+
+    private string GetSystemDisplayName(HexCoord coord)
+    {
+        if (CurrentPlayerHomeCoord.HasValue && coord == CurrentPlayerHomeCoord.Value)
+            return $"{CurrentPlayerName}'s System";
+
+        return NexusMap.GetSectorDisplayName(coord);
     }
 }

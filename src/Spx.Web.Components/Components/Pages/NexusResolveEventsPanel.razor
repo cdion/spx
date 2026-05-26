@@ -1,0 +1,42 @@
+<div>
+    @if (Events.Count == 0)
+    {
+        <p class="ui-type-muted">No events from the previous round.</p>
+    }
+    else
+    {
+        <div class="space-y-2">
+            @foreach (var evt in Events)
+            {
+                <button type="button" class="@GetRowClass(evt)" @onclick="() => OnEventClicked.InvokeAsync(evt)"
+                        @onmouseenter="() => OnEventHovered.InvokeAsync(evt)" @onmouseleave="OnEventHoverCleared">
+                    @NexusResolveEventMessageFormatter.Format(evt, PlayerNames)
+                </button>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public IReadOnlyList<NexusResolveEvent> Events { get; set; } = [];
+
+    [Parameter, EditorRequired]
+    public IReadOnlyDictionary<Guid, string> PlayerNames { get; set; } =
+        new Dictionary<Guid, string>();
+
+    [Parameter, EditorRequired]
+    public Func<NexusResolveEvent, string> RowClassSelector { get; set; } =
+        _ => "w-full rounded-lg border border-white/10 bg-slate-950/40 px-3 py-2 text-left text-sm text-slate-300";
+
+    [Parameter]
+    public EventCallback<NexusResolveEvent> OnEventClicked { get; set; }
+
+    [Parameter]
+    public EventCallback<NexusResolveEvent> OnEventHovered { get; set; }
+
+    [Parameter]
+    public EventCallback OnEventHoverCleared { get; set; }
+
+    private string GetRowClass(NexusResolveEvent evt) => RowClassSelector(evt);
+}

@@ -25,7 +25,6 @@ public class NexusGameViewQueriesTests
         new(
             Guid.NewGuid(),
             1,
-            NexusGamePhase.Planning,
             systems.ToImmutableArray(),
             MakePlayer(playerId),
             MakePlayer(Guid.NewGuid()),

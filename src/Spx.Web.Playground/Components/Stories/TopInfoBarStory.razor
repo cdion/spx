@@ -1,0 +1,73 @@
+@page "/stories/top-info-bar"
+@rendermode InteractiveServer
+
+<h1 class="mb-1 text-xl font-semibold text-white">Top Info Bar</h1>
+<p class="mb-5 text-sm text-slate-400">
+    <code class="text-sky-300">NexusGameplayTopInfoBar</code> showing both players, faction colors, energy, round, and presence.
+</p>
+
+<div class="mb-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+    <label class="ui-panel-card-inner flex items-center gap-2 text-xs text-slate-300">
+        <input type="checkbox" @bind="_currentSubmitted" />
+        Current submitted
+    </label>
+    <label class="ui-panel-card-inner flex items-center gap-2 text-xs text-slate-300">
+        <input type="checkbox" @bind="_opponentSubmitted" />
+        Opponent submitted
+    </label>
+    <label class="ui-panel-card-inner flex items-center gap-2 text-xs text-slate-300">
+        <input type="checkbox" @bind="_currentActive" />
+        Current active
+    </label>
+    <label class="ui-panel-card-inner flex items-center gap-2 text-xs text-slate-300">
+        <input type="checkbox" @bind="_opponentActive" />
+        Opponent active
+    </label>
+    <label class="ui-panel-card-inner flex items-center gap-2 text-xs text-slate-300">
+        <span>Round</span>
+        <input type="number" min="1" class="w-16 rounded border border-white/10 bg-slate-950/70 px-2 py-1"
+               @bind="_round" />
+    </label>
+    <label class="ui-panel-card-inner flex items-center gap-2 text-xs text-slate-300">
+        <span>Current ⚡</span>
+        <input type="number" min="0" class="w-16 rounded border border-white/10 bg-slate-950/70 px-2 py-1"
+               @bind="_currentEnergy" />
+    </label>
+    <label class="ui-panel-card-inner flex items-center gap-2 text-xs text-slate-300">
+        <span>Opponent ⚡</span>
+        <input type="number" min="0" class="w-16 rounded border border-white/10 bg-slate-950/70 px-2 py-1"
+               @bind="_opponentEnergy" />
+    </label>
+</div>
+
+<NexusGameplayTopInfoBar RoundNumber="@_round" CurrentPlayerName="Player One"
+                        OpponentPlayerName="Player Two" CurrentPlayerFaction="@_currentFaction"
+                        CurrentPlayerEnergy="@_currentEnergy" CurrentPlayerIsActive="@_currentActive"
+                        CurrentPlayerHasSubmittedOrders="@_currentSubmitted"
+                        OpponentFaction="@_opponentFaction" OpponentPlayerEnergy="@_opponentEnergy"
+                        OpponentIsActive="@_opponentActive"
+                        OpponentHasSubmittedOrders="@_opponentSubmitted" />
+
+<div class="mt-3 flex flex-wrap gap-2">
+    <button class="rounded-md border border-white/10 px-3 py-1.5 text-xs text-slate-300 hover:bg-white/5"
+            @onclick="SwapFactions">
+        Swap factions
+    </button>
+</div>
+
+@code {
+    private int _round = 4;
+    private bool _currentSubmitted;
+    private bool _opponentSubmitted = true;
+    private bool _currentActive = true;
+    private bool _opponentActive = true;
+    private int _currentEnergy = 17;
+    private int _opponentEnergy = 12;
+    private NexusFactionColor _currentFaction = NexusFactionColor.Blue;
+    private NexusFactionColor _opponentFaction = NexusFactionColor.Red;
+
+    private void SwapFactions()
+    {
+        (_currentFaction, _opponentFaction) = (_opponentFaction, _currentFaction);
+    }
+}

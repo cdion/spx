@@ -25,7 +25,6 @@ public static class NexusGameEngine
             throw new InvalidOperationException("All players must have distinct IDs.");
 
         state.RoundNumber = 1;
-        state.Phase = NexusGamePhase.Planning;
         state.Completion = null;
         state.LastResolveEvents = [];
 
@@ -60,8 +59,6 @@ public static class NexusGameEngine
         ArgumentNullException.ThrowIfNull(command);
         ArgumentNullException.ThrowIfNull(rng);
 
-        if (state.Phase != NexusGamePhase.Planning)
-            return new NexusTurnOrdersRejected("Game is not in the planning phase.");
         if (state.Completion is not null)
             return new NexusTurnOrdersRejected("Game is already over.");
         if (command.ExpectedRoundNumber != state.RoundNumber)
@@ -113,7 +110,6 @@ public static class NexusGameEngine
                 NexusGameOutcome.Victory,
                 remaining[0].PlayerId
             );
-            state.Phase = NexusGamePhase.Ended;
         }
     }
 
@@ -143,7 +139,6 @@ public static class NexusGameEngine
         return new NexusGameView(
             gameId,
             state.RoundNumber,
-            state.Phase,
             systems,
             ProjectPlayerView(current, isSelf: true),
             ProjectPlayerView(opponent, isSelf: false),
@@ -356,18 +351,16 @@ public static class NexusGameEngine
         {
             state.Completion = new NexusGameCompletion(NexusGameOutcome.Draw, null);
             events.Add(new NexusDrawEvent("Both players completed the Nexus Gate simultaneously."));
-            state.Phase = NexusGamePhase.Ended;
         }
         else if (completedIds.Count == 1)
         {
             state.Completion = new NexusGameCompletion(NexusGameOutcome.Victory, completedIds[0]);
             events.Add(new NexusVictoryEvent(completedIds[0]));
-            state.Phase = NexusGamePhase.Ended;
         }
 
         state.LastResolveEvents = events;
 
-        if (state.Phase != NexusGamePhase.Ended)
+        if (state.Completion is null)
         {
             state.RoundNumber++;
             foreach (var player in players)

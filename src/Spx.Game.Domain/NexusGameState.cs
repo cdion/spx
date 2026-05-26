@@ -8,12 +8,6 @@ public enum NexusFactionColor
     Blue = 1,
 }
 
-public enum NexusGamePhase
-{
-    Planning = 0,
-    Ended = 1,
-}
-
 public enum NexusGateProgress
 {
     None = 0,
@@ -155,9 +149,6 @@ public sealed class NexusGameState
 
     [Id(1)]
     public int RoundNumber { get; set; } = 1;
-
-    [Id(2)]
-    public NexusGamePhase Phase { get; set; } = NexusGamePhase.Planning;
 
     [Id(3)]
     public List<NexusSystemState> Systems { get; set; } = [];

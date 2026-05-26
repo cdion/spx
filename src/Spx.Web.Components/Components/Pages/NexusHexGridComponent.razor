@@ -2,7 +2,7 @@
 @using Spx.Game.Domain
 
 <div class="relative h-full w-full select-none">
-    <svg viewBox="@ViewBox" class="h-full w-full" xmlns="http://www.w3.org/2000/svg">
+    <svg viewBox="@ViewBox" class="h-full w-full" xmlns="http://www.w3.org/2000/svg" @onclick="OnBackgroundClicked">
         @* Pass 1: Hex cells *@
         @foreach (var system in Systems)
         {
@@ -27,6 +27,22 @@
                      stroke="rgba(226,232,240,0.9)" stroke-width="2.5" pointer-events="none" />
         }
 
+        @* Pass 2c: Event-focus rings and path *@
+        @foreach (var coord in EventFocusSystems)
+        {
+            <polygon points="@NexusHexHelpers.HexPoints(NexusHexHelpers.HexCenter(coord))" fill="none"
+                     stroke="rgba(245,158,11,0.9)" stroke-width="2.5" pointer-events="none" />
+        }
+
+        @if (EventFocusFrom.HasValue && EventFocusTo.HasValue)
+        {
+            var from = NexusHexHelpers.HexCenter(EventFocusFrom.Value);
+            var to = NexusHexHelpers.HexCenter(EventFocusTo.Value);
+            <line x1="@NexusHexHelpers.Fmt(from.X)" y1="@NexusHexHelpers.Fmt(from.Y)"
+                  x2="@NexusHexHelpers.Fmt(to.X)" y2="@NexusHexHelpers.Fmt(to.Y)"
+                  stroke="rgba(245,158,11,0.9)" stroke-width="2" stroke-dasharray="4 3" pointer-events="none" />
+        }
+
         @* Pass 3: Move order chevrons *@
         @foreach (var order in PendingMoveOrders)
         {
@@ -46,10 +62,28 @@
                 const double h = 4.5;
                 const double w = 7;
                 var chevronColor = CurrentPlayerFaction == NexusFactionColor.Red ? "#f87171" : "#60a5fa";
-                var pts = $"{NexusHexHelpers.Fmt(mx - ux * h - px * w)},{NexusHexHelpers.Fmt(my - uy * h - py * w)} "
-                        + $"{NexusHexHelpers.Fmt(mx + ux * h)},{NexusHexHelpers.Fmt(my + uy * h)} "
-                        + $"{NexusHexHelpers.Fmt(mx - ux * h + px * w)},{NexusHexHelpers.Fmt(my - uy * h + py * w)}";
-                <polyline points="@pts" fill="none" stroke="@chevronColor" stroke-width="2" stroke-linecap="round"
+                var lx = mx - ux * h - px * w;
+                var ly = my - uy * h - py * w;
+                var tx = mx + ux * h;
+                var ty = my + uy * h;
+                var rx = mx - ux * h + px * w;
+                var ry = my - uy * h + py * w;
+                var outlinePts = $"{NexusHexHelpers.Fmt(lx)},{NexusHexHelpers.Fmt(ly)} "
+                           + $"{NexusHexHelpers.Fmt(tx)},{NexusHexHelpers.Fmt(ty)} "
+                           + $"{NexusHexHelpers.Fmt(rx)},{NexusHexHelpers.Fmt(ry)}";
+
+                // Fill the forward half of the chevron by using arm midpoints toward the tip.
+                var mlx = tx + (lx - tx) * 0.5;
+                var mly = ty + (ly - ty) * 0.5;
+                var mrx = tx + (rx - tx) * 0.5;
+                var mry = ty + (ry - ty) * 0.5;
+                var fillPts = $"{NexusHexHelpers.Fmt(mlx)},{NexusHexHelpers.Fmt(mly)} "
+                        + $"{NexusHexHelpers.Fmt(tx)},{NexusHexHelpers.Fmt(ty)} "
+                        + $"{NexusHexHelpers.Fmt(mrx)},{NexusHexHelpers.Fmt(mry)}";
+
+                <polygon points="@fillPts" fill="@chevronColor" fill-opacity="0.7" stroke="none"
+                     pointer-events="none" />
+                <polyline points="@outlinePts" fill="none" stroke="@chevronColor" stroke-width="2" stroke-linecap="round"
                           stroke-linejoin="round" pointer-events="none" />
             }
         }
@@ -85,7 +119,21 @@
     public IReadOnlyList<HexCoord> ValidMoveTargets { get; set; } = [];
 
     [Parameter]
+    public IReadOnlyList<HexCoord> EventFocusSystems { get; set; } = [];
+
+    [Parameter]
+    public HexCoord? EventFocusFrom { get; set; }
+
+    [Parameter]
+    public HexCoord? EventFocusTo { get; set; }
+
+    [Parameter]
     public EventCallback<HexCoord> OnSystemClicked { get; set; }
+
+    [Parameter]
+    public EventCallback OnMapBackgroundClicked { get; set; }
+
+    private Task OnBackgroundClicked() => OnMapBackgroundClicked.InvokeAsync();
 
     private string ViewBox
     {

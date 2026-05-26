@@ -50,7 +50,6 @@ public sealed class GameSessionGrainIntegrationTests(OrleansClusterFixture fixtu
 
         Assert.NotNull(view);
         Assert.Equal(1, view!.RoundNumber);
-        Assert.Equal(NexusGamePhase.Planning, view.Phase);
         Assert.Null(view.Completion);
     }
 
