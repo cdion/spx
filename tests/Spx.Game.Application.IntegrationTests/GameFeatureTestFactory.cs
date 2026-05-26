@@ -81,11 +81,11 @@ internal sealed class FakeGameSessionService : IGameSessionService
         CancellationToken cancellationToken = default
     ) => Task.FromResult(TryInitializeResult);
 
-    public Task<NexusGameView?> GetSessionAsync(
+    public Task<GameSessionOutcome> GetSessionAsync(
         Guid gameId,
         Guid playerId,
         CancellationToken cancellationToken = default
-    ) => Task.FromResult<NexusGameView?>(null);
+    ) => Task.FromResult<GameSessionOutcome>(new GameSessionUnavailable());
 
     public Task<GameSessionCommandOutcome> SubmitOrdersAsync(
         Guid gameId,

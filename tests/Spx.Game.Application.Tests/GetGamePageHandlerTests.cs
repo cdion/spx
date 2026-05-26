@@ -125,23 +125,23 @@ public sealed class GetGamePageHandlerTests
         var currentPlayer = new NexusPlayerView(
             CurrentPlayerId,
             NexusFactionColor.Red,
-            ImmutableDictionary<NexusColonyColor, int>.Empty,
+            0,
             NexusGateProgress.None,
             false,
             true,
             [],
-            false,
+            null,
             false
         );
         var opponentPlayer = new NexusPlayerView(
             OpponentPlayerId,
             NexusFactionColor.Blue,
-            ImmutableDictionary<NexusColonyColor, int>.Empty,
+            0,
             NexusGateProgress.None,
             false,
             true,
             null,
-            false,
+            null,
             false
         );
 
@@ -150,9 +150,8 @@ public sealed class GetGamePageHandlerTests
             roundNumber,
             NexusGamePhase.Planning,
             [],
-            [],
             currentPlayer,
-            ImmutableArray.Create(opponentPlayer),
+            opponentPlayer,
             [],
             null
         );
@@ -220,11 +219,14 @@ public sealed class GetGamePageHandlerTests
             return Task.FromResult(TryInitializeResult);
         }
 
-        public Task<NexusGameView?> GetSessionAsync(
+        public Task<GameSessionOutcome> GetSessionAsync(
             Guid gameId,
             Guid playerId,
             CancellationToken cancellationToken = default
-        ) => Task.FromResult(Session);
+        ) =>
+            Task.FromResult<GameSessionOutcome>(
+                Session is null ? new GameSessionUnavailable() : new GameSessionFound(Session)
+            );
 
         public Task<GameSessionCommandOutcome> SubmitOrdersAsync(
             Guid gameId,

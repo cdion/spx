@@ -1,3 +1,6 @@
+@using System.Collections.Immutable
+@using Spx.Game.Domain
+
 <div class="relative h-full w-full select-none">
     <svg viewBox="-150 -140 300 280" class="h-full w-full" xmlns="http://www.w3.org/2000/svg">
         <defs>
@@ -6,104 +9,35 @@
             </marker>
         </defs>
 
-        @* Trade route highlights — rendered beneath hexes *@
-        @foreach (var route in TradeRoutes)
+        @* Pass 1: Hex cells *@
+        @foreach (var system in Systems)
         {
-            var c1 = HexCenter(route.Hex1);
-            var c2 = HexCenter(route.Hex2);
-            <line x1="@Fmt(c1.X)" y1="@Fmt(c1.Y)" x2="@Fmt(c2.X)" y2="@Fmt(c2.Y)" stroke="rgba(234,179,8,0.3)"
-                  stroke-width="4" stroke-linecap="round" />
+            var center = NexusHexHelpers.HexCenter(system.Coord);
+            <NexusHexCellComponent System="system" Center="center"
+                CurrentPlayerId="CurrentPlayerId" OpponentPlayerId="@OpponentPlayerId"
+                CurrentPlayerGateProgress="CurrentPlayerGateProgress"
+                IsClickable="IsEditable" OnClicked="OnSystemClicked" />
         }
 
-        @* Pass 1: Hex cells — uniform subtle stroke; no highlight baked in so overlays render cleanly on top *@
-        @foreach (var hex in Hexes)
+        @* Pass 2a: Valid-target rings *@
+        @foreach (var coord in ValidMoveTargets)
         {
-            var center = HexCenter(hex.Coord);
-            var points = HexPoints(center);
-            var isClickable = IsEditable && (
-                IsValidMoveTarget(hex.Coord) ||
-                HexHasMyFleet(hex) ||
-                (PlayerHomeHex.HasValue && hex.Coord == PlayerHomeHex.Value) ||
-                hex.IsNexus);
-
-            <g @onclick="() => HandleHexClick(hex.Coord)" class="@(isClickable ? "cursor-pointer" : "")">
-                <polygon points="@points" fill="@GetHexFill(hex)" stroke="rgba(255,255,255,0.12)" stroke-width="1"
-                         opacity="0.92" />
-
-                @* Colony owner strip at hex top *@
-                @if (hex.ColonyOwnerFaction.HasValue)
-                {
-                    <line x1="@Fmt(center.X - 11)" y1="@Fmt(center.Y - 26)" x2="@Fmt(center.X + 11)" y2="@Fmt(center.Y - 26)"
-                          stroke="@GetFactionColor(hex.ColonyOwnerFaction.Value)" stroke-width="3" stroke-linecap="round" />
-                }
-
-                @* Colony colour dot *@
-                @if (!hex.IsNexus && hex.Color != NexusColonyColor.None)
-                {
-                    <circle cx="@Fmt(center.X)" cy="@Fmt(center.Y + 20)" r="3.5" fill="@GetColonyDotColor(hex.Color)"
-                            opacity="0.7" />
-                }
-
-                @* Labels: Nexus marker, coord, fleet counts — rendered via MarkupString
-                   because Blazor Razor cannot render SVG <text> elements with attributes *@
-                @((MarkupString)GetHexSvgText(hex, center))
-            </g>
+            <polygon points="@NexusHexHelpers.HexPoints(NexusHexHelpers.HexCenter(coord))" fill="none"
+                     stroke="#38bdf8" stroke-width="2" pointer-events="none" />
         }
 
-        @* Pass 2a: Valid-target rings — beneath selection ring so the selected hex always reads on top *@
-        @foreach (var hex in Hexes)
+        @* Pass 2b: Selection ring *@
+        @if (SelectedSystem.HasValue)
         {
-            @if (IsValidMoveTarget(hex.Coord))
-            {
-                <polygon points="@HexPoints(HexCenter(hex.Coord))" fill="none" stroke="#38bdf8" stroke-width="2"
-                         pointer-events="none" />
-            }
+            <polygon points="@NexusHexHelpers.HexPoints(NexusHexHelpers.HexCenter(SelectedSystem.Value))"
+                     fill="none" stroke="rgba(226,232,240,0.9)" stroke-width="2.5" pointer-events="none" />
         }
 
-        @* Pass 2b: Selection ring + order markers + flag indicators — topmost overlay layer *@
-        @foreach (var hex in Hexes)
+        @* Pass 3: Move order arrows *@
+        @foreach (var order in PendingMoveOrders)
         {
-            var center = HexCenter(hex.Coord);
-
-            @if (SelectedFleetHex.HasValue && hex.Coord == SelectedFleetHex.Value)
-            {
-                <polygon points="@HexPoints(center)" fill="none" stroke="rgba(226,232,240,0.9)" stroke-width="2.5"
-                         pointer-events="none" />
-                @if (SelectionCycleLabel is not null)
-                {
-                    @((MarkupString)$"<text x=\"{Fmt(center.X + 19)}\" y=\"{Fmt(center.Y + 19)}\" text-anchor=\"middle\" fill=\"rgba(226,232,240,0.9)\" font-size=\"7\" font-family=\"monospace\">{SelectionCycleLabel}</text>")
-                }
-            }
-
-            @* Colonize order marker *@
-            @if (PendingOrders.OfType<NexusColonizeOrder>().Any(o => o.From == hex.Coord))
-            {
-                <circle cx="@Fmt(center.X)" cy="@Fmt(center.Y)" r="5" fill="rgba(52,211,153,0.35)" stroke="#34d399"
-                        stroke-width="1.5" pointer-events="none" />
-            }
-
-            @* BuildFleet pending indicator on player home hex *@
-            @if (PendingBuildFleet && PlayerHomeHex.HasValue && hex.Coord == PlayerHomeHex.Value)
-            {
-                <circle cx="@Fmt(center.X - 19)" cy="@Fmt(center.Y - 19)" r="6" fill="rgba(52,211,153,0.25)" stroke="#34d399"
-                        stroke-width="1.5" pointer-events="none" />
-                @((MarkupString)$"<text x=\"{Fmt(center.X - 19)}\" y=\"{Fmt(center.Y - 15)}\" text-anchor=\"middle\" fill=\"#34d399\" font-size=\"9\" font-family=\"monospace\" font-weight=\"bold\">+</text>")
-            }
-
-            @* BeginNexusGate pending indicator on nexus hex *@
-            @if (PendingBeginNexusGate && hex.IsNexus)
-            {
-                <circle cx="@Fmt(center.X + 19)" cy="@Fmt(center.Y - 19)" r="6" fill="rgba(167,139,250,0.25)" stroke="#a78bfa"
-                        stroke-width="1.5" pointer-events="none" />
-                @((MarkupString)$"<text x=\"{Fmt(center.X + 19)}\" y=\"{Fmt(center.Y - 15)}\" text-anchor=\"middle\" fill=\"#a78bfa\" font-size=\"8\" font-family=\"monospace\">G</text>")
-            }
-        }
-
-        @* Pass 3: Move order arrows — rendered above hexes *@
-        @foreach (var order in PendingOrders.OfType<NexusMoveOrder>())
-        {
-            var from = HexCenter(order.From);
-            var to = HexCenter(order.To);
+            var from = NexusHexHelpers.HexCenter(order.From);
+            var to = NexusHexHelpers.HexCenter(order.To);
             var dx = to.X - from.X;
             var dy = to.Y - from.Y;
             var len = Math.Sqrt(dx * dx + dy * dy);
@@ -111,155 +45,43 @@
             {
                 var ex = to.X - dx / len * 12;
                 var ey = to.Y - dy / len * 12;
-                <line x1="@Fmt(from.X)" y1="@Fmt(from.Y)" x2="@Fmt(ex)" y2="@Fmt(ey)" stroke="rgba(251,191,36,0.85)"
-                      stroke-width="2" stroke-linecap="round" marker-end="url(#nexus-arrow)" />
+                <line x1="@NexusHexHelpers.Fmt(from.X)" y1="@NexusHexHelpers.Fmt(from.Y)"
+                      x2="@NexusHexHelpers.Fmt(ex)" y2="@NexusHexHelpers.Fmt(ey)"
+                      stroke="rgba(251,191,36,0.85)" stroke-width="2" stroke-linecap="round"
+                      marker-end="url(#nexus-arrow)" />
             }
         }
     </svg>
 </div>
 
 @code {
-    private const double HexSize = 34.0;
-    private static readonly double Sqrt3 = Math.Sqrt(3.0);
+    [Parameter, EditorRequired]
+    public IReadOnlyList<NexusSystemView> Systems { get; set; } = [];
 
     [Parameter, EditorRequired]
-    public IReadOnlyList<NexusHexView> Hexes { get; set; } = [];
-
-    [Parameter, EditorRequired]
-    public IReadOnlyList<NexusTradeRouteView> TradeRoutes { get; set; } = [];
+    public Guid CurrentPlayerId { get; set; }
 
     [Parameter]
-    public NexusFactionColor? CurrentPlayerFaction { get; set; }
+    public Guid? OpponentPlayerId { get; set; }
 
     [Parameter]
-    public HexCoord? SelectedFleetHex { get; set; }
+    public NexusFactionColor CurrentPlayerFaction { get; set; }
 
     [Parameter]
-    public IReadOnlyList<HexCoord> ValidMoveTargets { get; set; } = [];
-
-    [Parameter]
-    public IReadOnlyList<NexusFleetOrder> PendingOrders { get; set; } = [];
+    public NexusGateProgress CurrentPlayerGateProgress { get; set; }
 
     [Parameter]
     public bool IsEditable { get; set; }
 
     [Parameter]
-    public HexCoord? PlayerHomeHex { get; set; }
+    public IReadOnlyList<NexusMoveOrder> PendingMoveOrders { get; set; } = [];
 
     [Parameter]
-    public bool PendingBuildFleet { get; set; }
+    public HexCoord? SelectedSystem { get; set; }
 
     [Parameter]
-    public bool PendingBeginNexusGate { get; set; }
+    public IReadOnlyList<HexCoord> ValidMoveTargets { get; set; } = [];
 
     [Parameter]
-    public string? SelectionCycleLabel { get; set; }
-
-    [Parameter]
-    public EventCallback<HexCoord> OnHexClicked { get; set; }
-
-    private static (double X, double Y) HexCenter(HexCoord coord) =>
-        (HexSize * (Sqrt3 * coord.Q + Sqrt3 / 2.0 * coord.R), HexSize * 1.5 * coord.R);
-
-    private static string HexPoints((double X, double Y) center)
-    {
-        var parts = new string[6];
-        for (var i = 0; i < 6; i++)
-        {
-            var angle = Math.PI / 180.0 * (60.0 * i - 30.0);
-            var x = center.X + HexSize * Math.Cos(angle);
-            var y = center.Y + HexSize * Math.Sin(angle);
-            parts[i] = $"{Fmt(x)},{Fmt(y)}";
-        }
-
-        return string.Join(" ", parts);
-    }
-
-    // SVG <text> elements cannot carry attributes in Blazor Razor (RZ1023).
-    // Emit them as raw markup instead.
-    private static string GetHexSvgText(NexusHexView hex, (double X, double Y) center)
-    {
-        var sb = new System.Text.StringBuilder();
-
-        if (hex.IsNexus)
-        {
-            sb.Append(
-                $"<text x=\"{Fmt(center.X)}\" y=\"{Fmt(center.Y + 4)}\" "
-                    + "text-anchor=\"middle\" fill=\"rgba(216,180,254,0.9)\" "
-                    + "font-size=\"8\" font-family=\"monospace\">NEXUS</text>"
-            );
-        }
-
-        sb.Append(
-            $"<text x=\"{Fmt(center.X)}\" y=\"{Fmt(center.Y - 11)}\" "
-                + "text-anchor=\"middle\" fill=\"rgba(148,163,184,0.4)\" font-size=\"6.5\">"
-                + $"{hex.Coord.Q},{hex.Coord.R}</text>"
-        );
-
-        var redCount = hex.FleetCounts.GetValueOrDefault(NexusFactionColor.Red, 0);
-        var blueCount = hex.FleetCounts.GetValueOrDefault(NexusFactionColor.Blue, 0);
-
-        // On the Nexus hex, move fleet counts below the NEXUS label to avoid overlap.
-        var countY = hex.IsNexus ? center.Y + 16 : center.Y + 5;
-
-        if (redCount > 0)
-        {
-            sb.Append(
-                $"<text x=\"{Fmt(center.X - 8)}\" y=\"{Fmt(countY)}\" "
-                    + "text-anchor=\"middle\" fill=\"#f87171\" font-size=\"11\" "
-                    + $"font-weight=\"bold\" font-family=\"monospace\">{redCount}</text>"
-            );
-        }
-
-        if (blueCount > 0)
-        {
-            sb.Append(
-                $"<text x=\"{Fmt(center.X + 8)}\" y=\"{Fmt(countY)}\" "
-                    + "text-anchor=\"middle\" fill=\"#60a5fa\" font-size=\"11\" "
-                    + $"font-weight=\"bold\" font-family=\"monospace\">{blueCount}</text>"
-            );
-        }
-
-        return sb.ToString();
-    }
-
-    private static string GetHexFill(NexusHexView hex)
-    {
-        if (hex.IsNexus)
-        {
-            return "rgba(139,92,246,0.2)";
-        }
-
-        return hex.Color switch
-        {
-            NexusColonyColor.Red => "rgba(127,29,29,0.45)",
-            NexusColonyColor.Blue => "rgba(23,37,84,0.45)",
-            NexusColonyColor.Gold => "rgba(120,53,15,0.4)",
-            _ => "rgba(15,23,42,0.55)",
-        };
-    }
-
-    private static string GetFactionColor(NexusFactionColor faction) =>
-        faction == NexusFactionColor.Red ? "rgba(248,113,113,0.8)" : "rgba(96,165,250,0.8)";
-
-    private static string GetColonyDotColor(NexusColonyColor color) =>
-        color switch
-        {
-            NexusColonyColor.Red => "#f87171",
-            NexusColonyColor.Blue => "#60a5fa",
-            NexusColonyColor.Gold => "#fbbf24",
-            _ => "transparent",
-        };
-
-    private bool HexHasMyFleet(NexusHexView hex) =>
-        CurrentPlayerFaction.HasValue
-        && hex.FleetCounts.GetValueOrDefault(CurrentPlayerFaction.Value, 0) > 0;
-
-    private bool IsValidMoveTarget(HexCoord coord) => ValidMoveTargets.Any(t => t == coord);
-
-    private Task HandleHexClick(HexCoord coord) =>
-        IsEditable ? OnHexClicked.InvokeAsync(coord) : Task.CompletedTask;
-
-    private static string Fmt(double v) =>
-        v.ToString("F1", System.Globalization.CultureInfo.InvariantCulture);
+    public EventCallback<HexCoord> OnSystemClicked { get; set; }
 }

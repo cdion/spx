@@ -1,81 +1,45 @@
-using System.Collections.Immutable;
-
 namespace Spx.Game.Domain.Tests;
 
 public class NexusGameViewQueriesTests
 {
-    // -------------------------------------------------------------------------
-    // Minimal view builder helpers
-    // -------------------------------------------------------------------------
+    // ─── helpers ────────────────────────────────────────────────────────────
 
-    private static NexusHexView Hex(
+    private static NexusSystemView MakeSystem(
         HexCoord coord,
-        bool isNexus = false,
-        Guid? colonyOwnerId = null,
-        int redFleets = 0,
-        int blueFleets = 0
+        params (Guid PlayerId, NexusUnitType Unit, int Count)[] units
     )
     {
-        var fleets = ImmutableDictionary<NexusFactionColor, int>.Empty;
-        if (redFleets > 0)
-            fleets = fleets.Add(NexusFactionColor.Red, redFleets);
-        if (blueFleets > 0)
-            fleets = fleets.Add(NexusFactionColor.Blue, blueFleets);
-        return new(
-            coord,
-            NexusColonyColor.None,
-            isNexus,
-            IsHome: false,
-            colonyOwnerId,
-            ColonyOwnerFaction: null,
-            fleets
-        );
+        var dict = units
+            .GroupBy(u => u.PlayerId)
+            .ToImmutableDictionary(
+                g => g.Key,
+                g => g.ToImmutableDictionary(u => u.Unit, u => u.Count)
+            );
+        return new NexusSystemView(coord, false, 2, null, null, dict);
     }
 
-    private static NexusPlayerView Player(Guid playerId, NexusFactionColor faction) =>
+    private static NexusPlayerView MakePlayer(Guid id) =>
+        new(id, NexusFactionColor.Red, 0, NexusGateProgress.None, false, true, null, null, false);
+
+    private static NexusGameView MakeView(Guid playerId, params NexusSystemView[] systems) =>
         new(
-            playerId,
-            faction,
-            ImmutableDictionary<NexusColonyColor, int>.Empty,
-            NexusGateProgress.None,
-            HasSubmittedOrders: false,
-            IsActive: true,
-            PendingFleetOrders: null,
-            PendingBuildFleet: false,
-            PendingBeginNexusGate: false
-        );
-
-    private static NexusGameView View(
-        IReadOnlyList<NexusHexView> hexes,
-        IReadOnlyList<NexusTradeRouteView>? tradeRoutes = null,
-        NexusPlayerView? currentPlayer = null,
-        NexusPlayerView? opponentPlayer = null
-    )
-    {
-        var red = Guid.NewGuid();
-        var blue = Guid.NewGuid();
-        return new NexusGameView(
             Guid.NewGuid(),
-            RoundNumber: 1,
+            1,
             NexusGamePhase.Planning,
-            hexes.ToImmutableArray(),
-            (tradeRoutes ?? []).ToImmutableArray(),
-            currentPlayer ?? Player(red, NexusFactionColor.Red),
-            ImmutableArray.Create(opponentPlayer ?? Player(blue, NexusFactionColor.Blue)),
-            ResolveEvents: [],
-            Completion: null
+            systems.ToImmutableArray(),
+            MakePlayer(playerId),
+            MakePlayer(Guid.NewGuid()),
+            ImmutableArray<NexusResolveEvent>.Empty,
+            null
         );
-    }
 
-    // -------------------------------------------------------------------------
-    // GetValidMoveDestinations
-    // -------------------------------------------------------------------------
+    // ─── GetValidMoveDestinations ────────────────────────────────────────────
 
     [Fact]
-    public void GetValidMoveDestinations_NoFleetOnHex_ReturnsEmpty()
+    public void GetValidMoveDestinations_SourceNotInView_ReturnsEmpty()
     {
         var playerId = Guid.NewGuid();
-        var view = View([Hex(new HexCoord(0, 0))]);
+        var view = MakeView(playerId); // no systems at all
 
         var result = NexusGameViewQueries.GetValidMoveDestinations(
             view,
@@ -87,196 +51,56 @@ public class NexusGameViewQueriesTests
     }
 
     [Fact]
-    public void GetValidMoveDestinations_NoSpeedBonus_ReturnsOnlyAdjacentMapHexes()
+    public void GetValidMoveDestinations_NoPlayerUnitsAtSource_ReturnsEmpty()
     {
         var playerId = Guid.NewGuid();
-        var player = Player(playerId, NexusFactionColor.Red);
-        var center = new HexCoord(0, 0);
-        var n1 = new HexCoord(1, 0);
-        var n2 = new HexCoord(0, 1);
-        var n3 = new HexCoord(-1, 1);
+        var source = new HexCoord(0, 0);
+        // System exists but belongs to another player
+        var otherId = Guid.NewGuid();
+        var view = MakeView(playerId, MakeSystem(source, (otherId, NexusUnitType.Carrier, 1)));
 
-        var view = View(
-            [Hex(center, redFleets: 1), Hex(n1), Hex(n2), Hex(n3)],
-            currentPlayer: player
-        );
+        var result = NexusGameViewQueries.GetValidMoveDestinations(view, playerId, source);
 
-        var result = NexusGameViewQueries.GetValidMoveDestinations(view, playerId, center);
+        Assert.Empty(result);
+    }
+
+    [Fact]
+    public void GetValidMoveDestinations_PlayerHasUnits_ReturnsValidAdjacentCoords()
+    {
+        var playerId = Guid.NewGuid();
+        // Use center (0,0) — all 6 neighbours are within the 19-hex map radius
+        var source = new HexCoord(0, 0);
+        var view = MakeView(playerId, MakeSystem(source, (playerId, NexusUnitType.Carrier, 1)));
+
+        var result = NexusGameViewQueries.GetValidMoveDestinations(view, playerId, source);
+
+        Assert.Equal(6, result.Count);
+        Assert.All(result, coord => Assert.True(NexusMap.IsValidCoord(coord)));
+    }
+
+    [Fact]
+    public void GetValidMoveDestinations_CornerSystem_FiltersOffMapCoords()
+    {
+        var playerId = Guid.NewGuid();
+        // P1 home (2,-2) has only 3 valid adjacent coords within the map
+        var source = NexusMap.Player1HomeCoord;
+        var view = MakeView(playerId, MakeSystem(source, (playerId, NexusUnitType.Infantry, 1)));
+
+        var result = NexusGameViewQueries.GetValidMoveDestinations(view, playerId, source);
 
         Assert.Equal(3, result.Count);
-        Assert.Contains(n1, result);
-        Assert.Contains(n2, result);
-        Assert.Contains(n3, result);
-        Assert.DoesNotContain(center, result);
+        Assert.All(result, coord => Assert.True(NexusMap.IsValidCoord(coord)));
     }
 
     [Fact]
-    public void GetValidMoveDestinations_WithSpeedBonus_IncludesDistanceTwoHexes()
+    public void GetValidMoveDestinations_NeverIncludesSource()
     {
         var playerId = Guid.NewGuid();
-        var player = Player(playerId, NexusFactionColor.Red);
-        var src = new HexCoord(0, 0);
-        var mid = new HexCoord(1, 0);
-        var far = new HexCoord(2, 0);
+        var source = new HexCoord(0, 0);
+        var view = MakeView(playerId, MakeSystem(source, (playerId, NexusUnitType.Carrier, 1)));
 
-        var tradeRoute = new NexusTradeRouteView(
-            src,
-            playerId,
-            NexusFactionColor.Red,
-            new HexCoord(-1, 0),
-            Guid.NewGuid(),
-            NexusFactionColor.Blue
-        );
+        var result = NexusGameViewQueries.GetValidMoveDestinations(view, playerId, source);
 
-        var view = View(
-            [Hex(src, redFleets: 1), Hex(mid), Hex(far)],
-            tradeRoutes: [tradeRoute],
-            currentPlayer: player
-        );
-
-        var result = NexusGameViewQueries.GetValidMoveDestinations(view, playerId, src);
-
-        Assert.Contains(mid, result);
-        Assert.Contains(far, result);
-    }
-
-    [Fact]
-    public void GetValidMoveDestinations_WithSpeedBonus_NeverIncludesSourceHex()
-    {
-        var playerId = Guid.NewGuid();
-        var player = Player(playerId, NexusFactionColor.Red);
-        var src = new HexCoord(0, 0);
-        var mid = new HexCoord(1, 0);
-
-        var tradeRoute = new NexusTradeRouteView(
-            src,
-            playerId,
-            NexusFactionColor.Red,
-            new HexCoord(-1, 0),
-            Guid.NewGuid(),
-            NexusFactionColor.Blue
-        );
-
-        var distanceTwo = mid.GetNeighbours();
-        var hexes = new List<NexusHexView> { Hex(src, redFleets: 1), Hex(mid) };
-        foreach (var h in distanceTwo.Where(c => c != src))
-            hexes.Add(Hex(h));
-
-        var view = View(hexes, tradeRoutes: [tradeRoute], currentPlayer: player);
-
-        var result = NexusGameViewQueries.GetValidMoveDestinations(view, playerId, src);
-
-        Assert.DoesNotContain(src, result);
-    }
-
-    [Fact]
-    public void GetValidMoveDestinations_SpeedBonusOwner2_IncludesDistanceTwoHexes()
-    {
-        var playerId = Guid.NewGuid();
-        var player = Player(playerId, NexusFactionColor.Red);
-        var src = new HexCoord(0, 0);
-        var mid = new HexCoord(1, 0);
-        var far = new HexCoord(2, 0);
-
-        var tradeRoute = new NexusTradeRouteView(
-            new HexCoord(-5, 0),
-            Guid.NewGuid(),
-            NexusFactionColor.Blue,
-            src,
-            playerId,
-            NexusFactionColor.Red
-        );
-
-        var view = View(
-            [Hex(src, redFleets: 1), Hex(mid), Hex(far)],
-            tradeRoutes: [tradeRoute],
-            currentPlayer: player
-        );
-
-        var result = NexusGameViewQueries.GetValidMoveDestinations(view, playerId, src);
-
-        Assert.Contains(far, result);
-    }
-
-    [Fact]
-    public void GetValidMoveDestinations_SpeedBonus_NoDuplicates()
-    {
-        var playerId = Guid.NewGuid();
-        var player = Player(playerId, NexusFactionColor.Red);
-        var src = new HexCoord(0, 0);
-
-        var neighbours = src.GetNeighbours();
-        var hexes = new List<NexusHexView> { Hex(src, redFleets: 1) };
-        foreach (var n in neighbours)
-            hexes.Add(Hex(n));
-
-        var tradeRoute = new NexusTradeRouteView(
-            src,
-            playerId,
-            NexusFactionColor.Red,
-            new HexCoord(99, 0),
-            Guid.NewGuid(),
-            NexusFactionColor.Blue
-        );
-
-        var view = View(hexes, tradeRoutes: [tradeRoute], currentPlayer: player);
-
-        var result = NexusGameViewQueries.GetValidMoveDestinations(view, playerId, src);
-
-        Assert.Equal(result.Count, result.Distinct().Count());
-    }
-
-    // -------------------------------------------------------------------------
-    // CanColonize
-    // -------------------------------------------------------------------------
-
-    [Fact]
-    public void CanColonize_HexNotFound_ReturnsFalse()
-    {
-        var playerId = Guid.NewGuid();
-        var view = View([Hex(new HexCoord(0, 0))]);
-
-        Assert.False(NexusGameViewQueries.CanColonize(view, playerId, new HexCoord(9, 9)));
-    }
-
-    [Fact]
-    public void CanColonize_NexusHex_ReturnsFalse()
-    {
-        var playerId = Guid.NewGuid();
-
-        var view = View([Hex(new HexCoord(0, 0), isNexus: true)]);
-
-        Assert.False(NexusGameViewQueries.CanColonize(view, playerId, new HexCoord(0, 0)));
-    }
-
-    [Fact]
-    public void CanColonize_OwnColony_ReturnsFalse()
-    {
-        var playerId = Guid.NewGuid();
-
-        var view = View([Hex(new HexCoord(1, 0), colonyOwnerId: playerId)]);
-
-        Assert.False(NexusGameViewQueries.CanColonize(view, playerId, new HexCoord(1, 0)));
-    }
-
-    [Fact]
-    public void CanColonize_UnownedHex_ReturnsTrue()
-    {
-        var playerId = Guid.NewGuid();
-
-        var view = View([Hex(new HexCoord(1, 0), colonyOwnerId: null)]);
-
-        Assert.True(NexusGameViewQueries.CanColonize(view, playerId, new HexCoord(1, 0)));
-    }
-
-    [Fact]
-    public void CanColonize_OpponentColony_ReturnsTrue()
-    {
-        var playerId = Guid.NewGuid();
-        var opponentId = Guid.NewGuid();
-
-        var view = View([Hex(new HexCoord(1, 0), colonyOwnerId: opponentId)]);
-
-        Assert.True(NexusGameViewQueries.CanColonize(view, playerId, new HexCoord(1, 0)));
+        Assert.DoesNotContain(source, result);
     }
 }

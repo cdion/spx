@@ -14,29 +14,37 @@ public sealed record InitializeNexusGameCommand(
     [property: Id(0)] ImmutableArray<GameSessionParticipant> Players
 );
 
+/// <summary>Build order for one unit type with a count.</summary>
 [GenerateSerializer]
 [Immutable]
-public abstract record NexusFleetOrder([property: Id(0)] HexCoord From);
+public sealed record NexusBuildOrder(
+    [property: Id(0)] NexusUnitType UnitType,
+    [property: Id(1)] int Count
+);
 
+/// <summary>
+/// A single fleet move: pick a subset of units from <see cref="From"/> and move them to
+/// the adjacent system <see cref="To"/>. Carrier capacity rules are enforced by the engine.
+/// </summary>
 [GenerateSerializer]
 [Immutable]
 public sealed record NexusMoveOrder(
-    HexCoord From,
+    [property: Id(0)] HexCoord From,
     [property: Id(1)] HexCoord To,
-    [property: Id(2)] int Count
-) : NexusFleetOrder(From);
+    [property: Id(2)] ImmutableDictionary<NexusUnitType, int> Units
+);
 
-[GenerateSerializer]
-[Immutable]
-public sealed record NexusColonizeOrder(HexCoord From) : NexusFleetOrder(From);
-
+/// <summary>
+/// All orders a player submits for one round. Stored in grain state until both players
+/// have submitted, then resolved together.
+/// </summary>
 [GenerateSerializer]
 [Immutable]
 public sealed record NexusTurnOrdersCommand(
     [property: Id(0)] Guid PlayerId,
     [property: Id(1)] int ExpectedRoundNumber,
-    [property: Id(2)] ImmutableArray<NexusFleetOrder> FleetOrders,
-    [property: Id(3)] bool BuildFleet,
+    [property: Id(2)] ImmutableArray<NexusMoveOrder> MoveOrders,
+    [property: Id(3)] ImmutableArray<NexusBuildOrder> BuildOrders,
     [property: Id(4)] bool BeginNexusGate
 );
 

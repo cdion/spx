@@ -1,0 +1,130 @@
+@using Spx.Game.Domain
+@using System.Text
+
+<g @onclick="HandleClick" class="@(IsClickable ? "cursor-pointer" : "")">
+    <polygon points="@NexusHexHelpers.HexPoints(Center)" fill="@NexusHexHelpers.GetHexFill(System, CurrentPlayerId)"
+             stroke="rgba(255,255,255,0.12)" stroke-width="1" opacity="0.92" />
+
+    @* Triangle cap — home system indicator or Nexus gold *@
+    @if (NexusHexHelpers.GetCapFill(System, CurrentPlayerId) is { } capFill)
+    {
+        <polygon points="@NexusHexHelpers.CapPoints(Center)" fill="@capFill" />
+    }
+
+    @* Star glyph on home systems *@
+    @if (System.HomePlayerId.HasValue)
+    {
+        <polygon points="@NexusHexHelpers.StarPoints(Center)" fill="rgba(255,255,255,0.85)" />
+    }
+
+    @* Coord label, income, unit counts, gate badge *@
+    @((MarkupString)CoordLabel)
+    @((MarkupString)IncomeLabelMarkup)
+    @((MarkupString)UnitCountsMarkup)
+    @((MarkupString)NexusGateBadgeMarkup)
+</g>
+
+@code {
+    [Parameter, EditorRequired]
+    public NexusSystemView System { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public (double X, double Y) Center { get; set; }
+
+    [Parameter, EditorRequired]
+    public Guid CurrentPlayerId { get; set; }
+
+    [Parameter]
+    public Guid? OpponentPlayerId { get; set; }
+
+    [Parameter]
+    public NexusGateProgress CurrentPlayerGateProgress { get; set; }
+
+    [Parameter]
+    public bool IsClickable { get; set; }
+
+    [Parameter]
+    public EventCallback<HexCoord> OnClicked { get; set; }
+
+    private string CoordLabel =>
+        $"<text x=\"{NexusHexHelpers.Fmt(Center.X)}\" y=\"{NexusHexHelpers.Fmt(Center.Y - 11)}\" "
+        + "text-anchor=\"middle\" fill=\"rgba(148,163,184,0.4)\" font-size=\"6.5\" font-family=\"monospace\">"
+        + $"{System.Coord.Q},{System.Coord.R}</text>";
+
+    private string IncomeLabelMarkup
+    {
+        get
+        {
+            if (System.IsNexus || System.IncomeValue == 0)
+                return string.Empty;
+
+            return $"<text x=\"{NexusHexHelpers.Fmt(Center.X)}\" y=\"{NexusHexHelpers.Fmt(Center.Y + 22)}\" "
+                + "text-anchor=\"middle\" fill=\"rgba(250,204,21,0.7)\" font-size=\"7\" font-family=\"monospace\">"
+                + $"+{System.IncomeValue}&#x26A1;</text>";
+        }
+    }
+
+    private string UnitCountsMarkup
+    {
+        get
+        {
+            var sb = new StringBuilder();
+
+            // Current player's units — top-left
+            var (myS, myQ, myG) = NexusHexHelpers.GetUnitCounts(System, CurrentPlayerId);
+            var myLabel = NexusHexHelpers.GetUnitLabel(myS, myQ, myG);
+            if (myLabel.Length > 0)
+            {
+                sb.Append(
+                    $"<text x=\"{NexusHexHelpers.Fmt(Center.X - 10)}\" y=\"{NexusHexHelpers.Fmt(Center.Y + 6)}\" "
+                    + "text-anchor=\"middle\" fill=\"#60a5fa\" font-size=\"6.5\" font-family=\"monospace\">"
+                    + $"{myLabel}</text>"
+                );
+            }
+
+            // Opponent's units — bottom-right
+            if (OpponentPlayerId.HasValue)
+            {
+                var (opS, opQ, opG) = NexusHexHelpers.GetUnitCounts(System, OpponentPlayerId.Value);
+                var opLabel = NexusHexHelpers.GetUnitLabel(opS, opQ, opG);
+                if (opLabel.Length > 0)
+                {
+                    sb.Append(
+                        $"<text x=\"{NexusHexHelpers.Fmt(Center.X + 10)}\" y=\"{NexusHexHelpers.Fmt(Center.Y + 16)}\" "
+                        + "text-anchor=\"middle\" fill=\"#f87171\" font-size=\"6.5\" font-family=\"monospace\">"
+                        + $"{opLabel}</text>"
+                    );
+                }
+            }
+
+            return sb.ToString();
+        }
+    }
+
+    private string NexusGateBadgeMarkup
+    {
+        get
+        {
+            if (!System.IsNexus || CurrentPlayerGateProgress == NexusGateProgress.None)
+                return string.Empty;
+
+            var label = CurrentPlayerGateProgress switch
+            {
+                NexusGateProgress.Started => "&#x2699;1/2",
+                NexusGateProgress.Completed => "&#x2699;2/2",
+                _ => string.Empty,
+            };
+
+            if (label.Length == 0)
+                return string.Empty;
+
+            return $"<text x=\"{NexusHexHelpers.Fmt(Center.X)}\" y=\"{NexusHexHelpers.Fmt(Center.Y - 2)}\" "
+                + "text-anchor=\"middle\" fill=\"rgba(167,139,250,0.9)\" font-size=\"8\" font-family=\"monospace\">"
+                + $"{label}</text>";
+        }
+    }
+
+    private Task HandleClick() =>
+        IsClickable ? OnClicked.InvokeAsync(System.Coord) : Task.CompletedTask;
+}
+

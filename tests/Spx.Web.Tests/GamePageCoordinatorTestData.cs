@@ -37,30 +37,27 @@ internal static class GamePageCoordinatorTestData
             roundNumber,
             NexusGamePhase.Planning,
             [],
-            [],
             new NexusPlayerView(
                 CurrentPlayerId,
                 NexusFactionColor.Red,
-                ImmutableDictionary<NexusColonyColor, int>.Empty,
+                0,
                 NexusGateProgress.None,
                 false,
                 true,
                 [],
-                false,
+                null,
                 false
             ),
-            ImmutableArray.Create(
-                new NexusPlayerView(
-                    OpponentPlayerId,
-                    NexusFactionColor.Blue,
-                    ImmutableDictionary<NexusColonyColor, int>.Empty,
-                    NexusGateProgress.None,
-                    false,
-                    true,
-                    null,
-                    false,
-                    false
-                )
+            new NexusPlayerView(
+                OpponentPlayerId,
+                NexusFactionColor.Blue,
+                0,
+                NexusGateProgress.None,
+                false,
+                true,
+                null,
+                null,
+                false
             ),
             [],
             null

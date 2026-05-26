@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using Orleans;
 
 namespace Spx.Game.Domain;
@@ -7,166 +8,150 @@ namespace Spx.Game.Domain;
 [Immutable]
 public abstract record NexusResolveEvent;
 
-// --- Moves ---
+// ── Supporting records ────────────────────────────────────────────────────────
 
+/// <summary>One unit type destroyed for one player during a combat phase.</summary>
 [GenerateSerializer]
 [Immutable]
-public sealed record NexusMoveEvent(
-    [property: Id(0)] Guid OwnerId,
-    [property: Id(1)] NexusFactionColor Faction,
-    [property: Id(2)] HexCoord From,
-    [property: Id(3)] HexCoord To
-) : NexusResolveEvent;
-
-[GenerateSerializer]
-[Immutable]
-public sealed record NexusSpeedBonusMoveEvent(
-    [property: Id(0)] Guid OwnerId,
-    [property: Id(1)] NexusFactionColor Faction,
-    [property: Id(2)] HexCoord From,
-    [property: Id(3)] HexCoord To,
-    [property: Id(4)] HexCoord TradeRouteEndpoint
-) : NexusResolveEvent;
-
-[GenerateSerializer]
-[Immutable]
-public sealed record NexusUndefendedEntryEvent(
-    [property: Id(0)] Guid OwnerId,
-    [property: Id(1)] NexusFactionColor Faction,
-    [property: Id(2)] HexCoord Hex
-) : NexusResolveEvent;
-
-// --- Combat ---
-
-[GenerateSerializer]
-[Immutable]
-public sealed record NexusCombatParticipant(
+public sealed record NexusCombatLoss(
     [property: Id(0)] Guid PlayerId,
-    [property: Id(1)] NexusFactionColor Faction,
-    [property: Id(2)] int Count,
-    [property: Id(3)] int Losses
+    [property: Id(1)] NexusUnitType UnitType,
+    [property: Id(2)] int Count
 );
 
+/// <summary>One individual attack roll during a combat phase.</summary>
 [GenerateSerializer]
 [Immutable]
-public sealed record NexusCombatEvent(
-    [property: Id(0)] HexCoord Hex,
-    [property: Id(1)] List<NexusCombatParticipant> Participants,
-    [property: Id(2)] Guid? WinnerId
-) : NexusResolveEvent;
+public sealed record NexusCombatAttackRoll(
+    [property: Id(0)] Guid AttackingPlayerId,
+    [property: Id(1)] NexusUnitType AttackerType,
+    [property: Id(2)] NexusUnitType TargetType,
+    [property: Id(3)] int Roll,
+    [property: Id(4)] int Threshold,
+    [property: Id(5)] bool IsHit
+);
 
-// --- Colonization ---
+// ── Movement ──────────────────────────────────────────────────────────────────
 
+/// <summary>A player's fleet moved from one system to another.</summary>
 [GenerateSerializer]
 [Immutable]
-public sealed record NexusColonizeEvent(
-    [property: Id(0)] Guid OwnerId,
-    [property: Id(1)] NexusFactionColor Faction,
-    [property: Id(2)] HexCoord Hex,
-    [property: Id(3)] NexusColonyColor HexColor
+public sealed record NexusUnitsMovedEvent(
+    [property: Id(0)] Guid PlayerId,
+    [property: Id(1)] HexCoord From,
+    [property: Id(2)] HexCoord To,
+    [property: Id(3)] ImmutableDictionary<NexusUnitType, int> Units
 ) : NexusResolveEvent;
 
+// ── System Control ────────────────────────────────────────────────────────────
+
+/// <summary>
+/// A player's ground forces are the only ground forces in the system;
+/// control is assigned (or retained) to that player.
+/// </summary>
 [GenerateSerializer]
 [Immutable]
-public sealed record NexusColonizeFailedEvent(
-    [property: Id(0)] Guid OwnerId,
-    [property: Id(1)] NexusFactionColor Faction,
-    [property: Id(2)] HexCoord Hex
+public sealed record NexusGroundForcesControlEvent(
+    [property: Id(0)] HexCoord System,
+    [property: Id(1)] Guid PlayerId
 ) : NexusResolveEvent;
 
-// --- Trade Routes ---
-
+/// <summary>Both players have ground forces in the system — control is contested.</summary>
 [GenerateSerializer]
 [Immutable]
-public sealed record NexusTradeRouteOpenedEvent(
-    [property: Id(0)] HexCoord Hex1,
-    [property: Id(1)] Guid Owner1,
-    [property: Id(2)] NexusFactionColor Faction1,
-    [property: Id(3)] HexCoord Hex2,
-    [property: Id(4)] Guid Owner2,
-    [property: Id(5)] NexusFactionColor Faction2
-) : NexusResolveEvent;
+public sealed record NexusSystemContestedEvent([property: Id(0)] HexCoord System)
+    : NexusResolveEvent;
 
+/// <summary>No ground forces remain in the system — control becomes uncontrolled.</summary>
 [GenerateSerializer]
 [Immutable]
-public sealed record NexusTradeRouteClosedEvent(
-    [property: Id(0)] HexCoord Hex1,
-    [property: Id(1)] Guid Owner1,
-    [property: Id(2)] NexusFactionColor Faction1,
-    [property: Id(3)] HexCoord Hex2,
-    [property: Id(4)] Guid Owner2,
-    [property: Id(5)] NexusFactionColor Faction2
+public sealed record NexusSystemUncontrolledEvent([property: Id(0)] HexCoord System)
+    : NexusResolveEvent;
+
+// ── Combat ────────────────────────────────────────────────────────────────────
+
+/// <summary>Combat has begun in a system between two players.</summary>
+[GenerateSerializer]
+[Immutable]
+public sealed record NexusCombatBeganEvent(
+    [property: Id(0)] HexCoord System,
+    [property: Id(1)] Guid Player1Id,
+    [property: Id(2)] Guid Player2Id
 ) : NexusResolveEvent;
 
-// --- Income ---
+/// <summary>Results of one combat phase — individual rolls and units destroyed.</summary>
+[GenerateSerializer]
+[Immutable]
+public sealed record NexusPhaseResultEvent(
+    [property: Id(0)] HexCoord System,
+    [property: Id(1)] int Phase,
+    [property: Id(2)] ImmutableArray<NexusCombatLoss> Losses,
+    [property: Id(3)] ImmutableArray<NexusCombatAttackRoll> AttackRolls
+) : NexusResolveEvent;
 
+/// <summary>All of one player's units have been eliminated from the system.</summary>
+[GenerateSerializer]
+[Immutable]
+public sealed record NexusSystemClearedEvent(
+    [property: Id(0)] HexCoord System,
+    [property: Id(1)] Guid VictorId
+) : NexusResolveEvent;
+
+// ── Income ────────────────────────────────────────────────────────────────────
+
+/// <summary>A player collected income this round.</summary>
 [GenerateSerializer]
 [Immutable]
 public sealed record NexusIncomeEvent(
     [property: Id(0)] Guid PlayerId,
-    [property: Id(1)] NexusFactionColor Faction,
-    [property: Id(2)] Dictionary<NexusColonyColor, int> Amounts
+    [property: Id(1)] int Amount,
+    [property: Id(2)] ImmutableArray<HexCoord> Sources
 ) : NexusResolveEvent;
 
-// --- Fleet / Gate ---
+// ── Deployment ────────────────────────────────────────────────────────────────
 
+/// <summary>Units were built and placed in the player's home system.</summary>
 [GenerateSerializer]
 [Immutable]
-public sealed record NexusFleetDeployedEvent(
-    [property: Id(0)] Guid OwnerId,
-    [property: Id(1)] NexusFactionColor Faction,
-    [property: Id(2)] HexCoord HomeHex
+public sealed record NexusUnitDeployedEvent(
+    [property: Id(0)] Guid PlayerId,
+    [property: Id(1)] NexusUnitType UnitType,
+    [property: Id(2)] HexCoord HomeSystem,
+    [property: Id(3)] int Count
 ) : NexusResolveEvent;
 
+// ── Nexus Gate ────────────────────────────────────────────────────────────────
+
+/// <summary>A player began constructing the Nexus Gate (first of two turns).</summary>
 [GenerateSerializer]
 [Immutable]
-public sealed record NexusGateBegunEvent(
-    [property: Id(0)] Guid OwnerId,
-    [property: Id(1)] NexusFactionColor Faction,
-    [property: Id(2)] HexCoord Hex,
-    [property: Id(3)] Dictionary<NexusColonyColor, int> Cost
+public sealed record NexusGateStartedEvent(
+    [property: Id(0)] Guid PlayerId,
+    [property: Id(1)] HexCoord System
 ) : NexusResolveEvent;
 
+/// <summary>A player completed the Nexus Gate — win condition may now trigger.</summary>
 [GenerateSerializer]
 [Immutable]
-public sealed record NexusGateProgressedEvent(
-    [property: Id(0)] Guid OwnerId,
-    [property: Id(1)] NexusFactionColor Faction,
-    [property: Id(2)] HexCoord Hex,
-    [property: Id(3)] Dictionary<NexusColonyColor, int> Cost
+public sealed record NexusGateCompletedEvent(
+    [property: Id(0)] Guid PlayerId,
+    [property: Id(1)] HexCoord System
 ) : NexusResolveEvent;
 
+/// <summary>A player's Nexus Gate construction was cancelled (GF lost, moved, or insufficient energy).</summary>
 [GenerateSerializer]
 [Immutable]
 public sealed record NexusGateCancelledEvent(
-    [property: Id(0)] Guid OwnerId,
-    [property: Id(1)] NexusFactionColor Faction,
-    [property: Id(2)] HexCoord Hex
+    [property: Id(0)] Guid PlayerId,
+    [property: Id(1)] HexCoord System
 ) : NexusResolveEvent;
 
-// --- Win ---
+// ── Game End ──────────────────────────────────────────────────────────────────
 
 [GenerateSerializer]
 [Immutable]
-public sealed record NexusVictoryEvent(
-    [property: Id(0)] Guid WinnerId,
-    [property: Id(1)] NexusFactionColor WinnerFaction
-) : NexusResolveEvent;
+public sealed record NexusVictoryEvent([property: Id(0)] Guid WinnerId) : NexusResolveEvent;
 
 [GenerateSerializer]
 [Immutable]
 public sealed record NexusDrawEvent([property: Id(0)] string Reason) : NexusResolveEvent;
-
-[GenerateSerializer]
-[Immutable]
-public sealed record NexusTiebreakerVictoryEvent(
-    [property: Id(0)] Guid WinnerId,
-    [property: Id(1)] NexusFactionColor WinnerFaction,
-    [property: Id(2)] int WinnerSystems,
-    [property: Id(3)] int LoserSystems
-) : NexusResolveEvent;
-
-[GenerateSerializer]
-[Immutable]
-public sealed record NexusTiebreakerDrawEvent([property: Id(0)] int SystemCount)
-    : NexusResolveEvent;

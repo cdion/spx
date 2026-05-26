@@ -20,16 +20,23 @@ public sealed partial class NexusGameSessionGrain(
 
     public async Task InitializeAsync(InitializeNexusGameCommand command)
     {
-        NexusGameEngine.Initialize(state.State.Game, command);
+        NexusGameEngine.Initialize(state.State.Game, command, new Random());
         await state.WriteStateAsync();
+        await GrainFactory.GetGrain<IGameInvalidationGrain>(_gameId).PublishSessionInvalidated();
         LogInitialized(logger, _gameId);
     }
 
     public async Task<NexusTurnOrdersResult> SubmitOrdersAsync(NexusTurnOrdersCommand command)
     {
-        var result = NexusGameEngine.SubmitOrders(state.State.Game, command);
+        var result = NexusGameEngine.SubmitOrders(state.State.Game, command, new Random());
         if (result is NexusTurnOrdersAccepted)
+        {
             await state.WriteStateAsync();
+            await GrainFactory
+                .GetGrain<IGameInvalidationGrain>(_gameId)
+                .PublishSessionInvalidated();
+        }
+
         return result;
     }
 
@@ -46,6 +53,7 @@ public sealed partial class NexusGameSessionGrain(
     {
         NexusGameEngine.Abandon(state.State.Game, playerId);
         await state.WriteStateAsync();
+        await GrainFactory.GetGrain<IGameInvalidationGrain>(_gameId).PublishSessionInvalidated();
     }
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Game {GameId} initialized.")]

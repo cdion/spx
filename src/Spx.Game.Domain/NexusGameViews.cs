@@ -5,14 +5,13 @@ namespace Spx.Game.Domain;
 
 [GenerateSerializer]
 [Immutable]
-public sealed record NexusHexView(
+public sealed record NexusSystemView(
     [property: Id(0)] HexCoord Coord,
-    [property: Id(1)] NexusColonyColor Color,
-    [property: Id(2)] bool IsNexus,
-    [property: Id(3)] bool IsHome,
-    [property: Id(4)] Guid? ColonyOwnerId,
-    [property: Id(5)] NexusFactionColor? ColonyOwnerFaction,
-    [property: Id(6)] ImmutableDictionary<NexusFactionColor, int> FleetCounts
+    [property: Id(1)] bool IsNexus,
+    [property: Id(2)] int IncomeValue,
+    [property: Id(3)] Guid? HomePlayerId,
+    [property: Id(4)] Guid? ControlOwner,
+    [property: Id(5)] ImmutableDictionary<Guid, ImmutableDictionary<NexusUnitType, int>> Units
 );
 
 [GenerateSerializer]
@@ -20,25 +19,14 @@ public sealed record NexusHexView(
 public sealed record NexusPlayerView(
     [property: Id(0)] Guid PlayerId,
     [property: Id(1)] NexusFactionColor Faction,
-    [property: Id(2)] ImmutableDictionary<NexusColonyColor, int> Credits,
+    [property: Id(2)] int Energy,
     [property: Id(3)] NexusGateProgress GateProgress,
     [property: Id(4)] bool HasSubmittedOrders,
     [property: Id(5)] bool IsActive,
-    // Only populated for the current player, null for opponent
-    [property: Id(6)] ImmutableArray<NexusFleetOrder>? PendingFleetOrders,
-    [property: Id(7)] bool PendingBuildFleet,
+    // Only populated for the viewing player; null for opponents
+    [property: Id(6)] ImmutableArray<NexusMoveOrder>? PendingMoveOrders,
+    [property: Id(7)] ImmutableArray<NexusBuildOrder>? PendingBuildOrders,
     [property: Id(8)] bool PendingBeginNexusGate
-);
-
-[GenerateSerializer]
-[Immutable]
-public sealed record NexusTradeRouteView(
-    [property: Id(0)] HexCoord Hex1,
-    [property: Id(1)] Guid Owner1,
-    [property: Id(2)] NexusFactionColor Faction1,
-    [property: Id(3)] HexCoord Hex2,
-    [property: Id(4)] Guid Owner2,
-    [property: Id(5)] NexusFactionColor Faction2
 );
 
 [GenerateSerializer]
@@ -47,10 +35,9 @@ public sealed record NexusGameView(
     [property: Id(0)] Guid GameId,
     [property: Id(1)] int RoundNumber,
     [property: Id(2)] NexusGamePhase Phase,
-    [property: Id(3)] ImmutableArray<NexusHexView> Hexes,
-    [property: Id(4)] ImmutableArray<NexusTradeRouteView> ActiveTradeRoutes,
-    [property: Id(5)] NexusPlayerView CurrentPlayer,
-    [property: Id(6)] ImmutableArray<NexusPlayerView> Opponents,
-    [property: Id(7)] ImmutableArray<NexusResolveEvent> ResolveEvents,
-    [property: Id(8)] NexusGameCompletion? Completion
+    [property: Id(3)] ImmutableArray<NexusSystemView> Systems,
+    [property: Id(4)] NexusPlayerView CurrentPlayer,
+    [property: Id(5)] NexusPlayerView Opponent,
+    [property: Id(6)] ImmutableArray<NexusResolveEvent> LastResolveEvents,
+    [property: Id(7)] NexusGameCompletion? Completion
 );

@@ -6,8 +6,6 @@ public enum NexusFactionColor
 {
     Red = 0,
     Blue = 1,
-    Green = 2,
-    Yellow = 3,
 }
 
 public enum NexusGamePhase
@@ -31,19 +29,90 @@ public enum NexusGameOutcome
 
 [GenerateSerializer]
 [Immutable]
-public sealed record NexusTradeRoute(
-    [property: Id(0)] HexCoord Hex1,
-    [property: Id(1)] Guid Owner1,
-    [property: Id(2)] HexCoord Hex2,
-    [property: Id(3)] Guid Owner2
-);
-
-[GenerateSerializer]
-[Immutable]
 public sealed record NexusGameCompletion(
     [property: Id(0)] NexusGameOutcome Outcome,
     [property: Id(1)] Guid? WinnerId
 );
+
+[GenerateSerializer]
+public sealed class NexusSystemState
+{
+    [Id(0)]
+    public HexCoord Coord { get; set; }
+
+    [Id(1)]
+    public bool IsNexus { get; set; }
+
+    /// <summary>Null for non-home systems; set to a player ID for home systems.</summary>
+    [Id(2)]
+    public Guid? HomePlayerId { get; set; }
+
+    /// <summary>Energy per turn. 0 for Nexus; 3 for home systems; 2–5 for income systems.</summary>
+    [Id(3)]
+    public int IncomeValue { get; set; }
+
+    /// <summary>Null = uncontrolled; set to a player ID when that player controls the system.</summary>
+    [Id(4)]
+    public Guid? ControlOwner { get; set; }
+
+    /// <summary>Units present: player ID → unit type → count.</summary>
+    [Id(5)]
+    public Dictionary<Guid, Dictionary<NexusUnitType, int>> Units { get; set; } = [];
+
+    public int GetUnitCount(Guid playerId, NexusUnitType unitType)
+    {
+        if (!Units.TryGetValue(playerId, out var byType))
+            return 0;
+        return byType.TryGetValue(unitType, out var count) ? count : 0;
+    }
+
+    public Dictionary<NexusUnitType, int> GetPlayerUnits(Guid playerId) =>
+        Units.TryGetValue(playerId, out var byType) ? byType : [];
+
+    public void AddUnits(Guid playerId, NexusUnitType unitType, int count)
+    {
+        if (!Units.TryGetValue(playerId, out var byType))
+        {
+            byType = [];
+            Units[playerId] = byType;
+        }
+
+        byType[unitType] = GetUnitCount(playerId, unitType) + count;
+    }
+
+    public void RemoveUnits(Guid playerId, NexusUnitType unitType, int count)
+    {
+        var current = GetUnitCount(playerId, unitType);
+        var remaining = current - count;
+
+        if (remaining <= 0)
+        {
+            if (Units.TryGetValue(playerId, out var byType))
+            {
+                byType.Remove(unitType);
+                if (byType.Count == 0)
+                    Units.Remove(playerId);
+            }
+        }
+        else
+        {
+            Units[playerId][unitType] = remaining;
+        }
+    }
+
+    public bool HasGroundForces(Guid playerId)
+    {
+        foreach (var unitType in GetPlayerUnits(playerId).Keys)
+        {
+            if (unitType.IsGroundForce())
+                return true;
+        }
+
+        return false;
+    }
+
+    public bool HasAnyUnits(Guid playerId) => GetPlayerUnits(playerId).Count > 0;
+}
 
 [GenerateSerializer]
 public sealed class NexusPlayerState
@@ -55,7 +124,7 @@ public sealed class NexusPlayerState
     public NexusFactionColor Faction { get; set; }
 
     [Id(2)]
-    public Dictionary<NexusColonyColor, int> Credits { get; set; } = [];
+    public int Energy { get; set; }
 
     [Id(3)]
     public NexusGateProgress GateProgress { get; set; }
@@ -66,92 +135,39 @@ public sealed class NexusPlayerState
     [Id(5)]
     public bool HasSubmittedOrders { get; set; }
 
-    // Stored between first-player submit and resolve
+    /// <summary>Stored when this player submits orders, cleared after resolution.</summary>
     [Id(6)]
-    public List<NexusFleetOrder> PendingFleetOrders { get; set; } = [];
+    public List<NexusMoveOrder> PendingMoveOrders { get; set; } = [];
 
+    /// <summary>Build orders for this turn, stored pending resolution.</summary>
     [Id(7)]
-    public bool PendingBuildFleet { get; set; }
+    public List<NexusBuildOrder> PendingBuildOrders { get; set; } = [];
 
     [Id(8)]
     public bool PendingBeginNexusGate { get; set; }
-
-    // Transient during resolve — not persisted beyond the resolve step
-    [Id(9)]
-    public bool PendingFleetDeployment { get; set; }
-
-    [Id(10)]
-    public NexusGateProgress GateProgressBeforeThisTurn { get; set; }
-
-    public int GetCredits(NexusColonyColor color) =>
-        Credits.TryGetValue(color, out var value) ? value : 0;
-
-    public void AddCredits(NexusColonyColor color, int amount)
-    {
-        Credits[color] = GetCredits(color) + amount;
-    }
-
-    public void DeductCredits(NexusColonyColor color, int amount)
-    {
-        Credits[color] = GetCredits(color) - amount;
-    }
-}
-
-[GenerateSerializer]
-public sealed class NexusHexState
-{
-    [Id(0)]
-    public HexCoord Coord { get; set; }
-
-    [Id(1)]
-    public Guid? ColonyOwnerId { get; set; }
-
-    [Id(2)]
-    public Dictionary<NexusFactionColor, int> Fleets { get; set; } = [];
-
-    public int GetFleets(NexusFactionColor faction) =>
-        Fleets.TryGetValue(faction, out var value) ? value : 0;
-
-    public void AddFleets(NexusFactionColor faction, int count)
-    {
-        Fleets[faction] = GetFleets(faction) + count;
-    }
-
-    public void SetFleets(NexusFactionColor faction, int count)
-    {
-        if (count == 0)
-            Fleets.Remove(faction);
-        else
-            Fleets[faction] = count;
-    }
-
-    public void RemoveFleets(NexusFactionColor faction, int count)
-    {
-        SetFleets(faction, GetFleets(faction) - count);
-    }
 }
 
 [GenerateSerializer]
 public sealed class NexusGameState
 {
     [Id(0)]
-    public List<NexusPlayerState> Players { get; set; } = [];
+    public Guid GameId { get; set; }
 
     [Id(1)]
-    public List<NexusHexState> Hexes { get; set; } = [];
-
-    [Id(2)]
     public int RoundNumber { get; set; } = 1;
 
-    [Id(3)]
+    [Id(2)]
     public NexusGamePhase Phase { get; set; } = NexusGamePhase.Planning;
 
+    [Id(3)]
+    public List<NexusSystemState> Systems { get; set; } = [];
+
     [Id(4)]
-    public List<NexusResolveEvent> ResolveEvents { get; set; } = [];
+    public List<NexusPlayerState> Players { get; set; } = [];
 
     [Id(5)]
-    public List<NexusTradeRoute> ActiveTradeRoutes { get; set; } = [];
+    public NexusGameCompletion? Completion { get; set; }
 
     [Id(6)]
-    public NexusGameCompletion? Completion { get; set; }
+    public List<NexusResolveEvent> LastResolveEvents { get; set; } = [];
 }

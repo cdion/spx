@@ -28,7 +28,7 @@ internal sealed partial class GamePageDataCoordinator(
         catch (Exception exception)
         {
             LogLoadPageFailed(logger, exception, gameId, userId);
-            state.FailPageLoad("We couldn't load this game right now. Refresh and try again.");
+            state.FailPageLoad("This game could not be loaded.");
         }
     }
 

@@ -62,10 +62,7 @@ public sealed class GamePageDataCoordinatorTests
         Assert.Null(state.Lobby);
         Assert.Null(state.Session);
         Assert.Equal(GamePresenceView.Empty, state.Presence);
-        Assert.Equal(
-            "We couldn't load this game right now. Refresh and try again.",
-            state.ErrorMessage
-        );
+        Assert.Equal("This game could not be loaded.", state.ErrorMessage);
         Assert.False(state.IsLoading);
     }
 

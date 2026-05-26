@@ -22,7 +22,7 @@ internal sealed class SubmitOrdersHandler(
 
         if (outcome is GameSessionCommandSucceeded { Session: { } session })
         {
-            if (session.ResolveEvents.Length > 0)
+            if (session.LastResolveEvents.Length > 0)
             {
                 await WriteResolveEventsAsync(gameId, session, cancellationToken);
             }
@@ -32,7 +32,7 @@ internal sealed class SubmitOrdersHandler(
                 cancellationToken
             );
 
-            if (session.ResolveEvents.Length > 0)
+            if (session.LastResolveEvents.Length > 0)
             {
                 await messageInvalidationPublisher.PublishMessagesInvalidatedAsync(
                     gameId,
@@ -52,14 +52,16 @@ internal sealed class SubmitOrdersHandler(
     {
         var players = await persistence.GetActivePlayersAsync(gameId, cancellationToken);
 
-        var allSessionPlayers = new[] { session.CurrentPlayer }.Concat(session.Opponents);
+        var allSessionPlayers = new[] { session.CurrentPlayer, session.Opponent };
         var playerNames = allSessionPlayers.ToDictionary(
-            p => p.Faction,
+            p => p.PlayerId,
             p => players.FirstOrDefault(x => x.PlayerId == p.PlayerId)?.Name ?? p.Faction.ToString()
         );
 
         var bodies = session
-            .ResolveEvents.Select(evt => NexusResolveEventMessageFormatter.Format(evt, playerNames))
+            .LastResolveEvents.Select(evt =>
+                NexusResolveEventMessageFormatter.Format(evt, playerNames)
+            )
             .ToList();
 
         await messagesPersistence.WriteGameplayEventsAsync(gameId, bodies, cancellationToken);

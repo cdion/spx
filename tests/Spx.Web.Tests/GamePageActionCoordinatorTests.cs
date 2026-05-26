@@ -68,7 +68,7 @@ public sealed class GamePageActionCoordinatorTests
             GamePageCoordinatorTestData.CurrentPlayerId,
             2,
             [],
-            false,
+            [],
             false
         );
         await coordinator.SubmitOrdersAsync(gameId, command);
@@ -97,7 +97,7 @@ public sealed class GamePageActionCoordinatorTests
             GamePageCoordinatorTestData.CurrentPlayerId,
             2,
             [],
-            false,
+            [],
             false
         );
         await coordinator.SubmitOrdersAsync(gameId, command);
@@ -128,7 +128,7 @@ public sealed class GamePageActionCoordinatorTests
             GamePageCoordinatorTestData.CurrentPlayerId,
             2,
             [],
-            false,
+            [],
             false
         );
         await coordinator.SubmitOrdersAsync(gameId, command);

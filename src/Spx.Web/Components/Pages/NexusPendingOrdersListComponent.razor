@@ -1,46 +1,78 @@
-@if (!Orders.Any())
+@if (!MoveOrders.Any() && !BuildOrders.Any() && !BeginNexusGate)
 {
-    <p class="text-xs text-slate-500">
-        No fleet orders yet. Select a fleet on the map to assign move or colonize orders.
-    </p>
+    <p class="text-xs text-slate-500">No orders yet.</p>
 }
 else
 {
     <ul class="space-y-2">
-        @foreach (var order in Orders)
+        @foreach (var order in MoveOrders)
         {
-            var description = GetOrderDescription(order);
             <li class="flex items-center justify-between gap-2 rounded-xl border border-white/10 bg-slate-950/60 px-3 py-2">
-                <span class="text-xs text-slate-200">@description</span>
+                <span class="text-xs text-slate-200">@GetMoveDescription(order)</span>
                 @if (IsEditable)
                 {
                     <button class="text-sm text-slate-500 transition-colors hover:text-rose-400" title="Remove order"
-                            @onclick="() => HandleRemove(order)">
+                            @onclick="() => OnRemoveMoveOrder.InvokeAsync(order)">
                         ×
                     </button>
                 }
             </li>
         }
-    </ul>
-}
+        @foreach (var order in BuildOrders)
+        {
+            <li class="flex items-center justify-between gap-2 rounded-xl border border-white/10 bg-slate-950/60 px-3 py-2">
+                <span class="text-xs text-slate-200">Build @order.Count× @order.UnitType (@(order.UnitType.Cost() *
+                                order.Count)⚡)</span>
+                    @if (IsEditable)
+                    {
+                        <button class="text-sm text-slate-500 transition-colors hover:text-rose-400" title="Remove order"
+                                @onclick="() => OnRemoveBuildOrder.InvokeAsync(order)">
+                            ×
+                        </button>
+                    }
+                </li>
+            }
+            @if (BeginNexusGate)
+            {
+                <li class="flex items-center justify-between gap-2 rounded-xl border border-white/10 bg-slate-950/60 px-3 py-2">
+                    <span class="text-xs text-slate-200">Begin Nexus Gate (12⚡)</span>
+                    @if (IsEditable)
+                    {
+                        <button class="text-sm text-slate-500 transition-colors hover:text-rose-400" title="Remove order"
+                                @onclick="OnRemoveGateOrder">
+                            ×
+                        </button>
+                    }
+                </li>
+            }
+        </ul>
+    }
 
 @code {
     [Parameter, EditorRequired]
-    public IReadOnlyList<NexusFleetOrder> Orders { get; set; } = [];
+    public IReadOnlyList<NexusMoveOrder> MoveOrders { get; set; } = [];
+
+    [Parameter, EditorRequired]
+    public IReadOnlyList<NexusBuildOrder> BuildOrders { get; set; } = [];
+
+    [Parameter]
+    public bool BeginNexusGate { get; set; }
 
     [Parameter]
     public bool IsEditable { get; set; }
 
     [Parameter]
-    public EventCallback<NexusFleetOrder> OnRemoveOrder { get; set; }
+    public EventCallback<NexusMoveOrder> OnRemoveMoveOrder { get; set; }
 
-    private static string GetOrderDescription(NexusFleetOrder order) =>
-        order switch
-        {
-            NexusMoveOrder move => $"Move {move.From} → {move.To} ×{move.Count}",
-            NexusColonizeOrder col => $"Colonize {col.From}",
-            _ => order.GetType().Name,
-        };
+    [Parameter]
+    public EventCallback<NexusBuildOrder> OnRemoveBuildOrder { get; set; }
 
-    private Task HandleRemove(NexusFleetOrder order) => OnRemoveOrder.InvokeAsync(order);
+    [Parameter]
+    public EventCallback OnRemoveGateOrder { get; set; }
+
+    private static string GetMoveDescription(NexusMoveOrder order)
+    {
+        var unitSummary = string.Join(", ", order.Units.Select(kv => $"{kv.Value}× {kv.Key}"));
+        return $"{order.From} → {order.To}: {unitSummary}";
+    }
 }

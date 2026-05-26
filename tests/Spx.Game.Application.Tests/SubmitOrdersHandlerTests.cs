@@ -35,7 +35,7 @@ public sealed class SubmitOrdersHandlerTests
             persistence,
             messagesPersistence
         );
-        var command = new NexusTurnOrdersCommand(RedPlayerId, 1, [], false, false);
+        var command = new NexusTurnOrdersCommand(RedPlayerId, 1, [], [], false);
         var result = await handler.HandleAsync(GameId, command);
 
         Assert.IsType<GameSessionCommandFailed>(result);
@@ -74,7 +74,7 @@ public sealed class SubmitOrdersHandlerTests
             persistence,
             messagesPersistence
         );
-        var command = new NexusTurnOrdersCommand(RedPlayerId, 1, [], false, false);
+        var command = new NexusTurnOrdersCommand(RedPlayerId, 1, [], [], false);
         var result = await handler.HandleAsync(GameId, command);
 
         Assert.IsType<GameSessionCommandSucceeded>(result);
@@ -92,16 +92,8 @@ public sealed class SubmitOrdersHandlerTests
     {
         var resolveEvents = new NexusResolveEvent[]
         {
-            new NexusIncomeEvent(
-                RedPlayerId,
-                NexusFactionColor.Red,
-                new Dictionary<NexusColonyColor, int> { { NexusColonyColor.Red, 1 } }
-            ),
-            new NexusIncomeEvent(
-                BluePlayerId,
-                NexusFactionColor.Blue,
-                new Dictionary<NexusColonyColor, int> { { NexusColonyColor.Blue, 1 } }
-            ),
+            new NexusIncomeEvent(RedPlayerId, 1, []),
+            new NexusIncomeEvent(BluePlayerId, 1, []),
         };
 
         var session = CreateSession(resolveEvents: resolveEvents);
@@ -134,7 +126,7 @@ public sealed class SubmitOrdersHandlerTests
             persistence,
             messagesPersistence
         );
-        var command = new NexusTurnOrdersCommand(RedPlayerId, 1, [], false, false);
+        var command = new NexusTurnOrdersCommand(RedPlayerId, 1, [], [], false);
         var result = await handler.HandleAsync(GameId, command);
 
         Assert.IsType<GameSessionCommandSucceeded>(result);
@@ -152,14 +144,7 @@ public sealed class SubmitOrdersHandlerTests
     [Fact]
     public async Task HandleAsync_falls_back_to_faction_name_when_player_not_found()
     {
-        var resolveEvents = new NexusResolveEvent[]
-        {
-            new NexusIncomeEvent(
-                RedPlayerId,
-                NexusFactionColor.Red,
-                new Dictionary<NexusColonyColor, int> { { NexusColonyColor.Red, 1 } }
-            ),
-        };
+        var resolveEvents = new NexusResolveEvent[] { new NexusIncomeEvent(RedPlayerId, 1, []) };
 
         var session = CreateSession(resolveEvents: resolveEvents);
 
@@ -188,7 +173,7 @@ public sealed class SubmitOrdersHandlerTests
             persistence,
             messagesPersistence
         );
-        var command = new NexusTurnOrdersCommand(RedPlayerId, 1, [], false, false);
+        var command = new NexusTurnOrdersCommand(RedPlayerId, 1, [], [], false);
         await handler.HandleAsync(GameId, command);
 
         await messagesPersistence
@@ -207,23 +192,23 @@ public sealed class SubmitOrdersHandlerTests
         var currentPlayer = new NexusPlayerView(
             RedPlayerId,
             NexusFactionColor.Red,
-            ImmutableDictionary<NexusColonyColor, int>.Empty,
+            0,
             NexusGateProgress.None,
             false,
             true,
             [],
-            false,
+            null,
             false
         );
         var opponentPlayer = new NexusPlayerView(
             BluePlayerId,
             NexusFactionColor.Blue,
-            ImmutableDictionary<NexusColonyColor, int>.Empty,
+            0,
             NexusGateProgress.None,
             false,
             true,
             null,
-            false,
+            null,
             false
         );
         return new NexusGameView(
@@ -231,9 +216,8 @@ public sealed class SubmitOrdersHandlerTests
             2,
             NexusGamePhase.Planning,
             [],
-            [],
             currentPlayer,
-            ImmutableArray.Create(opponentPlayer),
+            opponentPlayer,
             resolveEvents.ToImmutableArray(),
             null
         );

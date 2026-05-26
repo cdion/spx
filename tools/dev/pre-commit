@@ -9,8 +9,9 @@ REPO_ROOT="$(git rev-parse --show-toplevel)"
 echo "→ Restoring dotnet tools..."
 dotnet tool restore --tool-manifest "$REPO_ROOT/.config/dotnet-tools.json" --verbosity quiet
 
-echo "→ Checking C# formatting (CSharpier)..."
-dotnet csharpier check "$REPO_ROOT"
+echo "→ Formatting C# (CSharpier)..."
+dotnet csharpier format "$REPO_ROOT"
+git add -u
 
 echo "→ Building solution (analyzer checks)..."
 dotnet build "$REPO_ROOT/Spx.slnx" --verbosity quiet -warnaserror

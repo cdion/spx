@@ -23,6 +23,9 @@ public sealed class GameSessionGrainIntegrationTests(OrleansClusterFixture fixtu
             )
         );
 
+    private static NexusTurnOrdersCommand EmptyOrders(Guid playerId, int round) =>
+        new(playerId, round, [], [], false);
+
     [Fact]
     public async Task GetViewAsync_returns_null_before_initialize()
     {
@@ -63,9 +66,7 @@ public sealed class GameSessionGrainIntegrationTests(OrleansClusterFixture fixtu
         Assert.NotNull(view);
 
         var firstTurnPlayerId = view!.CurrentPlayer.PlayerId;
-        var result = await grain.SubmitOrdersAsync(
-            new NexusTurnOrdersCommand(firstTurnPlayerId, 1, [], false, false)
-        );
+        var result = await grain.SubmitOrdersAsync(EmptyOrders(firstTurnPlayerId, 1));
 
         Assert.IsType<NexusTurnOrdersAccepted>(result);
     }
@@ -79,15 +80,11 @@ public sealed class GameSessionGrainIntegrationTests(OrleansClusterFixture fixtu
         var view = await grain.GetViewAsync(FirstPlayerId);
         Assert.NotNull(view);
         var firstTurnPlayerId = view!.CurrentPlayer.PlayerId;
-        var secondTurnPlayerId = view.Opponents[0].PlayerId;
+        var secondTurnPlayerId = view.Opponent.PlayerId;
 
         // Both players submit empty orders to advance the round
-        await grain.SubmitOrdersAsync(
-            new NexusTurnOrdersCommand(firstTurnPlayerId, 1, [], false, false)
-        );
-        await grain.SubmitOrdersAsync(
-            new NexusTurnOrdersCommand(secondTurnPlayerId, 1, [], false, false)
-        );
+        await grain.SubmitOrdersAsync(EmptyOrders(firstTurnPlayerId, 1));
+        await grain.SubmitOrdersAsync(EmptyOrders(secondTurnPlayerId, 1));
 
         var round2View = await grain.GetViewAsync(FirstPlayerId);
         Assert.Equal(2, round2View!.RoundNumber);
@@ -112,22 +109,28 @@ public sealed class GameSessionGrainIntegrationTests(OrleansClusterFixture fixtu
         Assert.NotNull(view);
 
         var currentPlayerId = view!.CurrentPlayer.PlayerId;
-        var currentFaction = view.CurrentPlayer.Faction;
-        var hexWithFleet = view.Hexes.First(h =>
-            h.FleetCounts.GetValueOrDefault(currentFaction, 0) > 0
+        var systemWithFleet = view.Systems.First(s =>
+            s.Units.TryGetValue(currentPlayerId, out var u) && u.Values.Sum() > 0
         );
         var destination = NexusGameViewQueries.GetValidMoveDestinations(
             view,
             currentPlayerId,
-            hexWithFleet.Coord
+            systemWithFleet.Coord
         )[0];
+        var moveUnit = systemWithFleet.Units[currentPlayerId].First(kv => kv.Value > 0).Key;
 
         var result = await grain.SubmitOrdersAsync(
             new NexusTurnOrdersCommand(
                 currentPlayerId,
                 1,
-                [new NexusMoveOrder(hexWithFleet.Coord, destination, 1)],
-                false,
+                [
+                    new NexusMoveOrder(
+                        systemWithFleet.Coord,
+                        destination,
+                        ImmutableDictionary<NexusUnitType, int>.Empty.Add(moveUnit, 1)
+                    ),
+                ],
+                [],
                 false
             )
         );
@@ -146,7 +149,7 @@ public sealed class GameSessionGrainIntegrationTests(OrleansClusterFixture fixtu
         var view = await grain.GetViewAsync(FirstPlayerId);
         Assert.NotNull(view);
         var abandoningPlayerId = view!.CurrentPlayer.PlayerId;
-        var expectedWinnerId = view.Opponents[0].PlayerId;
+        var expectedWinnerId = view.Opponent.PlayerId;
 
         await grain.AbandonAsync(abandoningPlayerId);
 

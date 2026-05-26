@@ -138,7 +138,7 @@ public sealed partial class OrleansGameRuntimeClient(
         }
     }
 
-    public async Task<NexusGameView?> GetSessionAsync(
+    public async Task<GameSessionOutcome> GetSessionAsync(
         Guid gameId,
         Guid playerId,
         CancellationToken cancellationToken = default
@@ -146,17 +146,20 @@ public sealed partial class OrleansGameRuntimeClient(
     {
         try
         {
-            return await clusterClient.GetGrain<IGameSessionGrain>(gameId).GetViewAsync(playerId);
+            var view = await clusterClient
+                .GetGrain<IGameSessionGrain>(gameId)
+                .GetViewAsync(playerId);
+            return view is null ? new GameSessionUnavailable() : new GameSessionFound(view);
         }
         catch (OrleansException exception)
         {
             LogFetchPlayerViewFailed(logger, exception, gameId, playerId);
-            return null;
+            return new GameSessionUnavailable();
         }
         catch (TimeoutException exception)
         {
             LogFetchPlayerViewFailed(logger, exception, gameId, playerId);
-            return null;
+            return new GameSessionUnavailable();
         }
     }
 
@@ -178,8 +181,15 @@ public sealed partial class OrleansGameRuntimeClient(
                 return new GameSessionCommandFailed(rejected.ErrorMessage);
             }
 
-            var view = await GetSessionAsync(gameId, command.PlayerId, cancellationToken);
-            return new GameSessionCommandSucceeded(view!);
+            var sessionOutcome = await GetSessionAsync(gameId, command.PlayerId, cancellationToken);
+            if (sessionOutcome is not GameSessionFound found)
+            {
+                return new GameSessionCommandFailed(
+                    "Game state could not be loaded after submitting orders."
+                );
+            }
+
+            return new GameSessionCommandSucceeded(found.Session);
         }
         catch (OrleansException exception)
         {

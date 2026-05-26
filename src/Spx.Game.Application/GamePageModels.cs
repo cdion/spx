@@ -1,5 +1,11 @@
 namespace Spx.Game.Application;
 
+public abstract record GameSessionOutcome;
+
+public sealed record GameSessionFound(NexusGameView Session) : GameSessionOutcome;
+
+public sealed record GameSessionUnavailable : GameSessionOutcome;
+
 public sealed record GamePageView(
     GameLobbyView Lobby,
     NexusGameView? Session,

@@ -17,15 +17,12 @@ builder.UseOrleans(siloBuilder =>
         options.ServiceId = orleansServiceId;
     });
 
-    siloBuilder.AddAdoNetGrainStorageAsDefault(options =>
-    {
-        options.Invariant = "Npgsql";
-        options.ConnectionString =
-            builder.Configuration.GetConnectionString("orleansdb")
+    siloBuilder.AddFaultTolerantAdoNetGrainStorageAsDefault(
+        builder.Configuration.GetConnectionString("orleansdb")
             ?? throw new InvalidOperationException(
                 "Connection string 'orleansdb' was not configured."
-            );
-    });
+            )
+    );
 });
 
 var app = builder.Build();

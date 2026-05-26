@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using Spx.Game.Domain;
 
 namespace Spx.Game.Application;
@@ -6,71 +7,88 @@ public static class NexusResolveEventMessageFormatter
 {
     public static string Format(
         NexusResolveEvent evt,
-        IReadOnlyDictionary<NexusFactionColor, string> playerNames
+        IReadOnlyDictionary<Guid, string> playerNames
     ) =>
         evt switch
         {
-            NexusMoveEvent e =>
-                $"{FactionName(e.Faction, playerNames)}'s fleet moved from {e.From} to {e.To}",
-            NexusSpeedBonusMoveEvent e =>
-                $"{FactionName(e.Faction, playerNames)}'s fleet advanced 2 hexes along the trade corridor from {e.From} to {e.To}",
-            NexusUndefendedEntryEvent e =>
-                $"{FactionName(e.Faction, playerNames)}'s fleet entered {e.Hex} — colony reverts to unclaimed",
-            NexusCombatEvent e => FormatCombat(e, playerNames),
-            NexusColonizeEvent e =>
-                $"{FactionName(e.Faction, playerNames)} colonized {e.Hex} ({e.HexColor}) — income next turn",
-            NexusColonizeFailedEvent e =>
-                $"{FactionName(e.Faction, playerNames)}'s Colonize at {e.Hex} failed — hex was contested this turn",
-            NexusTradeRouteOpenedEvent e =>
-                $"A trade route opened between {FactionName(e.Faction1, playerNames)}'s {e.Hex1} and {FactionName(e.Faction2, playerNames)}'s {e.Hex2}",
-            NexusTradeRouteClosedEvent e =>
-                $"The trade route between {FactionName(e.Faction1, playerNames)}'s {e.Hex1} and {FactionName(e.Faction2, playerNames)}'s {e.Hex2} has closed",
+            NexusUnitsMovedEvent e =>
+                $"{PlayerName(e.PlayerId, playerNames)}'s units moved from {e.From} to {e.To}: {FormatUnits(e.Units)}",
+            NexusGroundForcesControlEvent e =>
+                $"{PlayerName(e.PlayerId, playerNames)} took control of system {e.System}",
+            NexusSystemContestedEvent e =>
+                $"System {e.System} is contested — ground forces on both sides",
+            NexusSystemUncontrolledEvent e =>
+                $"System {e.System} is now uncontrolled — no ground forces present",
+            NexusCombatBeganEvent e =>
+                $"Combat erupted at {e.System} between {PlayerName(e.Player1Id, playerNames)} and {PlayerName(e.Player2Id, playerNames)}",
+            NexusPhaseResultEvent e => FormatPhaseResult(e, playerNames),
+            NexusSystemClearedEvent e =>
+                $"{PlayerName(e.VictorId, playerNames)} cleared system {e.System}",
             NexusIncomeEvent e =>
-                $"{FactionName(e.Faction, playerNames)} receives +{e.Amounts.GetValueOrDefault(NexusColonyColor.Red, 0)} Red, +{e.Amounts.GetValueOrDefault(NexusColonyColor.Blue, 0)} Blue, +{e.Amounts.GetValueOrDefault(NexusColonyColor.Gold, 0)} Gold this turn",
-            NexusFleetDeployedEvent e =>
-                $"{FactionName(e.Faction, playerNames)}'s new fleet deployed at {e.HomeHex}",
-            NexusGateBegunEvent e =>
-                $"{FactionName(e.Faction, playerNames)} began Nexus Gate construction — committed {e.Cost.GetValueOrDefault(NexusColonyColor.Red, 0)}R {e.Cost.GetValueOrDefault(NexusColonyColor.Blue, 0)}B {e.Cost.GetValueOrDefault(NexusColonyColor.Gold, 0)}G",
-            NexusGateProgressedEvent e =>
-                $"{FactionName(e.Faction, playerNames)} completed Nexus Gate construction at {e.Hex}",
+                $"{PlayerName(e.PlayerId, playerNames)} collected +{e.Amount}⚡ from {e.Sources.Length} system(s)",
+            NexusUnitDeployedEvent e =>
+                $"{PlayerName(e.PlayerId, playerNames)} deployed {e.Count}× {e.UnitType} at {e.HomeSystem}",
+            NexusGateStartedEvent e =>
+                $"{PlayerName(e.PlayerId, playerNames)} began Nexus Gate construction at {e.System}",
+            NexusGateCompletedEvent e =>
+                $"{PlayerName(e.PlayerId, playerNames)} completed the Nexus Gate at {e.System}!",
             NexusGateCancelledEvent e =>
-                $"{FactionName(e.Faction, playerNames)}'s Nexus Gate construction cancelled — committed resources lost",
+                $"{PlayerName(e.PlayerId, playerNames)}'s Nexus Gate construction at {e.System} was cancelled",
             NexusVictoryEvent e =>
-                $"{FactionName(e.WinnerFaction, playerNames)} activated the Nexus Gate — victory!",
-            NexusDrawEvent e => $"Match ended in a draw: {e.Reason}",
-            NexusTiebreakerVictoryEvent e =>
-                $"{FactionName(e.WinnerFaction, playerNames)} wins the tiebreaker ({e.WinnerSystems} vs {e.LoserSystems} systems)",
-            NexusTiebreakerDrawEvent e =>
-                $"Tiebreaker draw — both players control {e.SystemCount} systems",
+                $"{PlayerName(e.WinnerId, playerNames)} activated the Nexus Gate — victory!",
+            NexusDrawEvent e => $"The game ended in a draw: {e.Reason}",
             _ => evt.GetType().Name,
         };
 
-    private static string FormatCombat(
-        NexusCombatEvent e,
-        IReadOnlyDictionary<NexusFactionColor, string> names
+    private static string FormatPhaseResult(
+        NexusPhaseResultEvent e,
+        IReadOnlyDictionary<Guid, string> playerNames
     )
     {
-        if (e.Participants.Count != 2)
-            return $"Combat at {e.Hex} (multi-faction — {e.Participants.Count} factions)";
+        var phaseName = e.Phase switch
+        {
+            NexusCombatSpec.PhaseSquadron => "Squadron",
+            NexusCombatSpec.PhaseNaval => "Naval",
+            NexusCombatSpec.PhaseBombardment => "Bombardment",
+            NexusCombatSpec.PhaseGround => "Ground",
+            _ => $"Phase {e.Phase}",
+        };
 
-        var p0 = e.Participants[0];
-        var p1 = e.Participants[1];
-        var name0 = FactionName(p0.Faction, names);
-        var name1 = FactionName(p1.Faction, names);
-        var header =
-            $"{name0}'s {p0.Count} fleet(s) clashed with {name1}'s {p1.Count} fleet(s) at {e.Hex}";
+        var rollLines = e
+            .AttackRolls.GroupBy(r => r.AttackingPlayerId)
+            .Select(g =>
+            {
+                var rolls = string.Join(
+                    ", ",
+                    g.Select(r =>
+                        $"{r.AttackerType}→{r.TargetType}: {r.Roll} (need {r.Threshold}+, {(r.IsHit ? "hit" : "miss")})"
+                    )
+                );
+                return $"{PlayerName(g.Key, playerNames)}: {rolls}";
+            });
 
-        if (e.WinnerId is null)
-            return $"{header} — mutual destruction, all fleets lost";
+        var attackSummary = e.AttackRolls.Length > 0 ? string.Join(" | ", rollLines) : "no attacks";
 
-        if (e.WinnerId == p0.PlayerId)
-            return $"{header} — {name0} takes {e.Hex} (losses: {name0} {p0.Losses}, {name1} {p1.Losses})";
+        if (e.Losses.Length == 0)
+            return $"{phaseName} phase at {e.System} — {attackSummary}. No losses.";
 
-        return $"{header} — {name1} holds {e.Hex} (losses: {name0} {p0.Losses}, {name1} {p1.Losses})";
+        var lossSummary = string.Join(
+            ", ",
+            e.Losses.GroupBy(l => l.PlayerId)
+                .Select(g =>
+                    $"{PlayerName(g.Key, playerNames)} lost "
+                    + string.Join(", ", g.Select(l => $"{l.Count}× {l.UnitType}"))
+                )
+        );
+
+        return $"{phaseName} phase at {e.System} — {attackSummary}. {lossSummary}.";
     }
 
-    private static string FactionName(
-        NexusFactionColor faction,
-        IReadOnlyDictionary<NexusFactionColor, string> names
-    ) => names.TryGetValue(faction, out var name) ? name : faction.ToString();
+    private static string FormatUnits(ImmutableDictionary<NexusUnitType, int> units) =>
+        units.Count == 0
+            ? "no units"
+            : string.Join(", ", units.Select(kv => $"{kv.Value}× {kv.Key}"));
+
+    private static string PlayerName(Guid playerId, IReadOnlyDictionary<Guid, string> names) =>
+        names.TryGetValue(playerId, out var name) ? name : playerId.ToString("N")[..8];
 }

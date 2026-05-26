@@ -1,128 +1,72 @@
 using System.Collections.Immutable;
-using System.Diagnostics;
 
 namespace Spx.Game.Domain;
 
 public static class NexusGameEngine
 {
-    private const int MaxRounds = 15;
-    private const int BuildFleetCostPerColor = 2;
-    private const int StartingFleets = 2;
+    private const int GateCost = 12;
 
-    private static int GateCostForState(NexusGameState state) => 2 + state.Players.Count;
+    // ── Public API ────────────────────────────────────────────────────────────
 
-    private static NexusMapLayout GetMap(NexusGameState state) =>
-        NexusMap.ForPlayerCount(state.Players.Count);
-
-    // -------------------------------------------------------------------------
-    // Initialize
-    // -------------------------------------------------------------------------
-
-    public static void Initialize(NexusGameState state, InitializeNexusGameCommand command)
+    public static void Initialize(
+        NexusGameState state,
+        InitializeNexusGameCommand command,
+        Random rng
+    )
     {
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(command);
+        ArgumentNullException.ThrowIfNull(rng);
 
-        if (command.Players.Length < 2 || command.Players.Length > 4)
-            throw new InvalidOperationException("A game session requires 2\u20134 players.");
+        if (command.Players.Length != 2)
+            throw new InvalidOperationException("Nexus Protocol requires exactly 2 players.");
 
-        if (command.Players.Select(p => p.PlayerId).Distinct().Count() != command.Players.Length)
-            throw new InvalidOperationException(
-                "All players in a game session must have distinct IDs."
-            );
+        if (command.Players.Select(p => p.PlayerId).Distinct().Count() != 2)
+            throw new InvalidOperationException("All players must have distinct IDs.");
 
-        // If already initialized with the same roster, keep faction assignments
-        var commandIds = command.Players.Select(p => p.PlayerId).ToHashSet();
-        var sameRoster =
-            state.Players.Count == command.Players.Length
-            && state.Players.All(p => commandIds.Contains(p.PlayerId));
+        state.RoundNumber = 1;
+        state.Phase = NexusGamePhase.Planning;
+        state.Completion = null;
+        state.LastResolveEvents = [];
 
-        List<NexusFactionColor> assignedFactions;
-        if (sameRoster)
-        {
-            // Preserve existing assignments in command order
-            assignedFactions = command
-                .Players.Select(p => state.Players.First(s => s.PlayerId == p.PlayerId).Faction)
-                .ToList();
-        }
-        else
-        {
-            var factions = new List<NexusFactionColor>
-            {
-                NexusFactionColor.Red,
-                NexusFactionColor.Blue,
-                NexusFactionColor.Green,
-                NexusFactionColor.Yellow,
-            };
-            if (command.Players.Length > 2)
-                Shuffle(factions);
-            assignedFactions = factions.Take(command.Players.Length).ToList();
-        }
-
+        var factions = new[] { NexusFactionColor.Red, NexusFactionColor.Blue };
         state.Players = command
             .Players.Select(
                 (p, i) =>
                     new NexusPlayerState
                     {
                         PlayerId = p.PlayerId,
-                        Faction = assignedFactions[i],
+                        Faction = factions[i],
+                        Energy = 0,
                         IsActive = true,
                     }
             )
             .ToList();
 
-        state.RoundNumber = 1;
-        state.Phase = NexusGamePhase.Planning;
-        state.Completion = null;
-        state.ResolveEvents = [];
-        state.ActiveTradeRoutes = [];
-
-        var map = GetMap(state);
-
-        // Initialise hex ownership — pre-colonise home hexes
-        state.Hexes = map
-            .Hexes.Select(h =>
-            {
-                var hexState = new NexusHexState { Coord = h.Coord };
-                if (h.IsHome && h.HomeFaction.HasValue)
-                {
-                    var owner = state.Players.First(p => p.Faction == h.HomeFaction.Value);
-                    hexState.ColonyOwnerId = owner.PlayerId;
-                    hexState.SetFleets(h.HomeFaction.Value, StartingFleets);
-                }
-                return hexState;
-            })
-            .ToList();
+        state.Systems = NexusMap.GenerateMap(
+            command.Players[0].PlayerId,
+            command.Players[1].PlayerId,
+            rng
+        );
     }
-
-    private static void Shuffle<T>(List<T> list)
-    {
-        for (var i = list.Count - 1; i > 0; i--)
-        {
-            var j = Random.Shared.Next(i + 1);
-            (list[i], list[j]) = (list[j], list[i]);
-        }
-    }
-
-    // -------------------------------------------------------------------------
-    // SubmitOrders
-    // -------------------------------------------------------------------------
 
     public static NexusTurnOrdersResult SubmitOrders(
         NexusGameState state,
-        NexusTurnOrdersCommand command
+        NexusTurnOrdersCommand command,
+        Random rng
     )
     {
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(command);
+        ArgumentNullException.ThrowIfNull(rng);
 
         if (state.Phase != NexusGamePhase.Planning)
             return new NexusTurnOrdersRejected("Game is not in the planning phase.");
         if (state.Completion is not null)
-            return new NexusTurnOrdersRejected("Game is already ended.");
+            return new NexusTurnOrdersRejected("Game is already over.");
         if (command.ExpectedRoundNumber != state.RoundNumber)
             return new NexusTurnOrdersRejected(
-                $"Round mismatch: expected {command.ExpectedRoundNumber}, current is {state.RoundNumber}."
+                $"Round mismatch: submitted {command.ExpectedRoundNumber}, current is {state.RoundNumber}."
             );
 
         var player = GetPlayer(state, command.PlayerId);
@@ -133,230 +77,26 @@ public static class NexusGameEngine
         if (player.HasSubmittedOrders)
             return new NexusTurnOrdersRejected("Orders already submitted this round.");
 
-        var assignedCounts = new Dictionary<HexCoord, int>();
-        var colonizeHexes = new HashSet<HexCoord>();
+        var error =
+            ValidateMoveOrders(state, command.PlayerId, command.MoveOrders)
+            ?? ValidateBuildAndGate(state, player, command);
+        if (error is not null)
+            return error;
 
-        foreach (var order in command.FleetOrders)
-        {
-            var err = ValidateFleetOrder(
-                state,
-                command.PlayerId,
-                order,
-                player,
-                assignedCounts,
-                colonizeHexes
-            );
-            if (err is not null)
-                return err;
-        }
-
-        if (command.BuildFleet)
-        {
-            var err = ValidateBuildFleet(player);
-            if (err is not null)
-                return err;
-        }
-
-        if (command.BeginNexusGate)
-        {
-            var err = ValidateBeginNexusGate(command, player, state);
-            if (err is not null)
-                return err;
-        }
-
-        player.PendingFleetOrders = command.FleetOrders.ToList();
-        player.PendingBuildFleet = command.BuildFleet;
+        player.PendingMoveOrders = [.. command.MoveOrders];
+        player.PendingBuildOrders = [.. command.BuildOrders];
         player.PendingBeginNexusGate = command.BeginNexusGate;
         player.HasSubmittedOrders = true;
 
-        var allOthersSubmitted = state
-            .Players.Where(p => p.IsActive && p.PlayerId != command.PlayerId)
-            .All(p => p.HasSubmittedOrders);
-        if (allOthersSubmitted)
-            Resolve(state);
+        if (state.Players.All(p => !p.IsActive || p.HasSubmittedOrders))
+            Resolve(state, rng);
 
         return new NexusTurnOrdersAccepted();
     }
 
-    private static NexusTurnOrdersRejected? ValidateFleetOrder(
-        NexusGameState state,
-        Guid playerId,
-        NexusFleetOrder order,
-        NexusPlayerState player,
-        Dictionary<HexCoord, int> assignedCounts,
-        HashSet<HexCoord> colonizeHexes
-    )
-    {
-        if (!NexusMap.IsValidCoord(order.From))
-            return new NexusTurnOrdersRejected(
-                $"Fleet order source {order.From} is not a valid map hex."
-            );
-
-        var hexState = GetHex(state, order.From);
-        var fleetCount = hexState.GetFleets(player.Faction);
-
-        if (fleetCount == 0)
-            return new NexusTurnOrdersRejected($"No fleets at {order.From}.");
-
-        return order switch
-        {
-            NexusMoveOrder move => ValidateMoveOrder(
-                state,
-                playerId,
-                move,
-                fleetCount,
-                assignedCounts
-            ),
-            NexusColonizeOrder colonize => ValidateColonizeOrder(
-                state,
-                colonize,
-                player,
-                fleetCount,
-                assignedCounts,
-                colonizeHexes
-            ),
-            _ => null,
-        };
-    }
-
-    private static NexusTurnOrdersRejected? ValidateMoveOrder(
-        NexusGameState state,
-        Guid playerId,
-        NexusMoveOrder move,
-        int fleetCount,
-        Dictionary<HexCoord, int> assignedCounts
-    )
-    {
-        if (move.Count <= 0)
-            return new NexusTurnOrdersRejected("Move count must be at least 1.");
-
-        var alreadyAssigned = assignedCounts.GetValueOrDefault(move.From, 0);
-        if (alreadyAssigned + move.Count > fleetCount)
-            return new NexusTurnOrdersRejected(
-                $"Not enough fleets at {move.From}: requested {alreadyAssigned + move.Count} but only {fleetCount} available."
-            );
-
-        if (!NexusMap.IsValidCoord(move.To))
-            return new NexusTurnOrdersRejected(
-                $"Move destination {move.To} is not a valid map hex."
-            );
-
-        var distance = move.From.DistanceTo(move.To);
-
-        if (distance == 0)
-            return new NexusTurnOrdersRejected(
-                $"Move destination is the same as its source hex {move.From}."
-            );
-
-        if (distance == 1)
-        {
-            assignedCounts[move.From] = alreadyAssigned + move.Count;
-            return null;
-        }
-
-        if (distance == 2)
-        {
-            var hasBonus = state.ActiveTradeRoutes.Any(r =>
-                (r.Hex1 == move.From && r.Owner1 == playerId)
-                || (r.Hex2 == move.From && r.Owner2 == playerId)
-            );
-            if (!hasBonus)
-                return new NexusTurnOrdersRejected(
-                    $"Cannot move 2 hexes from {move.From}: not on an active trade-route endpoint."
-                );
-
-            assignedCounts[move.From] = alreadyAssigned + move.Count;
-            return null;
-        }
-
-        return new NexusTurnOrdersRejected(
-            $"Move distance {distance} from {move.From} exceeds maximum allowed."
-        );
-    }
-
-    private static NexusTurnOrdersRejected? ValidateColonizeOrder(
-        NexusGameState state,
-        NexusColonizeOrder colonize,
-        NexusPlayerState player,
-        int fleetCount,
-        Dictionary<HexCoord, int> assignedCounts,
-        HashSet<HexCoord> colonizeHexes
-    )
-    {
-        if (!colonizeHexes.Add(colonize.From))
-            return new NexusTurnOrdersRejected($"Duplicate colonize order for {colonize.From}.");
-
-        var assigned = assignedCounts.GetValueOrDefault(colonize.From, 0);
-        if (assigned >= fleetCount)
-            return new NexusTurnOrdersRejected(
-                $"No fleets remaining at {colonize.From} to colonize (all assigned to move)."
-            );
-
-        if (NexusMap.ByCoord[colonize.From].IsNexus)
-            return new NexusTurnOrdersRejected("Cannot colonize the Nexus hex.");
-
-        var hexState = GetHex(state, colonize.From);
-        return hexState.ColonyOwnerId == player.PlayerId
-            ? new NexusTurnOrdersRejected($"Hex {colonize.From} is already owned by you.")
-            : null;
-    }
-
-    private static NexusTurnOrdersRejected? ValidateBuildFleet(NexusPlayerState player)
-    {
-        var factionColor = player.Faction.ToColonyColor();
-        var factionCredits = player.GetCredits(factionColor);
-        var goldCredits = player.GetCredits(NexusColonyColor.Gold);
-        return factionCredits < BuildFleetCostPerColor || goldCredits < BuildFleetCostPerColor
-            ? new NexusTurnOrdersRejected(
-                $"Insufficient resources to build fleet (requires {BuildFleetCostPerColor} {factionColor} + {BuildFleetCostPerColor} Gold)."
-            )
-            : null;
-    }
-
-    private static NexusTurnOrdersRejected? ValidateBeginNexusGate(
-        NexusTurnOrdersCommand command,
-        NexusPlayerState player,
-        NexusGameState state
-    )
-    {
-        if (player.GateProgress == NexusGateProgress.Completed)
-            return new NexusTurnOrdersRejected("Nexus Gate is already completed.");
-
-        var map = GetMap(state);
-        var nexusHex = GetHex(state, map.NexusCoord);
-        var fleetCount = nexusHex.GetFleets(player.Faction);
-        var movingFromNexus = command
-            .FleetOrders.OfType<NexusMoveOrder>()
-            .Where(o => o.From == map.NexusCoord)
-            .Sum(o => o.Count);
-
-        if (fleetCount - movingFromNexus <= 0)
-            return new NexusTurnOrdersRejected(
-                "Begin Nexus Gate requires a fleet staying on the Nexus hex."
-            );
-
-        var gateCost = GateCostForState(state);
-        var resourceColors = map.ResourceColors;
-
-        foreach (var color in resourceColors)
-        {
-            if (player.GetCredits(color) < gateCost)
-                return new NexusTurnOrdersRejected(
-                    $"Insufficient resources to begin/continue Nexus Gate (requires {gateCost} of each resource type)."
-                );
-        }
-
-        return null;
-    }
-
-    // -------------------------------------------------------------------------
-    // Abandon
-    // -------------------------------------------------------------------------
-
     public static void Abandon(NexusGameState state, Guid playerId)
     {
         ArgumentNullException.ThrowIfNull(state);
-
         if (state.Completion is not null)
             return;
 
@@ -365,826 +105,579 @@ public static class NexusGameEngine
             return;
 
         player.IsActive = false;
-        var activePlayers = state.Players.Where(p => p.IsActive).ToList();
-        if (activePlayers.Count == 1)
+
+        var remaining = state.Players.Where(p => p.IsActive).ToList();
+        if (remaining.Count == 1)
         {
             state.Completion = new NexusGameCompletion(
                 NexusGameOutcome.Victory,
-                WinnerId: activePlayers[0].PlayerId
+                remaining[0].PlayerId
             );
             state.Phase = NexusGamePhase.Ended;
         }
-        // If 2+ active remain, game continues
     }
-
-    // -------------------------------------------------------------------------
-    // BuildView
-    // -------------------------------------------------------------------------
 
     public static NexusGameView BuildView(NexusGameState state, Guid gameId, Guid playerId)
     {
         ArgumentNullException.ThrowIfNull(state);
 
-        var currentPlayer = GetPlayer(state, playerId);
+        var current =
+            GetPlayer(state, playerId)
+            ?? throw new InvalidOperationException($"Player {playerId} not found.");
+        var opponent = state.Players.First(p => p.PlayerId != playerId);
+
+        var systems = state
+            .Systems.Select(s => new NexusSystemView(
+                s.Coord,
+                s.IsNexus,
+                s.IncomeValue,
+                s.HomePlayerId,
+                s.ControlOwner,
+                s.Units.ToImmutableDictionary(
+                    outer => outer.Key,
+                    outer => outer.Value.ToImmutableDictionary()
+                )
+            ))
+            .ToImmutableArray();
 
         return new NexusGameView(
-            GameId: gameId,
-            RoundNumber: state.RoundNumber,
-            Phase: state.Phase,
-            Hexes: BuildHexViews(state),
-            ActiveTradeRoutes: state
-                .ActiveTradeRoutes.Select(r => new NexusTradeRouteView(
-                    r.Hex1,
-                    r.Owner1,
-                    GetFactionForPlayer(state, r.Owner1),
-                    r.Hex2,
-                    r.Owner2,
-                    GetFactionForPlayer(state, r.Owner2)
-                ))
-                .ToImmutableArray(),
-            CurrentPlayer: BuildPlayerView(state, currentPlayer, isSelf: true),
-            Opponents: state
-                .Players.Where(p => p.PlayerId != playerId)
-                .Select(p => BuildPlayerView(state, p, isSelf: false))
-                .ToImmutableArray(),
-            ResolveEvents: state.ResolveEvents.ToImmutableArray(),
-            Completion: state.Completion
+            gameId,
+            state.RoundNumber,
+            state.Phase,
+            systems,
+            ProjectPlayerView(current, isSelf: true),
+            ProjectPlayerView(opponent, isSelf: false),
+            state.LastResolveEvents.ToImmutableArray(),
+            state.Completion
         );
     }
 
-    // -------------------------------------------------------------------------
-    // Resolve (private)
-    // -------------------------------------------------------------------------
+    // ── Validation ────────────────────────────────────────────────────────────
 
-    private static void Resolve(NexusGameState state)
+    private static NexusTurnOrdersRejected? ValidateMoveOrders(
+        NexusGameState state,
+        Guid playerId,
+        IEnumerable<NexusMoveOrder> orders
+    )
+    {
+        var committed = new Dictionary<HexCoord, Dictionary<NexusUnitType, int>>();
+
+        foreach (var order in orders)
+        {
+            if (!NexusMap.IsValidCoord(order.From))
+                return new NexusTurnOrdersRejected(
+                    $"Source system {order.From} is not on the map."
+                );
+            if (!NexusMap.IsValidCoord(order.To))
+                return new NexusTurnOrdersRejected(
+                    $"Destination system {order.To} is not on the map."
+                );
+            if (!NexusMap.AreAdjacent(order.From, order.To))
+                return new NexusTurnOrdersRejected($"{order.To} is not adjacent to {order.From}.");
+            if (order.Units.Count == 0)
+                return new NexusTurnOrdersRejected("A move order must include at least one unit.");
+
+            var system = GetSystem(state, order.From);
+            if (system is null)
+                return new NexusTurnOrdersRejected($"Source system {order.From} not found.");
+
+            if (!committed.TryGetValue(order.From, out var fromCommitted))
+            {
+                fromCommitted = [];
+                committed[order.From] = fromCommitted;
+            }
+
+            var capacityProvided = 0;
+            var capacityNeeded = 0;
+
+            foreach (var (unitType, count) in order.Units)
+            {
+                if (count <= 0)
+                    return new NexusTurnOrdersRejected(
+                        $"Unit count for {unitType} must be positive."
+                    );
+
+                var alreadyCommitted = fromCommitted.GetValueOrDefault(unitType);
+                var available = system.GetUnitCount(playerId, unitType);
+
+                if (alreadyCommitted + count > available)
+                    return new NexusTurnOrdersRejected(
+                        $"Insufficient {unitType} at {order.From}: "
+                            + $"need {alreadyCommitted + count}, have {available}."
+                    );
+
+                fromCommitted[unitType] = alreadyCommitted + count;
+                capacityProvided += unitType.CarryCapacity() * count;
+                capacityNeeded += unitType.ConsumedCapacity() * count;
+            }
+
+            if (capacityNeeded > capacityProvided)
+                return new NexusTurnOrdersRejected(
+                    $"Insufficient carry capacity for move from {order.From} to {order.To}: "
+                        + $"need {capacityNeeded} slots, have {capacityProvided}."
+                );
+        }
+
+        return null;
+    }
+
+    private static NexusTurnOrdersRejected? ValidateBuildAndGate(
+        NexusGameState state,
+        NexusPlayerState player,
+        NexusTurnOrdersCommand command
+    )
+    {
+        var buildCost = command.BuildOrders.Sum(o => o.UnitType.Cost() * o.Count);
+        var gateCost = command.BeginNexusGate ? GateCost : 0;
+
+        if (player.Energy < buildCost + gateCost)
+            return new NexusTurnOrdersRejected(
+                $"Insufficient Energy: need {buildCost + gateCost}, have {player.Energy}."
+            );
+
+        if (command.BeginNexusGate)
+        {
+            if (player.GateProgress == NexusGateProgress.Completed)
+                return new NexusTurnOrdersRejected("Nexus Gate is already completed.");
+
+            var nexusSystem = GetSystem(state, NexusMap.NexusCoord);
+            if (nexusSystem is null || !nexusSystem.HasGroundForces(player.PlayerId))
+                return new NexusTurnOrdersRejected(
+                    "Cannot begin Nexus Gate: no ground forces on the Nexus."
+                );
+        }
+
+        return null;
+    }
+
+    // ── Resolution ────────────────────────────────────────────────────────────
+
+    private static void Resolve(NexusGameState state, Random rng)
     {
         var events = new List<NexusResolveEvent>();
         var players = state.Players.Where(p => p.IsActive).ToList();
-        var map = GetMap(state);
+        var player1 = players[0];
+        var player2 = players[1];
 
-        // Pre-compute staying hexes before moves alter fleet counts
-        var stayingByPlayer = players.ToDictionary(
-            p => p.PlayerId,
-            p => ComputeStayingHexes(state, p)
-        );
-
-        // Step 1: Deduct build/gate costs
-        ProcessBuildAndGateDeductions(state, players, events, map);
-
-        // Step 2: Moves
-        var combatHexes = ProcessMoves(state, players, events);
-
-        // Step 3: Combat + undefended entry + gate cancellation check
-        ProcessCombatAndEntry(state, players, events, combatHexes);
-        ProcessGateOutcomes(state, players, events, map);
-
-        // Step 4: Colonization
-        ProcessColonization(state, players, events, combatHexes, map);
-
-        // Step 5: Income (includes trade route computation)
-        ProcessIncome(state, players, events, stayingByPlayer, map);
-
-        // Step 6: Deploy newly built fleets
-        ProcessFleetDeployment(state, players, events, map);
-
-        state.ResolveEvents = events;
-
-        // Win check
-        if (CheckWinCondition(state, players, events))
-        {
-            state.Phase = NexusGamePhase.Ended;
-            return;
-        }
-
-        // Advance to next round
-        state.RoundNumber++;
+        // Step 1: Deduct build costs and gate payments
         foreach (var player in players)
         {
-            player.HasSubmittedOrders = false;
-            player.PendingFleetOrders = [];
-            player.PendingBuildFleet = false;
-            player.PendingBeginNexusGate = false;
-            player.PendingFleetDeployment = false;
+            var buildCost = player.PendingBuildOrders.Sum(o => o.UnitType.Cost() * o.Count);
+            var gateCost = player.PendingBeginNexusGate ? GateCost : 0;
+            player.Energy -= buildCost + gateCost;
         }
-    }
 
-    // -------------------------------------------------------------------------
-    // Step 1: Build / gate deductions
-    // -------------------------------------------------------------------------
+        // Step 2: Apply moves
+        ApplyMoves(state, player1, player2, events);
 
-    private static void ProcessBuildAndGateDeductions(
-        NexusGameState state,
-        List<NexusPlayerState> players,
-        List<NexusResolveEvent> events,
-        NexusMapLayout map
-    )
-    {
-        var gateCost = GateCostForState(state);
-        var resourceColors = map.ResourceColors;
+        // Step 3: Combat
+        ResolveCombat(state, player1.PlayerId, player2.PlayerId, events, rng);
 
+        // Step 4: Income
         foreach (var player in players)
         {
-            if (player.PendingBuildFleet)
+            var sources = state.Systems.Where(s => s.ControlOwner == player.PlayerId).ToList();
+            var income = sources.Sum(s => s.IncomeValue);
+            if (income > 0)
             {
-                var factionColor = player.Faction.ToColonyColor();
-                player.DeductCredits(factionColor, BuildFleetCostPerColor);
-                player.DeductCredits(NexusColonyColor.Gold, BuildFleetCostPerColor);
-                player.PendingFleetDeployment = true;
+                player.Energy += income;
+                events.Add(
+                    new NexusIncomeEvent(
+                        player.PlayerId,
+                        income,
+                        sources.Select(s => s.Coord).ToImmutableArray()
+                    )
+                );
             }
+        }
 
-            if (player.PendingBeginNexusGate)
+        // Step 5: Deploy built units to home system
+        foreach (var player in players)
+        {
+            var home = state.Systems.FirstOrDefault(s => s.HomePlayerId == player.PlayerId);
+            if (home is null)
+                continue;
+
+            foreach (var order in player.PendingBuildOrders)
             {
-                player.GateProgressBeforeThisTurn = player.GateProgress;
-                var costDict = resourceColors.ToDictionary(c => c, _ => gateCost);
-                foreach (var color in resourceColors)
-                    player.DeductCredits(color, gateCost);
+                home.AddUnits(player.PlayerId, order.UnitType, order.Count);
+                events.Add(
+                    new NexusUnitDeployedEvent(
+                        player.PlayerId,
+                        order.UnitType,
+                        home.Coord,
+                        order.Count
+                    )
+                );
+            }
+        }
 
+        // Step 6: Gate progress and win check
+        var completedIds = new List<Guid>();
+        foreach (var player in players)
+        {
+            var nexus = GetSystem(state, NexusMap.NexusCoord);
+            var hasGfOnNexus = nexus is not null && nexus.HasGroundForces(player.PlayerId);
+
+            if (player.PendingBeginNexusGate && !hasGfOnNexus)
+            {
+                // Committed this turn but GF lost or never arrived — cancel and refund
+                player.Energy += GateCost;
+                if (player.GateProgress == NexusGateProgress.Started)
+                    player.GateProgress = NexusGateProgress.None;
+                events.Add(new NexusGateCancelledEvent(player.PlayerId, NexusMap.NexusCoord));
+            }
+            else if (
+                player.GateProgress == NexusGateProgress.Started
+                && !player.PendingBeginNexusGate
+            )
+            {
+                // Was building but didn't commit this turn — cancel (no refund, energy spent)
+                player.GateProgress = NexusGateProgress.None;
+                events.Add(new NexusGateCancelledEvent(player.PlayerId, NexusMap.NexusCoord));
+            }
+            else if (player.PendingBeginNexusGate && hasGfOnNexus)
+            {
                 if (player.GateProgress == NexusGateProgress.None)
                 {
                     player.GateProgress = NexusGateProgress.Started;
-                    events.Add(
-                        new NexusGateBegunEvent(
-                            player.PlayerId,
-                            player.Faction,
-                            map.NexusCoord,
-                            costDict
-                        )
-                    );
+                    events.Add(new NexusGateStartedEvent(player.PlayerId, NexusMap.NexusCoord));
                 }
                 else if (player.GateProgress == NexusGateProgress.Started)
                 {
                     player.GateProgress = NexusGateProgress.Completed;
-                    events.Add(
-                        new NexusGateProgressedEvent(
-                            player.PlayerId,
-                            player.Faction,
-                            map.NexusCoord,
-                            costDict
-                        )
-                    );
+                    events.Add(new NexusGateCompletedEvent(player.PlayerId, NexusMap.NexusCoord));
+                    completedIds.Add(player.PlayerId);
                 }
+            }
+        }
+
+        if (completedIds.Count == 2)
+        {
+            state.Completion = new NexusGameCompletion(NexusGameOutcome.Draw, null);
+            events.Add(new NexusDrawEvent("Both players completed the Nexus Gate simultaneously."));
+            state.Phase = NexusGamePhase.Ended;
+        }
+        else if (completedIds.Count == 1)
+        {
+            state.Completion = new NexusGameCompletion(NexusGameOutcome.Victory, completedIds[0]);
+            events.Add(new NexusVictoryEvent(completedIds[0]));
+            state.Phase = NexusGamePhase.Ended;
+        }
+
+        state.LastResolveEvents = events;
+
+        if (state.Phase != NexusGamePhase.Ended)
+        {
+            state.RoundNumber++;
+            foreach (var player in players)
+            {
+                player.HasSubmittedOrders = false;
+                player.PendingMoveOrders = [];
+                player.PendingBuildOrders = [];
+                player.PendingBeginNexusGate = false;
             }
         }
     }
 
-    // -------------------------------------------------------------------------
-    // Step 2: Moves
-    // -------------------------------------------------------------------------
+    // ── Moves ─────────────────────────────────────────────────────────────────
 
-    private static HashSet<HexCoord> ProcessMoves(
+    private static void ApplyMoves(
         NexusGameState state,
-        List<NexusPlayerState> players,
+        NexusPlayerState p1,
+        NexusPlayerState p2,
         List<NexusResolveEvent> events
     )
     {
-        // Track which hexes were active trade-route endpoints for speed-bonus determination
-        var speedBonusEndpoints = state
-            .ActiveTradeRoutes.SelectMany<NexusTradeRoute, (HexCoord, Guid)>(r =>
-                [(r.Hex1, r.Owner1), (r.Hex2, r.Owner2)]
-            )
-            .ToHashSet();
-
-        // Apply all move orders simultaneously
-        foreach (var player in players)
+        foreach (var player in new[] { p1, p2 })
         {
-            foreach (var move in player.PendingFleetOrders.OfType<NexusMoveOrder>())
+            foreach (var order in player.PendingMoveOrders)
             {
-                var fromState = GetHex(state, move.From);
-                var toState = GetHex(state, move.To);
+                var src = GetSystem(state, order.From)!;
+                var dst = GetSystem(state, order.To)!;
 
-                fromState.RemoveFleets(player.Faction, move.Count);
-                toState.AddFleets(player.Faction, move.Count);
-
-                var isSpeedBonus =
-                    move.From.DistanceTo(move.To) == 2
-                    && speedBonusEndpoints.Contains((move.From, player.PlayerId));
-
-                if (isSpeedBonus)
-                    events.Add(
-                        new NexusSpeedBonusMoveEvent(
-                            player.PlayerId,
-                            player.Faction,
-                            move.From,
-                            move.To,
-                            move.From
-                        )
-                    );
-                else
-                    events.Add(
-                        new NexusMoveEvent(player.PlayerId, player.Faction, move.From, move.To)
-                    );
-            }
-        }
-
-        // Determine contested hexes (two or more factions present)
-        var combatHexes = new HashSet<HexCoord>(
-            state.Hexes.Where(h => h.Fleets.Count(kv => kv.Value > 0) >= 2).Select(h => h.Coord)
-        );
-
-        // Undefended entry: fleet moved into opponent-controlled hex with no opponent fleet
-        foreach (var player in players)
-        {
-            foreach (var move in player.PendingFleetOrders.OfType<NexusMoveOrder>())
-            {
-                if (combatHexes.Contains(move.To))
-                    continue; // will be handled by combat
-
-                var hexState = GetHex(state, move.To);
-                if (hexState.ColonyOwnerId is not null && hexState.ColonyOwnerId != player.PlayerId)
+                foreach (var (unitType, count) in order.Units)
                 {
-                    hexState.ColonyOwnerId = null;
-                    events.Add(
-                        new NexusUndefendedEntryEvent(player.PlayerId, player.Faction, move.To)
-                    );
+                    src.RemoveUnits(player.PlayerId, unitType, count);
+                    dst.AddUnits(player.PlayerId, unitType, count);
                 }
+
+                events.Add(
+                    new NexusUnitsMovedEvent(player.PlayerId, order.From, order.To, order.Units)
+                );
             }
         }
 
-        return combatHexes;
+        // Update control for all move destinations
+        var destinations = p1
+            .PendingMoveOrders.Select(o => o.To)
+            .Concat(p2.PendingMoveOrders.Select(o => o.To))
+            .Distinct();
+
+        foreach (var coord in destinations)
+        {
+            var system = GetSystem(state, coord)!;
+            UpdateSystemControl(
+                system,
+                p1.PlayerId,
+                p2.PlayerId,
+                groundCombatOccurred: false,
+                events
+            );
+        }
     }
 
-    // -------------------------------------------------------------------------
-    // Step 3: Combat
-    // -------------------------------------------------------------------------
+    // ── Combat ────────────────────────────────────────────────────────────────
 
-    private static void ProcessCombatAndEntry(
+    private static void ResolveCombat(
         NexusGameState state,
-        List<NexusPlayerState> players,
+        Guid player1Id,
+        Guid player2Id,
         List<NexusResolveEvent> events,
-        HashSet<HexCoord> combatHexes
+        Random rng
     )
     {
-        foreach (var hex in combatHexes)
+        foreach (var system in state.Systems)
         {
-            var hexState = GetHex(state, hex);
-            var presentFactions = hexState.Fleets.Where(kv => kv.Value > 0).ToList();
-
-            if (presentFactions.Count > 2)
-            {
-                // 3+ faction encounter: leave fleets, emit no combat event
-                Trace.WriteLine(
-                    $"[NexusGameEngine] 3+ faction encounter at {hex} \u2014 multi-faction combat not yet implemented."
-                );
+            if (!system.HasAnyUnits(player1Id) || !system.HasAnyUnits(player2Id))
                 continue;
-            }
 
-            var faction0 = presentFactions[0].Key;
-            var faction1 = presentFactions[1].Key;
-            var player0 = players.First(p => p.Faction == faction0);
-            var player1 = players.First(p => p.Faction == faction1);
-            var count0 = presentFactions[0].Value;
-            var count1 = presentFactions[1].Value;
+            events.Add(new NexusCombatBeganEvent(system.Coord, player1Id, player2Id));
+            ResolveSystemCombat(system, player1Id, player2Id, events, rng);
+        }
+    }
 
-            Guid? winnerId;
-            int losses0;
-            int losses1;
+    private static void ResolveSystemCombat(
+        NexusSystemState system,
+        Guid player1Id,
+        Guid player2Id,
+        List<NexusResolveEvent> events,
+        Random rng
+    )
+    {
+        var units1 = ExpandUnits(system.GetPlayerUnits(player1Id));
+        var units2 = ExpandUnits(system.GetPlayerUnits(player2Id));
 
-            if (count0 > count1)
-            {
-                winnerId = player0.PlayerId;
-                losses0 = count1;
-                losses1 = count1;
-            }
-            else if (count1 > count0)
-            {
-                winnerId = player1.PlayerId;
-                losses0 = count0;
-                losses1 = count0;
-            }
-            else
-            {
-                winnerId = null;
-                losses0 = count0;
-                losses1 = count1;
-            }
+        var hadGf1 = units1.Any(u => u.Type.IsGroundForce());
+        var hadGf2 = units2.Any(u => u.Type.IsGroundForce());
+        var groundCombatOccurred = hadGf1 && hadGf2;
+
+        for (var phase = 1; phase <= 4; phase++)
+        {
+            var canAttack1 = units1.Any(u =>
+                !u.IsDestroyed && NexusCombatSpec.CanAttack(u.Type, phase)
+            );
+            var canAttack2 = units2.Any(u =>
+                !u.IsDestroyed && NexusCombatSpec.CanAttack(u.Type, phase)
+            );
+            if (!canAttack1 && !canAttack2)
+                continue;
+
+            var losses = new Dictionary<(Guid, NexusUnitType), int>();
+            var attackRolls = new List<NexusCombatAttackRoll>();
+            RunAttacks(units1, units2, player1Id, player2Id, phase, rng, losses, attackRolls);
+            RunAttacks(units2, units1, player2Id, player1Id, phase, rng, losses, attackRolls);
 
             events.Add(
-                new NexusCombatEvent(
-                    hex,
-                    [
-                        new NexusCombatParticipant(player0.PlayerId, faction0, count0, losses0),
-                        new NexusCombatParticipant(player1.PlayerId, faction1, count1, losses1),
-                    ],
-                    winnerId
+                new NexusPhaseResultEvent(
+                    system.Coord,
+                    phase,
+                    losses
+                        .Select(kv => new NexusCombatLoss(kv.Key.Item1, kv.Key.Item2, kv.Value))
+                        .ToImmutableArray(),
+                    attackRolls.ToImmutableArray()
                 )
             );
-
-            if (winnerId == player0.PlayerId)
-            {
-                hexState.SetFleets(faction1, 0);
-                hexState.RemoveFleets(faction0, losses0);
-            }
-            else if (winnerId == player1.PlayerId)
-            {
-                hexState.SetFleets(faction0, 0);
-                hexState.RemoveFleets(faction1, losses1);
-            }
-            else
-            {
-                hexState.SetFleets(faction0, 0);
-                hexState.SetFleets(faction1, 0);
-            }
-
-            // Colony reverts to unclaimed after combat
-            hexState.ColonyOwnerId = null;
         }
+
+        var survivors1 = CollapseAlive(units1);
+        var survivors2 = CollapseAlive(units2);
+
+        var p1Cleared = units1.All(u => u.IsDestroyed);
+        var p2Cleared = units2.All(u => u.IsDestroyed);
+
+        if (p2Cleared && !p1Cleared)
+            events.Add(new NexusSystemClearedEvent(system.Coord, player1Id));
+        else if (p1Cleared && !p2Cleared)
+            events.Add(new NexusSystemClearedEvent(system.Coord, player2Id));
+
+        // Write survivors back
+        if (survivors1.Count > 0)
+            system.Units[player1Id] = survivors1;
+        else
+            system.Units.Remove(player1Id);
+
+        if (survivors2.Count > 0)
+            system.Units[player2Id] = survivors2;
+        else
+            system.Units.Remove(player2Id);
+
+        UpdateSystemControl(system, player1Id, player2Id, groundCombatOccurred, events);
     }
 
-    // -------------------------------------------------------------------------
-    // Gate outcome check (after combat)
-    // -------------------------------------------------------------------------
-
-    private static void ProcessGateOutcomes(
-        NexusGameState state,
-        List<NexusPlayerState> players,
-        List<NexusResolveEvent> events,
-        NexusMapLayout map
+    private static void RunAttacks(
+        List<CombatUnit> attackers,
+        List<CombatUnit> targets,
+        Guid attackerPlayerId,
+        Guid targetPlayerId,
+        int phase,
+        Random rng,
+        Dictionary<(Guid, NexusUnitType), int> losses,
+        List<NexusCombatAttackRoll> attackRolls
     )
     {
-        foreach (var player in players)
+        foreach (var attacker in attackers)
         {
-            if (!player.PendingBeginNexusGate)
+            if (attacker.IsDestroyed || !NexusCombatSpec.CanAttack(attacker.Type, phase))
                 continue;
 
-            var nexusHex = GetHex(state, map.NexusCoord);
-            var fleetOnNexus = nexusHex.GetFleets(player.Faction) > 0;
-
-            if (!fleetOnNexus)
-            {
-                // Fleet destroyed — cancel gate
-                player.GateProgress = player.GateProgressBeforeThisTurn;
-                events.Add(
-                    new NexusGateCancelledEvent(player.PlayerId, player.Faction, map.NexusCoord)
-                );
-            }
-            // If fleet survived, gate progress was already advanced in step 1
-        }
-    }
-
-    // -------------------------------------------------------------------------
-    // Step 4: Colonization
-    // -------------------------------------------------------------------------
-
-    private static void ProcessColonization(
-        NexusGameState state,
-        List<NexusPlayerState> players,
-        List<NexusResolveEvent> events,
-        HashSet<HexCoord> combatHexes,
-        NexusMapLayout map
-    )
-    {
-        foreach (var player in players)
-        {
-            foreach (var order in player.PendingFleetOrders.OfType<NexusColonizeOrder>())
-            {
-                var hex = order.From;
-                var hexState = GetHex(state, hex);
-                var fleetCount = hexState.GetFleets(player.Faction);
-
-                if (fleetCount == 0)
-                    continue; // fleet destroyed in combat
-
-                if (combatHexes.Contains(hex))
-                {
-                    events.Add(new NexusColonizeFailedEvent(player.PlayerId, player.Faction, hex));
-                    continue;
-                }
-
-                hexState.ColonyOwnerId = player.PlayerId;
-                var hexDef = map.ByCoord[hex];
-                events.Add(
-                    new NexusColonizeEvent(player.PlayerId, player.Faction, hex, hexDef.Color)
-                );
-            }
-        }
-    }
-
-    // -------------------------------------------------------------------------
-    // Step 5: Income + trade routes
-    // -------------------------------------------------------------------------
-
-    private static void ProcessIncome(
-        NexusGameState state,
-        List<NexusPlayerState> players,
-        List<NexusResolveEvent> events,
-        Dictionary<Guid, HashSet<HexCoord>> stayingByPlayer,
-        NexusMapLayout map
-    )
-    {
-        // Filter staying hexes to those where the fleet survived combat
-        var survivingByPlayer = stayingByPlayer.ToDictionary(
-            kv => kv.Key,
-            kv =>
-                kv.Value.Where(h =>
-                    {
-                        var player = players.First(p => p.PlayerId == kv.Key);
-                        return GetHex(state, h).GetFleets(player.Faction) > 0;
-                    })
-                    .ToHashSet()
-        );
-
-        var (newRoutes, newRouteKeys) = ComputeNewTradeRoutes(
-            state,
-            players,
-            survivingByPlayer,
-            map
-        );
-        EmitTradeRouteChangedEvents(state, newRoutes, newRouteKeys, events);
-        state.ActiveTradeRoutes = newRoutes;
-
-        var accumulated = AccumulateIncome(state, players, survivingByPlayer, map);
-        EmitIncomeEvents(players, accumulated, events);
-
-        foreach (var player in players)
-        {
-            if (!accumulated.TryGetValue(player.PlayerId, out var colorAmounts))
-                continue;
-            foreach (var (color, amount) in colorAmounts)
-                player.AddCredits(color, amount);
-        }
-    }
-
-    private static Dictionary<Guid, Dictionary<NexusColonyColor, int>> AccumulateIncome(
-        NexusGameState state,
-        List<NexusPlayerState> players,
-        Dictionary<Guid, HashSet<HexCoord>> survivingByPlayer,
-        NexusMapLayout map
-    )
-    {
-        var acc = players.ToDictionary(
-            p => p.PlayerId,
-            _ => new Dictionary<NexusColonyColor, int>()
-        );
-
-        void AddIncome(Guid ownerId, NexusColonyColor color, int amount)
-        {
-            if (!acc.TryGetValue(ownerId, out var dict))
-                return;
-            dict[color] = dict.GetValueOrDefault(color) + amount;
-        }
-
-        // Hex base income
-        foreach (var hexState in state.Hexes)
-        {
-            if (hexState.ColonyOwnerId is null)
-                continue;
-            var hexDef = map.ByCoord[hexState.Coord];
-            if (hexDef.Color == NexusColonyColor.None)
-                continue;
-
-            // Faction-color hex: only earns income for the matching faction's owner
-            if (hexDef.Color != NexusColonyColor.Gold)
-            {
-                var owner = players.FirstOrDefault(p => p.PlayerId == hexState.ColonyOwnerId);
-                if (owner is null || owner.Faction.ToColonyColor() != hexDef.Color)
-                    continue;
-            }
-
-            var amount = hexDef.IsHome ? 2 : 1;
-            AddIncome(hexState.ColonyOwnerId.Value, hexDef.Color, amount);
-        }
-
-        // Trade route income
-        foreach (var route in state.ActiveTradeRoutes)
-        {
-            var hex1Def = map.ByCoord[route.Hex1];
-            var hex2Def = map.ByCoord[route.Hex2];
-            var staying1 =
-                survivingByPlayer.TryGetValue(route.Owner1, out var s1) && s1.Contains(route.Hex1);
-            var staying2 =
-                survivingByPlayer.TryGetValue(route.Owner2, out var s2) && s2.Contains(route.Hex2);
-            AddIncome(route.Owner1, hex2Def.Color, staying1 ? 2 : 1);
-            AddIncome(route.Owner2, hex1Def.Color, staying2 ? 2 : 1);
-        }
-
-        return acc;
-    }
-
-    private static void EmitIncomeEvents(
-        List<NexusPlayerState> players,
-        Dictionary<Guid, Dictionary<NexusColonyColor, int>> accumulated,
-        List<NexusResolveEvent> events
-    )
-    {
-        foreach (var player in players)
-        {
-            if (!accumulated.TryGetValue(player.PlayerId, out var colorAmounts))
-                continue;
-            if (colorAmounts.Values.Sum() == 0)
-                continue;
-            events.Add(new NexusIncomeEvent(player.PlayerId, player.Faction, colorAmounts));
-        }
-    }
-
-    private static HashSet<HexCoord> ComputeStayingHexes(
-        NexusGameState state,
-        NexusPlayerState player
-    )
-    {
-        var movingCounts = player
-            .PendingFleetOrders.OfType<NexusMoveOrder>()
-            .GroupBy(o => o.From)
-            .ToDictionary(g => g.Key, g => g.Sum(o => o.Count));
-
-        return state
-            .Hexes.Where(h =>
-            {
-                var total = h.GetFleets(player.Faction);
-                var moving = movingCounts.GetValueOrDefault(h.Coord, 0);
-                return total - moving > 0;
-            })
-            .Select(h => h.Coord)
-            .ToHashSet();
-    }
-
-    private static (
-        List<NexusTradeRoute> Routes,
-        HashSet<(HexCoord, HexCoord)> Keys
-    ) ComputeNewTradeRoutes(
-        NexusGameState state,
-        List<NexusPlayerState> players,
-        Dictionary<Guid, HashSet<HexCoord>> survivingStaying,
-        NexusMapLayout map
-    )
-    {
-        var routes = new List<NexusTradeRoute>();
-        var keys = new HashSet<(HexCoord, HexCoord)>();
-
-        foreach (var player in players)
-        {
-            if (!survivingStaying.TryGetValue(player.PlayerId, out var staying))
-                continue;
-            foreach (var pos in staying)
-                AddTradeRoutesForPosition(state, player, pos, routes, keys, map);
-        }
-
-        return (routes, keys);
-    }
-
-    private static void AddTradeRoutesForPosition(
-        NexusGameState state,
-        NexusPlayerState player,
-        HexCoord pos,
-        List<NexusTradeRoute> routes,
-        HashSet<(HexCoord, HexCoord)> keys,
-        NexusMapLayout map
-    )
-    {
-        var hexState = GetHex(state, pos);
-        if (hexState.ColonyOwnerId != player.PlayerId)
-            return;
-
-        foreach (var neighbour in pos.GetNeighbours())
-        {
-            if (!map.IsValidCoord(neighbour))
-                continue;
-            var neighbourHex = GetHex(state, neighbour);
-            if (neighbourHex.ColonyOwnerId is null || neighbourHex.ColonyOwnerId == player.PlayerId)
-                continue;
-
-            var (h1, h2) = NormalizeRouteKey(pos, neighbour);
-            if (keys.Add((h1, h2)))
-                routes.Add(
-                    new NexusTradeRoute(
-                        h1,
-                        GetOwnerOfHex(state, h1)!.Value,
-                        h2,
-                        GetOwnerOfHex(state, h2)!.Value
-                    )
-                );
-        }
-    }
-
-    private static (HexCoord, HexCoord) NormalizeRouteKey(HexCoord a, HexCoord b) =>
-        a.Q < b.Q || (a.Q == b.Q && a.R < b.R) ? (a, b) : (b, a);
-
-    private static void EmitTradeRouteChangedEvents(
-        NexusGameState state,
-        List<NexusTradeRoute> newRoutes,
-        HashSet<(HexCoord, HexCoord)> newRouteKeys,
-        List<NexusResolveEvent> events
-    )
-    {
-        var previousKeys = state
-            .ActiveTradeRoutes.Select(r => NormalizeRouteKey(r.Hex1, r.Hex2))
-            .ToHashSet();
-
-        foreach (var route in newRoutes)
-        {
-            var key = NormalizeRouteKey(route.Hex1, route.Hex2);
-            if (!previousKeys.Contains(key))
-                events.Add(
-                    new NexusTradeRouteOpenedEvent(
-                        route.Hex1,
-                        route.Owner1,
-                        GetFactionForPlayer(state, route.Owner1),
-                        route.Hex2,
-                        route.Owner2,
-                        GetFactionForPlayer(state, route.Owner2)
-                    )
-                );
-        }
-
-        foreach (var old in state.ActiveTradeRoutes)
-        {
-            var key = NormalizeRouteKey(old.Hex1, old.Hex2);
-            if (!newRouteKeys.Contains(key))
-                events.Add(
-                    new NexusTradeRouteClosedEvent(
-                        old.Hex1,
-                        old.Owner1,
-                        GetFactionForPlayer(state, old.Owner1),
-                        old.Hex2,
-                        old.Owner2,
-                        GetFactionForPlayer(state, old.Owner2)
-                    )
-                );
-        }
-    }
-
-    // -------------------------------------------------------------------------
-    // Step 6: Fleet deployment
-    // -------------------------------------------------------------------------
-
-    private static void ProcessFleetDeployment(
-        NexusGameState state,
-        List<NexusPlayerState> players,
-        List<NexusResolveEvent> events,
-        NexusMapLayout map
-    )
-    {
-        foreach (var player in players)
-        {
-            if (!player.PendingFleetDeployment)
-                continue;
-
-            var homeCoord = map.GetHomeCoord(player.Faction);
-            var homeHex = GetHex(state, homeCoord);
-            homeHex.AddFleets(player.Faction, 1);
-
-            events.Add(new NexusFleetDeployedEvent(player.PlayerId, player.Faction, homeCoord));
-        }
-    }
-
-    // -------------------------------------------------------------------------
-    // Win check
-    // -------------------------------------------------------------------------
-
-    private static bool CheckWinCondition(
-        NexusGameState state,
-        List<NexusPlayerState> players,
-        List<NexusResolveEvent> events
-    )
-    {
-        var completers = players
-            .Where(p => p.GateProgress == NexusGateProgress.Completed && p.PendingBeginNexusGate)
-            .ToList();
-
-        if (completers.Count > 0)
-        {
-            if (completers.Count > 1)
-            {
-                events.Add(
-                    new NexusDrawEvent("Multiple players completed the Nexus Gate simultaneously.")
-                );
-                state.Completion = new NexusGameCompletion(NexusGameOutcome.Draw, WinnerId: null);
-            }
-            else
-            {
-                var winner = completers[0];
-                events.Add(new NexusVictoryEvent(winner.PlayerId, winner.Faction));
-                state.Completion = new NexusGameCompletion(
-                    NexusGameOutcome.Victory,
-                    winner.PlayerId
-                );
-            }
-            return true;
-        }
-
-        // Round 15 tiebreaker
-        if (state.RoundNumber >= MaxRounds)
-        {
-            var systemsByPlayer = players
-                .Select(p =>
-                    (Player: p, Systems: state.Hexes.Count(h => h.ColonyOwnerId == p.PlayerId))
+            var eligible = targets
+                .Where(t =>
+                    !t.IsDestroyed
+                    && NexusCombatSpec.IsTargetable(t.Type, phase)
+                    && NexusCombatSpec.GetHitThreshold(attacker.Type, phase, t.Type) is not null
                 )
-                .OrderByDescending(x => x.Systems)
                 .ToList();
 
-            var topSystems = systemsByPlayer[0].Systems;
-            var topPlayers = systemsByPlayer.Where(x => x.Systems == topSystems).ToList();
+            if (eligible.Count == 0)
+                continue;
 
-            if (topPlayers.Count == 1)
+            var target = PickTargetByWeight(eligible, rng);
+            var threshold = NexusCombatSpec
+                .GetHitThreshold(attacker.Type, phase, target.Type)!
+                .Value;
+            var roll = rng.Next(1, 7); // 1–6 inclusive
+            var isHit = roll >= threshold;
+
+            attackRolls.Add(
+                new NexusCombatAttackRoll(
+                    attackerPlayerId,
+                    attacker.Type,
+                    target.Type,
+                    roll,
+                    threshold,
+                    isHit
+                )
+            );
+
+            if (isHit)
             {
-                var winner = topPlayers[0].Player;
-                var runnerUpSystems = systemsByPlayer[1].Systems;
-                events.Add(
-                    new NexusTiebreakerVictoryEvent(
-                        winner.PlayerId,
-                        winner.Faction,
-                        topSystems,
-                        runnerUpSystems
-                    )
-                );
-                state.Completion = new NexusGameCompletion(
-                    NexusGameOutcome.Victory,
-                    winner.PlayerId
-                );
+                target.HitsAbsorbed++;
+                if (target.IsDestroyed)
+                {
+                    var key = (targetPlayerId, target.Type);
+                    losses[key] = losses.GetValueOrDefault(key) + 1;
+                }
             }
-            else
-            {
-                events.Add(new NexusTiebreakerDrawEvent(topSystems));
-                state.Completion = new NexusGameCompletion(NexusGameOutcome.Draw, WinnerId: null);
-            }
-            return true;
         }
-
-        return false;
     }
 
-    // -------------------------------------------------------------------------
-    // View helpers
-    // -------------------------------------------------------------------------
+    // ── Control ───────────────────────────────────────────────────────────────
 
-    private static ImmutableArray<NexusHexView> BuildHexViews(NexusGameState state)
-    {
-        var map = GetMap(state);
-        return map
-            .Hexes.Select(def =>
-            {
-                var hexState = GetHex(state, def.Coord);
-                NexusFactionColor? ownerFaction = hexState.ColonyOwnerId is { } ownerId
-                    ? GetFactionForPlayer(state, ownerId)
-                    : null;
-
-                var fleetCounts = ImmutableDictionary.CreateRange(
-                    state.Players.Select(p =>
-                        KeyValuePair.Create(p.Faction, hexState.GetFleets(p.Faction))
-                    )
-                );
-
-                return new NexusHexView(
-                    def.Coord,
-                    def.Color,
-                    def.IsNexus,
-                    def.IsHome,
-                    hexState.ColonyOwnerId,
-                    ownerFaction,
-                    fleetCounts
-                );
-            })
-            .ToImmutableArray();
-    }
-
-    private static NexusPlayerView BuildPlayerView(
-        NexusGameState state,
-        NexusPlayerState? player,
-        bool isSelf
+    private static void UpdateSystemControl(
+        NexusSystemState system,
+        Guid player1Id,
+        Guid player2Id,
+        bool groundCombatOccurred,
+        List<NexusResolveEvent> events
     )
     {
-        if (player is null)
-        {
-            return new NexusPlayerView(
-                Guid.Empty,
-                NexusFactionColor.Red,
-                ImmutableDictionary<NexusColonyColor, int>.Empty,
-                NexusGateProgress.None,
-                false,
-                false,
-                null,
-                false,
-                false
-            );
-        }
+        var p1HasGf = system.HasGroundForces(player1Id);
+        var p2HasGf = system.HasGroundForces(player2Id);
 
-        return new NexusPlayerView(
+        if (p1HasGf && !p2HasGf)
+        {
+            if (system.ControlOwner != player1Id)
+            {
+                system.ControlOwner = player1Id;
+                events.Add(new NexusGroundForcesControlEvent(system.Coord, player1Id));
+            }
+        }
+        else if (p2HasGf && !p1HasGf)
+        {
+            if (system.ControlOwner != player2Id)
+            {
+                system.ControlOwner = player2Id;
+                events.Add(new NexusGroundForcesControlEvent(system.Coord, player2Id));
+            }
+        }
+        else if (p1HasGf && p2HasGf)
+        {
+            if (system.ControlOwner is not null)
+            {
+                system.ControlOwner = null;
+                events.Add(new NexusSystemContestedEvent(system.Coord));
+            }
+        }
+        else if (groundCombatOccurred && system.ControlOwner is not null)
+        {
+            // All GF wiped out in ground combat
+            system.ControlOwner = null;
+            events.Add(new NexusSystemUncontrolledEvent(system.Coord));
+        }
+        // else: ships/sqd only present — retain existing control
+    }
+
+    // ── Combat Helpers ────────────────────────────────────────────────────────
+
+    private sealed class CombatUnit(NexusUnitType type)
+    {
+        public NexusUnitType Type { get; } = type;
+        public int HitsAbsorbed { get; set; }
+        public bool IsDestroyed => HitsAbsorbed >= Type.Silhouette();
+    }
+
+    private static List<CombatUnit> ExpandUnits(Dictionary<NexusUnitType, int> units)
+    {
+        var result = new List<CombatUnit>();
+        foreach (var (type, count) in units)
+            for (var i = 0; i < count; i++)
+                result.Add(new CombatUnit(type));
+        return result;
+    }
+
+    private static Dictionary<NexusUnitType, int> CollapseAlive(List<CombatUnit> units)
+    {
+        var result = new Dictionary<NexusUnitType, int>();
+        foreach (var unit in units.Where(u => !u.IsDestroyed))
+            result[unit.Type] = result.GetValueOrDefault(unit.Type) + 1;
+        return result;
+    }
+
+    private static CombatUnit PickTargetByWeight(List<CombatUnit> targets, Random rng)
+    {
+        var totalWeight = targets.Sum(t => t.Type.Silhouette());
+        var pick = rng.Next(totalWeight);
+        var cumulative = 0;
+        foreach (var target in targets)
+        {
+            cumulative += target.Type.Silhouette();
+            if (pick < cumulative)
+                return target;
+        }
+        return targets[^1];
+    }
+
+    // ── View Projection ───────────────────────────────────────────────────────
+
+    private static NexusPlayerView ProjectPlayerView(NexusPlayerState player, bool isSelf) =>
+        new(
             player.PlayerId,
             player.Faction,
-            player.Credits.ToImmutableDictionary(),
+            player.Energy,
             player.GateProgress,
             player.HasSubmittedOrders,
             player.IsActive,
-            isSelf
-                ? player.PendingFleetOrders.ToImmutableArray()
-                : (ImmutableArray<NexusFleetOrder>?)null,
-            isSelf && player.PendingBuildFleet,
+            isSelf ? player.PendingMoveOrders.ToImmutableArray() : null,
+            isSelf ? player.PendingBuildOrders.ToImmutableArray() : null,
             isSelf && player.PendingBeginNexusGate
         );
-    }
 
-    // -------------------------------------------------------------------------
-    // State helpers
-    // -------------------------------------------------------------------------
+    // ── Utilities ─────────────────────────────────────────────────────────────
 
     private static NexusPlayerState? GetPlayer(NexusGameState state, Guid playerId) =>
         state.Players.FirstOrDefault(p => p.PlayerId == playerId);
 
-    private static NexusFactionColor GetFactionForPlayer(NexusGameState state, Guid playerId) =>
-        state.Players.First(p => p.PlayerId == playerId).Faction;
-
-    private static NexusHexState GetHex(NexusGameState state, HexCoord coord) =>
-        state.Hexes.First(h => h.Coord == coord);
-
-    private static Guid? GetOwnerOfHex(NexusGameState state, HexCoord coord) =>
-        GetHex(state, coord).ColonyOwnerId;
+    private static NexusSystemState? GetSystem(NexusGameState state, HexCoord coord) =>
+        state.Systems.FirstOrDefault(s => s.Coord == coord);
 }

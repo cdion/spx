@@ -8,7 +8,7 @@ public interface IGameSessionService
         CancellationToken cancellationToken = default
     );
 
-    Task<NexusGameView?> GetSessionAsync(
+    Task<GameSessionOutcome> GetSessionAsync(
         Guid gameId,
         Guid playerId,
         CancellationToken cancellationToken = default

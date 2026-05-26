@@ -24,13 +24,14 @@ public sealed class NexusGameSessionGrainStateTests
 
         NexusGameEngine.Initialize(
             grainState.Game,
-            new InitializeNexusGameCommand(ImmutableArray.Create(first, second))
+            new InitializeNexusGameCommand(ImmutableArray.Create(first, second)),
+            Random.Shared
         );
 
         Assert.Equal(2, grainState.Game.Players.Count);
         Assert.Equal(1, grainState.Game.RoundNumber);
         Assert.Equal(NexusGamePhase.Planning, grainState.Game.Phase);
-        Assert.Equal(4, grainState.Game.Hexes.Sum(h => h.Fleets.Values.Sum()));
+        Assert.Equal(14, grainState.Game.Systems.Sum(s => s.Units.Values.Sum(u => u.Values.Sum())));
     }
 
     [Fact]
@@ -42,7 +43,8 @@ public sealed class NexusGameSessionGrainStateTests
 
         NexusGameEngine.Initialize(
             grainState.Game,
-            new InitializeNexusGameCommand(ImmutableArray.Create(first, second))
+            new InitializeNexusGameCommand(ImmutableArray.Create(first, second)),
+            Random.Shared
         );
 
         Assert.Equal(2, grainState.Game.Players.Count);
