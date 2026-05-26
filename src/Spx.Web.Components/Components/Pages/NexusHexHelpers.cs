@@ -77,25 +77,42 @@ internal static class NexusHexHelpers
     // ── Colours ───────────────────────────────────────────────────────────────
 
     /// <summary>Background fill for a hex, tinted by who controls the system.</summary>
-    public static string GetHexFill(NexusSystemView system, Guid currentPlayerId) =>
+    public static string GetHexFill(
+        NexusSystemView system,
+        Guid currentPlayerId,
+        NexusFactionColor currentPlayerFaction
+    ) =>
         system.IsNexus
             ? "rgba(139,92,246,0.2)"
             : system.ControlOwner switch
             {
-                { } owner when owner == currentPlayerId => "rgba(23,37,84,0.55)",
-                not null => "rgba(127,29,29,0.45)",
+                { } owner when owner == currentPlayerId => currentPlayerFaction
+                == NexusFactionColor.Red
+                    ? "rgba(127,29,29,0.55)"
+                    : "rgba(23,37,84,0.55)",
+                not null => currentPlayerFaction == NexusFactionColor.Red
+                    ? "rgba(23,37,84,0.45)"
+                    : "rgba(127,29,29,0.45)",
                 null => "rgba(15,23,42,0.55)",
             };
 
     /// <summary>Cap triangle fill for home/Nexus systems; null = no cap.</summary>
-    public static string? GetCapFill(NexusSystemView system, Guid currentPlayerId)
+    public static string? GetCapFill(
+        NexusSystemView system,
+        Guid currentPlayerId,
+        NexusFactionColor currentPlayerFaction
+    )
     {
         if (system.IsNexus)
             return "rgba(251,191,36,0.5)";
         if (system.HomePlayerId == currentPlayerId)
-            return "rgba(96,165,250,0.52)";
+            return currentPlayerFaction == NexusFactionColor.Red
+                ? "rgba(248,113,113,0.52)"
+                : "rgba(96,165,250,0.52)";
         if (system.HomePlayerId.HasValue)
-            return "rgba(248,113,113,0.52)";
+            return currentPlayerFaction == NexusFactionColor.Red
+                ? "rgba(96,165,250,0.52)"
+                : "rgba(248,113,113,0.52)";
         return null;
     }
 

@@ -1,0 +1,105 @@
+@page "/stories/hex-cell-states"
+@rendermode InteractiveServer
+
+<h1 class="mb-1 text-xl font-semibold text-white">Hex Cell States</h1>
+<p class="mb-5 text-sm text-slate-400">Every distinct visual state a sector hex can enter.</p>
+
+<div class="grid grid-cols-4 gap-x-6 gap-y-8 max-w-2xl">
+    @foreach (var state in States)
+    {
+        <div class="flex flex-col items-center gap-2">
+            <svg viewBox="-44 -44 88 90" width="110" height="110" xmlns="http://www.w3.org/2000/svg">
+                <NexusHexCellComponent System="state.System" Center="(0d, 0d)" CurrentPlayerId="P1" OpponentPlayerId="P2"
+                                       CurrentPlayerFaction="state.Faction" CurrentPlayerGateProgress="state.Gate" />
+            </svg>
+            <p class="text-xs text-slate-400 text-center leading-tight">@state.Label</p>
+        </div>
+    }
+</div>
+
+@code {
+    private static readonly Guid P1 = Guid.Parse("aaaaaaaa-0000-0000-0000-000000000001");
+    private static readonly Guid P2 = Guid.Parse("bbbbbbbb-0000-0000-0000-000000000002");
+    private static readonly HexCoord Origin = new(0, 0);
+    private static readonly HexCoord NegCoord = new(-2, 1);
+    private static readonly HexCoord NegNegCoord = new(-1, -2);
+
+    private static ImmutableDictionary<Guid, ImmutableDictionary<NexusUnitType, int>> NoUnits =>
+        ImmutableDictionary<Guid, ImmutableDictionary<NexusUnitType, int>>.Empty;
+
+    private static ImmutableDictionary<Guid, ImmutableDictionary<NexusUnitType, int>> WithUnits(
+        params (Guid Player, (NexusUnitType Type, int Count)[] Units)[] entries
+    )
+    {
+        var builder = ImmutableDictionary.CreateBuilder<
+            Guid,
+            ImmutableDictionary<NexusUnitType, int>
+        >();
+        foreach (var (player, units) in entries)
+        {
+            var inner = ImmutableDictionary.CreateBuilder<NexusUnitType, int>();
+            foreach (var (type, count) in units)
+                inner.Add(type, count);
+            builder.Add(player, inner.ToImmutable());
+        }
+        return builder.ToImmutable();
+    }
+
+    private record State(string Label, NexusSystemView System, NexusGateProgress Gate = NexusGateProgress.None,
+NexusFactionColor Faction = NexusFactionColor.Blue);
+
+    private static readonly State[] States =
+    [
+        new("Empty", new(Origin, false, 0, null, null, NoUnits)),
+        new("Income", new(Origin, false, 3, null, null, NoUnits)),
+        new("My control", new(Origin, false, 2, null, P1, NoUnits)),
+        new("Enemy control", new(Origin, false, 2, null, P2, NoUnits)),
+        new("My home", new(Origin, false, 1, P1, P1, NoUnits)),
+        new("Enemy home", new(Origin, false, 1, P2, P2, NoUnits)),
+        new("Nexus", new(Origin, true, 0, null, null, NoUnits)),
+        new("Nexus: gate 1/2 (blue)", new(Origin, true, 0, null, null, NoUnits), NexusGateProgress.Started),
+        new("Nexus: gate 2/2 (blue)", new(Origin, true, 0, null, null, NoUnits), NexusGateProgress.Completed),
+        new("Nexus: gate 1/2 (red)", new(Origin, true, 0, null, null, NoUnits), NexusGateProgress.Started,
+NexusFactionColor.Red),
+        new("Nexus: gate 2/2 (red)", new(Origin, true, 0, null, null, NoUnits), NexusGateProgress.Completed,
+NexusFactionColor.Red),
+        new("Coord: -2,1", new(NegCoord, false, 3, null, null, NoUnits)),
+        new("Coord: -1,-2", new(NegNegCoord, false, 2, null, P1, NoUnits)),
+        new(
+            "My units",
+            new(
+                Origin,
+                false,
+                2,
+                null,
+                P1,
+                WithUnits((P1, [(NexusUnitType.Frigate, 2), (NexusUnitType.Infantry, 1)]))
+            )
+        ),
+        new(
+            "Enemy units",
+            new(
+                Origin,
+                false,
+                2,
+                null,
+                P2,
+                WithUnits((P2, [(NexusUnitType.Cruiser, 1), (NexusUnitType.Fighter, 2)]))
+            )
+        ),
+        new(
+            "Contested",
+            new(
+                Origin,
+                false,
+                0,
+                null,
+                P1,
+                WithUnits(
+                    (P1, [(NexusUnitType.Destroyer, 1), (NexusUnitType.Infantry, 2)]),
+                    (P2, [(NexusUnitType.Frigate, 1)])
+                )
+            )
+        ),
+    ];
+}

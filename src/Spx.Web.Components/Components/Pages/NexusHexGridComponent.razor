@@ -2,20 +2,15 @@
 @using Spx.Game.Domain
 
 <div class="relative h-full w-full select-none">
-    <svg viewBox="-150 -140 300 280" class="h-full w-full" xmlns="http://www.w3.org/2000/svg">
-        <defs>
-            <marker id="nexus-arrow" markerWidth="6" markerHeight="4" refX="5" refY="2" orient="auto">
-                <polygon points="0 0, 6 2, 0 4" fill="rgba(251,191,36,0.9)" />
-            </marker>
-        </defs>
-
+    <svg viewBox="@ViewBox" class="h-full w-full" xmlns="http://www.w3.org/2000/svg">
         @* Pass 1: Hex cells *@
         @foreach (var system in Systems)
         {
             var center = NexusHexHelpers.HexCenter(system.Coord);
             <NexusHexCellComponent System="system" Center="center" CurrentPlayerId="CurrentPlayerId"
-                                   OpponentPlayerId="@OpponentPlayerId" CurrentPlayerGateProgress="CurrentPlayerGateProgress"
-                                   IsClickable="IsEditable" OnClicked="OnSystemClicked" />
+                                   OpponentPlayerId="@OpponentPlayerId" CurrentPlayerFaction="CurrentPlayerFaction"
+                                   CurrentPlayerGateProgress="CurrentPlayerGateProgress" IsClickable="IsEditable"
+                                   OnClicked="OnSystemClicked" />
         }
 
         @* Pass 2a: Valid-target rings *@
@@ -32,7 +27,7 @@
                      stroke="rgba(226,232,240,0.9)" stroke-width="2.5" pointer-events="none" />
         }
 
-        @* Pass 3: Move order arrows *@
+        @* Pass 3: Move order chevrons *@
         @foreach (var order in PendingMoveOrders)
         {
             var from = NexusHexHelpers.HexCenter(order.From);
@@ -42,11 +37,20 @@
             var len = Math.Sqrt(dx * dx + dy * dy);
             @if (len >= 1)
             {
-                var ex = to.X - dx / len * 12;
-                var ey = to.Y - dy / len * 12;
-                <line x1="@NexusHexHelpers.Fmt(from.X)" y1="@NexusHexHelpers.Fmt(from.Y)" x2="@NexusHexHelpers.Fmt(ex)"
-                      y2="@NexusHexHelpers.Fmt(ey)" stroke="rgba(251,191,36,0.85)" stroke-width="2" stroke-linecap="round"
-                      marker-end="url(#nexus-arrow)" />
+                var ux = dx / len;
+                var uy = dy / len;
+                var px = -uy;
+                var py = ux;
+                var mx = (from.X + to.X) / 2.0;
+                var my = (from.Y + to.Y) / 2.0;
+                const double h = 4.5;
+                const double w = 7;
+                var chevronColor = CurrentPlayerFaction == NexusFactionColor.Red ? "#f87171" : "#60a5fa";
+                var pts = $"{NexusHexHelpers.Fmt(mx - ux * h - px * w)},{NexusHexHelpers.Fmt(my - uy * h - py * w)} "
+                        + $"{NexusHexHelpers.Fmt(mx + ux * h)},{NexusHexHelpers.Fmt(my + uy * h)} "
+                        + $"{NexusHexHelpers.Fmt(mx - ux * h + px * w)},{NexusHexHelpers.Fmt(my - uy * h + py * w)}";
+                <polyline points="@pts" fill="none" stroke="@chevronColor" stroke-width="2" stroke-linecap="round"
+                          stroke-linejoin="round" pointer-events="none" />
             }
         }
     </svg>
@@ -82,4 +86,34 @@
 
     [Parameter]
     public EventCallback<HexCoord> OnSystemClicked { get; set; }
+
+    private string ViewBox
+    {
+        get
+        {
+            if (Systems.Count == 0)
+                return "-150 -140 300 280";
+
+            const double pad = 10;
+            var minX = double.MaxValue;
+            var minY = double.MaxValue;
+            var maxX = double.MinValue;
+            var maxY = double.MinValue;
+
+            foreach (var system in Systems)
+            {
+                var (cx, cy) = NexusHexHelpers.HexCenter(system.Coord);
+                if (cx - NexusHexHelpers.HexSize < minX) minX = cx - NexusHexHelpers.HexSize;
+                if (cy - NexusHexHelpers.HexSize < minY) minY = cy - NexusHexHelpers.HexSize;
+                if (cx + NexusHexHelpers.HexSize > maxX) maxX = cx + NexusHexHelpers.HexSize;
+                if (cy + NexusHexHelpers.HexSize > maxY) maxY = cy + NexusHexHelpers.HexSize;
+            }
+
+            var vx = NexusHexHelpers.Fmt(minX - pad);
+            var vy = NexusHexHelpers.Fmt(minY - pad);
+            var vw = NexusHexHelpers.Fmt(maxX - minX + pad * 2);
+            var vh = NexusHexHelpers.Fmt(maxY - minY + pad * 2);
+            return $"{vx} {vy} {vw} {vh}";
+        }
+    }
 }

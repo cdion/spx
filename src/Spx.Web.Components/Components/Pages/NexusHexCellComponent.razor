@@ -2,11 +2,11 @@
 @using System.Text
 
 <g @onclick="HandleClick" class="@(IsClickable ? "cursor-pointer" : "")">
-    <polygon points="@NexusHexHelpers.HexPoints(Center)" fill="@NexusHexHelpers.GetHexFill(System, CurrentPlayerId)"
+    <polygon points="@NexusHexHelpers.HexPoints(Center)" fill="@NexusHexHelpers.GetHexFill(System, CurrentPlayerId, CurrentPlayerFaction)"
              stroke="rgba(255,255,255,0.12)" stroke-width="1" opacity="0.92" />
 
     @* Triangle cap — home system indicator or Nexus gold *@
-    @if (NexusHexHelpers.GetCapFill(System, CurrentPlayerId) is { } capFill)
+    @if (NexusHexHelpers.GetCapFill(System, CurrentPlayerId, CurrentPlayerFaction) is { } capFill)
     {
         <polygon points="@NexusHexHelpers.CapPoints(Center)" fill="@capFill" />
     }
@@ -41,15 +41,26 @@
     public NexusGateProgress CurrentPlayerGateProgress { get; set; }
 
     [Parameter]
+    public NexusFactionColor CurrentPlayerFaction { get; set; }
+
+    [Parameter]
     public bool IsClickable { get; set; }
 
     [Parameter]
     public EventCallback<HexCoord> OnClicked { get; set; }
 
-    private string CoordLabel =>
-        $"<text x=\"{NexusHexHelpers.Fmt(Center.X)}\" y=\"{NexusHexHelpers.Fmt(Center.Y - 11)}\" "
-        + "text-anchor=\"middle\" fill=\"rgba(148,163,184,0.4)\" font-size=\"6.5\" font-family=\"monospace\">"
-        + $"{System.Coord.Q},{System.Coord.R}</text>";
+    private string CoordLabel
+    {
+        get
+        {
+            const string style =
+                "fill=\"rgba(148,163,184,0.4)\" font-size=\"6.5\" font-family=\"monospace\"";
+            var y = NexusHexHelpers.Fmt(Center.Y - 11);
+            var cx = NexusHexHelpers.Fmt(Center.X);
+            return $"<text x=\"{cx}\" y=\"{y}\" text-anchor=\"end\" {style}>{System.Coord.Q},</text>"
+                + $"<text x=\"{cx}\" y=\"{y}\" text-anchor=\"start\" {style}>{System.Coord.R}</text>";
+        }
+    }
 
     private string IncomeLabelMarkup
     {
@@ -70,29 +81,39 @@
         {
             var sb = new StringBuilder();
 
-            // Current player's units — top-left
+            // Current player's units — diamond at bottom-left, colored by faction
+            var myColor = CurrentPlayerFaction == NexusFactionColor.Red ? "#f87171" : "#60a5fa";
             var (myS, myQ, myG) = NexusHexHelpers.GetUnitCounts(System, CurrentPlayerId);
-            var myLabel = NexusHexHelpers.GetUnitLabel(myS, myQ, myG);
-            if (myLabel.Length > 0)
+            if (myS + myQ + myG > 0)
             {
+                var cx = NexusHexHelpers.Fmt(Center.X - 13);
+                var cy = NexusHexHelpers.Fmt(Center.Y + 10);
+                var cy4 = NexusHexHelpers.Fmt(Center.Y + 6);
+                var cy8 = NexusHexHelpers.Fmt(Center.Y + 14);
+                var cx4l = NexusHexHelpers.Fmt(Center.X - 17);
+                var cx4r = NexusHexHelpers.Fmt(Center.X - 9);
                 sb.Append(
-                    $"<text x=\"{NexusHexHelpers.Fmt(Center.X - 10)}\" y=\"{NexusHexHelpers.Fmt(Center.Y + 6)}\" "
-                    + "text-anchor=\"middle\" fill=\"#60a5fa\" font-size=\"6.5\" font-family=\"monospace\">"
-                    + $"{myLabel}</text>"
+                    $"<polygon points=\"{cx},{cy4} {cx4r},{cy} {cx},{cy8} {cx4l},{cy}\" "
+                    + $"fill=\"{myColor}\" stroke=\"rgba(255,255,255,0.15)\" stroke-width=\"0.5\"/>"
                 );
             }
 
-            // Opponent's units — bottom-right
+            // Opponent's units — diamond at bottom-right, opposite faction color
+            var opColor = CurrentPlayerFaction == NexusFactionColor.Red ? "#60a5fa" : "#f87171";
             if (OpponentPlayerId.HasValue)
             {
                 var (opS, opQ, opG) = NexusHexHelpers.GetUnitCounts(System, OpponentPlayerId.Value);
-                var opLabel = NexusHexHelpers.GetUnitLabel(opS, opQ, opG);
-                if (opLabel.Length > 0)
+                if (opS + opQ + opG > 0)
                 {
+                    var cx = NexusHexHelpers.Fmt(Center.X + 13);
+                    var cy = NexusHexHelpers.Fmt(Center.Y + 10);
+                    var cy4 = NexusHexHelpers.Fmt(Center.Y + 6);
+                    var cy8 = NexusHexHelpers.Fmt(Center.Y + 14);
+                    var cx4l = NexusHexHelpers.Fmt(Center.X + 9);
+                    var cx4r = NexusHexHelpers.Fmt(Center.X + 17);
                     sb.Append(
-                        $"<text x=\"{NexusHexHelpers.Fmt(Center.X + 10)}\" y=\"{NexusHexHelpers.Fmt(Center.Y + 16)}\" "
-                        + "text-anchor=\"middle\" fill=\"#f87171\" font-size=\"6.5\" font-family=\"monospace\">"
-                        + $"{opLabel}</text>"
+                        $"<polygon points=\"{cx},{cy4} {cx4r},{cy} {cx},{cy8} {cx4l},{cy}\" "
+                        + $"fill=\"{opColor}\" stroke=\"rgba(255,255,255,0.15)\" stroke-width=\"0.5\"/>"
                     );
                 }
             }
@@ -108,19 +129,19 @@
             if (!System.IsNexus || CurrentPlayerGateProgress == NexusGateProgress.None)
                 return string.Empty;
 
-            var label = CurrentPlayerGateProgress switch
-            {
-                NexusGateProgress.Started => "&#x2699;1/2",
-                NexusGateProgress.Completed => "&#x2699;2/2",
-                _ => string.Empty,
-            };
+            var (activeFill, dimFill) = CurrentPlayerFaction == NexusFactionColor.Red
+                ? ("#f87171", "rgba(248,113,113,0.18)")
+                : ("#60a5fa", "rgba(96,165,250,0.18)");
 
-            if (label.Length == 0)
-                return string.Empty;
+            var cx1 = NexusHexHelpers.Fmt(Center.X - 5);
+            var cx2 = NexusHexHelpers.Fmt(Center.X + 5);
+            var cy = NexusHexHelpers.Fmt(Center.Y - 2);
 
-            return $"<text x=\"{NexusHexHelpers.Fmt(Center.X)}\" y=\"{NexusHexHelpers.Fmt(Center.Y - 2)}\" "
-                + "text-anchor=\"middle\" fill=\"rgba(167,139,250,0.9)\" font-size=\"8\" font-family=\"monospace\">"
-                + $"{label}</text>";
+            var pip2Fill =
+                CurrentPlayerGateProgress >= NexusGateProgress.Completed ? activeFill : dimFill;
+
+            return $"<circle cx=\"{cx1}\" cy=\"{cy}\" r=\"3.5\" fill=\"{activeFill}\"/>"
+                + $"<circle cx=\"{cx2}\" cy=\"{cy}\" r=\"3.5\" fill=\"{pip2Fill}\"/>";
         }
     }
 

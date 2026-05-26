@@ -8,10 +8,10 @@
 
 <div class="grid gap-4 lg:grid-cols-[1fr_0.28fr]">
     <section class="ui-surface-section flex flex-col p-4 lg:p-5">
-        <p class="ui-panel-label mb-4">Map — P1 perspective (Red)</p>
-        <div class="min-h-0" style="height:560px">
+        <p class="ui-panel-label mb-4">Map — P1 perspective (@_view.CurrentPlayer.Faction)</p>
+        <div class="w-full" style="aspect-ratio: 300/280">
             <NexusHexGridComponent Systems="@_view.Systems" CurrentPlayerId="@P1" OpponentPlayerId="@P2"
-                                   CurrentPlayerFaction="NexusFactionColor.Red" CurrentPlayerGateProgress="@_gateProgress"
+                                   CurrentPlayerFaction="@_view.CurrentPlayer.Faction" CurrentPlayerGateProgress="@_gateProgress"
                                    IsEditable="true" PendingMoveOrders="@_pendingMoves" SelectedSystem="@_selected"
                                    ValidMoveTargets="@_validTargets" OnSystemClicked="OnSystemClicked" />
         </div>
