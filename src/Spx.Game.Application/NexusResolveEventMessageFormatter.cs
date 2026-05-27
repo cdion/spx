@@ -12,7 +12,7 @@ public static class NexusResolveEventMessageFormatter
         evt switch
         {
             NexusUnitsMovedEvent e =>
-                $"{PlayerName(e.PlayerId, playerNames)}'s units moved from {SectorName(e.From)} to {SectorName(e.To)}: {FormatUnits(e.Units)}",
+                $"{PlayerName(e.PlayerId, playerNames)}'s units {(e.IsRetreat ? "retreated from" : "advanced from")} {SectorName(e.From)} to {SectorName(e.To)}: {FormatUnits(e.Units)}",
             NexusPlanetaryControlEvent e =>
                 $"{PlayerName(e.PlayerId, playerNames)} took control of {SectorName(e.System)}",
             NexusSystemContestedEvent e =>
@@ -54,23 +54,17 @@ public static class NexusResolveEventMessageFormatter
             _ => $"Phase {e.Phase}",
         };
 
-        var rollLines = e
-            .AttackRolls.GroupBy(r => r.AttackingPlayerId)
-            .Select(g =>
-            {
-                var rolls = string.Join(
-                    ", ",
-                    g.Select(r =>
-                        $"{r.AttackerType}→{r.TargetType}: {r.Roll} (need {r.Threshold}+, {(r.IsHit ? "hit" : "miss")})"
-                    )
-                );
-                return $"{PlayerName(g.Key, playerNames)}: {rolls}";
-            });
+        var attackLines =
+            e.AttackRolls.Length > 0
+                ? e.AttackRolls.Select(r =>
+                    $"  {PlayerName(r.AttackingPlayerId, playerNames)}: {r.AttackerType}→{r.TargetType}: {r.Roll} (need {r.Threshold}+, {(r.IsHit ? "hit" : "miss")})"
+                )
+                : ["  no attacks"];
 
-        var attackSummary = e.AttackRolls.Length > 0 ? string.Join(" | ", rollLines) : "no attacks";
+        var header = $"{phaseName} phase at {SectorName(e.System)}";
 
         if (e.Losses.Length == 0)
-            return $"{phaseName} phase at {SectorName(e.System)} — {attackSummary}. No losses.";
+            return string.Join('\n', attackLines.Prepend(header).Append("  No losses."));
 
         var lossSummary = string.Join(
             ", ",
@@ -81,7 +75,7 @@ public static class NexusResolveEventMessageFormatter
                 )
         );
 
-        return $"{phaseName} phase at {SectorName(e.System)} — {attackSummary}. {lossSummary}.";
+        return string.Join('\n', attackLines.Prepend(header).Append($"  {lossSummary}."));
     }
 
     private static string SectorName(HexCoord coord) => NexusMap.GetSectorDisplayName(coord);

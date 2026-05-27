@@ -131,7 +131,10 @@ public static class NexusGameEngine
                 s.ControlOwner,
                 s.Units.ToImmutableDictionary(
                     outer => outer.Key,
-                    outer => outer.Value.ToImmutableDictionary()
+                    outer =>
+                        outer
+                            .Value.GroupBy(st => st.UnitType)
+                            .ToImmutableDictionary(g => g.Key, g => g.Sum(st => st.Count))
                 )
             ))
             .ToImmutableArray();
@@ -382,21 +385,34 @@ public static class NexusGameEngine
         List<NexusResolveEvent> events
     )
     {
+        var contestedSystems = state
+            .Systems.Where(s => s.HasAnyUnits(p1.PlayerId) && s.HasAnyUnits(p2.PlayerId))
+            .Select(s => s.Coord)
+            .ToHashSet();
+
         foreach (var player in new[] { p1, p2 })
         {
             foreach (var order in player.PendingMoveOrders)
             {
                 var src = GetSystem(state, order.From)!;
                 var dst = GetSystem(state, order.To)!;
+                var retreating = contestedSystems.Contains(order.From);
 
                 foreach (var (unitType, count) in order.Units)
                 {
-                    src.RemoveUnits(player.PlayerId, unitType, count);
-                    dst.AddUnits(player.PlayerId, unitType, count);
+                    var taken = src.TakeUnits(player.PlayerId, unitType, count, retreating);
+                    foreach (var (hitsAbsorbed, takenCount) in taken)
+                        dst.AddUnits(player.PlayerId, unitType, takenCount, hitsAbsorbed);
                 }
 
                 events.Add(
-                    new NexusUnitsMovedEvent(player.PlayerId, order.From, order.To, order.Units)
+                    new NexusUnitsMovedEvent(
+                        player.PlayerId,
+                        order.From,
+                        order.To,
+                        order.Units,
+                        retreating
+                    )
                 );
             }
         }
@@ -448,8 +464,8 @@ public static class NexusGameEngine
         Random rng
     )
     {
-        var units1 = ExpandUnits(system.GetPlayerUnits(player1Id));
-        var units2 = ExpandUnits(system.GetPlayerUnits(player2Id));
+        var units1 = ExpandUnits(system.GetPlayerStacks(player1Id));
+        var units2 = ExpandUnits(system.GetPlayerStacks(player2Id));
 
         var hadPlanetary1 = units1.Any(u => u.Type.IsPlanetary());
         var hadPlanetary2 = units2.Any(u => u.Type.IsPlanetary());
@@ -466,10 +482,39 @@ public static class NexusGameEngine
             if (!canAttack1 && !canAttack2)
                 continue;
 
-            var losses = new Dictionary<(Guid, NexusUnitType), int>();
+            var pendingHits = new List<(CombatUnit Target, Guid TargetPlayerId)>();
             var attackRolls = new List<NexusCombatAttackRoll>();
-            RunAttacks(units1, units2, player1Id, player2Id, phase, rng, losses, attackRolls);
-            RunAttacks(units2, units1, player2Id, player1Id, phase, rng, losses, attackRolls);
+            GatherAttacks(
+                units1,
+                units2,
+                player1Id,
+                player2Id,
+                phase,
+                rng,
+                pendingHits,
+                attackRolls
+            );
+            GatherAttacks(
+                units2,
+                units1,
+                player2Id,
+                player1Id,
+                phase,
+                rng,
+                pendingHits,
+                attackRolls
+            );
+
+            var losses = new Dictionary<(Guid, NexusUnitType), int>();
+            foreach (var (target, targetPlayerId) in pendingHits)
+            {
+                target.HitsAbsorbed++;
+                if (target.IsDestroyed)
+                {
+                    var key = (targetPlayerId, target.Type);
+                    losses[key] = losses.GetValueOrDefault(key) + 1;
+                }
+            }
 
             events.Add(
                 new NexusPhaseResultEvent(
@@ -508,14 +553,14 @@ public static class NexusGameEngine
         UpdateSystemControl(system, player1Id, player2Id, groundCombatOccurred, events);
     }
 
-    private static void RunAttacks(
+    private static void GatherAttacks(
         List<CombatUnit> attackers,
         List<CombatUnit> targets,
         Guid attackerPlayerId,
         Guid targetPlayerId,
         int phase,
         Random rng,
-        Dictionary<(Guid, NexusUnitType), int> losses,
+        List<(CombatUnit Target, Guid TargetPlayerId)> pendingHits,
         List<NexusCombatAttackRoll> attackRolls
     )
     {
@@ -554,14 +599,7 @@ public static class NexusGameEngine
             );
 
             if (isHit)
-            {
-                target.HitsAbsorbed++;
-                if (target.IsDestroyed)
-                {
-                    var key = (targetPlayerId, target.Type);
-                    losses[key] = losses.GetValueOrDefault(key) + 1;
-                }
-            }
+                pendingHits.Add((target, targetPlayerId));
         }
     }
 
@@ -620,21 +658,31 @@ public static class NexusGameEngine
         public bool IsDestroyed => HitsAbsorbed >= Type.Hull();
     }
 
-    private static List<CombatUnit> ExpandUnits(Dictionary<NexusUnitType, int> units)
+    private static List<CombatUnit> ExpandUnits(IReadOnlyList<NexusUnitStack> stacks)
     {
         var result = new List<CombatUnit>();
-        foreach (var (type, count) in units)
-            for (var i = 0; i < count; i++)
-                result.Add(new CombatUnit(type));
+        foreach (var stack in stacks)
+            for (var i = 0; i < stack.Count; i++)
+                result.Add(new CombatUnit(stack.UnitType) { HitsAbsorbed = stack.HitsAbsorbed });
         return result;
     }
 
-    private static Dictionary<NexusUnitType, int> CollapseAlive(List<CombatUnit> units)
+    private static List<NexusUnitStack> CollapseAlive(List<CombatUnit> units)
     {
-        var result = new Dictionary<NexusUnitType, int>();
+        var grouped = new Dictionary<(NexusUnitType, int), int>();
         foreach (var unit in units.Where(u => !u.IsDestroyed))
-            result[unit.Type] = result.GetValueOrDefault(unit.Type) + 1;
-        return result;
+        {
+            var key = (unit.Type, unit.HitsAbsorbed);
+            grouped[key] = grouped.GetValueOrDefault(key) + 1;
+        }
+        return grouped
+            .Select(kv => new NexusUnitStack
+            {
+                UnitType = kv.Key.Item1,
+                HitsAbsorbed = kv.Key.Item2,
+                Count = kv.Value,
+            })
+            .ToList();
     }
 
     private static CombatUnit PickTargetByWeight(List<CombatUnit> targets, Random rng)

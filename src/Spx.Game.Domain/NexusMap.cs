@@ -123,12 +123,27 @@ public static class NexusMap
             if (homePlayerId.HasValue)
             {
                 // Starting composition: 1 Carrier + 4 Infantry + 2 Fighters per player
-                system.Units[homePlayerId.Value] = new Dictionary<NexusUnitType, int>
-                {
-                    [NexusUnitType.Carrier] = 1,
-                    [NexusUnitType.Infantry] = 4,
-                    [NexusUnitType.Fighter] = 2,
-                };
+                system.Units[homePlayerId.Value] =
+                [
+                    new NexusUnitStack
+                    {
+                        UnitType = NexusUnitType.Carrier,
+                        HitsAbsorbed = 0,
+                        Count = 1,
+                    },
+                    new NexusUnitStack
+                    {
+                        UnitType = NexusUnitType.Infantry,
+                        HitsAbsorbed = 0,
+                        Count = 4,
+                    },
+                    new NexusUnitStack
+                    {
+                        UnitType = NexusUnitType.Fighter,
+                        HitsAbsorbed = 0,
+                        Count = 2,
+                    },
+                ];
             }
 
             systems.Add(system);

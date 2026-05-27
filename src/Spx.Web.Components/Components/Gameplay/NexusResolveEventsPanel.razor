@@ -8,8 +8,9 @@
         <div class="space-y-2">
             @foreach (var evt in Events)
             {
-                <button type="button" class="@GetRowClass(evt)" @onclick="() => OnEventClicked.InvokeAsync(evt)"
-                        @onmouseenter="() => OnEventHovered.InvokeAsync(evt)" @onmouseleave="OnEventHoverCleared">
+                <button type="button" class="whitespace-pre-line @GetRowClass(evt)"
+                        @onclick="() => OnEventClicked.InvokeAsync(evt)" @onmouseenter="() => OnEventHovered.InvokeAsync(evt)"
+                        @onmouseleave="OnEventHoverCleared">
                     @NexusResolveEventMessageFormatter.Format(evt, PlayerNames)
                 </button>
             }

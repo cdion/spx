@@ -62,7 +62,8 @@ internal static class NexusStoryFixtures
                 Player1Id,
                 NexusMap.Player1HomeCoord,
                 new HexCoord(1, -2),
-                ImmutableDictionary<NexusUnitType, int>.Empty.Add(NexusUnitType.Carrier, 1)
+                ImmutableDictionary<NexusUnitType, int>.Empty.Add(NexusUnitType.Carrier, 1),
+                IsRetreat: false
             ),
             new NexusCombatBeganEvent(new HexCoord(1, -2), Player1Id, Player2Id),
             new NexusIncomeEvent(

@@ -29,6 +29,24 @@ public sealed record NexusGameCompletion(
 );
 
 [GenerateSerializer]
+[System.Diagnostics.CodeAnalysis.SuppressMessage(
+    "Naming",
+    "CA1711:IdentifiersShouldNotHaveIncorrectSuffix",
+    Justification = "'Stack' is wargame domain terminology for a group of units sharing a hex, not a data structure."
+)]
+public sealed class NexusUnitStack
+{
+    [Id(0)]
+    public NexusUnitType UnitType { get; set; }
+
+    [Id(1)]
+    public int HitsAbsorbed { get; set; }
+
+    [Id(2)]
+    public int Count { get; set; }
+}
+
+[GenerateSerializer]
 public sealed class NexusSystemState
 {
     [Id(0)]
@@ -49,63 +67,114 @@ public sealed class NexusSystemState
     [Id(4)]
     public Guid? ControlOwner { get; set; }
 
-    /// <summary>Units present: player ID → unit type → count.</summary>
+    /// <summary>Units present: player ID → list of stacks (unit type + damage level + count).</summary>
     [Id(5)]
-    public Dictionary<Guid, Dictionary<NexusUnitType, int>> Units { get; set; } = [];
+    public Dictionary<Guid, List<NexusUnitStack>> Units { get; set; } = [];
 
     public int GetUnitCount(Guid playerId, NexusUnitType unitType)
     {
-        if (!Units.TryGetValue(playerId, out var byType))
+        if (!Units.TryGetValue(playerId, out var stacks))
             return 0;
-        return byType.TryGetValue(unitType, out var count) ? count : 0;
+        var total = 0;
+        foreach (var stack in stacks)
+            if (stack.UnitType == unitType)
+                total += stack.Count;
+        return total;
     }
 
-    public Dictionary<NexusUnitType, int> GetPlayerUnits(Guid playerId) =>
-        Units.TryGetValue(playerId, out var byType) ? byType : [];
-
-    public void AddUnits(Guid playerId, NexusUnitType unitType, int count)
+    public Dictionary<NexusUnitType, int> GetPlayerUnits(Guid playerId)
     {
-        if (!Units.TryGetValue(playerId, out var byType))
-        {
-            byType = [];
-            Units[playerId] = byType;
-        }
-
-        byType[unitType] = GetUnitCount(playerId, unitType) + count;
+        if (!Units.TryGetValue(playerId, out var stacks))
+            return [];
+        var result = new Dictionary<NexusUnitType, int>();
+        foreach (var stack in stacks)
+            result[stack.UnitType] = result.GetValueOrDefault(stack.UnitType) + stack.Count;
+        return result;
     }
 
-    public void RemoveUnits(Guid playerId, NexusUnitType unitType, int count)
-    {
-        var current = GetUnitCount(playerId, unitType);
-        var remaining = current - count;
+    public IReadOnlyList<NexusUnitStack> GetPlayerStacks(Guid playerId) =>
+        Units.TryGetValue(playerId, out var stacks) ? stacks : [];
 
-        if (remaining <= 0)
+    public void AddUnits(Guid playerId, NexusUnitType unitType, int count, int hitsAbsorbed = 0)
+    {
+        if (count <= 0)
+            return;
+        if (!Units.TryGetValue(playerId, out var stacks))
         {
-            if (Units.TryGetValue(playerId, out var byType))
-            {
-                byType.Remove(unitType);
-                if (byType.Count == 0)
-                    Units.Remove(playerId);
-            }
+            stacks = [];
+            Units[playerId] = stacks;
         }
+
+        var existing = stacks.Find(s => s.UnitType == unitType && s.HitsAbsorbed == hitsAbsorbed);
+        if (existing is not null)
+            existing.Count += count;
         else
+            stacks.Add(
+                new NexusUnitStack
+                {
+                    UnitType = unitType,
+                    HitsAbsorbed = hitsAbsorbed,
+                    Count = count,
+                }
+            );
+    }
+
+    public void RemoveUnits(
+        Guid playerId,
+        NexusUnitType unitType,
+        int count,
+        bool retreating = false
+    ) => TakeUnits(playerId, unitType, count, retreating);
+
+    /// <summary>
+    /// Removes <paramref name="count"/> units of <paramref name="unitType"/> and returns
+    /// the (HitsAbsorbed, Count) pairs actually taken, ordered by the retreating rule.
+    /// </summary>
+    public List<(int HitsAbsorbed, int Count)> TakeUnits(
+        Guid playerId,
+        NexusUnitType unitType,
+        int count,
+        bool retreating = false
+    )
+    {
+        var taken = new List<(int HitsAbsorbed, int Count)>();
+        if (!Units.TryGetValue(playerId, out var stacks))
+            return taken;
+
+        var ordered = retreating
+            ? stacks
+                .Where(s => s.UnitType == unitType)
+                .OrderByDescending(s => s.HitsAbsorbed)
+                .ToList()
+            : stacks.Where(s => s.UnitType == unitType).OrderBy(s => s.HitsAbsorbed).ToList();
+
+        var remaining = count;
+        foreach (var stack in ordered)
         {
-            Units[playerId][unitType] = remaining;
+            if (remaining <= 0)
+                break;
+            var take = Math.Min(stack.Count, remaining);
+            stack.Count -= take;
+            remaining -= take;
+            taken.Add((stack.HitsAbsorbed, take));
         }
+
+        stacks.RemoveAll(s => s.Count <= 0);
+        if (stacks.Count == 0)
+            Units.Remove(playerId);
+
+        return taken;
     }
 
     public bool HasPlanetaryUnits(Guid playerId)
     {
-        foreach (var unitType in GetPlayerUnits(playerId).Keys)
-        {
-            if (unitType.IsPlanetary())
-                return true;
-        }
-
-        return false;
+        if (!Units.TryGetValue(playerId, out var stacks))
+            return false;
+        return stacks.Any(s => s.UnitType.IsPlanetary());
     }
 
-    public bool HasAnyUnits(Guid playerId) => GetPlayerUnits(playerId).Count > 0;
+    public bool HasAnyUnits(Guid playerId) =>
+        Units.TryGetValue(playerId, out var stacks) && stacks.Count > 0;
 }
 
 [GenerateSerializer]

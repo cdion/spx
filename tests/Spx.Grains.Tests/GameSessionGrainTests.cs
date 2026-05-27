@@ -30,7 +30,12 @@ public sealed class NexusGameSessionGrainStateTests
 
         Assert.Equal(2, grainState.Game.Players.Count);
         Assert.Equal(1, grainState.Game.RoundNumber);
-        Assert.Equal(14, grainState.Game.Systems.Sum(s => s.Units.Values.Sum(u => u.Values.Sum())));
+        Assert.Equal(
+            14,
+            grainState.Game.Systems.Sum(s =>
+                s.Units.Values.Sum(stacks => stacks.Sum(st => st.Count))
+            )
+        );
     }
 
     [Fact]

@@ -665,6 +665,200 @@ public class NexusRoundResolutionTests
     }
 }
 
+// ── Engine — Persistent Damage ────────────────────────────────────────────────
+
+public class NexusPersistentDamageTests
+{
+    private static readonly Guid P1Id = Guid.Parse("aaaaaaaa-0000-0000-0000-000000000001");
+    private static readonly Guid P2Id = Guid.Parse("bbbbbbbb-0000-0000-0000-000000000002");
+
+    private static NexusGameState MakeState()
+    {
+        var state = new NexusGameState();
+        NexusGameEngine.Initialize(
+            state,
+            new InitializeNexusGameCommand(
+                ImmutableArray.Create(
+                    new GameSessionParticipant(P1Id),
+                    new GameSessionParticipant(P2Id)
+                )
+            ),
+            new Random(42)
+        );
+        return state;
+    }
+
+    private static void SubmitBoth(
+        NexusGameState state,
+        ImmutableArray<NexusMoveOrder> p1Moves = default,
+        ImmutableArray<NexusMoveOrder> p2Moves = default
+    )
+    {
+        NexusGameEngine.SubmitOrders(
+            state,
+            new NexusTurnOrdersCommand(
+                P1Id,
+                state.RoundNumber,
+                p1Moves.IsDefault ? [] : p1Moves,
+                [],
+                false
+            ),
+            new Random(42)
+        );
+        NexusGameEngine.SubmitOrders(
+            state,
+            new NexusTurnOrdersCommand(
+                P2Id,
+                state.RoundNumber,
+                p2Moves.IsDefault ? [] : p2Moves,
+                [],
+                false
+            ),
+            new Random(42)
+        );
+    }
+
+    [Fact]
+    public void Damage_PersistsBetweenRounds()
+    {
+        var s = MakeState();
+        var p1Home = s.Systems.First(sys => sys.HomePlayerId == P1Id);
+
+        // Replace P1's home units with a single Carrier that already has 1 hit absorbed
+        p1Home.Units[P1Id] =
+        [
+            new NexusUnitStack
+            {
+                UnitType = NexusUnitType.Carrier,
+                HitsAbsorbed = 1,
+                Count = 1,
+            },
+        ];
+
+        // Submit a round with no moves and no combat (P2 stays home)
+        SubmitBoth(s);
+
+        // Damage must survive the round unchanged
+        var stack = p1Home.GetPlayerStacks(P1Id).Single(st => st.UnitType == NexusUnitType.Carrier);
+        Assert.Equal(1, stack.HitsAbsorbed);
+        Assert.Equal(1, stack.Count);
+    }
+
+    [Fact]
+    public void Move_FromContested_TakesMostDamagedFirst()
+    {
+        var s = MakeState();
+        var p1Home = s.Systems.First(sys => sys.HomePlayerId == P1Id);
+
+        // Add two Frigates for P1: one damaged (HitsAbsorbed=1), one clean
+        p1Home
+            .Units[P1Id]
+            .Add(
+                new NexusUnitStack
+                {
+                    UnitType = NexusUnitType.Frigate,
+                    HitsAbsorbed = 1,
+                    Count = 1,
+                }
+            );
+        p1Home
+            .Units[P1Id]
+            .Add(
+                new NexusUnitStack
+                {
+                    UnitType = NexusUnitType.Frigate,
+                    HitsAbsorbed = 0,
+                    Count = 1,
+                }
+            );
+
+        // Place P2 in P1's home system to make it contested
+        p1Home.Units[P2Id] =
+        [
+            new NexusUnitStack
+            {
+                UnitType = NexusUnitType.Frigate,
+                HitsAbsorbed = 0,
+                Count = 1,
+            },
+        ];
+
+        var adjacent = new HexCoord(1, -2); // adjacent to P1 home (2,-2)
+
+        // P1 retreats 1 Frigate; P2 stays
+        SubmitBoth(
+            s,
+            p1Moves:
+            [
+                new NexusMoveOrder(
+                    NexusMap.Player1HomeCoord,
+                    adjacent,
+                    ImmutableDictionary<NexusUnitType, int>.Empty.Add(NexusUnitType.Frigate, 1)
+                ),
+            ]
+        );
+
+        // The most-damaged Frigate (HitsAbsorbed=1) should have moved to the destination
+        var dst = s.Systems.First(sys => sys.Coord == adjacent);
+        var movedStack = dst.GetPlayerStacks(P1Id)
+            .Single(st => st.UnitType == NexusUnitType.Frigate);
+        Assert.Equal(1, movedStack.HitsAbsorbed);
+    }
+
+    [Fact]
+    public void Move_Event_IsRetreat_SetCorrectly()
+    {
+        var s = MakeState();
+        var p1Home = s.Systems.First(sys => sys.HomePlayerId == P1Id);
+        var p2Home = s.Systems.First(sys => sys.HomePlayerId == P2Id);
+
+        // Make P1 home contested by adding a P2 unit there
+        p1Home.Units[P2Id] =
+        [
+            new NexusUnitStack
+            {
+                UnitType = NexusUnitType.Frigate,
+                HitsAbsorbed = 0,
+                Count = 1,
+            },
+        ];
+
+        var adjacentToP1 = new HexCoord(1, -2); // adjacent to P1 home (2,-2)
+        var adjacentToP2 = new HexCoord(-1, 2); // adjacent to P2 home (-2,2)
+
+        // P1 retreats from contested home; P2 advances from non-contested home
+        SubmitBoth(
+            s,
+            p1Moves:
+            [
+                new NexusMoveOrder(
+                    NexusMap.Player1HomeCoord,
+                    adjacentToP1,
+                    ImmutableDictionary<NexusUnitType, int>.Empty.Add(NexusUnitType.Carrier, 1)
+                ),
+            ],
+            p2Moves:
+            [
+                new NexusMoveOrder(
+                    NexusMap.Player2HomeCoord,
+                    adjacentToP2,
+                    ImmutableDictionary<NexusUnitType, int>.Empty.Add(NexusUnitType.Carrier, 1)
+                ),
+            ]
+        );
+
+        var p1MoveEvent = s
+            .LastResolveEvents.OfType<NexusUnitsMovedEvent>()
+            .Single(e => e.PlayerId == P1Id);
+        var p2MoveEvent = s
+            .LastResolveEvents.OfType<NexusUnitsMovedEvent>()
+            .Single(e => e.PlayerId == P2Id);
+
+        Assert.True(p1MoveEvent.IsRetreat);
+        Assert.False(p2MoveEvent.IsRetreat);
+    }
+}
+
 // ── Engine — Gate ─────────────────────────────────────────────────────────────
 
 public class NexusGateTests
