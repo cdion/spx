@@ -4,30 +4,28 @@
     <div class="flex items-center justify-between gap-2">
         <div class="flex items-center gap-2">
             <p class="@GetSystemLabelClass()">@GetSystemLabel()</p>
-            @if (System.HomePlayerId.HasValue)
-            {
-                <span class="inline-flex h-6 w-6 items-center justify-center rounded-full border border-white/15 bg-white/5" aria-label="Home system">
-                    <svg viewBox="-5 -5 10 10" class="h-3.5 w-3.5 fill-white/85" aria-hidden="true" focusable="false">
-                        <polygon points="0,-4 1.1,-1.5 3.8,-1.2 1.8,0.8 2.4,3.6 0,2.2 -2.4,3.6 -1.8,0.8 -3.8,-1.2 -1.1,-1.5" />
-                    </svg>
-                </span>
-            }
-            else
+            @if (System.IncomeValue > 0)
             {
                 <span class="ui-type-meta text-yellow-400/80">+@System.IncomeValue⚡</span>
+            }
+            @if (System.HomePlayerId.HasValue)
+            {
+                <span class="inline-flex h-6 w-6 items-center justify-center rounded-full border border-white/15 bg-white/5"
+                      aria-label="Home system">
+                    <svg viewBox="-5 -5 10 10" class="h-3.5 w-3.5 fill-white/85" aria-hidden="true" focusable="false">
+                        <polygon
+                        points="0,-4 1.1,-1.5 3.8,-1.2 1.8,0.8 2.4,3.6 0,2.2 -2.4,3.6 -1.8,0.8 -3.8,-1.2 -1.1,-1.5" />
+                    </svg>
+                </span>
             }
         </div>
     </div>
 
     <div class="space-y-3">
-        <div>
-            <p class="mb-2 text-base font-semibold @MyForcesClass">Your units</p>
-            @if (_myUnits.Count == 0)
-            {
-                <p class="text-base text-slate-500">No forces present.</p>
-            }
-            else
-            {
+        @if (_myUnits.Count > 0)
+        {
+            <div>
+                <p class="mb-2 text-base font-semibold @MyForcesClass">Fleet</p>
                 <div class="grid gap-2 sm:grid-cols-3">
                     @foreach (var group in UnitGroups)
                     {
@@ -46,104 +44,99 @@
                                         var available = AvailableUnits.GetValueOrDefault(unitType);
                                         var selected = _selection.GetValueOrDefault(unitType);
                                         var canInteract = IsEditable && available > 0;
-                                        <button type="button"
-                                                class="@GetFleetRowClass(unitType, canInteract)"
-                                                disabled="@(!canInteract)"
-                                                @onclick="e => OnFleetRowClickAsync(unitType, e)"
-                                                @ondblclick="() => SelectAllFleetAsync(unitType)"
-                                                @oncontextmenu:preventDefault="true"
+                                        <button type="button" class="@GetFleetRowClass(unitType, canInteract)"
+                                                disabled="@(!canInteract)" @onclick="e => OnFleetRowClickAsync(unitType, e)"
+                                                @ondblclick="() => SelectAllFleetAsync(unitType)" @oncontextmenu:preventDefault="true"
                                                 @oncontextmenu="() => RemoveOneFleetAsync(unitType)">
                                             <span class="text-base text-slate-100">@unitType</span>
                                             <span class="text-base text-slate-400">
                                                 @if (selected > 0)
                                                 {
-                                                    <span class="@SelectionCountClass">@selected</span><span class="text-slate-600"> / </span>
-                                                }
-                                                @available
-                                            </span>
-                                        </button>
-                                    }
-                                </div>
-                            }
-                        </div>
-                    }
-                </div>
-            }
-        </div>
-
-        @if (_enemyUnits.Count > 0)
-        {
-            <div>
-                <p class="mb-2 text-base font-semibold @EnemyForcesClass">Enemy forces</p>
-                <div class="grid gap-2 sm:grid-cols-3">
-                    @foreach (var group in UnitGroups)
-                    {
-                        var hasAny = group.UnitTypes.Any(unitType => _enemyUnits.GetValueOrDefault(unitType) > 0);
-                        <div class="rounded-lg border border-white/10 bg-slate-950/35 p-2">
-                            <p class="mb-1 text-base font-semibold uppercase tracking-wide text-slate-400">@group.Label</p>
-                            @if (!hasAny)
-                            {
-                                <p class="text-base text-slate-600">None</p>
-                            }
-                            else
-                            {
-                                <div class="space-y-1">
-                                    @foreach (var unitType in group.UnitTypes.Where(unit => _enemyUnits.GetValueOrDefault(unit) > 0))
-                                    {
-                                        var count = _enemyUnits.GetValueOrDefault(unitType);
-                                        <div class="flex items-center justify-between rounded-lg px-2 py-1.5">
-                                            <span class="text-base text-slate-300">@unitType</span>
-                                            <span class="text-base text-slate-500">@count</span>
-                                        </div>
-                                    }
-                                </div>
-                            }
-                        </div>
-                    }
-                </div>
-            </div>
-        }
-    </div>
-
-    @if (IsEditable && HasSelection)
-    {
-        <div class="space-y-2 border-t border-white/10 pt-3">
-            <div class="flex items-center justify-between gap-2 rounded-lg border border-white/10 bg-slate-950/40 px-3 py-1.5">
-                <p class="text-base text-slate-300">Carry: @SlotsNeeded / @CarryCapacity slots</p>
-                @if (!SelectionIsValid)
-                {
-                    <p class="text-base text-rose-400">Need ships</p>
+                                                    <span class="@SelectionCountClass">@selected</span><span class="text-slate-600"> /
+                                                </span>
+                                            }
+                                            @available
+                                        </span>
+                                    </button>
+                                }
+                            </div>
+                        }
+                    </div>
                 }
             </div>
-            @if (SelectionIsValid)
-            {
-                <p class="text-base text-sky-400/80">Click a highlighted sector on the map.</p>
-            }
         </div>
     }
 
-    @if (IsEditable && System.HomePlayerId == CurrentPlayerId)
+    @if (_enemyUnits.Count > 0)
     {
-        <div class="space-y-2 border-t border-white/10 pt-3">
-            <p class="text-base font-semibold text-slate-300">Build units</p>
+        <div>
+            <p class="mb-2 text-base font-semibold @EnemyForcesClass">Fleet</p>
             <div class="grid gap-2 sm:grid-cols-3">
                 @foreach (var group in UnitGroups)
                 {
+                    var hasAny = group.UnitTypes.Any(unitType => _enemyUnits.GetValueOrDefault(unitType) > 0);
                     <div class="rounded-lg border border-white/10 bg-slate-950/35 p-2">
                         <p class="mb-1 text-base font-semibold uppercase tracking-wide text-slate-400">@group.Label</p>
-                        <div class="space-y-1">
-                            @foreach (var unitType in group.UnitTypes)
-                            {
-                                var cost = unitType.Cost();
-                                var count = PendingBuildOrders.FirstOrDefault(o => o.UnitType == unitType)?.Count ?? 0;
-                                var canAdd = ProjectedEnergy >= cost;
-                                <button type="button"
-                                        class="@GetBuildRowClass(unitType, count, canAdd)"
-                                        @onclick="e => OnBuildRowClickAsync(unitType, e)"
-                                        @ondblclick="() => OnBuildAddMax.InvokeAsync(unitType)"
-                                        @oncontextmenu:preventDefault="true"
-                                        @oncontextmenu="() => OnBuildRemoveOne.InvokeAsync(unitType)">
-                                    <span class="text-base text-slate-100">@unitType <span class="ml-1 text-yellow-400">@cost⚡</span></span>
+                        @if (!hasAny)
+                        {
+                            <p class="text-base text-slate-600">None</p>
+                        }
+                        else
+                        {
+                            <div class="space-y-1">
+                                @foreach (var unitType in group.UnitTypes.Where(unit => _enemyUnits.GetValueOrDefault(unit) >
+                    0))
+                                {
+                                    var count = _enemyUnits.GetValueOrDefault(unitType);
+                                    <div class="flex items-center justify-between rounded-lg px-2 py-1.5">
+                                        <span class="text-base text-slate-300">@unitType</span>
+                                        <span class="text-base text-slate-500">@count</span>
+                                    </div>
+                                }
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+@if (IsEditable && HasSelection)
+{
+    <div class="space-y-2 border-t border-white/10 pt-3">
+        <div
+            class="flex items-center justify-between gap-2 rounded-lg border border-white/10 bg-slate-950/40 px-3 py-1.5">
+            <p class="text-base text-slate-300">Capacity: @SlotsNeeded / @CarryCapacity</p>
+        </div>
+        @if (SelectionIsValid)
+        {
+            <p class="text-base text-sky-400/80">Click a highlighted sector on the map.</p>
+        }
+    </div>
+}
+
+@if (IsEditable && System.HomePlayerId == CurrentPlayerId)
+{
+    <div class="space-y-2 border-t border-white/10 pt-3">
+        <p class="text-base font-semibold text-slate-300">Build units</p>
+        <div class="grid gap-2 sm:grid-cols-3">
+            @foreach (var group in UnitGroups)
+            {
+                <div class="rounded-lg border border-white/10 bg-slate-950/35 p-2">
+                    <p class="mb-1 text-base font-semibold uppercase tracking-wide text-slate-400">@group.Label</p>
+                    <div class="space-y-1">
+                        @foreach (var unitType in group.UnitTypes)
+                        {
+                            var cost = unitType.Cost();
+                            var count = PendingBuildOrders.FirstOrDefault(o => o.UnitType == unitType)?.Count ?? 0;
+                            var canAdd = ProjectedEnergy >= cost;
+                            <button type="button" class="@GetBuildRowClass(unitType, count, canAdd)"
+                                    @onclick="e => OnBuildRowClickAsync(unitType, e)"
+                                    @ondblclick="() => OnBuildAddMax.InvokeAsync(unitType)" @oncontextmenu:preventDefault="true"
+                                    @oncontextmenu="() => OnBuildRemoveOne.InvokeAsync(unitType)">
+                                <span class="text-base text-slate-100">@unitType <span
+                                    class="ml-1 text-yellow-400">@cost⚡</span></span>
                                     <span class="text-base text-slate-400">@count</span>
                                 </button>
                             }
@@ -169,9 +162,9 @@
 @code {
     private static readonly UnitGroup[] UnitGroups =
     [
-        new("Squadrons", Enum.GetValues<NexusUnitType>().Where(unitType => unitType.IsSquadron()).ToArray()),
-        new("Ships", Enum.GetValues<NexusUnitType>().Where(unitType => unitType.IsShip()).ToArray()),
-        new("Ground forces", Enum.GetValues<NexusUnitType>().Where(unitType => unitType.IsGroundForce()).ToArray()),
+        new("Strike", Enum.GetValues<NexusUnitType>().Where(unitType => unitType.Category() == NexusUnitCategory.Strike).ToArray()),
+        new("Capital", Enum.GetValues<NexusUnitType>().Where(unitType => unitType.Category() == NexusUnitCategory.Capital).ToArray()),
+        new("Planetary", Enum.GetValues<NexusUnitType>().Where(unitType => unitType.Category() == NexusUnitCategory.Planetary).ToArray()),
     ];
 
     [Parameter, EditorRequired]
@@ -236,7 +229,7 @@
 
     private int CarryCapacity => _selection.Sum(kv => kv.Key.CarryCapacity() * kv.Value);
 
-    private int SlotsNeeded => _selection.Where(kv => !kv.Key.IsShip()).Sum(kv => kv.Value);
+    private int SlotsNeeded => _selection.Where(kv => !kv.Key.IsCapital()).Sum(kv => kv.Value);
 
     private bool HasSelection => _selection.Values.Any(v => v > 0);
 
@@ -245,7 +238,7 @@
     private bool CanShowGateOption =>
         CurrentPlayerGateProgress != NexusGateProgress.Completed
         && System.IsNexus
-        && _myUnits.Any(kv => kv.Key.IsGroundForce() && kv.Value > 0);
+        && _myUnits.Any(kv => kv.Key.IsPlanetary() && kv.Value > 0);
 
     private string MyForcesClass =>
         CurrentPlayerFaction == NexusFactionColor.Red ? "text-red-400" : "text-sky-400";

@@ -13,12 +13,12 @@ public static class NexusResolveEventMessageFormatter
         {
             NexusUnitsMovedEvent e =>
                 $"{PlayerName(e.PlayerId, playerNames)}'s units moved from {SectorName(e.From)} to {SectorName(e.To)}: {FormatUnits(e.Units)}",
-            NexusGroundForcesControlEvent e =>
+            NexusPlanetaryControlEvent e =>
                 $"{PlayerName(e.PlayerId, playerNames)} took control of {SectorName(e.System)}",
             NexusSystemContestedEvent e =>
-                $"{SectorName(e.System)} is contested — ground forces on both sides",
+                $"{SectorName(e.System)} is contested — planetary units on both sides",
             NexusSystemUncontrolledEvent e =>
-                $"{SectorName(e.System)} is now uncontrolled — no ground forces present",
+                $"{SectorName(e.System)} is now uncontrolled — no planetary units present",
             NexusCombatBeganEvent e =>
                 $"Combat erupted at {SectorName(e.System)} between {PlayerName(e.Player1Id, playerNames)} and {PlayerName(e.Player2Id, playerNames)}",
             NexusPhaseResultEvent e => FormatPhaseResult(e, playerNames),
@@ -47,10 +47,10 @@ public static class NexusResolveEventMessageFormatter
     {
         var phaseName = e.Phase switch
         {
-            NexusCombatSpec.PhaseSquadron => "Squadron",
-            NexusCombatSpec.PhaseNaval => "Naval",
-            NexusCombatSpec.PhaseBombardment => "Bombardment",
-            NexusCombatSpec.PhaseGround => "Ground",
+            NexusCombatSpec.PhaseScreen => "Screen",
+            NexusCombatSpec.PhaseEngage => "Engage",
+            NexusCombatSpec.PhaseBombard => "Bombard",
+            NexusCombatSpec.PhaseAssault => "Assault",
             _ => $"Phase {e.Phase}",
         };
 

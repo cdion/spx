@@ -46,23 +46,23 @@ public sealed record NexusUnitsMovedEvent(
 // ── System Control ────────────────────────────────────────────────────────────
 
 /// <summary>
-/// A player's ground forces are the only ground forces in the system;
+/// A player's planetary units are the only planetary units in the system;
 /// control is assigned (or retained) to that player.
 /// </summary>
 [GenerateSerializer]
 [Immutable]
-public sealed record NexusGroundForcesControlEvent(
+public sealed record NexusPlanetaryControlEvent(
     [property: Id(0)] HexCoord System,
     [property: Id(1)] Guid PlayerId
 ) : NexusResolveEvent;
 
-/// <summary>Both players have ground forces in the system — control is contested.</summary>
+/// <summary>Both players have planetary units in the system — control is contested.</summary>
 [GenerateSerializer]
 [Immutable]
 public sealed record NexusSystemContestedEvent([property: Id(0)] HexCoord System)
     : NexusResolveEvent;
 
-/// <summary>No ground forces remain in the system — control becomes uncontrolled.</summary>
+/// <summary>No planetary units remain in the system — control becomes uncontrolled.</summary>
 [GenerateSerializer]
 [Immutable]
 public sealed record NexusSystemUncontrolledEvent([property: Id(0)] HexCoord System)
@@ -138,7 +138,7 @@ public sealed record NexusGateCompletedEvent(
     [property: Id(1)] HexCoord System
 ) : NexusResolveEvent;
 
-/// <summary>A player's Nexus Gate construction was cancelled (GF lost, moved, or insufficient energy).</summary>
+/// <summary>A player's Nexus Gate construction was cancelled (planetary units lost, moved, or insufficient energy).</summary>
 [GenerateSerializer]
 [Immutable]
 public sealed record NexusGateCancelledEvent(

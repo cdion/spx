@@ -94,11 +94,11 @@ public sealed class NexusSystemState
         }
     }
 
-    public bool HasGroundForces(Guid playerId)
+    public bool HasPlanetaryUnits(Guid playerId)
     {
         foreach (var unitType in GetPlayerUnits(playerId).Keys)
         {
-            if (unitType.IsGroundForce())
+            if (unitType.IsPlanetary())
                 return true;
         }
 

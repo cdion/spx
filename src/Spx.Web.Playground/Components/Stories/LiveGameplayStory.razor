@@ -1,0 +1,118 @@
+@page "/stories/gameplay-live"
+@rendermode InteractiveServer
+
+<div class="flex h-full flex-col">
+    <StoryHeader Title="Live Gameplay">
+        Real <code class="text-sky-300">NexusGameEngine</code> — play both sides.
+        Submit orders as one player, switch perspective, submit as the other.
+    </StoryHeader>
+
+    <div class="mb-4 flex flex-wrap items-center gap-3">
+        <button
+            class="rounded-lg border border-sky-500/30 bg-sky-900/10 px-4 py-1.5 text-sm text-sky-300 hover:bg-sky-900/20 disabled:cursor-not-allowed disabled:opacity-50"
+            @onclick="SwitchPlayer" disabled="@(_view.Completion is not null)">
+            Viewing: <span class="font-semibold text-white">@PlayerName(_viewingPlayerId)</span>
+            &nbsp;&rarr;&nbsp;Switch to @PlayerName(OtherPlayerId)
+        </button>
+
+        <div class="flex items-center gap-2 rounded-lg border border-white/10 bg-slate-900/40 px-3 py-1.5 text-xs">
+            <span class="@PlayerStatusClass(Player1Id)">@PlayerName(Player1Id)</span>
+            <span class="text-slate-600">/</span>
+            <span class="@PlayerStatusClass(Player2Id)">@PlayerName(Player2Id)</span>
+        </div>
+
+        @if (_view.Completion is not null)
+        {
+            <span
+                class="rounded-lg border border-emerald-500/30 bg-emerald-900/10 px-3 py-1.5 text-xs font-semibold text-emerald-300">
+                Game over
+            </span>
+        }
+
+        <button
+            class="ml-auto rounded-lg border border-rose-500/30 bg-rose-900/10 px-4 py-1.5 text-sm text-rose-300 hover:bg-rose-900/20"
+            @onclick="Restart">
+            Restart
+        </button>
+    </div>
+
+    <div class="flex min-h-0 flex-1 flex-col">
+        <NexusGameplayPanel Session="_view" Lobby="_lobby" IsSubmittingAction="false" GameplayError="@_error"
+                            OnSubmitOrders="HandleSubmitOrders" />
+    </div>
+</div>
+
+@code {
+    private static readonly Guid Player1Id = NexusStoryFixtures.Player1Id;
+    private static readonly Guid Player2Id = NexusStoryFixtures.Player2Id;
+
+    private NexusGameState _state = new();
+    private Guid _gameId;
+    private Random _rng = new();
+    private Guid _viewingPlayerId;
+    private NexusGameView _view = null!;
+    private GameLobbyView _lobby = null!;
+    private string? _error;
+
+    private Guid OtherPlayerId => _viewingPlayerId == Player1Id ? Player2Id : Player1Id;
+
+    protected override void OnInitialized() => InitGame();
+
+    private void InitGame()
+    {
+        _state = new NexusGameState();
+        _gameId = Guid.NewGuid();
+        _rng = new Random();
+        _viewingPlayerId = Player1Id;
+        _error = null;
+
+        NexusGameEngine.Initialize(
+            _state,
+            new InitializeNexusGameCommand(
+                [new GameSessionParticipant(Player1Id), new GameSessionParticipant(Player2Id)]
+            ),
+            _rng
+        );
+
+        _lobby = NexusStoryFixtures.CreateLobby(_gameId);
+        RefreshView();
+    }
+
+    private void SwitchPlayer()
+    {
+        _viewingPlayerId = OtherPlayerId;
+        RefreshView();
+        _error = null;
+    }
+
+    private void Restart() => InitGame();
+
+    private void HandleSubmitOrders(NexusTurnOrdersCommand command)
+    {
+        var result = NexusGameEngine.SubmitOrders(_state, command, _rng);
+        _error = result is NexusTurnOrdersRejected rejected ? rejected.ErrorMessage : null;
+        RefreshView();
+    }
+
+    private void RefreshView()
+    {
+        _lobby = _lobby with
+        {
+            CurrentPlayerId = _viewingPlayerId,
+            CurrentPlayerName = PlayerName(_viewingPlayerId),
+            IsCurrentUserActive = true,
+        };
+        _view = NexusGameEngine.BuildView(_state, _gameId, _viewingPlayerId);
+    }
+
+    private static string PlayerName(Guid id) =>
+        NexusStoryFixtures.PlayerNames.TryGetValue(id, out var n) ? n : id.ToString("N")[..8];
+
+    private string PlayerStatusClass(Guid id)
+    {
+        var player = _state.Players.FirstOrDefault(p => p.PlayerId == id);
+        if (player is null)
+            return "text-slate-500";
+        return player.HasSubmittedOrders ? "font-medium text-emerald-400" : "text-slate-400";
+    }
+}

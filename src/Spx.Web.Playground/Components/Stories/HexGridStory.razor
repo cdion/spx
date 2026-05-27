@@ -1,10 +1,9 @@
 @page "/stories/hex-grid"
 @rendermode InteractiveServer
 
-<h1 class="mb-1 text-xl font-semibold text-white">Hex Grid</h1>
-<p class="mb-5 text-sm text-slate-400">
+<StoryHeader Title="Hex Grid">
     Click a system to select it and see valid move destinations highlighted.
-</p>
+</StoryHeader>
 
 <div class="grid gap-4 lg:grid-cols-[1fr_0.28fr]">
     <section class="ui-surface-section flex flex-col p-4 lg:p-5">
@@ -33,8 +32,7 @@
             </div>
             <div class="space-y-2">
                 <p class="text-xs text-slate-400">Pending moves</p>
-                <button class="rounded-md border border-white/10 px-3 py-1.5 text-xs text-slate-300 hover:bg-white/5"
-                        @onclick="ClearMoves">
+                <button class="ui-pg-ghost-btn" @onclick="ClearMoves">
                     Clear
                 </button>
             </div>

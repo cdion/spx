@@ -8,10 +8,9 @@
         var disabled = DisabledSelector?.Invoke(item) ?? false;
         var tabId = GetTabId(item, i);
         var panelId = GetPanelId(item, i);
-        <button type="button" class="@(selected ? ActiveItemClass : InactiveItemClass)"
-            id="@tabId" role="tab" aria-selected="@(selected ? "true" : "false")" aria-controls="@panelId" tabindex="@(selected ? 0 : -1)"
-                disabled="@disabled" @onkeydown="e => OnTabKeyDownAsync(e, i)"
-                @onclick="() => OnSelected.InvokeAsync(item)">
+        <button type="button" class="@(selected ? ActiveItemClass : InactiveItemClass)" id="@tabId" role="tab"
+                aria-selected="@(selected ? "true" : "false")" aria-controls="@panelId" tabindex="@(selected ? 0 : -1)"
+                disabled="@disabled" @onkeydown="e => OnTabKeyDownAsync(e, i)" @onclick="() => OnSelected.InvokeAsync(item)">
             @ItemLabelSelector(item)
         </button>
     }

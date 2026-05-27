@@ -1,16 +1,9 @@
 <div class="space-y-4">
     <NexusPendingOrdersListComponent MoveOrders="@MoveOrders" BuildOrders="@BuildOrders"
                                      CurrentPlayerName="@CurrentPlayerName" CurrentPlayerHomeCoord="@CurrentPlayerHomeCoord"
-                                     BeginNexusGate="@BeginNexusGate" IsEditable="@IsEditable"
-                                     OnRemoveMoveOrder="OnRemoveMoveOrder" OnRemoveBuildOrder="OnRemoveBuildOrder"
-                                     OnRemoveGateOrder="OnRemoveGateOrder" />
+                                     BeginNexusGate="@BeginNexusGate" IsEditable="@IsEditable" OnRemoveMoveOrder="OnRemoveMoveOrder"
+                                     OnRemoveBuildOrder="OnRemoveBuildOrder" OnRemoveGateOrder="OnRemoveGateOrder" />
 
-    @if (ShowSubmitButton)
-    {
-        <button class="ui-button-primary w-full" @onclick="OnSubmitOrders" disabled="@IsSubmittingAction">
-            @(IsSubmittingAction ? "Submitting..." : "Submit orders")
-        </button>
-    }
 </div>
 
 @code {
@@ -33,12 +26,6 @@
     public bool IsEditable { get; set; }
 
     [Parameter]
-    public bool ShowSubmitButton { get; set; }
-
-    [Parameter]
-    public bool IsSubmittingAction { get; set; }
-
-    [Parameter]
     public EventCallback<NexusMoveOrder> OnRemoveMoveOrder { get; set; }
 
     [Parameter]
@@ -46,7 +33,4 @@
 
     [Parameter]
     public EventCallback OnRemoveGateOrder { get; set; }
-
-    [Parameter]
-    public EventCallback OnSubmitOrders { get; set; }
 }

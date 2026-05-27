@@ -290,6 +290,20 @@
         @apply border-orange-500/40 bg-orange-900/20;
     }
 
+    /* Playground — story UI utilities */
+
+    .ui-pg-tab {
+        @apply rounded-lg border border-white/10 px-4 py-1.5 text-sm text-slate-400 hover:bg-white/5;
+    }
+
+    .ui-pg-tab-active {
+        @apply rounded-lg border border-sky-500/40 bg-sky-900/20 px-4 py-1.5 text-sm text-sky-200;
+    }
+
+    .ui-pg-ghost-btn {
+        @apply rounded-md border border-white/10 px-3 py-1.5 text-xs text-slate-300 hover:bg-white/5;
+    }
+
     .blazor-error-boundary {
         @apply bg-red-800 bg-none px-4 py-3 pl-15 text-white;
     }

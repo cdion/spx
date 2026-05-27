@@ -236,9 +236,9 @@ public static class NexusGameEngine
                 return new NexusTurnOrdersRejected("Nexus Gate is already completed.");
 
             var nexusSystem = GetSystem(state, NexusMap.NexusCoord);
-            if (nexusSystem is null || !nexusSystem.HasGroundForces(player.PlayerId))
+            if (nexusSystem is null || !nexusSystem.HasPlanetaryUnits(player.PlayerId))
                 return new NexusTurnOrdersRejected(
-                    "Cannot begin Nexus Gate: no ground forces on the Nexus."
+                    "Cannot begin Nexus Gate: no planetary units on the Nexus."
                 );
         }
 
@@ -312,11 +312,11 @@ public static class NexusGameEngine
         foreach (var player in players)
         {
             var nexus = GetSystem(state, NexusMap.NexusCoord);
-            var hasGfOnNexus = nexus is not null && nexus.HasGroundForces(player.PlayerId);
+            var hasPlanetaryOnNexus = nexus is not null && nexus.HasPlanetaryUnits(player.PlayerId);
 
-            if (player.PendingBeginNexusGate && !hasGfOnNexus)
+            if (player.PendingBeginNexusGate && !hasPlanetaryOnNexus)
             {
-                // Committed this turn but GF lost or never arrived — cancel and refund
+                // Committed this turn but planetary units lost or never arrived — cancel and refund
                 player.Energy += GateCost;
                 if (player.GateProgress == NexusGateProgress.Started)
                     player.GateProgress = NexusGateProgress.None;
@@ -331,7 +331,7 @@ public static class NexusGameEngine
                 player.GateProgress = NexusGateProgress.None;
                 events.Add(new NexusGateCancelledEvent(player.PlayerId, NexusMap.NexusCoord));
             }
-            else if (player.PendingBeginNexusGate && hasGfOnNexus)
+            else if (player.PendingBeginNexusGate && hasPlanetaryOnNexus)
             {
                 if (player.GateProgress == NexusGateProgress.None)
                 {
@@ -451,9 +451,9 @@ public static class NexusGameEngine
         var units1 = ExpandUnits(system.GetPlayerUnits(player1Id));
         var units2 = ExpandUnits(system.GetPlayerUnits(player2Id));
 
-        var hadGf1 = units1.Any(u => u.Type.IsGroundForce());
-        var hadGf2 = units2.Any(u => u.Type.IsGroundForce());
-        var groundCombatOccurred = hadGf1 && hadGf2;
+        var hadPlanetary1 = units1.Any(u => u.Type.IsPlanetary());
+        var hadPlanetary2 = units2.Any(u => u.Type.IsPlanetary());
+        var groundCombatOccurred = hadPlanetary1 && hadPlanetary2;
 
         for (var phase = 1; phase <= 4; phase++)
         {
@@ -575,26 +575,26 @@ public static class NexusGameEngine
         List<NexusResolveEvent> events
     )
     {
-        var p1HasGf = system.HasGroundForces(player1Id);
-        var p2HasGf = system.HasGroundForces(player2Id);
+        var p1HasPlanetary = system.HasPlanetaryUnits(player1Id);
+        var p2HasPlanetary = system.HasPlanetaryUnits(player2Id);
 
-        if (p1HasGf && !p2HasGf)
+        if (p1HasPlanetary && !p2HasPlanetary)
         {
             if (system.ControlOwner != player1Id)
             {
                 system.ControlOwner = player1Id;
-                events.Add(new NexusGroundForcesControlEvent(system.Coord, player1Id));
+                events.Add(new NexusPlanetaryControlEvent(system.Coord, player1Id));
             }
         }
-        else if (p2HasGf && !p1HasGf)
+        else if (p2HasPlanetary && !p1HasPlanetary)
         {
             if (system.ControlOwner != player2Id)
             {
                 system.ControlOwner = player2Id;
-                events.Add(new NexusGroundForcesControlEvent(system.Coord, player2Id));
+                events.Add(new NexusPlanetaryControlEvent(system.Coord, player2Id));
             }
         }
-        else if (p1HasGf && p2HasGf)
+        else if (p1HasPlanetary && p2HasPlanetary)
         {
             if (system.ControlOwner is not null)
             {
@@ -604,11 +604,11 @@ public static class NexusGameEngine
         }
         else if (groundCombatOccurred && system.ControlOwner is not null)
         {
-            // All GF wiped out in ground combat
+            // All planetary units wiped out in ground combat
             system.ControlOwner = null;
             events.Add(new NexusSystemUncontrolledEvent(system.Coord));
         }
-        // else: ships/sqd only present — retain existing control
+        // else: capital ships or strike craft only — retain existing control
     }
 
     // ── Combat Helpers ────────────────────────────────────────────────────────
@@ -617,7 +617,7 @@ public static class NexusGameEngine
     {
         public NexusUnitType Type { get; } = type;
         public int HitsAbsorbed { get; set; }
-        public bool IsDestroyed => HitsAbsorbed >= Type.Silhouette();
+        public bool IsDestroyed => HitsAbsorbed >= Type.Hull();
     }
 
     private static List<CombatUnit> ExpandUnits(Dictionary<NexusUnitType, int> units)

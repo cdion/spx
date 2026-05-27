@@ -127,8 +127,8 @@ internal static class NexusHexHelpers
 
     // ── Unit counts ───────────────────────────────────────────────────────────
 
-    /// <summary>Returns the S/Q/G breakdown for a single player's units in a system.</summary>
-    public static (int Ships, int Squadrons, int GroundForces) GetUnitCounts(
+    /// <summary>Returns the Capital/Strike/Planetary breakdown for a single player's units in a system.</summary>
+    public static (int Capital, int Strike, int Planetary) GetUnitCounts(
         NexusSystemView system,
         Guid playerId
     )
@@ -136,32 +136,38 @@ internal static class NexusHexHelpers
         if (!system.Units.TryGetValue(playerId, out var units))
             return (0, 0, 0);
 
-        var ships = 0;
-        var sqd = 0;
-        var gnd = 0;
+        var capital = 0;
+        var strike = 0;
+        var planetary = 0;
         foreach (var (type, count) in units)
         {
-            if (type.IsShip())
-                ships += count;
-            else if (type.IsSquadron())
-                sqd += count;
-            else if (type.IsGroundForce())
-                gnd += count;
+            switch (type.Category())
+            {
+                case NexusUnitCategory.Capital:
+                    capital += count;
+                    break;
+                case NexusUnitCategory.Strike:
+                    strike += count;
+                    break;
+                case NexusUnitCategory.Planetary:
+                    planetary += count;
+                    break;
+            }
         }
 
-        return (ships, sqd, gnd);
+        return (capital, strike, planetary);
     }
 
-    /// <summary>Compact unit label: "S·2 Q·1 G·3" (omits zero categories).</summary>
-    public static string GetUnitLabel(int ships, int squadrons, int groundForces)
+    /// <summary>Compact unit label: "C·2 S·1 P·3" (omits zero categories).</summary>
+    public static string GetUnitLabel(int capital, int strike, int planetary)
     {
         var parts = new List<string>(3);
-        if (ships > 0)
-            parts.Add($"S·{ships}");
-        if (squadrons > 0)
-            parts.Add($"Q·{squadrons}");
-        if (groundForces > 0)
-            parts.Add($"G·{groundForces}");
+        if (capital > 0)
+            parts.Add($"C·{capital}");
+        if (strike > 0)
+            parts.Add($"S·{strike}");
+        if (planetary > 0)
+            parts.Add($"P·{planetary}");
         return string.Join(" ", parts);
     }
 

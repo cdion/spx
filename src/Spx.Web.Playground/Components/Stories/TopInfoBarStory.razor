@@ -1,10 +1,9 @@
 @page "/stories/top-info-bar"
 @rendermode InteractiveServer
 
-<h1 class="mb-1 text-xl font-semibold text-white">Top Info Bar</h1>
-<p class="mb-5 text-sm text-slate-400">
+<StoryHeader Title="Top Info Bar">
     <code class="text-sky-300">NexusGameplayTopInfoBar</code> showing both players, faction colors, energy, round, and presence.
-</p>
+</StoryHeader>
 
 <div class="mb-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
     <label class="ui-panel-card-inner flex items-center gap-2 text-xs text-slate-300">
@@ -49,8 +48,7 @@
                         OpponentHasSubmittedOrders="@_opponentSubmitted" />
 
 <div class="mt-3 flex flex-wrap gap-2">
-    <button class="rounded-md border border-white/10 px-3 py-1.5 text-xs text-slate-300 hover:bg-white/5"
-            @onclick="SwapFactions">
+    <button class="ui-pg-ghost-btn" @onclick="SwapFactions">
         Swap factions
     </button>
 </div>

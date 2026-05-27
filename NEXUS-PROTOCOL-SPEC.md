@@ -46,42 +46,42 @@ One resource type: **Energy**.
 
 ## Units
 
-Three categories of units: **Ships**, **Squadrons**, and **Ground Forces**.
+Three categories of units: **Capital**, **Strike**, and **Planetary**.
 
 **Movement:**
 - A Move order selects any subset of units on a system and an adjacent destination system; all selected units move together
 - Ships can always be included in a move; they provide carry capacity (Carrier: 8, Cruiser: 2; Frigates and Destroyers: 0)
-- Squadrons and ground forces may only move if included alongside ships whose combined capacity covers them; each squadron or ground force unit consumes 1 capacity slot
+- Strike craft and planetary units may only move if included alongside capital ships whose combined capacity covers them; each strike or planetary unit consumes 1 capacity slot
 - A system may contain any number of units from either player; units not included in a move order stay in place
 - Multiple separate Move orders may originate from the same system in the same turn (e.g. one set of units moves, another stays)
 
 **Building:** All unit types are built at the home system. Any number of units may be built per turn, limited only by available Energy.
 
-### Ships
+### Capital
 
-| Unit | Cost | Silhouette | Base hit | Combat role |
-|---|---|---|---|---|
-| **Frigate** | 4 | 2 | 4+ | Anti-ship; weak against squadrons |
-| **Destroyer** | 5 | 2 | 3+ | Anti-squadron and anti-ship; participates in Phase 1 and Phase 2 |
-| **Cruiser** | 6 | 3 | 3+ | Heavy anti-ship; capacity 2 (any mix of squadrons and ground forces) |
-| **Carrier** | 8 | 4 | 6+ | Transport; capacity 8 (any mix of squadrons and ground forces) |
+| Unit | Category | Cost | Hull | Silhouette | Base hit | Combat role |
+|---|---|---|---|---|---|---|
+| **Frigate** | Capital | 4 | 2 | 2 | 4+ | Anti-ship; weak against strike craft |
+| **Destroyer** | Capital | 5 | 2 | 2 | 3+ | Anti-strike and anti-ship; participates in Screen and Engage |
+| **Cruiser** | Capital | 6 | 3 | 3 | 3+ | Heavy anti-ship; capacity 2 (any mix of strike craft and planetary units) |
+| **Carrier** | Capital | 8 | 4 | 4 | 6+ | Transport; capacity 8 (any mix of strike craft and planetary units) |
 
-### Squadrons
+### Strike
 
-| Unit | Cost | Silhouette | Base hit | Combat role |
-|---|---|---|---|---|
-| **Interceptor** | 2 | 1 | 3+ | Counters fighters and bombers; cannot attack ships |
-| **Fighter** | 2 | 1 | 4+ | General-purpose; engages all enemy squadrons |
-| **Bomber** | 4 | 2 | 5+ | Attacks ships in Phase 2; bombards ground forces in Phase 3 |
+| Unit | Category | Cost | Hull | Silhouette | Base hit | Combat role |
+|---|---|---|---|---|---|---|
+| **Interceptor** | Strike | 2 | 1 | 1 | 4+ | Counters fighters and bombers; cannot attack ships |
+| **Fighter** | Strike | 2 | 1 | 1 | 4+ | General-purpose; engages all enemy strike craft |
+| **Bomber** | Strike | 4 | 2 | 2 | 5+ | Attacks capital ships in Engage; bombards planetary units in Bombard |
 
-### Ground Forces
+### Planetary
 
-| Unit | Cost | Silhouette | Base hit | Combat role |
-|---|---|---|---|---|
-| **Infantry** | 2 | 1 | 4+ | General ground combat |
-| **Armor** | 4 | 2 | 3+ | Armored assault; advantage over infantry |
+| Unit | Category | Cost | Hull | Silhouette | Base hit | Combat role |
+|---|---|---|---|---|---|---|
+| **Infantry** | Planetary | 2 | 1 | 1 | 4+ | General ground combat |
+| **Armor** | Planetary | 4 | 2 | 2 | 3+ | Armored assault; advantage over infantry |
 
-Only ground forces may begin **Nexus Gate** construction.
+Only planetary units may begin **Nexus Gate** construction.
 
 **Starting composition:** 1 Carrier, 4 Infantry, 2 Fighters — placed at the player's home system at game start.
 
@@ -94,7 +94,7 @@ Each round follows this sequence:
 1. **Plan phase** — both players simultaneously and secretly commit orders
 2. **Resolve phase:**
    1. Build cost deducted · Nexus Gate payment deducted
-   2. Moves — all units move simultaneously. Units whose paths cross in opposite directions (A moves to B's system while B moves to A's system) simply swap — no combat at either system. If units arrive at a system occupied by enemy units, they stop and combat resolves in step 3. Ground forces arriving at an opponent-controlled or uncontrolled system with no opponent ground forces present take control of it immediately.
+   2. Moves — all units move simultaneously. Units whose paths cross in opposite directions (A moves to B's system while B moves to A's system) simply swap — no combat at either system. If units arrive at a system occupied by enemy units, they stop and combat resolves in step 3. Planetary units arriving at an opponent-controlled or uncontrolled system with no opponent planetary units present take control of it immediately.
    3. Combat — all contested systems resolve simultaneously (four exchange phases each)
    4. Income — all income calculated and applied simultaneously; a player earns income from every system they control
    5. Newly built units appear at home system
@@ -108,7 +108,7 @@ Each unit may be given one order per turn. A unit with no order stays in place.
 
 | Order | Effect |
 |---|---|
-| **Move** | Select any units on this system and an adjacent destination system; move them together. Ships in the selection provide capacity; each squadron or ground force in the selection consumes 1 capacity slot. A selection with squadrons or ground forces but insufficient ship capacity is invalid. Combat resolves at the destination if the opponent has units there. |
+| **Move** | Select any units on this system and an adjacent destination system; move them together. Capital ships in the selection provide capacity; each strike craft or planetary unit in the selection consumes 1 capacity slot. A selection with strike craft or planetary units but insufficient capital ship capacity is invalid. Combat resolves at the destination if the opponent has units there. |
 
 Multiple units on the same system may each be assigned different orders independently.
 
@@ -117,27 +117,27 @@ Player-level orders (not unit-specific):
 | Order | Effect |
 |---|---|
 | **Build [unit]** | At home system only; costs vary by unit type (see Units section); any number of units may be built per turn; units appear at end of Resolve and can receive orders the following turn |
-| **Begin Nexus Gate** | At least one ground force must be present on the Nexus; commits resources toward construction |
+| **Begin Nexus Gate** | At least one planetary unit must be present on the Nexus; commits resources toward construction |
 
 ---
 
 ## System Control
 
-A player **controls** a system when they have at least one ground force on it and the opponent does not. Control is the mechanism for earning income from a system.
+A player **controls** a system when they have at least one planetary unit on it and the opponent does not. Control is the mechanism for earning income from a system.
 
-**Establishing control:** Ground forces arriving at an uncontrolled system or an opponent-controlled system with no opponent ground forces present take control of it immediately during the Moves step. No order is required — presence is sufficient.
+**Establishing control:** Planetary units arriving at an uncontrolled system or an opponent-controlled system with no opponent planetary units present take control of it immediately during the Moves step. No order is required — presence is sufficient.
 
-**Retaining control:** A player retains control of a system after voluntarily moving their ground forces away. The system stays controlled until the opponent's ground forces arrive.
+**Retaining control:** A player retains control of a system after voluntarily moving their planetary units away. The system stays controlled until the opponent's planetary units arrive.
 
-**Contested system:** A system with both players' ground forces present is contested — neither player controls it and it produces no income for either player. After combat resolves, the side whose ground forces survive gains control. If all ground forces on both sides are eliminated in combat, the system becomes uncontrolled.
+**Contested system:** A system with both players' planetary units present is contested — neither player controls it and it produces no income for either player. After combat resolves, the side whose planetary units survive gains control. If all planetary units on both sides are eliminated in combat, the system becomes uncontrolled.
 
-**Ships and squadrons** cannot establish or change control. Moving ships into an opponent-controlled system does not affect control.
+**Capital ships and strike craft** cannot establish or change control. Moving capital ships into an opponent-controlled system does not affect control.
 
-**Uncontrolled system:** A system that has never been captured, or where combat eliminated all ground forces from both sides. Produces no income until one player's ground forces arrive.
+**Uncontrolled system:** A system that has never been captured, or where combat eliminated all planetary units from both sides. Produces no income until one player's planetary units arrive.
 
-**Home systems** are under each player's control from game start and follow the same rules as any other system — they can be captured if the opponent's ground forces arrive uncontested.
+**Home systems** are under each player's control from game start and follow the same rules as any other system — they can be captured if the opponent's planetary units arrive uncontested.
 
-**The Nexus** cannot be controlled for income regardless of ground force presence.
+**The Nexus** cannot be controlled for income regardless of planetary unit presence.
 
 ---
 
@@ -147,18 +147,18 @@ When units from both players occupy the same system after moves resolve, combat 
 
 ### Dice System
 
-Each unit rolls 1d6 in each phase it participates in. A result at or above the unit's **effective hit threshold** scores 1 hit on an enemy unit. Each hit randomly targets one enemy unit; the probability of a unit being selected is proportional to its **silhouette**. A unit is destroyed when it has absorbed hits equal to its silhouette. Units fight at full strength until destroyed. A threshold below 2 always hits; a threshold above 6 never hits.
+Each unit rolls 1d6 in each phase it participates in. A result at or above the unit's **effective hit threshold** scores 1 hit on an enemy unit. Each hit randomly targets one enemy unit; the probability of a unit being selected is proportional to its **silhouette** (targeting weight). A unit is destroyed when it has absorbed hits equal to its **hull** (HP). Silhouette and hull are currently equal for all units and will diverge in a future balance pass. Units fight at full strength until destroyed. A threshold below 2 always hits; a threshold above 6 never hits.
 
 ### Full Interaction Matrix
 
-**P1** = Squadron phase · **P2** = Naval phase · **P3** = Bombardment · **P4** = Ground phase · **—** = cannot target this class
+**P1** = Screen · **P2** = Engage · **P3** = Bombard · **P4** = Assault · **—** = cannot target this category
 
-| Attacker | vs Squadron | vs Ship | vs Ground |
+| Attacker | vs Strike | vs Capital | vs Planetary |
 |---|---|---|---|
 | **Fighter** | 4+ (P1) | 6+ (P2) | — |
 | **Interceptor** | 2+ vs bomber · 4+ vs fighter/interceptor (P1) | — | — |
 | **Bomber** | 5+ vs fighter/bomber · 6+ vs interceptor (P1) | 4+ (P2) | 4+ (P3) |
-| **Destroyer** | 3+ (P1) | 3+ vs sqd · 5+ vs ship (P2) | — |
+| **Destroyer** | 3+ (P1) | 3+ vs strike · 5+ vs capital (P2) | — |
 | **Frigate** | 5+ (P2) | 4+ (P2) | — |
 | **Cruiser** | 6+ (P2) | 3+ (P2) | 6+ (P3) |
 | **Carrier** | 6+ (P2) | 6+ (P2) | — |
@@ -172,7 +172,7 @@ Each unit rolls 1d6 in each phase it participates in. A result at or above the u
 
 **A** = attacks (rolls dice) · **T** = targetable (can receive hits) · **—** = not present this phase
 
-| Unit | P1 Squadron | P2 Naval | P3 Bombardment | P4 Ground |
+| Unit | P1 Screen | P2 Engage | P3 Bombard | P4 Assault |
 |---|---|---|---|---|
 | **Interceptor** | A · T | T only | — | — |
 | **Fighter** | A · T | A · T | — | — |
@@ -186,29 +186,29 @@ Each unit rolls 1d6 in each phase it participates in. A result at or above the u
 
 Silhouette-weighted random targeting applies only within the eligible target pool for the attacking unit's current phase. A unit cannot be targeted in a phase where it is marked **—**.
 
-### Phase 1 — Squadron Combat
+### Phase 1 — Screen
 
-Interceptors, fighters, and bombers attack other squadrons. Destroyers attack squadrons but **cannot be targeted** in Phase 1. Frigates, cruisers, and carriers are absent. Skipped if neither side has any eligible units.
+Interceptors, fighters, and bombers attack other strike craft. Destroyers attack strike craft but **cannot be targeted** in Screen. Capital ships (Frigate, Cruiser, Carrier) are absent. Skipped if neither side has any eligible units.
 
-### Phase 2 — Naval Combat
+### Phase 2 — Engage
 
-All ships participate. Surviving squadrons remain present and are targetable, but only fighters, bombers, and destroyers can attack squadrons (interceptors cannot attack in Phase 2). Skipped if neither side has any ships.
+All capital ships participate. Surviving strike craft remain present and are targetable, but only fighters, bombers, and destroyers can attack strike craft (interceptors cannot attack in Engage). Skipped if neither side has any capital ships.
 
-### Phase 3 — Bombardment
+### Phase 3 — Bombard
 
-Surviving bombers (4+) and cruisers (6+) each roll against enemy ground forces. Ground forces cannot return fire. Hits applied before Phase 4. Skipped if the attacker has no surviving bombers or cruisers, or the defender has no ground forces.
+Surviving bombers (4+) and cruisers (6+) each roll against enemy planetary units. Planetary units cannot return fire. Hits applied before Assault. Skipped if the attacker has no surviving bombers or cruisers, or the defender has no planetary units.
 
-### Phase 4 — Ground Combat
+### Phase 4 — Assault
 
-Participants: infantry and armor. Carriers are not present and cannot be targeted in Phase 4. Skipped if neither side has eligible ground units.
+Participants: infantry and armor. Capital ships are not present and cannot be targeted in Assault. Skipped if neither side has eligible ground units.
 
 ### System Outcome
 
 After all four phases, both players plan orders for their surviving units the following turn.
 
 - **Both sides have surviving units:** system is contested — neither controls it, no income for either
-- **One side eliminated:** surviving player holds the system; if they have ground forces present they control it; if only ships or squadrons remain, control is unchanged from before combat
-- **All ground forces on both sides eliminated:** system becomes uncontrolled regardless of prior state
+- **One side eliminated:** surviving player holds the system; if they have planetary units present they control it; if only capital ships or strike craft remain, control is unchanged from before combat
+- **All planetary units on both sides eliminated:** system becomes uncontrolled regardless of prior state
 
 ---
 
@@ -216,12 +216,12 @@ After all four phases, both players plan orders for their surviving units the fo
 
 **Build a Nexus Gate** at the center system:
 
-- At least one of your ground forces must occupy the Nexus; declare **Begin Nexus Gate**
+- At least one of your planetary units must occupy the Nexus; declare **Begin Nexus Gate**
 - Total cost: **24 Energy**, committed over **2 consecutive turns** (12 Energy per turn)
 - **Turn N:** declare construction, commit 12 Energy; construction status is visible to both players
 - **Turn N+1:** commit 12 Energy; gate completes — you win
-- Construction is cancelled and all committed resources are lost if: all ground forces on the Nexus are eliminated in combat; the ground forces move away voluntarily; or the player cannot commit the remaining resources on turn N+1
-- The construction check happens after combat resolves — at least one ground force must survive combat on the Nexus for construction to proceed that turn
+- Construction is cancelled and all committed resources are lost if: all planetary units on the Nexus are eliminated in combat; the planetary units move away voluntarily; or the player cannot commit the remaining resources on turn N+1
+- The construction check happens after combat resolves — at least one planetary unit must survive combat on the Nexus for construction to proceed that turn
 - If both players complete the Nexus Gate in the same turn: **draw**
 
 ---
@@ -235,17 +235,17 @@ One message is appended to the game log for each significant event during resolu
 | Event | Message |
 |---|---|
 | Units move | `[A]'s [unit type] moved from [System] to [System]` |
-| Ground forces take control | `[A] controls [System]` |
+| Planetary units take control | `[A] controls [System]` |
 
 ### Combat (one block per contested system, four phases)
 
 | Event | Message |
 |---|---|
 | Combat begins | `Combat at [System] — [A]: [summary] vs [B]: [summary]` |
-| Phase 1 result | `Squadron phase at [System] — [A] loses [N] squadron(s), [B] loses [N] squadron(s)` |
-| Phase 2 result | `Naval phase at [System] — [A] loses [N] ship(s), [B] loses [N] ship(s)` |
-| Bombardment | `[A]'s bomber(s) strike [System] — [B] loses [N] ground unit(s) to bombardment` |
-| Phase 4 result | `Ground phase at [System] — [A] loses [N] ground unit(s), [B] loses [N] ground unit(s)` |
+| Phase 1 result | `Screen at [System] — [A] loses [N] strike craft, [B] loses [N] strike craft` |
+| Phase 2 result | `Engage at [System] — [A] loses [N] ship(s), [B] loses [N] ship(s)` |
+| Bombard | `[A]'s bomber(s) strike [System] — [B] loses [N] ground unit(s) to bombard` |
+| Phase 4 result | `Assault at [System] — [A] loses [N] ground unit(s), [B] loses [N] ground unit(s)` |
 | System cleared (one side eliminated) | `[A] holds [System] — [B] has no surviving units` |
 | System contested (both survive) | `[System] remains contested — both players have surviving units` |
 | System becomes uncontrolled | `[System] is now uncontrolled` |
@@ -319,29 +319,28 @@ Games are created via invite link:
 **System display (zoomed — your controlled system, mid-game):**
 ```
     ╔══════════╗
-    ║  +3 ⚡   ║   ← income label
-    ║ S·1 Q·2  ║   ← your ships · squadrons
-    ║    G·4   ║   ← your ground forces
+    ║  Vega    ║   ← sector name (non-home, non-Nexus systems only)
+    ║  +3 ⚡   ║   ← income label (income systems; monospace yellow)
+    ║    ◆     ║   ← your presence diamond (faction color)
     ╚══════════╝
        (blue tint = you control)
 ```
 
-**Unit selection panel (appears anchored to system on click):**
+When both factions have units on the same system, two diamonds appear side by side — yours offset left, opponent's offset right:
 ```
-    ┌──────────────────────────┐
-    │  S-02  ·  +3 ⚡          │
-    │──────────────────────────│
-    │  Select units to move:   │
-    │                          │
-    │  [✓] Carrier       ×1   │
-    │  [✓] Infantry      ×3   │
-    │  [ ] Fighter       ×2   │
-    │                          │
-    │  Capacity: 3 / 8  ████░░│
-    │──────────────────────────│
-    │  → pick destination…     │
-    │              [Cancel]    │
-    └──────────────────────────┘
+    ╔══════════╗
+    ║  +3 ⚡   ║
+    ║  ◆    ◆  ║   ← your color left · opponent color right
+    ╚══════════╝
+       (contested — no tint)
+```
+
+Nexus system with gate construction in progress (pip 1 of 2 lit):
+```
+    ╔══════════╗
+    ║          ║
+    ║   ● ○    ║   ← two pips; filled = completed stage, dim = pending
+    ╚══════════╝
 ```
 
 ### Layout
@@ -358,8 +357,8 @@ Three-column layout with a persistent top bar:
 Each system shows:
 - **Background tint / border:** control indicator (your color / opponent color / contested / uncontrolled gray); Nexus uses a distinct neutral style
 - **Income label:** Energy income value shown on every income system (e.g. `+3`); home systems show their fixed `+3`; Nexus shows no income
-- **Unit counts:** your units and opponent's units shown as separate counters, broken down by category (ships / squadrons / ground forces)
-- **Nexus Gate badge:** when construction is in progress, the Nexus system shows ⚙ 1/2 or ⚙ 2/2; visible to both players
+- **Unit presence:** a small colored diamond renders in the lower portion of the hex for each faction that has units there; your faction's diamond is offset left when both are present, opponent's right; no numeric count is shown on the hex
+- **Nexus Gate badge:** when your gate construction is in progress, two small pip circles render on the Nexus hex; the first pip is lit in your faction color when stage 1 is complete, the second when stage 2 is complete
 
 ### Order Assignment — Planning Phase
 
@@ -368,13 +367,13 @@ Orders are assigned system-first: click a system to open a unit selection panel,
 **Assigning a Move order:**
 1. **Click a system** — if it contains your units, a unit selection panel appears anchored to that system; each unit type is shown with its count and a toggle
 2. **Toggle units** in the panel to include them in the selection
-3. **Destination systems highlight** on the grid based on the current selection; systems are grayed if capacity is insufficient for the selected squadrons and ground forces
+3. **Destination systems highlight** on the grid based on the current selection; systems are grayed if capacity is insufficient for the selected strike craft and planetary units
 4. **Click a highlighted destination system** — the Move order is created; the panel closes; an arrow overlay appears from source to destination
 5. **Click elsewhere or close** — closes the panel without assigning an order
 
 To create a second Move order from the same system (e.g. send some units to system A, others to system B): after the first order is assigned, click the system again — the panel reopens showing only units that have not yet been assigned an order.
 
-**Assigning Begin Nexus Gate:** click the Nexus system while your ground forces are on it — the unit panel shows a “Begin Nexus Gate” action alongside the unit toggles; activate it to queue the order.
+**Assigning Begin Nexus Gate:** click the Nexus system while your planetary units are on it — the unit panel shows a "Begin Nexus Gate" action alongside the unit toggles; activate it to queue the order.
 
 **Build [unit]:** click the home system background (not a unit in the panel) — a build panel appears listing available unit types with their costs, greyed out if the projected Energy balance is insufficient; click a unit type to queue it. Multiple builds may be queued in one turn.
 

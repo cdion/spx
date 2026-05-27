@@ -5,16 +5,12 @@
     <AlertBanner>@GameplayError</AlertBanner>
 }
 
-<NexusGameplayTopInfoBar RoundNumber="@Session.RoundNumber"
-                        CurrentPlayerName="@CurrentPlayerName" OpponentPlayerName="@OpponentPlayerName"
-                        CurrentPlayerFaction="@Session.CurrentPlayer.Faction"
-                        CurrentPlayerEnergy="@Session.CurrentPlayer.Energy"
-                        CurrentPlayerIsActive="@Session.CurrentPlayer.IsActive"
-                        CurrentPlayerHasSubmittedOrders="@Session.CurrentPlayer.HasSubmittedOrders"
-                        OpponentFaction="@Session.Opponent.Faction"
-                        OpponentPlayerEnergy="@Session.Opponent.Energy"
-                        OpponentIsActive="@Session.Opponent.IsActive"
-                        OpponentHasSubmittedOrders="@Session.Opponent.HasSubmittedOrders" />
+<NexusGameplayTopInfoBar RoundNumber="@Session.RoundNumber" CurrentPlayerName="@CurrentPlayerName"
+                         OpponentPlayerName="@OpponentPlayerName" CurrentPlayerFaction="@Session.CurrentPlayer.Faction"
+                         CurrentPlayerEnergy="@Session.CurrentPlayer.Energy" CurrentPlayerIsActive="@Session.CurrentPlayer.IsActive"
+                         CurrentPlayerHasSubmittedOrders="@Session.CurrentPlayer.HasSubmittedOrders"
+                         OpponentFaction="@Session.Opponent.Faction" OpponentPlayerEnergy="@Session.Opponent.Energy"
+                         OpponentIsActive="@Session.Opponent.IsActive" OpponentHasSubmittedOrders="@Session.Opponent.HasSubmittedOrders" />
 
 @if (Session.Completion is not null)
 {
@@ -25,9 +21,8 @@
 }
 
 @* Main layout *@
-<div class="grid gap-4 lg:grid-cols-[3fr_2fr]">
-    <section class="ui-surface-section flex flex-col p-4 lg:p-5">
-        <p class="ui-panel-label mb-4">Hex map</p>
+<div class="mt-4 flex min-h-0 flex-col gap-4 sm:flex-row">
+    <section class="ui-surface-section flex min-h-0 flex-col p-4 lg:p-5 sm:min-w-0 sm:flex-[3_1_0%]">
         <div class="min-h-0 flex-1">
             <NexusHexGridComponent Systems="@Session.Systems" CurrentPlayerId="@Session.CurrentPlayer.PlayerId"
                                    OpponentPlayerId="@Session.Opponent.PlayerId" CurrentPlayerFaction="@Session.CurrentPlayer.Faction"
@@ -39,56 +34,66 @@
         </div>
     </section>
 
-    <aside class="grid gap-4 lg:h-full lg:min-h-0 lg:grid-rows-[2fr_1fr]">
-        @if (_selectedSystem.HasValue && Session.Systems.FirstOrDefault(s => s.Coord == _selectedSystem.Value) is { } selectedSystem)
+    <aside class="flex min-h-0 flex-col gap-4 sm:min-w-0 sm:flex-[2_1_0%]">
+        <div class="min-h-0 flex-1">
+            <NexusSidebarPanelShell>
+                <HeaderContent>
+                    <Tabs TItem="SidebarTab" Items="@SidebarTabs" SelectedItem="@_activeSidebarTab"
+                          ItemIdSelector="GetSidebarTabId" PanelIdSelector="GetSidebarPanelId"
+                          ActiveItemClass="rounded-md border border-white/15 bg-white/10 px-3.5 py-2 text-base font-semibold text-white"
+                          InactiveItemClass="rounded-md border border-white/10 px-3.5 py-2 text-base text-slate-400 transition-colors hover:text-slate-200"
+                          ItemLabelSelector="GetSidebarTabLabel" DisabledSelector="IsSidebarTabDisabled"
+                          OnSelected="SetTab" AriaLabel="Sidebar view" />
+                </HeaderContent>
+                <ChildContent>
+                    <div id="@ActiveSidebarPanelId" role="tabpanel" aria-labelledby="@ActiveSidebarTabId">
+                        @if (_activeSidebarTab == SidebarTab.Events)
+                        {
+                            <NexusResolveEventsPanel Events="@Session.LastResolveEvents" PlayerNames="@GetPlayerNames()"
+                                                     RowClassSelector="GetEventRowClass" OnEventClicked="OnEventClicked"
+                                                     OnEventHovered="OnEventHovered" OnEventHoverCleared="OnEventHoverCleared" />
+                        }
+                        else
+                        {
+                            <div class="space-y-4">
+                                @if (_selectedSystem.HasValue && Session.Systems.FirstOrDefault(s => s.Coord ==
+                            _selectedSystem.Value) is { } selectedSystem)
+                                {
+                                    <NexusSelectedHexPanel System="selectedSystem"
+                                                           CurrentPlayerId="@Session.CurrentPlayer.PlayerId" CurrentPlayerName="@CurrentPlayerName"
+                                                           OpponentPlayerId="@Session.Opponent.PlayerId"
+                                                           CurrentPlayerFaction="@Session.CurrentPlayer.Faction"
+                                                           OpponentPlayerName="@OpponentPlayerName"
+                                                           CurrentPlayerGateProgress="@Session.CurrentPlayer.GateProgress"
+                                                           PendingBeginNexusGate="@_pendingBeginNexusGate" IsEditable="@ShowOrdersForm"
+                                                           ProjectedEnergy="@ProjectedEnergy"
+                                                           AvailableUnits="@GetAvailableUnits(selectedSystem.Coord)"
+                                                           PendingBuildOrders="@_pendingBuildOrders"
+                                                           OnFleetSelectionChanged="OnFleetSelectionChanged" OnBuildAddOne="AddBuildOrder"
+                                                           OnBuildAddMax="AddBuildOrderMax" OnBuildRemoveOne="RemoveBuildOrder"
+                                                           OnBuildRemoveAll="RemoveBuildOrdersForUnit" OnToggleNexusGate="ToggleNexusGate" />
+                                }
+                                @if (_pendingMoveOrders.Count > 0 || _pendingBuildOrders.Count > 0 ||
+                            _pendingBeginNexusGate)
+                                {
+                                    <NexusOrdersPanel MoveOrders="@_pendingMoveOrders" BuildOrders="@_pendingBuildOrders"
+                                                      CurrentPlayerName="@CurrentPlayerName" CurrentPlayerHomeCoord="@CurrentPlayerHomeCoord"
+                                                      BeginNexusGate="@_pendingBeginNexusGate" IsEditable="@ShowOrdersForm"
+                                                      OnRemoveMoveOrder="RemoveMoveOrder" OnRemoveBuildOrder="RemoveBuildOrder"
+                                                      OnRemoveGateOrder="() => _pendingBeginNexusGate = false" />
+                                }
+                            </div>
+                        }
+                    </div>
+                </ChildContent>
+            </NexusSidebarPanelShell>
+        </div>
+        @if (ShowOrdersForm)
         {
-            <NexusSelectedHexPanel System="selectedSystem" CurrentPlayerId="@Session.CurrentPlayer.PlayerId"
-                                   CurrentPlayerName="@CurrentPlayerName"
-                                   OpponentPlayerId="@Session.Opponent.PlayerId" CurrentPlayerFaction="@Session.CurrentPlayer.Faction"
-                                   OpponentPlayerName="@OpponentPlayerName"
-                                   CurrentPlayerGateProgress="@Session.CurrentPlayer.GateProgress" PendingBeginNexusGate="@_pendingBeginNexusGate"
-                                   IsEditable="@(ShowOrdersForm && _activeSidebarTab == SidebarTab.Orders)"
-                                   ProjectedEnergy="@ProjectedEnergy" AvailableUnits="@GetAvailableUnits(selectedSystem.Coord)"
-                                   PendingBuildOrders="@_pendingBuildOrders" OnFleetSelectionChanged="OnFleetSelectionChanged"
-                                   OnBuildAddOne="AddBuildOrder" OnBuildAddMax="AddBuildOrderMax"
-                                   OnBuildRemoveOne="RemoveBuildOrder" OnBuildRemoveAll="RemoveBuildOrdersForUnit"
-                                   OnToggleNexusGate="ToggleNexusGate" />
+            <button class="ui-button-primary w-full" @onclick="SubmitOrdersAsync" disabled="@IsSubmittingAction">
+                @(IsSubmittingAction ? "Submitting..." : "Submit Orders")
+            </button>
         }
-        else
-        {
-            <NexusEmptySelectionState />
-        }
-
-        <NexusSidebarPanelShell>
-            <HeaderContent>
-                <Tabs TItem="SidebarTab" Items="@SidebarTabs" SelectedItem="@_activeSidebarTab"
-                        ItemIdSelector="GetSidebarTabId" PanelIdSelector="GetSidebarPanelId"
-                        ActiveItemClass="rounded-md border border-white/15 bg-white/10 px-3.5 py-2 text-base font-semibold text-white"
-                        InactiveItemClass="rounded-md border border-white/10 px-3.5 py-2 text-base text-slate-400 transition-colors hover:text-slate-200"
-                      ItemLabelSelector="GetSidebarTabLabel" DisabledSelector="IsSidebarTabDisabled"
-                      OnSelected="SetTab" AriaLabel="Sidebar view" />
-            </HeaderContent>
-            <ChildContent>
-                <div id="@ActiveSidebarPanelId" role="tabpanel" aria-labelledby="@ActiveSidebarTabId" class="h-full">
-                    @if (_activeSidebarTab == SidebarTab.Events)
-                    {
-                        <NexusResolveEventsPanel Events="@Session.LastResolveEvents" PlayerNames="@GetPlayerNames()"
-                                                RowClassSelector="GetEventRowClass" OnEventClicked="OnEventClicked"
-                                                OnEventHovered="OnEventHovered" OnEventHoverCleared="OnEventHoverCleared" />
-                    }
-                    else
-                    {
-                        <NexusOrdersPanel MoveOrders="@_pendingMoveOrders" BuildOrders="@_pendingBuildOrders"
-                                          CurrentPlayerName="@CurrentPlayerName" CurrentPlayerHomeCoord="@CurrentPlayerHomeCoord"
-                                          BeginNexusGate="@_pendingBeginNexusGate" IsEditable="@ShowOrdersForm"
-                                          ShowSubmitButton="@ShowOrdersForm" IsSubmittingAction="@IsSubmittingAction"
-                                          OnRemoveMoveOrder="RemoveMoveOrder" OnRemoveBuildOrder="RemoveBuildOrder"
-                                          OnRemoveGateOrder="() => _pendingBeginNexusGate = false"
-                                          OnSubmitOrders="SubmitOrdersAsync" />
-                    }
-                </div>
-            </ChildContent>
-        </NexusSidebarPanelShell>
     </aside>
 </div>
 
@@ -283,8 +288,8 @@
         if (system is null || !system.IsNexus)
             return false;
 
-        var (_, _, gnd) = NexusHexHelpers.GetUnitCounts(system, Session.CurrentPlayer.PlayerId);
-        return gnd > 0;
+        var (_, _, planetary) = NexusHexHelpers.GetUnitCounts(system, Session.CurrentPlayer.PlayerId);
+        return planetary > 0;
     }
 
     private ImmutableDictionary<NexusUnitType, int> GetAvailableUnits(HexCoord coord)
@@ -435,7 +440,7 @@
         {
             NexusUnitsMovedEvent e =>
                 new EventFocus([e.From, e.To], e.From, e.To, e.To),
-            NexusGroundForcesControlEvent e => new EventFocus([e.System], Primary: e.System),
+            NexusPlanetaryControlEvent e => new EventFocus([e.System], Primary: e.System),
             NexusSystemContestedEvent e => new EventFocus([e.System], Primary: e.System),
             NexusSystemUncontrolledEvent e => new EventFocus([e.System], Primary: e.System),
             NexusCombatBeganEvent e => new EventFocus([e.System], Primary: e.System),

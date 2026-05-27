@@ -136,7 +136,7 @@ public class NexusCombatSpecTests
         );
 
     [Fact]
-    public void P1_Fighter_Hits_AllSquadrons_At4Plus()
+    public void P1_Fighter_Hits_AllStrike_At4Plus()
     {
         Assert.Equal(
             4,
@@ -167,7 +167,7 @@ public class NexusCombatSpecTests
         );
 
     [Fact]
-    public void GroundForces_NotTargetableInP1() =>
+    public void Planetary_NotTargetableInP1() =>
         Assert.False(NexusCombatSpec.IsTargetable(NexusUnitType.Infantry, 1));
 
     [Fact]
@@ -364,7 +364,7 @@ public class NexusMoveValidationTests
     }
 
     [Fact]
-    public void Move_SquadronWithNoCarrier_IsRejected()
+    public void Move_StrikeWithNoCarrier_IsRejected()
     {
         var s = MakeState();
         // Moving 3 Fighters (need 3 capacity) but only providing 0 ship capacity
@@ -377,7 +377,7 @@ public class NexusMoveValidationTests
     }
 
     [Fact]
-    public void Move_CarrierWithSquadron_IsAccepted()
+    public void Move_CarrierWithStrike_IsAccepted()
     {
         var s = MakeState();
         // Carrier (cap 8) + 1 Fighter (consumes 1) → accepted
@@ -393,7 +393,7 @@ public class NexusMoveValidationTests
     public void Move_ShipOnlyMove_IsAccepted()
     {
         var s = MakeState();
-        // Carrier alone (no sqd/gf) needs 0 capacity — always accepted
+        // Carrier alone (no strike/planetary) needs 0 capacity — always accepted
         var result = Submit(s, P1Id, [Move(P1Home, Adjacent1, (NexusUnitType.Carrier, 1))]);
         Assert.IsType<NexusTurnOrdersAccepted>(result);
     }

@@ -38,9 +38,41 @@
         {
             var from = NexusHexHelpers.HexCenter(EventFocusFrom.Value);
             var to = NexusHexHelpers.HexCenter(EventFocusTo.Value);
-            <line x1="@NexusHexHelpers.Fmt(from.X)" y1="@NexusHexHelpers.Fmt(from.Y)"
-                  x2="@NexusHexHelpers.Fmt(to.X)" y2="@NexusHexHelpers.Fmt(to.Y)"
-                  stroke="rgba(245,158,11,0.9)" stroke-width="2" stroke-dasharray="4 3" pointer-events="none" />
+            var dx = to.X - from.X;
+            var dy = to.Y - from.Y;
+            var len = Math.Sqrt(dx * dx + dy * dy);
+            @if (len >= 1)
+            {
+                var ux = dx / len;
+                var uy = dy / len;
+                var px = -uy;
+                var py = ux;
+                var mx = (from.X + to.X) / 2.0;
+                var my = (from.Y + to.Y) / 2.0;
+                const double h = 4.5;
+                const double w = 7;
+                const string focusColor = "rgba(245,158,11,0.9)";
+                var lx = mx - ux * h - px * w;
+                var ly = my - uy * h - py * w;
+                var tx = mx + ux * h;
+                var ty = my + uy * h;
+                var rx = mx - ux * h + px * w;
+                var ry = my - uy * h + py * w;
+                var outlinePts = $"{NexusHexHelpers.Fmt(lx)},{NexusHexHelpers.Fmt(ly)} "
+                           + $"{NexusHexHelpers.Fmt(tx)},{NexusHexHelpers.Fmt(ty)} "
+                           + $"{NexusHexHelpers.Fmt(rx)},{NexusHexHelpers.Fmt(ry)}";
+                var mlx = tx + (lx - tx) * 0.5;
+                var mly = ty + (ly - ty) * 0.5;
+                var mrx = tx + (rx - tx) * 0.5;
+                var mry = ty + (ry - ty) * 0.5;
+                var fillPts = $"{NexusHexHelpers.Fmt(mlx)},{NexusHexHelpers.Fmt(mly)} "
+                        + $"{NexusHexHelpers.Fmt(tx)},{NexusHexHelpers.Fmt(ty)} "
+                        + $"{NexusHexHelpers.Fmt(mrx)},{NexusHexHelpers.Fmt(mry)}";
+
+                <polygon points="@fillPts" fill="@focusColor" fill-opacity="0.7" stroke="none" pointer-events="none" />
+                <polyline points="@outlinePts" fill="none" stroke="@focusColor" stroke-width="2" stroke-linecap="round"
+                          stroke-linejoin="round" pointer-events="none" />
+            }
         }
 
         @* Pass 3: Move order chevrons *@
@@ -81,8 +113,7 @@
                         + $"{NexusHexHelpers.Fmt(tx)},{NexusHexHelpers.Fmt(ty)} "
                         + $"{NexusHexHelpers.Fmt(mrx)},{NexusHexHelpers.Fmt(mry)}";
 
-                <polygon points="@fillPts" fill="@chevronColor" fill-opacity="0.7" stroke="none"
-                     pointer-events="none" />
+                <polygon points="@fillPts" fill="@chevronColor" fill-opacity="0.7" stroke="none" pointer-events="none" />
                 <polyline points="@outlinePts" fill="none" stroke="@chevronColor" stroke-width="2" stroke-linecap="round"
                           stroke-linejoin="round" pointer-events="none" />
             }

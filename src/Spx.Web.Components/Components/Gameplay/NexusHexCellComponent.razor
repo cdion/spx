@@ -59,7 +59,7 @@
             if (!NexusMap.SectorNames.TryGetValue(System.Coord, out var name))
                 return string.Empty;
             const string style =
-                "fill=\"rgba(148,163,184,0.45)\" font-size=\"7\" font-family=\"monospace\"";
+                "fill=\"rgba(148,163,184,0.45)\" font-size=\"7\"";
             var y = NexusHexHelpers.Fmt(Center.Y - 10);
             var cx = NexusHexHelpers.Fmt(Center.X);
             return $"<text x=\"{cx}\" y=\"{y}\" text-anchor=\"middle\" {style}>{name}</text>";
@@ -88,15 +88,15 @@
             var myColor = CurrentPlayerFaction == NexusFactionColor.Red ? "#f87171" : "#60a5fa";
             var opColor = CurrentPlayerFaction == NexusFactionColor.Red ? "#60a5fa" : "#f87171";
 
-            var (myS, myQ, myG) = NexusHexHelpers.GetUnitCounts(System, CurrentPlayerId);
-            var hasMyUnits = myS + myQ + myG > 0;
+            var (myC, myS, myP) = NexusHexHelpers.GetUnitCounts(System, CurrentPlayerId);
+            var hasMyUnits = myC + myS + myP > 0;
 
             var hasOpUnits = false;
-            int opS = 0, opQ = 0, opG = 0;
+            int opC = 0, opS = 0, opP = 0;
             if (OpponentPlayerId.HasValue)
             {
-                (opS, opQ, opG) = NexusHexHelpers.GetUnitCounts(System, OpponentPlayerId.Value);
-                hasOpUnits = opS + opQ + opG > 0;
+                (opC, opS, opP) = NexusHexHelpers.GetUnitCounts(System, OpponentPlayerId.Value);
+                hasOpUnits = opC + opS + opP > 0;
             }
 
             // When both factions present, offset left/right; when only one, center it.

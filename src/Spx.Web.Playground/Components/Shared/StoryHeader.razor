@@ -1,0 +1,10 @@
+<h1 class="mb-1 text-xl font-semibold text-white">@Title</h1>
+<p class="mb-5 text-sm text-slate-400">@ChildContent</p>
+
+@code {
+    [Parameter, EditorRequired]
+    public string Title { get; set; } = "";
+
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+}

@@ -1,9 +1,9 @@
 @page "/stories/gameplay-panel"
 @rendermode InteractiveServer
 
-<h1 class="mb-1 text-xl font-semibold text-white">Gameplay Panel</h1>
-<p class="mb-4 text-sm text-slate-400">Full <code class="text-sky-300">NexusGameplayPanel</code> with fixture game
-    state.</p>
+<StoryHeader Title="Gameplay Panel">
+    Full <code class="text-sky-300">NexusGameplayPanel</code> with fixture game state.
+</StoryHeader>
 
     <div class="mb-5 flex flex-wrap gap-2">
         @foreach (var (label, index) in _scenarios.Select((s, i) => (s.Label, i)))
@@ -62,7 +62,5 @@
     }
 
     private string ScenarioBtnClass(int index) =>
-        index == _scenarioIndex
-            ? "rounded-lg border border-sky-500/40 bg-sky-900/20 px-4 py-1.5 text-sm text-sky-200"
-            : "rounded-lg border border-white/10 px-4 py-1.5 text-sm text-slate-400 hover:bg-white/5";
+        index == _scenarioIndex ? "ui-pg-tab-active" : "ui-pg-tab";
 }

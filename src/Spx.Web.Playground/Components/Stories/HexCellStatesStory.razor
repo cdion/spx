@@ -1,8 +1,9 @@
 @page "/stories/hex-cell-states"
 @rendermode InteractiveServer
 
-<h1 class="mb-1 text-xl font-semibold text-white">Hex Cell States</h1>
-<p class="mb-5 text-sm text-slate-400">Every distinct visual state a sector hex can enter.</p>
+<StoryHeader Title="Hex Cell States">
+    Every distinct visual state a sector hex can enter.
+</StoryHeader>
 
 <div class="grid grid-cols-4 gap-x-6 gap-y-8 max-w-2xl">
     @foreach (var state in States)
