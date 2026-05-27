@@ -131,7 +131,9 @@ public sealed class GetGamePageHandlerTests
             true,
             [],
             null,
-            false
+            false,
+            0,
+            0
         );
         var opponentPlayer = new NexusPlayerView(
             OpponentPlayerId,
@@ -142,7 +144,9 @@ public sealed class GetGamePageHandlerTests
             true,
             null,
             null,
-            false
+            false,
+            0,
+            0
         );
 
         return new NexusGameView(gameId, roundNumber, [], currentPlayer, opponentPlayer, [], null);

@@ -21,8 +21,8 @@
 ```
 
 - **Nexus** `[N]` — center system; win site only, no income, cannot be controlled for income
-- **Home systems** — two opposing outer systems, one per player; each produces **3 Energy/turn**; under that player's control from game start
-- **16 income systems** — every remaining system; each is assigned a random income value of **2–5 Energy/turn** at game creation; values are fixed for the duration of the game
+- **Home systems** — two opposing outer systems, one per player; each produces **2 Energy/turn**; under that player's control from game start
+- **16 income systems** — every remaining system; each is assigned a random income value of **1–3 Energy/turn** at game creation; values are fixed for the duration of the game
 - Income values are placed asymmetrically — no symmetry guarantee between the two sides
 - The income value of every system is visible to both players from turn 1
 - Map is fully visible from turn 1
@@ -35,12 +35,32 @@ One resource type: **Energy**.
 
 | Source | Income |
 |---|---|
-| Home system | +3 Energy/turn |
-| Income system | +2–5 Energy/turn (value assigned at map generation) |
+| Home system | +2 Energy/turn |
+| Income system | +1–3 Energy/turn (value assigned at map generation) |
 
 - Controlling a system earns its Energy income; the opponent loses that income if they previously controlled it
 - Energy has no upper limit; unused Energy carries over between turns
 - Each player begins with **0 Energy**
+
+---
+
+## Supply
+
+Each player has a **supply pool** equal to the total income of all systems they currently control. Supply determines how many Capital ships a player can sustain.
+
+- **Only Capital ships** (Frigate, Destroyer, Cruiser, Carrier) draw against supply. Strike craft and planetary units are always free to hold.
+- **The Nexus** has `IncomeValue = 0` and contributes nothing to supply even when controlled. Every Capital stationed there is unsupported.
+- **Uncontrolled and contested systems** contribute 0 supply, regardless of units present there.
+
+### Supply Check — automatic disbanding
+
+After newly built units deploy each round, if a player's total Capital count exceeds their supply pool, the excess Capitals are automatically disbanded. Disbanding evaluates systems in **spiral order** — Nexus first, then Ring 1 clockwise from NE (Alpha → Zeta), then Ring 2 clockwise from NE (Eta → home systems). Within each system, the cheapest-build-cost Capital is disbanded first; ties are broken by most damage absorbed (weakest unit first). Disbanding continues until Capitals ≤ supply.
+
+**Strategic consequences:**
+- Capitals pushed forward toward the Nexus are the first lost when supply runs short
+- Losing controlled systems in combat shrinks the supply pool immediately — a good attack can collapse the opponent's fleet *and* their economy in the same round
+- Committing energy to the Nexus Gate (rather than new Capitals) leaves the existing fleet vulnerable if income drops
+- Home systems are the last place disbanding reaches; home-fleet Capitals are the safest to hold
 
 ---
 
@@ -95,9 +115,10 @@ Each round follows this sequence:
 2. **Resolve phase:**
    1. Build cost deducted · Nexus Gate payment deducted
    2. Moves — all units move simultaneously. Units whose paths cross in opposite directions (A moves to B's system while B moves to A's system) simply swap — no combat at either system. If units arrive at a system occupied by enemy units, they stop and combat resolves in step 3. Planetary units arriving at an opponent-controlled or uncontrolled system with no opponent planetary units present take control of it immediately.
-   3. Combat — all contested systems resolve simultaneously (four exchange phases each)
+   3. Combat — all contested systems resolve in spiral order (Nexus → Ring 1 → Ring 2, homes last); each system runs four exchange phases independently before the next system resolves
    4. Income — all income calculated and applied simultaneously; a player earns income from every system they control
    5. Newly built units appear at home system
+   6. Supply check — if a player's Capital count exceeds their supply pool, excess Capitals are automatically disbanded in spiral order (see Supply section)
 3. **Win check**
 
 ---
@@ -143,7 +164,7 @@ A player **controls** a system when they have at least one planetary unit on it 
 
 ## Combat
 
-When units from both players occupy the same system after moves resolve, combat resolves in four sequential **exchange phases**. Each phase is an attrition exchange — both sides roll simultaneously, casualties are applied after all dice resolve, and survivors carry forward. Neither side retreats; both may remain on a contested system after all phases complete.
+When units from both players occupy the same system after moves resolve, combat resolves in four sequential **exchange phases**. If multiple systems are contested, they resolve in **spiral order** (Nexus first, then Ring 1 clockwise from NE, then Ring 2 clockwise from NE, with home systems last). Each system's four phases complete fully before the next contested system begins. Each phase is an attrition exchange — both sides roll simultaneously, casualties are applied after all dice resolve, and survivors carry forward. Neither side retreats; both may remain on a contested system after all phases complete.
 
 ### Dice System
 
@@ -226,6 +247,72 @@ After all four phases, both players plan orders for their surviving units the fo
 
 ---
 
+## Resolve Events
+
+The resolve phase emits a typed sequence of events. The front end consumes these to update board state and render the round log. Events are produced in resolution order; skipped steps (e.g. a combat phase with no eligible units) produce no events. The message rendering in [Resolve Phase Messages](#resolve-phase-messages) derives from this stream.
+
+### Movement
+
+| Event | Fired when | Key data |
+|---|---|---|
+| `NexusUnitsMovedEvent` | A player's units leave one system and arrive at another | `PlayerId`, `From`, `To`, `Units` (type → count), `IsRetreat` |
+
+`IsRetreat = true` when the source system was contested before moves resolved (the player is moving out of a fight). Retreat moves and normal moves use the same event type.
+
+### System Control
+
+| Event | Fired when | Key data |
+|---|---|---|
+| `NexusPlanetaryControlEvent` | A player gains or retains sole planetary presence in a system | `System`, `PlayerId` |
+| `NexusSystemContestedEvent` | Both players have planetary units in the same system | `System` |
+| `NexusSystemUncontrolledEvent` | All planetary units are gone from a system — control cleared | `System` |
+
+### Combat
+
+| Event | Fired when | Key data |
+|---|---|---|
+| `NexusCombatBeganEvent` | Combat is about to resolve at a system | `System`, `Player1Id`, `Player2Id` |
+| `NexusPhaseResultEvent` | One combat phase (Screen/Engage/Bombard/Assault) completes | `System`, `Phase` (1–4), `Losses` (per player/type/count), `AttackRolls` (individual dice) |
+| `NexusSystemClearedEvent` | All units of one player are eliminated from a system | `System`, `VictorId` |
+
+Only phases where at least one side has eligible units produce a `NexusPhaseResultEvent`. `AttackRolls` carries every individual die roll (attacker type, target type, roll, threshold, hit/miss) to support detailed log rendering.
+
+### Income & Deployment
+
+| Event | Fired when | Key data |
+|---|---|---|
+| `NexusIncomeEvent` | A player collects income for the round | `PlayerId`, `Amount`, `Sources` (list of contributing systems) |
+| `NexusUnitDeployedEvent` | A newly built unit appears at the player's home system | `PlayerId`, `UnitType`, `HomeSystem`, `Count` |
+
+One `NexusUnitDeployedEvent` fires per unit type per build order; multiple orders of the same type in one turn produce separate events.
+
+### Supply *(pending implementation)*
+
+| Event | Fired when | Key data |
+|---|---|---|
+| `NexusCapitalDisbandedEvent` | A Capital is removed because it exceeds the player's supply pool | `PlayerId`, `UnitType`, `System`, `Count` |
+
+Events fire in spiral order (Nexus → Ring 1 → Ring 2), one per unit type per system. All disband events for a given round resolve before the Gate check.
+
+### Nexus Gate
+
+| Event | Fired when | Key data |
+|---|---|---|
+| `NexusGateStartedEvent` | A player commits the first 12 Energy; construction begun | `PlayerId`, `System` |
+| `NexusGateCompletedEvent` | A player commits the second 12 Energy; gate complete | `PlayerId`, `System` |
+| `NexusGateCancelledEvent` | Construction cancelled — planetary units lost, voluntarily moved, or insufficient energy | `PlayerId`, `System` |
+
+Energy already committed when a gate is cancelled is forfeited.
+
+### Game End
+
+| Event | Fired when | Key data |
+|---|---|---|
+| `NexusVictoryEvent` | One player completes the Nexus Gate | `WinnerId` |
+| `NexusDrawEvent` | Both players complete the Gate on the same turn | `Reason` |
+
+---
+
 ## Resolve Phase Messages
 
 One message is appended to the game log for each significant event during resolution. Messages are produced in resolve order.
@@ -235,6 +322,7 @@ One message is appended to the game log for each significant event during resolu
 | Event | Message |
 |---|---|
 | Units move | `[A]'s [unit type] moved from [System] to [System]` |
+| Units retreat | `[A]'s [unit type] retreated from [System] to [System]` |
 | Planetary units take control | `[A] controls [System]` |
 
 ### Combat (one block per contested system, four phases)
@@ -249,7 +337,6 @@ One message is appended to the game log for each significant event during resolu
 | System cleared (one side eliminated) | `[A] holds [System] — [B] has no surviving units` |
 | System contested (both survive) | `[System] remains contested — both players have surviving units` |
 | System becomes uncontrolled | `[System] is now uncontrolled` |
-| Nexus Gate construction cancelled | `[A]'s Nexus Gate construction cancelled — committed resources lost` |
 
 ### Income
 
@@ -258,12 +345,19 @@ One message is appended to the game log for each significant event during resolu
 | Income received (one per player) | `[A] receives +[N] Energy this turn` (all controlled systems collapsed into one line) |
 | Unit deployed (appears end of resolve) | `[A] deployed a new [unit type] at [Home]` |
 
+### Supply Check
+
+| Event | Message |
+|---|---|
+| Capital disbanded | `[A]'s [unit type] at [System] disbanded — supply exceeded` |
+
 ### Win Check
 
 | Event | Message |
 |---|---|
 | Gate construction begun (turn 1 of 2) | `[A] begins Nexus Gate construction — 12 Energy committed (turn 1 of 2)` |
 | Gate construction completes (turn 2 of 2) | `[A] commits final 12 Energy — Nexus Gate complete` |
+| Gate construction cancelled | `[A]'s Nexus Gate construction cancelled — committed resources lost` |
 | Victory by gate | `[A] wins — Nexus Gate constructed` |
 | Draw by simultaneous gate | `Draw — both players completed the Nexus Gate simultaneously` |
 

@@ -147,6 +147,18 @@ public sealed record NexusGateCancelledEvent(
     [property: Id(1)] HexCoord System
 ) : NexusResolveEvent;
 
+// ── Supply ────────────────────────────────────────────────────────────────────
+
+/// <summary>A capital ship was disbanded because the player's capital count exceeded their supply pool.</summary>
+[GenerateSerializer]
+[Immutable]
+public sealed record NexusCapitalDisbandedEvent(
+    [property: Id(0)] Guid PlayerId,
+    [property: Id(1)] NexusUnitType UnitType,
+    [property: Id(2)] HexCoord System,
+    [property: Id(3)] int Count
+) : NexusResolveEvent;
+
 // ── Game End ──────────────────────────────────────────────────────────────────
 
 [GenerateSerializer]

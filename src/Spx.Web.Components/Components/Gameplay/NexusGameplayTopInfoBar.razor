@@ -3,6 +3,7 @@
         <div class="space-y-1">
             <p class="@PlayerNameClass(CurrentPlayerFaction)">@CurrentPlayerName</p>
             <p class="text-2xl font-semibold text-yellow-400">@CurrentPlayerEnergy⚡</p>
+            <p class="text-sm text-slate-300">@CurrentPlayerCapitalCount / @CurrentPlayerSupplyPool ⚓</p>
         </div>
         <div class="flex flex-col items-end gap-1 pt-1">
             <StatusBadge Tone="@SubmissionTone(CurrentPlayerHasSubmittedOrders)">@SubmissionLabel(CurrentPlayerHasSubmittedOrders)</StatusBadge>
@@ -21,6 +22,7 @@
         <div class="space-y-1">
             <p class="@PlayerNameClass(OpponentFaction)">@OpponentPlayerName</p>
             <p class="text-2xl font-semibold text-yellow-400">@OpponentPlayerEnergy⚡</p>
+            <p class="text-sm text-slate-300">@OpponentCapitalCount / @OpponentSupplyPool ⚓</p>
         </div>
         <div class="flex flex-col items-end gap-1 pt-1">
             <StatusBadge Tone="@SubmissionTone(OpponentHasSubmittedOrders)">@SubmissionLabel(OpponentHasSubmittedOrders)</StatusBadge>
@@ -46,6 +48,12 @@
     public int CurrentPlayerEnergy { get; set; }
 
     [Parameter]
+    public int CurrentPlayerSupplyPool { get; set; }
+
+    [Parameter]
+    public int CurrentPlayerCapitalCount { get; set; }
+
+    [Parameter]
     public bool CurrentPlayerIsActive { get; set; }
 
     [Parameter]
@@ -56,6 +64,12 @@
 
     [Parameter]
     public int OpponentPlayerEnergy { get; set; }
+
+    [Parameter]
+    public int OpponentSupplyPool { get; set; }
+
+    [Parameter]
+    public int OpponentCapitalCount { get; set; }
 
     [Parameter]
     public bool OpponentIsActive { get; set; }

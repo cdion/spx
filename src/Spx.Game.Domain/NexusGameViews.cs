@@ -26,7 +26,9 @@ public sealed record NexusPlayerView(
     // Only populated for the viewing player; null for opponents
     [property: Id(6)] ImmutableArray<NexusMoveOrder>? PendingMoveOrders,
     [property: Id(7)] ImmutableArray<NexusBuildOrder>? PendingBuildOrders,
-    [property: Id(8)] bool PendingBeginNexusGate
+    [property: Id(8)] bool PendingBeginNexusGate,
+    [property: Id(9)] int SupplyPool,
+    [property: Id(10)] int CapitalCount
 );
 
 [GenerateSerializer]

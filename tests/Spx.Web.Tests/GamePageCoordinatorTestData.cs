@@ -45,7 +45,9 @@ internal static class GamePageCoordinatorTestData
                 true,
                 [],
                 null,
-                false
+                false,
+                0,
+                0
             ),
             new NexusPlayerView(
                 OpponentPlayerId,
@@ -56,7 +58,9 @@ internal static class GamePageCoordinatorTestData
                 true,
                 null,
                 null,
-                false
+                false,
+                0,
+                0
             ),
             [],
             null

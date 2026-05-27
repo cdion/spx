@@ -69,12 +69,12 @@ public class NexusMapTests
     {
         var incomeSystems = Map.Where(s => !s.IsNexus && !s.HomePlayerId.HasValue).ToList();
         Assert.Equal(16, incomeSystems.Count);
-        Assert.All(incomeSystems, s => Assert.InRange(s.IncomeValue, 2, 5));
+        Assert.All(incomeSystems, s => Assert.InRange(s.IncomeValue, 1, 3));
     }
 
     [Fact]
-    public void GenerateMap_HomeSystemsHave3Income() =>
-        Assert.All(Map.Where(s => s.HomePlayerId.HasValue), s => Assert.Equal(3, s.IncomeValue));
+    public void GenerateMap_HomeSystemsHave2Income() =>
+        Assert.All(Map.Where(s => s.HomePlayerId.HasValue), s => Assert.Equal(2, s.IncomeValue));
 
     [Fact]
     public void GenerateMap_NexusHasZeroIncome() =>
@@ -515,10 +515,10 @@ public class NexusRoundResolutionTests
     {
         var s = MakeState();
         SubmitBoth(s);
-        // Each player gets home income (3E) + any controlled income systems
-        // At start each only controls their home; home value = 3
-        Assert.True(s.Players[0].Energy >= 3);
-        Assert.True(s.Players[1].Energy >= 3);
+        // Each player gets home income (2E) + any controlled income systems
+        // At start each only controls their home; home value = 2
+        Assert.True(s.Players[0].Energy >= 2);
+        Assert.True(s.Players[1].Energy >= 2);
     }
 
     [Fact]
@@ -656,6 +656,36 @@ public class NexusRoundResolutionTests
     }
 
     [Fact]
+    public void Combat_MultipleContested_ResolvesInSpiralOrder()
+    {
+        var s = MakeState();
+        // Place both players' units at Alpha (1,-1) Ring 1 and Eta (2,-1) Ring 2.
+        // Alpha is earlier in spiral order → its NexusCombatBeganEvent must appear first.
+        var alpha = s.Systems.First(sys => sys.Coord == new HexCoord(1, -1));
+        alpha.AddUnits(P1Id, NexusUnitType.Carrier, 1);
+        alpha.AddUnits(P1Id, NexusUnitType.Infantry, 1);
+        alpha.AddUnits(P2Id, NexusUnitType.Carrier, 1);
+        alpha.AddUnits(P2Id, NexusUnitType.Infantry, 1);
+
+        var eta = s.Systems.First(sys => sys.Coord == new HexCoord(2, -1));
+        eta.AddUnits(P1Id, NexusUnitType.Carrier, 1);
+        eta.AddUnits(P1Id, NexusUnitType.Infantry, 1);
+        eta.AddUnits(P2Id, NexusUnitType.Carrier, 1);
+        eta.AddUnits(P2Id, NexusUnitType.Infantry, 1);
+
+        SubmitBoth(s);
+
+        var combatStarts = s
+            .LastResolveEvents.OfType<NexusCombatBeganEvent>()
+            .Select(e => e.System)
+            .ToList();
+
+        Assert.Equal(2, combatStarts.Count);
+        Assert.Equal(new HexCoord(1, -1), combatStarts[0]); // Alpha before Eta
+        Assert.Equal(new HexCoord(2, -1), combatStarts[1]);
+    }
+
+    [Fact]
     public void Abandon_SetsOpponentAsWinner()
     {
         var s = MakeState();
@@ -750,27 +780,36 @@ public class NexusPersistentDamageTests
         var s = MakeState();
         var p1Home = s.Systems.First(sys => sys.HomePlayerId == P1Id);
 
-        // Add two Frigates for P1: one damaged (HitsAbsorbed=1), one clean
-        p1Home
-            .Units[P1Id]
-            .Add(
-                new NexusUnitStack
-                {
-                    UnitType = NexusUnitType.Frigate,
-                    HitsAbsorbed = 1,
-                    Count = 1,
-                }
-            );
-        p1Home
-            .Units[P1Id]
-            .Add(
-                new NexusUnitStack
-                {
-                    UnitType = NexusUnitType.Frigate,
-                    HitsAbsorbed = 0,
-                    Count = 1,
-                }
-            );
+        // Replace P1 home units: Infantry + Fighters + 2 Frigates (no Carrier).
+        // Keeping capitals to exactly 2 ensures supply pool (2) is never exceeded,
+        // so the supply check cannot disband the retreating Frigate.
+        p1Home.Units[P1Id] =
+        [
+            new NexusUnitStack
+            {
+                UnitType = NexusUnitType.Infantry,
+                HitsAbsorbed = 0,
+                Count = 4,
+            },
+            new NexusUnitStack
+            {
+                UnitType = NexusUnitType.Fighter,
+                HitsAbsorbed = 0,
+                Count = 2,
+            },
+            new NexusUnitStack
+            {
+                UnitType = NexusUnitType.Frigate,
+                HitsAbsorbed = 1,
+                Count = 1,
+            },
+            new NexusUnitStack
+            {
+                UnitType = NexusUnitType.Frigate,
+                HitsAbsorbed = 0,
+                Count = 1,
+            },
+        ];
 
         // Place P2 in P1's home system to make it contested
         p1Home.Units[P2Id] =
@@ -1003,5 +1042,174 @@ public class NexusGateTests
 
         Assert.Equal(NexusGateProgress.None, s.Players[0].GateProgress);
         Assert.Contains(s.LastResolveEvents, e => e is NexusGateCancelledEvent);
+    }
+}
+
+// ── Supply Check ──────────────────────────────────────────────────────────────
+
+public class NexusSupplyCheckTests
+{
+    private static readonly Guid P1Id = Guid.Parse("aaaaaaaa-0000-0000-0000-000000000001");
+    private static readonly Guid P2Id = Guid.Parse("bbbbbbbb-0000-0000-0000-000000000002");
+    private static readonly Guid GameId = Guid.Parse("cccccccc-0000-0000-0000-000000000003");
+
+    private static NexusGameState MakeState()
+    {
+        var state = new NexusGameState();
+        NexusGameEngine.Initialize(
+            state,
+            new InitializeNexusGameCommand(
+                ImmutableArray.Create(
+                    new GameSessionParticipant(P1Id),
+                    new GameSessionParticipant(P2Id)
+                )
+            ),
+            new Random(42)
+        );
+        return state;
+    }
+
+    private static void SubmitBoth(NexusGameState state)
+    {
+        NexusGameEngine.SubmitOrders(
+            state,
+            new NexusTurnOrdersCommand(P1Id, state.RoundNumber, [], [], false),
+            new Random(42)
+        );
+        NexusGameEngine.SubmitOrders(
+            state,
+            new NexusTurnOrdersCommand(P2Id, state.RoundNumber, [], [], false),
+            new Random(42)
+        );
+    }
+
+    [Fact]
+    public void SupplyCheck_NoDeficit_NoEventsEmitted()
+    {
+        // Initial: P1 has 1 Carrier at home (supply pool=2, capital count=1) — no deficit.
+        var s = MakeState();
+        SubmitBoth(s);
+        Assert.DoesNotContain(s.LastResolveEvents, e => e is NexusCapitalDisbandedEvent);
+    }
+
+    [Fact]
+    public void SupplyCheck_Deficit_DisbandsCheapestCapitalFirst()
+    {
+        var s = MakeState();
+        // P1 home has 1 Carrier. Add 2 Frigates + 1 Carrier to Nexus for P1.
+        // Total capitals = 4 (Frigate×2, Carrier×2). Supply pool = 2 (home only). Deficit = 2.
+        // Frigates are cheaper (cost 4 vs 8) and Nexus is first in spiral → 2 Frigates disbanded.
+        var nexus = s.Systems.First(sys => sys.IsNexus);
+        nexus.AddUnits(P1Id, NexusUnitType.Frigate, 2);
+        nexus.AddUnits(P1Id, NexusUnitType.Carrier, 1);
+
+        SubmitBoth(s);
+
+        var disbandEvents = s
+            .LastResolveEvents.OfType<NexusCapitalDisbandedEvent>()
+            .Where(e => e.PlayerId == P1Id)
+            .ToList();
+        Assert.Single(disbandEvents);
+        var ev = disbandEvents[0];
+        Assert.Equal(NexusUnitType.Frigate, ev.UnitType);
+        Assert.Equal(NexusMap.NexusCoord, ev.System);
+        Assert.Equal(2, ev.Count);
+    }
+
+    [Fact]
+    public void SupplyCheck_SpiralOrder_Ring1DisbandedBeforeHome()
+    {
+        var s = MakeState();
+        // P1 home already has 1 Carrier. Add 1 Frigate to Alpha (Ring 1) and 1 Frigate to home (Ring 2).
+        // Total capitals = 3. Supply pool = 2. Deficit = 1.
+        // Alpha (1,-1) is earlier in spiral than home (2,-2) → Alpha Frigate disbanded first.
+        var alpha = s.Systems.First(sys => sys.Coord == new HexCoord(1, -1));
+        alpha.AddUnits(P1Id, NexusUnitType.Frigate, 1);
+        var p1Home = s.Systems.First(sys => sys.HomePlayerId == P1Id);
+        p1Home.AddUnits(P1Id, NexusUnitType.Frigate, 1);
+
+        SubmitBoth(s);
+
+        var disbanded = s
+            .LastResolveEvents.OfType<NexusCapitalDisbandedEvent>()
+            .Where(e => e.PlayerId == P1Id)
+            .ToList();
+        Assert.Single(disbanded);
+        Assert.Equal(new HexCoord(1, -1), disbanded[0].System);
+        Assert.Equal(NexusUnitType.Frigate, disbanded[0].UnitType);
+        Assert.Equal(1, disbanded[0].Count);
+    }
+
+    [Fact]
+    public void SupplyCheck_PlanetaryUnits_NeverDisbanded()
+    {
+        var s = MakeState();
+        // Add many Infantry (planetary) to Nexus — planetary units don't count as Capitals.
+        // Supply pool = 2, capital count = 1 (home Carrier), no deficit.
+        var nexus = s.Systems.First(sys => sys.IsNexus);
+        nexus.AddUnits(P1Id, NexusUnitType.Infantry, 10);
+        nexus.AddUnits(P1Id, NexusUnitType.Fighter, 5);
+
+        SubmitBoth(s);
+
+        Assert.DoesNotContain(s.LastResolveEvents, e => e is NexusCapitalDisbandedEvent);
+    }
+
+    [Fact]
+    public void SupplyCheck_UncontrolledSystem_ContributesZeroSupply()
+    {
+        var s = MakeState();
+        // P1 has 3 Frigates at Alpha (uncontrolled). Supply pool = 2 (home only). Deficit = 2.
+        var alpha = s.Systems.First(sys => sys.Coord == new HexCoord(1, -1));
+        alpha.AddUnits(P1Id, NexusUnitType.Frigate, 3);
+
+        SubmitBoth(s);
+
+        var disbandEvents = s
+            .LastResolveEvents.OfType<NexusCapitalDisbandedEvent>()
+            .Where(e => e.PlayerId == P1Id)
+            .ToList();
+        Assert.Equal(2, disbandEvents.Sum(e => e.Count));
+    }
+
+    [Fact]
+    public void SupplyCheck_NexusContributesZeroSupply()
+    {
+        var s = MakeState();
+        // Manually give P1 control of Nexus (IncomeValue = 0). Supply pool should still be 2.
+        var nexus = s.Systems.First(sys => sys.IsNexus);
+        nexus.ControlOwner = P1Id;
+        // P1 has 1 Carrier at home. Supply = 2 + 0 = 2. Capital count = 1. No deficit.
+
+        SubmitBoth(s);
+
+        Assert.DoesNotContain(s.LastResolveEvents, e => e is NexusCapitalDisbandedEvent);
+    }
+
+    [Fact]
+    public void PlayerView_SupplyPool_MatchesControlledIncome()
+    {
+        var s = MakeState();
+        SubmitBoth(s);
+
+        var view = NexusGameEngine.BuildView(s, GameId, P1Id);
+        var expected = s.Systems.Where(sys => sys.ControlOwner == P1Id).Sum(sys => sys.IncomeValue);
+        Assert.Equal(expected, view.CurrentPlayer.SupplyPool);
+    }
+
+    [Fact]
+    public void PlayerView_CapitalCount_MatchesTotalCapitals()
+    {
+        var s = MakeState();
+        SubmitBoth(s);
+
+        var view = NexusGameEngine.BuildView(s, GameId, P1Id);
+        var expected = s.Systems.Sum(sys =>
+            sys.GetUnitCount(P1Id, NexusUnitType.Frigate)
+            + sys.GetUnitCount(P1Id, NexusUnitType.Destroyer)
+            + sys.GetUnitCount(P1Id, NexusUnitType.Cruiser)
+            + sys.GetUnitCount(P1Id, NexusUnitType.Carrier)
+        );
+        Assert.Equal(expected, view.CurrentPlayer.CapitalCount);
     }
 }

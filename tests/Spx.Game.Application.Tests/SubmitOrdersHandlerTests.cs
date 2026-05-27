@@ -198,7 +198,9 @@ public sealed class SubmitOrdersHandlerTests
             true,
             [],
             null,
-            false
+            false,
+            0,
+            0
         );
         var opponentPlayer = new NexusPlayerView(
             BluePlayerId,
@@ -209,7 +211,9 @@ public sealed class SubmitOrdersHandlerTests
             true,
             null,
             null,
-            false
+            false,
+            0,
+            0
         );
         return new NexusGameView(
             GameId,

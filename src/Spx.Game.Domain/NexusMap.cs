@@ -88,8 +88,39 @@ public static class NexusMap
     public static bool AreAdjacent(HexCoord a, HexCoord b) => a.DistanceTo(b) == 1;
 
     /// <summary>
+    /// All 19 system coordinates in spiral order: Nexus first, then Ring 1 clockwise from NE,
+    /// then Ring 2 clockwise from NE. Used for supply-check disbanding (innermost systems
+    /// evaluated first; home systems are last).
+    /// </summary>
+    public static readonly IReadOnlyList<HexCoord> SystemsInSpiralOrder = new List<HexCoord>
+    {
+        // Ring 0
+        new(0, 0),
+        // Ring 1 — clockwise from NE
+        new(1, -1), // Alpha
+        new(1, 0), // Beta
+        new(0, 1), // Gamma
+        new(-1, 1), // Delta
+        new(-1, 0), // Epsilon
+        new(0, -1), // Zeta
+        // Ring 2 — clockwise from NE
+        new(2, -1), // Eta
+        new(2, 0), // Theta
+        new(1, 1), // Iota
+        new(0, 2), // Kappa
+        new(-1, 2), // Lambda
+        new(-2, 2), // P2 Home
+        new(-2, 1), // Mu
+        new(-2, 0), // Nu
+        new(-1, -1), // Xi
+        new(0, -2), // Omicron
+        new(1, -2), // Pi
+        new(2, -2), // P1 Home
+    }.AsReadOnly();
+
+    /// <summary>
     /// Generates the initial <see cref="NexusSystemState"/> list for a new game.
-    /// Income values for the 16 non-nexus non-home systems are randomly assigned (2-5 Energy/turn).
+    /// Income values for the 16 non-nexus non-home systems are randomly assigned (1-3 Energy/turn).
     /// </summary>
     public static List<NexusSystemState> GenerateMap(Guid player1Id, Guid player2Id, Random rng)
     {
@@ -108,8 +139,8 @@ public static class NexusMap
 
             var incomeValue =
                 isNexus ? 0
-                : homePlayerId.HasValue ? 3
-                : rng.Next(2, 6); // 2-5 inclusive
+                : homePlayerId.HasValue ? 2
+                : rng.Next(1, 4); // 1-3 inclusive
 
             var system = new NexusSystemState
             {

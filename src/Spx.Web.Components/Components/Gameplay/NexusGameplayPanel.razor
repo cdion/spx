@@ -7,9 +7,11 @@
 
 <NexusGameplayTopInfoBar RoundNumber="@Session.RoundNumber" CurrentPlayerName="@CurrentPlayerName"
                          OpponentPlayerName="@OpponentPlayerName" CurrentPlayerFaction="@Session.CurrentPlayer.Faction"
-                         CurrentPlayerEnergy="@Session.CurrentPlayer.Energy" CurrentPlayerIsActive="@Session.CurrentPlayer.IsActive"
+                         CurrentPlayerEnergy="@Session.CurrentPlayer.Energy" CurrentPlayerSupplyPool="@Session.CurrentPlayer.SupplyPool"
+                         CurrentPlayerCapitalCount="@Session.CurrentPlayer.CapitalCount" CurrentPlayerIsActive="@Session.CurrentPlayer.IsActive"
                          CurrentPlayerHasSubmittedOrders="@Session.CurrentPlayer.HasSubmittedOrders"
                          OpponentFaction="@Session.Opponent.Faction" OpponentPlayerEnergy="@Session.Opponent.Energy"
+                         OpponentSupplyPool="@Session.Opponent.SupplyPool" OpponentCapitalCount="@Session.Opponent.CapitalCount"
                          OpponentIsActive="@Session.Opponent.IsActive" OpponentHasSubmittedOrders="@Session.Opponent.HasSubmittedOrders" />
 
 @if (Session.Completion is not null)

@@ -19,7 +19,19 @@ public class NexusGameViewQueriesTests
     }
 
     private static NexusPlayerView MakePlayer(Guid id) =>
-        new(id, NexusFactionColor.Red, 0, NexusGateProgress.None, false, true, null, null, false);
+        new(
+            id,
+            NexusFactionColor.Red,
+            0,
+            NexusGateProgress.None,
+            false,
+            true,
+            null,
+            null,
+            false,
+            0,
+            0
+        );
 
     private static NexusGameView MakeView(Guid playerId, params NexusSystemView[] systems) =>
         new(

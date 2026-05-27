@@ -143,8 +143,8 @@ public static class NexusGameEngine
             gameId,
             state.RoundNumber,
             systems,
-            ProjectPlayerView(current, isSelf: true),
-            ProjectPlayerView(opponent, isSelf: false),
+            ProjectPlayerView(current, isSelf: true, state),
+            ProjectPlayerView(opponent, isSelf: false, state),
             state.LastResolveEvents.ToImmutableArray(),
             state.Completion
         );
@@ -310,6 +310,9 @@ public static class NexusGameEngine
             }
         }
 
+        // Step 5b: Supply check — disband Capitals over supply pool in spiral order
+        ResolveSupplyCheck(state, players, events);
+
         // Step 6: Gate progress and win check
         var completedIds = new List<Guid>();
         foreach (var player in players)
@@ -375,6 +378,100 @@ public static class NexusGameEngine
             }
         }
     }
+
+    // ── Supply Check ──────────────────────────────────────────────────────────
+
+    private static void ResolveSupplyCheck(
+        NexusGameState state,
+        List<NexusPlayerState> players,
+        List<NexusResolveEvent> events
+    )
+    {
+        foreach (var player in players)
+        {
+            var supplyPool = ComputeSupplyPool(state, player.PlayerId);
+            var capitalCount = ComputeCapitalCount(state, player.PlayerId);
+            var deficit = capitalCount - supplyPool;
+
+            if (deficit <= 0)
+                continue;
+
+            foreach (var coord in NexusMap.SystemsInSpiralOrder)
+            {
+                if (deficit <= 0)
+                    break;
+
+                var system = GetSystem(state, coord);
+                if (system is null)
+                    continue;
+
+                // Collect Capital stacks for this player, cheapest type first.
+                // All Capital costs are unique (4/5/6/8) so ordering by cost is deterministic.
+                // Within a type, most-damaged stacks are taken first.
+                var capitalStacks = system
+                    .GetPlayerStacks(player.PlayerId)
+                    .Where(s => s.UnitType.IsCapital())
+                    .OrderBy(s => s.UnitType.Cost())
+                    .ThenByDescending(s => s.HitsAbsorbed)
+                    .ToList();
+
+                if (capitalStacks.Count == 0)
+                    continue;
+
+                NexusUnitType? currentType = null;
+                var countForCurrentType = 0;
+
+                foreach (var stack in capitalStacks)
+                {
+                    if (deficit <= 0)
+                        break;
+
+                    if (currentType.HasValue && currentType.Value != stack.UnitType)
+                    {
+                        // Emit batched event for the previous type
+                        events.Add(
+                            new NexusCapitalDisbandedEvent(
+                                player.PlayerId,
+                                currentType.Value,
+                                coord,
+                                countForCurrentType
+                            )
+                        );
+                        countForCurrentType = 0;
+                    }
+
+                    currentType = stack.UnitType;
+                    var take = Math.Min(stack.Count, deficit);
+                    system.RemoveUnits(player.PlayerId, stack.UnitType, take);
+                    deficit -= take;
+                    countForCurrentType += take;
+                }
+
+                if (currentType.HasValue && countForCurrentType > 0)
+                {
+                    events.Add(
+                        new NexusCapitalDisbandedEvent(
+                            player.PlayerId,
+                            currentType.Value,
+                            coord,
+                            countForCurrentType
+                        )
+                    );
+                }
+            }
+        }
+    }
+
+    private static int ComputeSupplyPool(NexusGameState state, Guid playerId) =>
+        state.Systems.Where(s => s.ControlOwner == playerId).Sum(s => s.IncomeValue);
+
+    private static int ComputeCapitalCount(NexusGameState state, Guid playerId) =>
+        state.Systems.Sum(s =>
+            s.GetUnitCount(playerId, NexusUnitType.Frigate)
+            + s.GetUnitCount(playerId, NexusUnitType.Destroyer)
+            + s.GetUnitCount(playerId, NexusUnitType.Cruiser)
+            + s.GetUnitCount(playerId, NexusUnitType.Carrier)
+        );
 
     // ── Moves ─────────────────────────────────────────────────────────────────
 
@@ -446,9 +543,10 @@ public static class NexusGameEngine
         Random rng
     )
     {
-        foreach (var system in state.Systems)
+        foreach (var coord in NexusMap.SystemsInSpiralOrder)
         {
-            if (!system.HasAnyUnits(player1Id) || !system.HasAnyUnits(player2Id))
+            var system = GetSystem(state, coord);
+            if (system is null || !system.HasAnyUnits(player1Id) || !system.HasAnyUnits(player2Id))
                 continue;
 
             events.Add(new NexusCombatBeganEvent(system.Coord, player1Id, player2Id));
@@ -701,7 +799,11 @@ public static class NexusGameEngine
 
     // ── View Projection ───────────────────────────────────────────────────────
 
-    private static NexusPlayerView ProjectPlayerView(NexusPlayerState player, bool isSelf) =>
+    private static NexusPlayerView ProjectPlayerView(
+        NexusPlayerState player,
+        bool isSelf,
+        NexusGameState state
+    ) =>
         new(
             player.PlayerId,
             player.Faction,
@@ -711,7 +813,9 @@ public static class NexusGameEngine
             player.IsActive,
             isSelf ? player.PendingMoveOrders.ToImmutableArray() : null,
             isSelf ? player.PendingBuildOrders.ToImmutableArray() : null,
-            isSelf && player.PendingBeginNexusGate
+            isSelf && player.PendingBeginNexusGate,
+            ComputeSupplyPool(state, player.PlayerId),
+            ComputeCapitalCount(state, player.PlayerId)
         );
 
     // ── Utilities ─────────────────────────────────────────────────────────────
