@@ -1,0 +1,347 @@
+@page "/stories/nexus/pages/page"
+@rendermode InteractiveServer
+
+<StoryHeader Title="Nexus Page">
+    Full lobby and gameplay composition using the extracted shared components, including the same empty and alert
+    branches as the production page.
+</StoryHeader>
+
+<div class="mb-4 flex flex-wrap gap-2">
+    @foreach (var (label, index) in _states.Select((state, i) => (state, i)))
+    {
+        <button class="@ScenarioBtnClass(index)" @onclick="() => SelectState(index)">
+            @label
+        </button>
+    }
+</div>
+
+@if (_lobby is not null)
+{
+    <div class="mb-4 flex flex-wrap gap-2">
+        @foreach (var tab in VisibleSessionTabs)
+        {
+            <button class="@(tab == _selectedSessionTab ? "ui-pg-tab-active" : "ui-pg-tab")"
+                    @onclick="() => SelectSessionTab(tab)">
+                @tab
+            </button>
+        }
+    </div>
+}
+
+<section class="mb-6 grid gap-3 lg:grid-cols-[1.45fr_1fr]">
+    <div class="ui-panel-card space-y-4">
+        <SectionHeader Eyebrow="Story controls" Title="Page state">
+            <p class="text-sm leading-6 text-slate-300">Use these toggles to preview the same branches that the real
+                lobby page renders.</p>
+            </SectionHeader>
+
+            <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                <label class="ui-panel-card-inner flex items-center gap-2 text-xs text-slate-300">
+                    <input type="checkbox" @bind="_showPageError" disabled="@(_stateIndex is 0 or 1)" />
+                    Page error banner
+                </label>
+                <label class="ui-panel-card-inner flex items-center gap-2 text-xs text-slate-300">
+                    <input type="checkbox" @bind="_showGameplayError" disabled="@(_stateIndex is 0 or 1)" />
+                    Gameplay error
+                </label>
+                <label class="ui-panel-card-inner flex items-center gap-2 text-xs text-slate-300">
+                    <input type="checkbox" @bind="_showTimelineError" disabled="@(_stateIndex is 0 or 1)" />
+                    Timeline error
+                </label>
+            </div>
+
+            <div class="flex flex-wrap gap-2 text-xs uppercase tracking-[0.2em] text-slate-500">
+                <span class="rounded-full border border-white/10 px-3 py-1">Current state: @_states[_stateIndex]</span>
+                @if (_lobby is not null)
+                {
+                    <span class="rounded-full border border-white/10 px-3 py-1">Players: @_lobby.Players.Count /
+                        @_lobby.MaxPlayers</span>
+                    }
+                    @if (_session is not null)
+                    {
+                        <span class="rounded-full border border-sky-400/20 bg-sky-500/10 px-3 py-1 text-sky-200">Round
+                            @_session.RoundNumber</span>
+                        }
+                    </div>
+                </div>
+
+                <div class="ui-panel-card space-y-3 text-sm leading-6 text-slate-300">
+                    <SectionHeader Eyebrow="Coverage" Title="What this story proves" />
+                    <p>It exercises the extracted header, gameplay shell, timeline, composer, roster, and current-user panels in one
+                        production-like frame.</p>
+                        <p>It also covers the real page's loading, unavailable, archived-seat, and inline error states so UX work can
+                            stay in the playground.</p>
+                        </div>
+                    </section>
+
+                    @if (_stateIndex == 0)
+                    {
+                        <section class="ui-surface-empty mx-auto max-w-4xl text-slate-300">
+                            Loading lobby...
+                        </section>
+                    }
+                    else if (_stateIndex == 1)
+                    {
+                        <section class="ui-surface-empty mx-auto flex max-w-3xl flex-col gap-6">
+                            <PageHero Eyebrow="Lobby" Title="Game unavailable"
+                                      Description="You can only open lobby pages for games where you are an active player or where you previously played."
+                                      Compact />
+                            <div class="ui-actions">
+                                <a class="ui-button-primary" href="#">
+                                    Back to My Games
+                                </a>
+                                <a class="ui-button-secondary" href="#">
+                                    Join another game
+                                </a>
+                            </div>
+                        </section>
+                    }
+                    else if (_lobby is { } lobby)
+                    {
+                        <section class="ui-page max-w-6xl gap-6 lg:gap-7">
+                            <GameLobbyHeader Lobby="@lobby" Presence="@_presence" BackHref="#" />
+
+                            @if (!string.IsNullOrWhiteSpace(PageError))
+                            {
+                                <AlertBanner>@PageError</AlertBanner>
+                            }
+
+                            @if (!lobby.IsCurrentUserActive)
+                            {
+                                <AlertBanner Tone="AlertBanner.AlertTone.Warning" Role="status">
+                                    You are viewing this game as a former player. Timeline history is limited to the point when you left.
+                                </AlertBanner>
+                            }
+
+                            <GameSessionPanel State="SessionState" MessagesState="MessagesState" MessagesCallbacks="MessagesCallbacks"
+                                              SelectedTab="@_selectedSessionTab" SelectedTabChanged="HandleSessionTabChanged"
+                                              OnSubmitOrders="HandleSubmitOrders" />
+
+                            <GameCurrentUserPanel Lobby="@lobby" IsLeaving="false" OnLeave="NoOp" />
+
+                            @if (!string.IsNullOrWhiteSpace(_lastAction))
+                            {
+                                <div class="rounded-2xl border border-sky-400/20 bg-sky-500/10 p-4 text-sm text-slate-100">
+                                    @_lastAction
+                                </div>
+                            }
+                        </section>
+                    }
+
+@code {
+    private readonly string[] _states = ["Loading", "Unavailable", "Active", "Waiting", "Archived"];
+    private int _stateIndex;
+    private IReadOnlyList<NexusStoryFixtures.GameplayScenario> _gameplayScenarios = null!;
+    private GameLobbyView? _lobby;
+    private NexusGameView? _session;
+    private GamePresenceView _presence = GamePresenceView.Empty;
+    private List<TimelineEntryState> _timelineItems = [];
+    private Guid? _editingMessageId;
+    private string _editText = string.Empty;
+    private string _composerText = "The center lane is open if you want to pressure it this round.";
+    private string? _recipientPlayerId;
+    private string? _lastAction;
+    private bool _showPageError;
+    private bool _showGameplayError;
+    private bool _showTimelineError;
+    private GameSessionTab _selectedSessionTab = GameSessionTab.Timeline;
+
+    private string? PageError => _showPageError ? "We couldn't refresh the lobby snapshot. Existing UI remains visible while the page retries." : null;
+
+    private string? GameplayError => _showGameplayError ? "Orders could not be submitted for this round. Check the current board state and try again." : null;
+
+    private string? TimelineError => _showTimelineError ? "The timeline feed is temporarily out of sync. Messages can still be retried or dismissed." : null;
+
+    private GameSessionState? SessionState =>
+        _lobby is null
+            ? null
+            : new GameSessionState
+            {
+                Lobby = _lobby,
+                Session = _session,
+                IsSubmittingGameplayAction = false,
+                GameplayError = GameplayError,
+            };
+
+    private GameMessagesState? MessagesState =>
+        _lobby is null
+            ? null
+            : new GameMessagesState
+            {
+                CurrentUserName = _lobby.CurrentPlayerName,
+                Items = _timelineItems,
+                MessageError = TimelineError,
+                IsTimelineLoading = false,
+                IsLoadingOlderMessages = false,
+                HasOlderMessages = true,
+                EditingMessageId = _editingMessageId,
+                EditMessageText = _editText,
+                IsSavingEdit = false,
+                ComposerText = _composerText,
+                SelectedRecipientPlayerIdString = _recipientPlayerId,
+                IsSendingMessage = false,
+                IsCurrentUserActive = _lobby.IsCurrentUserActive,
+                CurrentPlayerId = _lobby.CurrentPlayerId,
+                Players = _lobby.Players,
+            };
+
+    private GameMessagesCallbacks MessagesCallbacks => new()
+    {
+        LoadOlderMessagesAsync = NoOp,
+        BeginEditAsync = BeginEdit,
+        SetEditMessageTextAsync = SetEditText,
+        CancelEditAsync = CancelEdit,
+        SaveEditAsync = SaveEdit,
+        DeleteMessageAsync = DeleteMessage,
+        RetryPendingMessageAsync = RetryPending,
+        DismissPendingMessageAsync = DismissPending,
+        SetComposerTextAsync = SetComposerText,
+        SetRecipientPlayerIdStringAsync = SetRecipientPlayerId,
+        SendMessageAsync = SendMessage,
+    };
+
+    private IReadOnlyList<GameSessionTab> VisibleSessionTabs =>
+        _session is not null && _lobby?.IsCurrentUserActive == true
+            ? [GameSessionTab.Timeline, GameSessionTab.Game]
+            : [GameSessionTab.Timeline];
+
+    protected override void OnInitialized()
+    {
+        _gameplayScenarios = NexusStoryFixtures.CreateGameplayScenarios();
+        SelectState(2);
+    }
+
+    private void SelectState(int index)
+    {
+        _stateIndex = index;
+        _lobby = null;
+        _showPageError = false;
+        _showGameplayError = false;
+        _showTimelineError = false;
+        _timelineItems = [.. NexusStoryFixtures.CreateTimelineEntries()];
+        _editingMessageId = null;
+        _editText = string.Empty;
+        _composerText = "The center lane is open if you want to pressure it this round.";
+        _recipientPlayerId = null;
+        _lastAction = null;
+
+        switch (index)
+        {
+            case 0:
+                _session = null;
+                _presence = GamePresenceView.Empty;
+                break;
+            case 1:
+                _session = null;
+                _presence = GamePresenceView.Empty;
+                break;
+            case 2:
+                _lobby = NexusStoryFixtures.CreateLobby(_gameplayScenarios[2].View.GameId);
+                _session = _gameplayScenarios[2].View;
+                _presence = NexusStoryFixtures.CreatePresence(NexusStoryFixtures.Player1Id, NexusStoryFixtures.Player2Id);
+                _selectedSessionTab = GameSessionTab.Game;
+                break;
+            case 3:
+                _lobby = NexusStoryFixtures.CreateWaitingLobby(Guid.Parse("66666666-6666-6666-6666-666666666666"));
+                _session = null;
+                _presence = NexusStoryFixtures.CreatePresence(NexusStoryFixtures.Player1Id);
+                _selectedSessionTab = GameSessionTab.Timeline;
+                break;
+            default:
+                _lobby = NexusStoryFixtures.CreateArchivedLobby(Guid.Parse("77777777-7777-7777-7777-777777777777"));
+                _session = null;
+                _presence = GamePresenceView.Empty;
+                _selectedSessionTab = GameSessionTab.Timeline;
+                break;
+        }
+    }
+
+    private void SelectSessionTab(GameSessionTab tab)
+    {
+        _selectedSessionTab = tab;
+    }
+
+    private Task HandleSubmitOrders(NexusTurnOrdersCommand command)
+    {
+        _lastAction = $"Submitted round {command.ExpectedRoundNumber} with {command.MoveOrders.Length} move(s).";
+        return Task.CompletedTask;
+    }
+
+    private Task SendMessage()
+    {
+        _lastAction = string.IsNullOrWhiteSpace(_recipientPlayerId)
+            ? "Sent public message from the composer."
+            : "Sent private message from the composer.";
+        return Task.CompletedTask;
+    }
+
+    private Task BeginEdit(GameTimelineEntryView message)
+    {
+        _editingMessageId = message.Id;
+        _editText = message.Body;
+        _lastAction = $"Editing {message.SenderDisplayName}'s message.";
+        return Task.CompletedTask;
+    }
+
+    private Task CancelEdit()
+    {
+        _editingMessageId = null;
+        _editText = string.Empty;
+        _lastAction = "Edit cancelled.";
+        return Task.CompletedTask;
+    }
+
+    private Task SaveEdit()
+    {
+        _lastAction = "Edit save requested.";
+        return Task.CompletedTask;
+    }
+
+    private Task SetEditText(string text)
+    {
+        _editText = text;
+        return Task.CompletedTask;
+    }
+
+    private Task DeleteMessage(Guid messageId)
+    {
+        _lastAction = $"Delete requested for {messageId}.";
+        return Task.CompletedTask;
+    }
+
+    private Task RetryPending(Guid key)
+    {
+        _lastAction = $"Retry requested for pending item {key}.";
+        return Task.CompletedTask;
+    }
+
+    private Task DismissPending(Guid key)
+    {
+        _timelineItems = [.. _timelineItems.Where(item => item.Key != key)];
+        _lastAction = $"Dismissed pending item {key}.";
+        return Task.CompletedTask;
+    }
+
+    private Task NoOp() => Task.CompletedTask;
+
+    private Task SetComposerText(string text)
+    {
+        _composerText = text;
+        return Task.CompletedTask;
+    }
+
+    private Task SetRecipientPlayerId(string? playerId)
+    {
+        _recipientPlayerId = playerId;
+        return Task.CompletedTask;
+    }
+
+    private Task HandleSessionTabChanged(GameSessionTab tab)
+    {
+        _selectedSessionTab = tab;
+        return Task.CompletedTask;
+    }
+
+    private string ScenarioBtnClass(int index) =>
+        index == _stateIndex ? "ui-pg-tab-active" : "ui-pg-tab";
+}

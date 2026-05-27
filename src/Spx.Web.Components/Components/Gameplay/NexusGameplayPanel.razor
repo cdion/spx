@@ -8,11 +8,11 @@
 <NexusGameplayTopInfoBar RoundNumber="@Session.RoundNumber" CurrentPlayerName="@CurrentPlayerName"
                          OpponentPlayerName="@OpponentPlayerName" CurrentPlayerFaction="@Session.CurrentPlayer.Faction"
                          CurrentPlayerEnergy="@Session.CurrentPlayer.Energy" CurrentPlayerSupplyPool="@Session.CurrentPlayer.SupplyPool"
-                         CurrentPlayerCapitalCount="@Session.CurrentPlayer.CapitalCount" CurrentPlayerIsActive="@Session.CurrentPlayer.IsActive"
+                         CurrentPlayerCapitalCount="@Session.CurrentPlayer.CapitalCount"
                          CurrentPlayerHasSubmittedOrders="@Session.CurrentPlayer.HasSubmittedOrders"
                          OpponentFaction="@Session.Opponent.Faction" OpponentPlayerEnergy="@Session.Opponent.Energy"
                          OpponentSupplyPool="@Session.Opponent.SupplyPool" OpponentCapitalCount="@Session.Opponent.CapitalCount"
-                         OpponentIsActive="@Session.Opponent.IsActive" OpponentHasSubmittedOrders="@Session.Opponent.HasSubmittedOrders" />
+                         OpponentHasSubmittedOrders="@Session.Opponent.HasSubmittedOrders" />
 
 @if (Session.Completion is not null)
 {
@@ -40,16 +40,19 @@
         <div class="min-h-0 flex-1">
             <NexusSidebarPanelShell>
                 <HeaderContent>
-                    <Tabs TItem="SidebarTab" Items="@SidebarTabs" SelectedItem="@_activeSidebarTab"
-                          ItemIdSelector="GetSidebarTabId" PanelIdSelector="GetSidebarPanelId"
-                          ActiveItemClass="rounded-md border border-white/15 bg-white/10 px-3.5 py-2 text-base font-semibold text-white"
-                          InactiveItemClass="rounded-md border border-white/10 px-3.5 py-2 text-base text-slate-400 transition-colors hover:text-slate-200"
-                          ItemLabelSelector="GetSidebarTabLabel" DisabledSelector="IsSidebarTabDisabled"
-                          OnSelected="SetTab" AriaLabel="Sidebar view" />
+                    @if (!HideTabHeader)
+                    {
+                        <Tabs TItem="NexusGameplayTab" Items="@SidebarTabs" SelectedItem="@_activeSidebarTab"
+                              ItemIdSelector="GetSidebarTabId" PanelIdSelector="GetSidebarPanelId"
+                              ActiveItemClass="rounded-md border border-white/15 bg-white/10 px-3.5 py-2 text-base font-semibold text-white"
+                              InactiveItemClass="rounded-md border border-white/10 px-3.5 py-2 text-base text-slate-400 transition-colors hover:text-slate-200"
+                              ItemLabelSelector="GetSidebarTabLabel" DisabledSelector="IsSidebarTabDisabled"
+                              OnSelected="SetTab" AriaLabel="Sidebar view" />
+                    }
                 </HeaderContent>
                 <ChildContent>
                     <div id="@ActiveSidebarPanelId" role="tabpanel" aria-labelledby="@ActiveSidebarTabId">
-                        @if (_activeSidebarTab == SidebarTab.Events)
+                        @if (_activeSidebarTab == NexusGameplayTab.Events)
                         {
                             <NexusResolveEventsPanel Events="@Session.LastResolveEvents" PlayerNames="@GetPlayerNames()"
                                                      RowClassSelector="GetEventRowClass" OnEventClicked="OnEventClicked"
@@ -115,6 +118,12 @@
     [Parameter]
     public EventCallback<NexusTurnOrdersCommand> OnSubmitOrders { get; set; }
 
+    [Parameter]
+    public NexusGameplayTab? SelectedTab { get; set; }
+
+    [Parameter]
+    public bool HideTabHeader { get; set; }
+
     private readonly List<NexusMoveOrder> _pendingMoveOrders = [];
     private readonly List<NexusBuildOrder> _pendingBuildOrders = [];
     private bool _pendingBeginNexusGate;
@@ -124,8 +133,8 @@
     private ImmutableDictionary<NexusUnitType, int> _stagedMoveUnits =
         ImmutableDictionary<NexusUnitType, int>.Empty;
     private IReadOnlyList<HexCoord> _validMoveTargets = [];
-    private static readonly SidebarTab[] SidebarTabs = [SidebarTab.Orders, SidebarTab.Events];
-    private SidebarTab _activeSidebarTab = SidebarTab.Orders;
+    private static readonly NexusGameplayTab[] SidebarTabs = [NexusGameplayTab.Orders, NexusGameplayTab.Events];
+    private NexusGameplayTab _activeSidebarTab = NexusGameplayTab.Orders;
     private EventFocus _hoverEventFocus = EventFocus.None;
     private EventFocus _pinnedEventFocus = EventFocus.None;
 
@@ -151,19 +160,37 @@
 
         if (Session.LastResolveEvents.Length == 0)
         {
-            _activeSidebarTab = SidebarTab.Orders;
-            return;
+            _activeSidebarTab = NexusGameplayTab.Orders;
         }
 
-        _activeSidebarTab = SidebarTab.Events;
-        var firstFocusable = Session.LastResolveEvents
-            .Select(GetEventFocus)
-            .FirstOrDefault(f => f.HasTarget);
-        if (firstFocusable is not null)
+        if (Session.LastResolveEvents.Length > 0)
         {
-            _pinnedEventFocus = firstFocusable;
-            if (firstFocusable.Primary.HasValue)
-                _selectedSystem = firstFocusable.Primary.Value;
+            _activeSidebarTab = NexusGameplayTab.Events;
+            var firstFocusable = Session.LastResolveEvents
+                .Select(GetEventFocus)
+                .FirstOrDefault(f => f.HasTarget);
+            if (firstFocusable is not null)
+            {
+                _pinnedEventFocus = firstFocusable;
+                if (firstFocusable.Primary.HasValue)
+                    _selectedSystem = firstFocusable.Primary.Value;
+            }
+        }
+
+        ApplySelectedTabOverride();
+
+        return;
+
+        void ApplySelectedTabOverride()
+        {
+            if (!SelectedTab.HasValue)
+            {
+                return;
+            }
+
+            _activeSidebarTab = IsSidebarTabDisabled(SelectedTab.Value)
+                ? NexusGameplayTab.Orders
+                : SelectedTab.Value;
         }
     }
 
@@ -337,28 +364,28 @@
         _pendingBeginNexusGate = false;
     }
 
-    private void SetTab(SidebarTab tab)
+    private void SetTab(NexusGameplayTab tab)
     {
-        if (tab == SidebarTab.Events && Session.LastResolveEvents.Length == 0)
+        if (tab == NexusGameplayTab.Events && Session.LastResolveEvents.Length == 0)
             return;
 
         _activeSidebarTab = tab;
     }
 
-    private static string GetSidebarTabLabel(SidebarTab tab) =>
+    private static string GetSidebarTabLabel(NexusGameplayTab tab) =>
         tab switch
         {
-            SidebarTab.Orders => "Orders",
-            SidebarTab.Events => "Events",
+            NexusGameplayTab.Orders => "Orders",
+            NexusGameplayTab.Events => "Events",
             _ => tab.ToString(),
         };
 
-    private bool IsSidebarTabDisabled(SidebarTab tab) =>
-        tab == SidebarTab.Events && Session.LastResolveEvents.Length == 0;
+    private bool IsSidebarTabDisabled(NexusGameplayTab tab) =>
+        tab == NexusGameplayTab.Events && Session.LastResolveEvents.Length == 0;
 
-    private string GetSidebarTabId(SidebarTab tab) => $"nexus-sidebar-tab-{tab.ToString().ToLowerInvariant()}";
+    private string GetSidebarTabId(NexusGameplayTab tab) => $"nexus-sidebar-tab-{tab.ToString().ToLowerInvariant()}";
 
-    private string GetSidebarPanelId(SidebarTab tab) => $"nexus-sidebar-panel-{tab.ToString().ToLowerInvariant()}";
+    private string GetSidebarPanelId(NexusGameplayTab tab) => $"nexus-sidebar-panel-{tab.ToString().ToLowerInvariant()}";
 
     private string ActiveSidebarTabId => GetSidebarTabId(_activeSidebarTab);
 
@@ -456,12 +483,6 @@
                 new EventFocus(e.Sources.ToArray(), Primary: e.Sources[0]),
             _ => EventFocus.None,
         };
-
-    private enum SidebarTab
-    {
-        Orders,
-        Events,
-    }
 
     private sealed record EventFocus(
         IReadOnlyList<HexCoord> Systems,

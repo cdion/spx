@@ -1,7 +1,8 @@
 using Spx.Game.Application;
 using Spx.Game.Domain;
+using Spx.Web.Components.Lobby;
 
-namespace Spx.Web.Playground.Components.Stories;
+namespace Spx.Web.Playground.Components.Stories.Nexus;
 
 internal static class NexusStoryFixtures
 {
@@ -38,6 +39,233 @@ internal static class NexusStoryFixtures
             ],
             true
         );
+
+    public static GameLobbyView CreateWaitingLobby(Guid gameId) =>
+        new(
+            gameId,
+            "Awaiting Challenger",
+            "WAIT01",
+            GameStatus.Open,
+            2,
+            DateTime.UtcNow.AddMinutes(-45),
+            null,
+            PlayerNames[Player1Id],
+            Player1Id,
+            [
+                new GamePlayerView(
+                    Player1Id,
+                    PlayerNames[Player1Id],
+                    DateTime.UtcNow.AddMinutes(-45)
+                ),
+            ],
+            true
+        );
+
+    public static GameLobbyView CreateArchivedLobby(Guid gameId) =>
+        new(
+            gameId,
+            "Archived Match",
+            "ARCH01",
+            GameStatus.Ended,
+            2,
+            DateTime.UtcNow.AddHours(-5),
+            DateTime.UtcNow.AddHours(-2),
+            PlayerNames[Player1Id],
+            Player1Id,
+            [
+                new GamePlayerView(Player1Id, PlayerNames[Player1Id], DateTime.UtcNow.AddHours(-5)),
+                new GamePlayerView(
+                    Player2Id,
+                    PlayerNames[Player2Id],
+                    DateTime.UtcNow.AddHours(-4).AddMinutes(-40)
+                ),
+            ],
+            false
+        );
+
+    public static UserGamesView CreateUserGamesView() =>
+        new(
+            [
+                new GameSummaryView(
+                    Guid.Parse("11111111-1111-1111-1111-111111111111"),
+                    "Saturday skirmish",
+                    "SAT201",
+                    GameStatus.Open,
+                    2,
+                    2,
+                    DateTime.UtcNow.AddHours(-4),
+                    null,
+                    "Captain Red"
+                ),
+                new GameSummaryView(
+                    Guid.Parse("22222222-2222-2222-2222-222222222222"),
+                    "Slow-burn lobby",
+                    "WAIT22",
+                    GameStatus.Open,
+                    1,
+                    2,
+                    DateTime.UtcNow.AddMinutes(-90),
+                    null,
+                    "Captain Red"
+                ),
+            ],
+            [
+                new GameSummaryView(
+                    Guid.Parse("33333333-3333-3333-3333-333333333333"),
+                    "Finished rivalry",
+                    "DONE33",
+                    GameStatus.Ended,
+                    0,
+                    2,
+                    DateTime.UtcNow.AddDays(-2),
+                    DateTime.UtcNow.AddDays(-1),
+                    "Captain Red"
+                ),
+            ]
+        );
+
+    public static UserGamesView CreateEmptyUserGamesView() => new([], []);
+
+    public static GamePresenceView CreatePresence(params Guid[] onlinePlayerIds) =>
+        new(onlinePlayerIds);
+
+    public static IReadOnlyList<TimelineEntryState> CreateTimelineEntries()
+    {
+        var now = DateTime.UtcNow;
+
+        return
+        [
+            new TimelineEntryState
+            {
+                Key = Guid.Parse("44444444-4444-4444-4444-444444444441"),
+                Message = new GameTimelineEntryView(
+                    Guid.Parse("44444444-4444-4444-4444-444444444441"),
+                    GameMessageKind.GameCreated,
+                    GameMessageSenderKind.Game,
+                    Player1Id,
+                    PlayerNames[Player1Id],
+                    null,
+                    string.Empty,
+                    string.Empty,
+                    now.AddMinutes(-35),
+                    null,
+                    null,
+                    false,
+                    false,
+                    false,
+                    false
+                ),
+            },
+            new TimelineEntryState
+            {
+                Key = Guid.Parse("44444444-4444-4444-4444-444444444442"),
+                Message = new GameTimelineEntryView(
+                    Guid.Parse("44444444-4444-4444-4444-444444444442"),
+                    GameMessageKind.PlayerJoined,
+                    GameMessageSenderKind.Game,
+                    Player2Id,
+                    PlayerNames[Player2Id],
+                    null,
+                    string.Empty,
+                    string.Empty,
+                    now.AddMinutes(-32),
+                    null,
+                    null,
+                    false,
+                    false,
+                    false,
+                    false
+                ),
+            },
+            new TimelineEntryState
+            {
+                Key = Guid.Parse("44444444-4444-4444-4444-444444444443"),
+                Message = new GameTimelineEntryView(
+                    Guid.Parse("44444444-4444-4444-4444-444444444443"),
+                    GameMessageKind.PlayerPublic,
+                    GameMessageSenderKind.Player,
+                    Player1Id,
+                    PlayerNames[Player1Id],
+                    null,
+                    string.Empty,
+                    "Opening move is set. I am pushing through the north lane.",
+                    now.AddMinutes(-18),
+                    now.AddMinutes(-16),
+                    null,
+                    true,
+                    false,
+                    true,
+                    true
+                ),
+            },
+            new TimelineEntryState
+            {
+                Key = Guid.Parse("44444444-4444-4444-4444-444444444444"),
+                Message = new GameTimelineEntryView(
+                    Guid.Parse("44444444-4444-4444-4444-444444444444"),
+                    GameMessageKind.PlayerPrivate,
+                    GameMessageSenderKind.Player,
+                    Player2Id,
+                    PlayerNames[Player2Id],
+                    Player1Id,
+                    PlayerNames[Player1Id],
+                    "Private note: your southern flank is open if you want a feint.",
+                    now.AddMinutes(-12),
+                    null,
+                    null,
+                    false,
+                    true,
+                    false,
+                    false
+                ),
+            },
+            new TimelineEntryState
+            {
+                Key = Guid.Parse("44444444-4444-4444-4444-444444444445"),
+                Message = new GameTimelineEntryView(
+                    Guid.Parse("44444444-4444-4444-4444-444444444445"),
+                    GameMessageKind.GameplayEvent,
+                    GameMessageSenderKind.Game,
+                    null,
+                    "System",
+                    null,
+                    string.Empty,
+                    "Carrier group moved from H-3 to G-2. Income recalculated for round 4.",
+                    now.AddMinutes(-8),
+                    null,
+                    null,
+                    false,
+                    false,
+                    false,
+                    false
+                ),
+            },
+            new TimelineEntryState
+            {
+                Key = Guid.Parse("44444444-4444-4444-4444-444444444446"),
+                Pending = new PendingMessageState(
+                    "Queued private reply while the connection recovers.",
+                    Player2Id,
+                    PlayerNames[Player2Id],
+                    now.AddMinutes(-2),
+                    true,
+                    false
+                ),
+            },
+            new TimelineEntryState
+            {
+                Key = Guid.Parse("44444444-4444-4444-4444-444444444447"),
+                Pending = new PendingMessageState(
+                    "Retry this failed public message.",
+                    null,
+                    string.Empty,
+                    now.AddMinutes(-1),
+                    false,
+                    true
+                ),
+            },
+        ];
+    }
 
     public static IReadOnlyList<GameplayScenario> CreateGameplayScenarios() =>
         [

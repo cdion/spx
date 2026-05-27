@@ -1,0 +1,161 @@
+@page "/stories/nexus/pages/forms"
+@rendermode InteractiveServer
+
+<StoryHeader Title="Nexus Forms">
+    Create and join flows composed from the shared <code class="text-sky-300">FormPage</code> shell, with route-like
+    page switching and submit outcomes.
+</StoryHeader>
+
+<div class="mb-3 flex flex-wrap gap-2">
+    @foreach (var (label, index) in _pages.Select((page, i) => (page, i)))
+    {
+        <button class="@PageBtnClass(index)" @onclick="() => _pageIndex = index">
+            @label
+        </button>
+    }
+</div>
+
+<div class="mb-6 grid gap-3 lg:grid-cols-[1.45fr_1fr]">
+    <div class="ui-panel-card space-y-4">
+        <SectionHeader Eyebrow="Story controls" Title="Submit state" />
+
+        <div class="flex flex-wrap gap-2">
+            @foreach (var (label, index) in _states.Select((state, i) => (state, i)))
+            {
+                <button class="@StateBtnClass(index)" @onclick="() => _stateIndex = index">
+                    @label
+                </button>
+            }
+        </div>
+
+        <div class="flex flex-wrap gap-2 text-xs uppercase tracking-[0.2em] text-slate-500">
+            <span class="rounded-full border border-white/10 px-3 py-1">Route: @(IsCreatePage ? "/games/create" :
+                                    "/games/join")</span>
+                <span class="rounded-full border border-sky-400/20 bg-sky-500/10 px-3 py-1 text-sky-200">State:
+                    @_states[_stateIndex]</span>
+                </div>
+            </div>
+
+            <div class="ui-panel-card space-y-3 text-sm leading-6 text-slate-300">
+                <SectionHeader Eyebrow="Coverage" Title="What to review" />
+                <p>This story mirrors the individual create and join pages rather than showing both as a side-by-side catalog.
+                </p>
+                <p>The <strong>Success</strong> state shows the post-submit redirect outcome that the real pages trigger on
+                    command success.</p>
+                </div>
+            </div>
+
+            @if (IsCreatePage)
+            {
+                <FormPage Eyebrow="Lobby" Title="Create a game"
+                          Description="Creating a game reserves the invite code and seats you immediately as player one.">
+                    @if (ShowError)
+                    {
+                        <AlertBanner>We couldn't create a game right now. Please try again.</AlertBanner>
+                    }
+
+                    <div class="ui-field">
+                        <label class="ui-label" for="story-game-name">Game name</label>
+                        <input id="story-game-name" class="ui-input" maxlength="100" placeholder="Weekend match" @bind="_gameName"
+                               disabled="@IsSubmitting" />
+                    </div>
+
+                    <div class="ui-field">
+                        <label class="ui-label" for="story-player-name">Player name</label>
+                        <input id="story-player-name" class="ui-input" maxlength="40" placeholder="Captain Red"
+                               @bind="_createPlayerName" disabled="@IsSubmitting" />
+                    </div>
+
+                    <div class="ui-actions">
+                        <button class="ui-button-primary" disabled="@IsSubmitting" @onclick="RecordPrimaryAction">
+                            @(IsSubmitting ? "Creating game..." : "Create and join")
+                        </button>
+                        <a class="ui-button-secondary" href="#">
+                            Cancel
+                        </a>
+                    </div>
+                </FormPage>
+            }
+            else
+            {
+                <FormPage Eyebrow="Lobby" Title="Join a game"
+                          Description="Enter the invite code and the player name you want to use inside that game.">
+                    @if (ShowError)
+                    {
+                        <AlertBanner>That invite code is unavailable or already full.</AlertBanner>
+                    }
+
+                    <div class="ui-field">
+                        <label class="ui-label" for="story-invite-code">Invite code</label>
+                        <input id="story-invite-code" class="ui-input uppercase tracking-[0.35em]" maxlength="6" placeholder="ABC123"
+                               @bind="_inviteCode" disabled="@IsSubmitting" />
+                    </div>
+
+                    <div class="ui-field">
+                        <label class="ui-label" for="story-join-player-name">Player name</label>
+                        <input id="story-join-player-name" class="ui-input" maxlength="40" placeholder="Captain Blue"
+                               @bind="_joinPlayerName" disabled="@IsSubmitting" />
+                    </div>
+
+                    <div class="ui-actions">
+                        <button class="ui-button-primary" disabled="@IsSubmitting" @onclick="RecordPrimaryAction">
+                            @(IsSubmitting ? "Joining game..." : "Join game")
+                        </button>
+                        <a class="ui-button-secondary" href="#">
+                            Cancel
+                        </a>
+                    </div>
+                </FormPage>
+            }
+
+            @if (ShowSuccess)
+            {
+                <div class="mt-4 rounded-2xl border border-emerald-400/20 bg-emerald-500/10 p-4 text-sm text-slate-100">
+                    @(IsCreatePage
+                        ? $"Success would redirect to /games/{_successGameId} after creating '{_gameName}'."
+                        : $"Success would redirect to /games/{_successGameId} after joining with code {_inviteCode}.")
+                </div>
+            }
+
+            @if (!string.IsNullOrWhiteSpace(_lastAction))
+            {
+                <div class="mt-4 rounded-2xl border border-sky-400/20 bg-sky-500/10 p-4 text-sm text-slate-100">
+                    @_lastAction
+                </div>
+            }
+
+@code {
+    private readonly string[] _pages = ["Create page", "Join page"];
+    private readonly string[] _states = ["Idle", "Submitting", "Error", "Success"];
+    private readonly Guid _successGameId = Guid.Parse("88888888-8888-8888-8888-888888888888");
+    private int _pageIndex;
+    private int _stateIndex;
+    private string _gameName = "Weekend match";
+    private string _createPlayerName = "Captain Red";
+    private string _inviteCode = "PLAY01";
+    private string _joinPlayerName = "Captain Blue";
+    private string? _lastAction;
+
+    private bool IsCreatePage => _pageIndex == 0;
+
+    private bool IsSubmitting => _stateIndex == 1;
+
+    private bool ShowError => _stateIndex == 2;
+
+    private bool ShowSuccess => _stateIndex == 3;
+
+    private Task RecordPrimaryAction()
+    {
+        _lastAction = IsCreatePage
+            ? $"Create submit requested for '{_gameName}' as {_createPlayerName}."
+            : $"Join submit requested for code {_inviteCode} as {_joinPlayerName}.";
+        return Task.CompletedTask;
+    }
+
+    private string PageBtnClass(int index) =>
+        index == _pageIndex ? "ui-pg-tab-active" : "ui-pg-tab";
+
+    private string StateBtnClass(int index) =>
+        index == _stateIndex ? "ui-pg-tab-active" : "ui-pg-tab";
+
+}

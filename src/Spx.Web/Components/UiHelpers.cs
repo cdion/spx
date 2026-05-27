@@ -1,4 +1,3 @@
-using System.Globalization;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Components.Authorization;
 
@@ -6,9 +5,6 @@ namespace Spx.Web.Components;
 
 internal static class UiHelpers
 {
-    public static string FormatDateTime(DateTime value) =>
-        value.ToLocalTime().ToString("g", CultureInfo.CurrentCulture);
-
     public static async Task<string> GetUserIdAsync(
         Task<AuthenticationState> authenticationStateTask
     )

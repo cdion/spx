@@ -1,6 +1,6 @@
 using Spx.Game.Application;
 
-namespace Spx.Web.Components.Pages;
+namespace Spx.Web.Components.Lobby;
 
 public sealed class TimelineEntryState
 {

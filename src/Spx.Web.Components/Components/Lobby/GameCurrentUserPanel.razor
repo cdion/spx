@@ -1,26 +1,23 @@
-<aside class="ui-surface-form space-y-6">
-    <SectionHeader Eyebrow="You" Title="@Lobby.CurrentPlayerName">
-        <p class="text-sm leading-6 text-slate-300">@GetPlayerPanelMessage()</p>
-    </SectionHeader>
+<aside class="ui-surface-form-tight">
+    <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div class="space-y-3 text-sm leading-6 text-slate-300">
+            <p>@GetPlayerPanelMessage()</p>
 
-    <div class="space-y-3 text-sm leading-6 text-slate-300">
-        <p>Created @UiHelpers.FormatDateTime(Lobby.CreatedAtUtc)</p>
-        @if (Lobby.EndedAtUtc is not null)
-        {
-            <p>Ended @UiHelpers.FormatDateTime(Lobby.EndedAtUtc.Value)</p>
-        }
-    </div>
+            <div class="flex flex-wrap gap-4 text-xs uppercase tracking-[0.2em] text-slate-500">
+                <span>Created @UiFormatHelpers.FormatDateTime(Lobby.CreatedAtUtc)</span>
+                @if (Lobby.EndedAtUtc is not null)
+                {
+                    <span>Ended @UiFormatHelpers.FormatDateTime(Lobby.EndedAtUtc.Value)</span>
+                }
+            </div>
+        </div>
 
-    <div class="ui-actions">
         @if (Lobby.IsCurrentUserActive)
         {
             <button class="ui-button-danger" @onclick="() => OnLeave.InvokeAsync()" disabled="@IsLeaving">
                 @(IsLeaving ? "Leaving..." : "Leave game")
             </button>
         }
-        <a class="ui-button-secondary" href="/games">
-            Back to my games
-        </a>
     </div>
 </aside>
 
@@ -38,5 +35,4 @@
         => Lobby.IsCurrentUserActive
             ? "Leaving removes your active seat. If you are the last active player, the game ends."
             : "You previously played in this game. This page remains available for archived timeline review.";
-
 }

@@ -1,0 +1,73 @@
+@page "/stories/nexus/pages/lobby"
+@rendermode InteractiveServer
+
+<StoryHeader Title="Nexus Lobby">
+    Shared <code class="text-sky-300">GameLobbyListPanel</code> rendered in the same high-level states as the production
+    lobby page.
+</StoryHeader>
+
+<div class="mb-4 flex flex-wrap gap-2">
+    @foreach (var (label, index) in _states.Select((state, i) => (state, i)))
+    {
+        <button class="@ScenarioBtnClass(index)" @onclick="() => _stateIndex = index">
+            @label
+        </button>
+    }
+</div>
+
+<section class="mb-6 grid gap-3 lg:grid-cols-[1.45fr_1fr]">
+    <div class="ui-panel-card space-y-4">
+        <SectionHeader Eyebrow="Story controls" Title="Lobby state" />
+
+        <div class="flex flex-wrap gap-2 text-xs uppercase tracking-[0.2em] text-slate-500">
+            <span class="rounded-full border border-white/10 px-3 py-1">State: @_states[_stateIndex]</span>
+            @if (CurrentGames is not null)
+            {
+                <span class="rounded-full border border-emerald-400/20 bg-emerald-500/10 px-3 py-1 text-emerald-200">
+                    Open @CurrentGames.OpenGames.Count
+                </span>
+                <span class="rounded-full border border-white/10 px-3 py-1">
+                    Ended @CurrentGames.EndedGames.Count
+                </span>
+            }
+        </div>
+
+        <p class="text-sm leading-6 text-slate-300">
+            This story exercises the mixed lobby, section-level empty states, full-page loading, and full-page error
+            branches from the real page.
+        </p>
+    </div>
+
+    <div class="ui-panel-card space-y-3 text-sm leading-6 text-slate-300">
+        <SectionHeader Eyebrow="Coverage" Title="What to review" />
+        <p>Use <strong>Open only</strong> to inspect the ended-history empty state inside a populated page.</p>
+        <p>Use <strong>Empty</strong> to inspect both empty sections together without falling back to a loading or error
+            branch.</p>
+        </div>
+    </section>
+
+<GameLobbyListPanel Games="CurrentGames" IsLoading="IsLoading" LoadError="@LoadError" CreateGameHref="#"
+                    JoinGameHref="#" GameHrefBase="#/games" />
+
+@code {
+    private readonly string[] _states = ["Mixed", "Open only", "Empty", "Loading", "Error"];
+    private int _stateIndex;
+    private UserGamesView _mixedGames = null!;
+
+    protected override void OnInitialized() => _mixedGames = NexusStoryFixtures.CreateUserGamesView();
+
+    private UserGamesView? CurrentGames => _stateIndex switch
+    {
+        0 => _mixedGames,
+        1 => new UserGamesView(_mixedGames.OpenGames, []),
+        2 => NexusStoryFixtures.CreateEmptyUserGamesView(),
+        _ => null
+    };
+
+    private bool IsLoading => _stateIndex == 3;
+
+    private string? LoadError => _stateIndex == 4 ? "We couldn't load your games right now. Try again in a moment." : null;
+
+    private string ScenarioBtnClass(int index) =>
+        index == _stateIndex ? "ui-pg-tab-active" : "ui-pg-tab";
+}

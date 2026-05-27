@@ -1,4 +1,5 @@
 using Spx.Game.Application;
+using Spx.Web.Components.Lobby;
 
 namespace Spx.Web.Components.Pages;
 

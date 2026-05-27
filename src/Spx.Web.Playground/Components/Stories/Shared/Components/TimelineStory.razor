@@ -1,0 +1,184 @@
+@page "/stories/shared/components/timeline"
+@rendermode InteractiveServer
+
+<StoryHeader Title="Timeline">
+    Shared <code class="text-sky-300">GameTimelinePanel</code> rendered inside the same timeline wrapper used by the
+    production Nexus page.
+</StoryHeader>
+
+<div class="mb-4 flex flex-wrap gap-2">
+    @foreach (var (label, index) in _states.Select((state, i) => (state, i)))
+    {
+        <button class="@ScenarioBtnClass(index)" @onclick="() => SelectState(index)">
+            @label
+        </button>
+    }
+</div>
+
+<section class="mb-6 grid gap-3 lg:grid-cols-[1.45fr_1fr]">
+    <div class="ui-panel-card space-y-4">
+        <SectionHeader Eyebrow="Story controls" Title="Timeline state" />
+
+        <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            <label class="ui-panel-card-inner flex items-center gap-2 text-xs text-slate-300">
+                <input type="checkbox" @bind="_hasOlderMessages" disabled="@IsLoading" />
+                Has older history
+            </label>
+            <label class="ui-panel-card-inner flex items-center gap-2 text-xs text-slate-300">
+                <input type="checkbox" @bind="_isLoadingOlderMessages" disabled="@IsLoading" />
+                Loading older
+            </label>
+        </div>
+
+        <div class="flex flex-wrap gap-2 text-xs uppercase tracking-[0.2em] text-slate-500">
+            <span class="rounded-full border border-white/10 px-3 py-1">State: @_states[_stateIndex]</span>
+            <span class="rounded-full border border-white/10 px-3 py-1">Entries: @_items.Count</span>
+        </div>
+    </div>
+
+    <div class="ui-panel-card space-y-3 text-sm leading-6 text-slate-300">
+        <SectionHeader Eyebrow="Coverage" Title="What to review" />
+        <p>This story covers the production timeline header, outer alert wrapper, empty state, in-panel editing UI, and
+            pending-message recovery actions.</p>
+            <p>Use <strong>Empty</strong> to verify the panel body spacing and use the checkboxes to preview scroll-state
+                affordances.</p>
+            </div>
+        </section>
+
+        <section class="ui-surface-form-tight">
+            <div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                <SectionHeader Eyebrow="Timeline" Title="Messages and game events" />
+            </div>
+
+            @if (!string.IsNullOrWhiteSpace(CurrentError))
+            {
+                <div class="mt-4">
+                    <AlertBanner>@CurrentError</AlertBanner>
+                </div>
+            }
+
+            <div class="mt-4">
+                <GameTimelinePanel CurrentUserName="Captain Red" TimelineItems="_items" MessageError="@CurrentError"
+                                   IsTimelineLoading="@IsLoading" IsLoadingOlderMessages="@_isLoadingOlderMessages"
+                                   HasOlderMessages="@_hasOlderMessages" EditingMessageId="@_editingMessageId"
+                                   @bind-EditMessageText="_editText" IsSavingEdit="false" OnLoadOlderMessages="HandleLoadOlderMessages"
+                                   OnBeginEdit="BeginEdit" OnCancelEdit="CancelEdit" OnSaveEdit="SaveEdit"
+                                   OnDeleteMessage="HandleDeleteMessage" OnRetryPendingMessage="HandleRetryPending"
+                                   OnDismissPendingMessage="HandleDismissPending" />
+            </div>
+        </section>
+
+        @if (!string.IsNullOrWhiteSpace(_lastAction))
+        {
+            <div class="mt-4 rounded-xl border border-sky-400/20 bg-sky-500/10 p-4 text-sm text-slate-200">
+                @_lastAction
+            </div>
+        }
+
+@code {
+    private readonly string[] _states = ["Loaded", "Editing", "Empty", "Loading", "Error"];
+    private int _stateIndex;
+    private List<TimelineEntryState> _items = [];
+    private Guid? _editingMessageId;
+    private string _editText = string.Empty;
+    private string? _lastAction;
+    private bool _hasOlderMessages = true;
+    private bool _isLoadingOlderMessages;
+
+    protected override void OnInitialized() => ResetItems();
+
+    private bool IsLoading => _stateIndex == 3;
+
+    private string? CurrentError => _stateIndex == 4 ? "The timeline is temporarily unavailable." : null;
+
+    private void SelectState(int index)
+    {
+        _stateIndex = index;
+        _lastAction = null;
+        ResetItems();
+    }
+
+    private void ResetItems()
+    {
+        _items = _stateIndex == 2 ? [] : [.. NexusStoryFixtures.CreateTimelineEntries()];
+        _hasOlderMessages = _stateIndex is 0 or 1;
+        _isLoadingOlderMessages = false;
+
+        if (_stateIndex == 1)
+        {
+            var editable = _items.First(item => item.Message?.CanEdit == true).Message!;
+            _editingMessageId = editable.Id;
+            _editText = editable.Body;
+        }
+        else
+        {
+            _editingMessageId = null;
+            _editText = string.Empty;
+        }
+    }
+
+    private Task HandleLoadOlderMessages()
+    {
+        _isLoadingOlderMessages = true;
+        _hasOlderMessages = false;
+        _items.Insert(
+            0,
+            new TimelineEntryState
+            {
+                Key = Guid.Parse("99999999-9999-9999-9999-999999999999"),
+                Local = new LocalTimelineMessageState(
+                    "Captain Red",
+                    "Earlier scouting report restored from older history.",
+                    DateTime.UtcNow.AddHours(-2),
+                    GameMessageKind.PlayerPublic
+                )
+            }
+        );
+        _lastAction = "Loaded one older timeline entry.";
+        return Task.CompletedTask;
+    }
+
+    private Task BeginEdit(GameTimelineEntryView message)
+    {
+        _editingMessageId = message.Id;
+        _editText = message.Body;
+        _lastAction = $"Editing message from {message.SenderDisplayName}.";
+        return Task.CompletedTask;
+    }
+
+    private Task CancelEdit()
+    {
+        _editingMessageId = null;
+        _editText = string.Empty;
+        _lastAction = "Edit cancelled.";
+        return Task.CompletedTask;
+    }
+
+    private Task SaveEdit()
+    {
+        _lastAction = "Save edit requested.";
+        return Task.CompletedTask;
+    }
+
+    private Task HandleDeleteMessage(Guid messageId)
+    {
+        _lastAction = $"Delete requested for {messageId}.";
+        return Task.CompletedTask;
+    }
+
+    private Task HandleRetryPending(Guid key)
+    {
+        _lastAction = $"Retry requested for pending item {key}.";
+        return Task.CompletedTask;
+    }
+
+    private Task HandleDismissPending(Guid key)
+    {
+        _items.RemoveAll(item => item.Key == key);
+        _lastAction = $"Dismissed pending item {key}.";
+        return Task.CompletedTask;
+    }
+
+    private string ScenarioBtnClass(int index) =>
+        index == _stateIndex ? "ui-pg-tab-active" : "ui-pg-tab";
+}

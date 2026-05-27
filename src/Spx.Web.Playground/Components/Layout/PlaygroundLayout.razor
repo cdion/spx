@@ -3,60 +3,84 @@
 <div class="flex h-screen bg-[radial-gradient(circle_at_top,#0f172a_0%,#020617_60%)] text-slate-100">
     <nav class="w-52 shrink-0 border-r border-white/10 bg-slate-900/60 p-4">
         <p class="mb-3 text-xs font-semibold uppercase tracking-widest text-slate-500">Playground</p>
-        <ul class="space-y-0.5">
-            <li>
-                <NavLink href="/stories/hex-grid"
-                         class="block rounded-md px-3 py-2 text-sm text-slate-400 transition-colors hover:bg-white/5 hover:text-slate-200"
-                         ActiveClass="bg-white/10 text-white">
-                    Hex Grid
-                </NavLink>
-            </li>
-            <li>
-                <NavLink href="/stories/gameplay-panel"
-                         class="block rounded-md px-3 py-2 text-sm text-slate-400 transition-colors hover:bg-white/5 hover:text-slate-200"
-                         ActiveClass="bg-white/10 text-white">
-                    Gameplay Panel
-                </NavLink>
-            </li>
-            <li>
-                <NavLink href="/stories/gameplay-live"
-                         class="block rounded-md px-3 py-2 text-sm text-slate-400 transition-colors hover:bg-white/5 hover:text-slate-200"
-                         ActiveClass="bg-white/10 text-white">
-                    Live Gameplay
-                </NavLink>
-            </li>
-            <li>
-                <NavLink href="/stories/top-info-bar"
-                         class="block rounded-md px-3 py-2 text-sm text-slate-400 transition-colors hover:bg-white/5 hover:text-slate-200"
-                         ActiveClass="bg-white/10 text-white">
-                    Top Info Bar
-                </NavLink>
-            </li>
-            <li>
-                <NavLink href="/stories/selected-hex-panel"
-                         class="block rounded-md px-3 py-2 text-sm text-slate-400 transition-colors hover:bg-white/5 hover:text-slate-200"
-                         ActiveClass="bg-white/10 text-white">
-                    Selected Hex Panel
-                </NavLink>
-            </li>
-            <li>
-                <NavLink href="/stories/pending-orders"
-                         class="block rounded-md px-3 py-2 text-sm text-slate-400 transition-colors hover:bg-white/5 hover:text-slate-200"
-                         ActiveClass="bg-white/10 text-white">
-                    Pending Orders
-                </NavLink>
-            </li>
-            <li>
-                <NavLink href="/stories/hex-cell-states"
-                         class="block rounded-md px-3 py-2 text-sm text-slate-400 transition-colors hover:bg-white/5 hover:text-slate-200"
-                         ActiveClass="bg-white/10 text-white">
-                    Hex Cell States
-                </NavLink>
-            </li>
-        </ul>
+        <div class="space-y-4">
+            @foreach (var navSection in Sections)
+            {
+                <section class="space-y-2">
+                    <p class="px-3 text-[0.65rem] font-semibold uppercase tracking-[0.22em] text-slate-500">@navSection.Title</p>
+
+                    @foreach (var group in navSection.Groups)
+                    {
+                        <div class="space-y-0.5">
+                            <p class="px-3 pt-1 text-[0.65rem] font-semibold uppercase tracking-[0.2em] text-slate-600">@group.Title</p>
+                            <ul class="space-y-0.5">
+                                @foreach (var item in group.Items)
+                                {
+                                    <li>
+                                        <NavLink href="@item.Href"
+                                                 class="block rounded-md px-3 py-2 text-sm text-slate-400 transition-colors hover:bg-white/5 hover:text-slate-200"
+                                                 ActiveClass="bg-white/10 text-white">
+                                            @item.Label
+                                        </NavLink>
+                                    </li>
+                                }
+                            </ul>
+                        </div>
+                    }
+                </section>
+            }
+        </div>
     </nav>
 
     <main class="min-w-0 flex-1 overflow-auto p-6">
         @Body
     </main>
 </div>
+
+@code {
+    private static IReadOnlyList<NavSection> Sections { get; } =
+    [
+        new NavSection(
+            "Shared",
+            [
+                new NavGroup(
+                    "Components",
+                    [
+                        new NavItem("Timeline", "/stories/shared/components/timeline")
+                    ]
+                )
+            ]
+        ),
+        new NavSection(
+            "Nexus",
+            [
+                new NavGroup(
+                    "Components",
+                    [
+                        new NavItem("Hex Grid", "/stories/nexus/components/hex-grid"),
+                        new NavItem("Gameplay Panel", "/stories/nexus/components/gameplay-panel"),
+                        new NavItem("Live Gameplay", "/stories/nexus/components/live-gameplay"),
+                        new NavItem("Top Info Bar", "/stories/nexus/components/top-info-bar"),
+                        new NavItem("Selected Hex Panel", "/stories/nexus/components/selected-hex-panel"),
+                        new NavItem("Pending Orders", "/stories/nexus/components/pending-orders"),
+                        new NavItem("Hex Cell States", "/stories/nexus/components/hex-cell-states")
+                    ]
+                ),
+                new NavGroup(
+                    "Pages",
+                    [
+                        new NavItem("Lobby", "/stories/nexus/pages/lobby"),
+                        new NavItem("Forms", "/stories/nexus/pages/forms"),
+                        new NavItem("Page", "/stories/nexus/pages/page")
+                    ]
+                )
+            ]
+        )
+    ];
+
+    private sealed record NavSection(string Title, IReadOnlyList<NavGroup> Groups);
+
+    private sealed record NavGroup(string Title, IReadOnlyList<NavItem> Items);
+
+    private sealed record NavItem(string Label, string Href);
+}

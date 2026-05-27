@@ -2,23 +2,11 @@
 @inject IJSRuntime JS
 @inject ILogger<GameMessageComposer> Logger
 
-<div class="ui-panel-card space-y-4">
-    <SectionHeader Eyebrow="Composer" Title="Send a message">
-        <p class="text-sm leading-6 text-slate-300">
-            @if (IsCurrentUserActive)
-            {
-                <span>Enter sends. Shift+Enter adds a new line. Choose a player to send privately.</span>
-            }
-            else
-            {
-                <span>Only active players can send new messages.</span>
-            }
-        </p>
-    </SectionHeader>
+<div class="ui-panel-card flex h-full min-h-0 flex-col space-y-4">
 
     @if (IsCurrentUserActive)
     {
-        <div class="space-y-4">
+        <div class="flex min-h-0 flex-1 flex-col space-y-4">
             <div class="space-y-2">
                 <label class="ui-panel-label" for="message-recipient">Recipient</label>
                 <select id="message-recipient" class="ui-select" value="@SelectedRecipientPlayerIdString"
@@ -31,11 +19,21 @@
                 </select>
             </div>
 
-            <div class="space-y-2">
+            <div class="flex min-h-0 flex-1 flex-col space-y-2">
                 <label class="ui-panel-label" for="message-composer">Message</label>
-                <textarea id="message-composer" class="ui-textarea min-h-32"
+                <textarea id="message-composer" class="ui-textarea min-h-32 flex-1"
                           placeholder="Write something for the game timeline..." value="@Text" @oninput="HandleTextInput"
                           @ref="composerTextArea"></textarea>
+                <p class="text-sm leading-6 text-slate-300">
+                    @if (IsCurrentUserActive)
+                    {
+                        <span>Enter sends. Shift+Enter adds a new line. Choose a player to send privately.</span>
+                    }
+                    else
+                    {
+                        <span>Only active players can send new messages.</span>
+                    }
+                </p>
             </div>
 
             <div class="flex flex-wrap items-center justify-between gap-3">
@@ -95,7 +93,10 @@
         {
             try
             {
-                module = await JS.InvokeAsync<IJSObjectReference>("import", "./Components/Pages/GameMessageComposer.razor.js");
+                module = await JS.InvokeAsync<IJSObjectReference>(
+                    "import",
+                    "./_content/Spx.Web.Components/Components/Lobby/GameMessageComposer.razor.js"
+                );
                 dotNetReference = DotNetObjectReference.Create(this);
             }
             catch (TaskCanceledException exception)

@@ -1,7 +1,7 @@
-@page "/stories/pending-orders"
+@page "/stories/nexus/components/pending-orders"
 @rendermode InteractiveServer
 
-<StoryHeader Title="Pending Orders">
+<StoryHeader Title="Nexus Pending Orders">
     <code class="text-sky-300">NexusPendingOrdersListComponent</code> — your pending orders list.
 </StoryHeader>
 
@@ -11,9 +11,8 @@
     </div>
 
     <NexusPendingOrdersListComponent MoveOrders="@_moveOrders" BuildOrders="@_buildOrders" BeginNexusGate="@_gate"
-                                     CurrentPlayerName="Player One" CurrentPlayerHomeCoord="@NexusMap.Player1HomeCoord"
-                                     IsEditable OnRemoveMoveOrder="RemoveMove" OnRemoveBuildOrder="RemoveBuild"
-                                     OnRemoveGateOrder="() => _gate = false" />
+                                     CurrentPlayerName="Player One" CurrentPlayerHomeCoord="@NexusMap.Player1HomeCoord" IsEditable
+                                     OnRemoveMoveOrder="RemoveMove" OnRemoveBuildOrder="RemoveBuild" OnRemoveGateOrder="() => _gate = false" />
 </section>
 
 @code {

@@ -1,15 +1,15 @@
 @implements IAsyncDisposable
+@implements IGameMessagesViewport
 @inject IJSRuntime JS
 @inject ILogger<GameTimelinePanel> Logger
 
 <div class="ui-panel-card-tight">
-    <div class="mb-3 flex items-center justify-between px-2 text-xs uppercase tracking-[0.2em] text-slate-400">
-        <span>History</span>
-        @if (IsLoadingOlderMessages)
-        {
+    @if (IsLoadingOlderMessages)
+    {
+        <div class="mb-3 flex justify-end px-2 text-xs uppercase tracking-[0.2em] text-slate-400">
             <span>Loading older...</span>
-        }
-    </div>
+        </div>
+    }
 
     @if (!string.IsNullOrWhiteSpace(MessageError))
     {
@@ -74,7 +74,7 @@
 
                                 <div
                                     class="flex flex-wrap items-center gap-3 text-xs uppercase tracking-[0.2em] text-slate-500">
-                                    <span>@UiHelpers.FormatDateTime(GetTimelineCreatedAt(item))</span>
+                                    <span>@UiFormatHelpers.FormatDateTime(GetTimelineCreatedAt(item))</span>
                                     @if (IsEdited(item))
                                     {
                                         <span>Edited</span>
@@ -215,7 +215,10 @@
         {
             try
             {
-                module = await JS.InvokeAsync<IJSObjectReference>("import", "./Components/Pages/GameTimelinePanel.razor.js");
+                module = await JS.InvokeAsync<IJSObjectReference>(
+                    "import",
+                    "./_content/Spx.Web.Components/Components/Lobby/GameTimelinePanel.razor.js"
+                );
                 dotNetReference = DotNetObjectReference.Create(this);
             }
             catch (TaskCanceledException exception)
@@ -263,13 +266,60 @@
         }
         catch (TaskCanceledException exception)
         {
-            LogIgnoredInteropException(exception, "getting timeline scroll metrics");
+            LogIgnoredInteropException(exception, "reading timeline scroll metrics");
             return new TimelineScrollMetrics();
         }
         catch (JSDisconnectedException exception)
         {
-            LogIgnoredInteropException(exception, "getting timeline scroll metrics");
+            LogIgnoredInteropException(exception, "reading timeline scroll metrics");
             return new TimelineScrollMetrics();
+        }
+    }
+
+    public async Task RestoreScrollAfterPrependAsync(double previousScrollHeight, double previousScrollTop)
+    {
+        if (module is null)
+        {
+            return;
+        }
+
+        try
+        {
+            await module.InvokeVoidAsync(
+                "restoreScrollAfterPrepend",
+                timelineContainer,
+                previousScrollHeight,
+                previousScrollTop
+            );
+        }
+        catch (TaskCanceledException exception)
+        {
+            LogIgnoredInteropException(exception, "restoring the timeline scroll position");
+        }
+        catch (JSDisconnectedException exception)
+        {
+            LogIgnoredInteropException(exception, "restoring the timeline scroll position");
+        }
+    }
+
+    public async Task ScrollToBottomAsync()
+    {
+        if (module is null)
+        {
+            return;
+        }
+
+        try
+        {
+            await module.InvokeVoidAsync("scrollToBottom", timelineContainer);
+        }
+        catch (TaskCanceledException exception)
+        {
+            LogIgnoredInteropException(exception, "scrolling the timeline to the bottom");
+        }
+        catch (JSDisconnectedException exception)
+        {
+            LogIgnoredInteropException(exception, "scrolling the timeline to the bottom");
         }
     }
 
@@ -293,48 +343,6 @@
         {
             LogIgnoredInteropException(exception, "checking whether the timeline is near the bottom");
             return true;
-        }
-    }
-
-    public async Task RestoreScrollAfterPrependAsync(double previousScrollHeight, double previousScrollTop)
-    {
-        if (module is null)
-        {
-            return;
-        }
-
-        try
-        {
-            await module.InvokeVoidAsync("restoreScrollAfterPrepend", timelineContainer, previousScrollHeight, previousScrollTop);
-        }
-        catch (TaskCanceledException exception)
-        {
-            LogIgnoredInteropException(exception, "restoring timeline scroll after prepending messages");
-        }
-        catch (JSDisconnectedException exception)
-        {
-            LogIgnoredInteropException(exception, "restoring timeline scroll after prepending messages");
-        }
-    }
-
-    public async Task ScrollToBottomAsync()
-    {
-        if (module is null)
-        {
-            return;
-        }
-
-        try
-        {
-            await module.InvokeVoidAsync("scrollToBottom", timelineContainer);
-        }
-        catch (TaskCanceledException exception)
-        {
-            LogIgnoredInteropException(exception, "scrolling the timeline to the bottom");
-        }
-        catch (JSDisconnectedException exception)
-        {
-            LogIgnoredInteropException(exception, "scrolling the timeline to the bottom");
         }
     }
 
@@ -404,8 +412,8 @@
         return (item.Message?.Kind ?? item.Local?.Kind) switch
         {
             Spx.Game.Application.GameMessageKind.GameCreated or Spx.Game.Application.GameMessageKind.PlayerJoined or
-Spx.Game.Application.GameMessageKind.PlayerLeft or Spx.Game.Application.GameMessageKind.GameEnded =>
-"border-emerald-400/30",
+                Spx.Game.Application.GameMessageKind.PlayerLeft or Spx.Game.Application.GameMessageKind.GameEnded =>
+                "border-emerald-400/30",
             Spx.Game.Application.GameMessageKind.GameplayEvent => "border-sky-400/30",
             _ => "border-white/10"
         };
@@ -470,5 +478,4 @@ Spx.Game.Application.GameMessageKind.PlayerLeft or Spx.Game.Application.GameMess
 
     private static DateTime GetTimelineCreatedAt(TimelineEntryState item)
         => item.Message?.CreatedAtUtc ?? item.Local?.CreatedAtUtc ?? item.Pending?.CreatedAtUtc ?? DateTime.UtcNow;
-
 }
