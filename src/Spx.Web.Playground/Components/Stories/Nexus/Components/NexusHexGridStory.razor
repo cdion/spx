@@ -83,13 +83,13 @@
 
     protected override void OnInitialized()
     {
-        var state = new NexusGameState();
-        NexusGameEngine.Initialize(
+        var state = new NexusState();
+        NexusEngine.Initialize(
             state,
             new InitializeNexusGameCommand(
                 ImmutableArray.Create(new GameSessionParticipant(P1), new GameSessionParticipant(P2))),
             new Random(42));
-        _view = NexusGameEngine.BuildView(state, Guid.NewGuid(), P1);
+        _view = NexusEngine.BuildView(state, Guid.NewGuid(), P1);
     }
 
     private void OnSystemClicked(HexCoord coord)
@@ -124,7 +124,7 @@
         }
 
         _selected = coord;
-        _validTargets = NexusGameViewQueries.GetValidMoveDestinations(_view, P1, coord);
+        _validTargets = NexusViewQueries.GetValidMoveDestinations(_view, P1, coord);
 
         if (_validTargets.Count > 0)
             _pendingFrom = coord;

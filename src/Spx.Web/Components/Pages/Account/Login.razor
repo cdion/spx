@@ -1,0 +1,19 @@
+@page "/login"
+@attribute [AllowAnonymous]
+
+<PageTitle>Sign in</PageTitle>
+
+<AccountLoginForm Email="@Email" Error="@Error" Status="@Status">
+    <FormTokens>
+        <AntiforgeryToken />
+        <input type="hidden" name="returnUrl" value="@ResolvedReturnUrl" />
+    </FormTokens>
+</AccountLoginForm>
+
+@code {
+    [SupplyParameterFromQuery(Name = "returnUrl")] public string? ReturnUrl { get; set; }
+    [SupplyParameterFromQuery(Name = "status")] public string? Status { get; set; }
+    [SupplyParameterFromQuery(Name = "error")] public string? Error { get; set; }
+    [SupplyParameterFromQuery(Name = "email")] public string? Email { get; set; }
+    private string ResolvedReturnUrl => string.IsNullOrWhiteSpace(ReturnUrl) ? "/" : ReturnUrl!;
+}

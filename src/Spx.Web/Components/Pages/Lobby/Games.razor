@@ -1,0 +1,47 @@
+@page "/games"
+@attribute [Authorize]
+@using System.Security.Claims
+@inject IGetUserGamesHandler GetUserGamesHandler
+
+<PageTitle>My Games</PageTitle>
+
+<LobbyListPanel Games="games" IsLoading="isLoading" LoadError="@loadError" />
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState> AuthenticationStateTask { get; set; } = default!;
+
+    [Inject]
+    private ILogger<Games> Logger { get; set; } = default!;
+
+    private UserGamesView? games;
+    private string? loadError;
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        isLoading = true;
+        loadError = null;
+
+        try
+        {
+            var userId = await UiHelpers.GetUserIdAsync(AuthenticationStateTask);
+            games = await GetUserGamesHandler.HandleAsync(userId);
+        }
+        catch (Exception exception)
+        {
+            Logger.LogError(exception, "Failed to load games for the current user.");
+            loadError = "We couldn't load your games right now. Please refresh and try again.";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+}

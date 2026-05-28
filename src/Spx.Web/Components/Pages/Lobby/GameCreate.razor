@@ -1,0 +1,80 @@
+@page "/games/create"
+@attribute [Authorize]
+@using System.Security.Claims
+@inject ICreateGameHandler CreateGameHandler
+@inject ILogger<GameCreate> Logger
+@inject NavigationManager Navigation
+
+<PageTitle>Create Game</PageTitle>
+
+<FormPage Title="Create a game"
+          Description="Creating a game generates invite code that you can share with your friends. You will also join the game as the first player.">
+    @if (!string.IsNullOrWhiteSpace(errorMessage))
+    {
+        <AlertBanner>@errorMessage</AlertBanner>
+    }
+
+    <div class="ui-field">
+        <label class="ui-label" for="game-name">Game name</label>
+        <input id="game-name" class="ui-input" maxlength="100" placeholder="Weekend match" @bind="gameName" />
+    </div>
+
+    <div class="ui-field">
+        <label class="ui-label" for="player-name">Player name</label>
+        <input id="player-name" class="ui-input" maxlength="40" placeholder="Captain Red" @bind="playerName" />
+    </div>
+
+    <div class="ui-actions">
+        <button class="ui-button-primary" @onclick="CreateGameAsync" disabled="@isSubmitting">
+            @(isSubmitting ? "Creating game..." : "Create and join")
+        </button>
+        <a class="ui-button-secondary" href="/games">
+            Cancel
+        </a>
+    </div>
+</FormPage>
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState> AuthenticationStateTask { get; set; } = default!;
+
+    private string gameName = string.Empty;
+    private string playerName = string.Empty;
+    private string? errorMessage;
+    private bool isSubmitting;
+
+    private async Task CreateGameAsync()
+    {
+        if (isSubmitting)
+        {
+            return;
+        }
+
+        isSubmitting = true;
+        errorMessage = null;
+
+        try
+        {
+            var userId = await UiHelpers.GetUserIdAsync(AuthenticationStateTask);
+            var result = await CreateGameHandler.HandleAsync(userId, new CreateGameRequest(gameName, playerName));
+
+            if (result is not GameCommandSucceeded succeeded)
+            {
+                errorMessage = ((GameCommandFailed)result).ErrorMessage;
+                return;
+            }
+
+            Navigation.NavigateTo($"/games/{succeeded.GameId}");
+        }
+        catch (Exception exception)
+        {
+            Logger.LogError(exception, "Failed to create a game for the current user.");
+            errorMessage = "We couldn't create a game right now. Please try again.";
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+
+}

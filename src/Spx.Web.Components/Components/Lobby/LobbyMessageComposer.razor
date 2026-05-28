@@ -1,0 +1,189 @@
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+@inject ILogger<LobbyMessageComposer> Logger
+
+<div class="ui-panel-card flex h-full min-h-0 flex-col space-y-4">
+
+    @if (IsCurrentUserActive)
+    {
+        <div class="flex min-h-0 flex-1 flex-col space-y-4">
+            <div class="space-y-2">
+                <label class="ui-panel-label" for="message-recipient">Recipient</label>
+                <select id="message-recipient" class="ui-select" value="@SelectedRecipientPlayerIdString"
+                        @onchange="HandleRecipientChanged">
+                    <option value="">All active players</option>
+                    @foreach (var player in Players.Where(player => player.PlayerId != CurrentPlayerId))
+                    {
+                        <option value="@player.PlayerId">@player.Name</option>
+                    }
+                </select>
+            </div>
+
+            <div class="flex min-h-0 flex-1 flex-col space-y-2">
+                <label class="ui-panel-label" for="message-composer">Message</label>
+                <textarea id="message-composer" class="ui-textarea min-h-32 flex-1"
+                          placeholder="Write something for the game timeline..." value="@Text" @oninput="HandleTextInput"
+                          @ref="composerTextArea"></textarea>
+                <p class="text-sm leading-6 text-slate-300">
+                    @if (IsCurrentUserActive)
+                    {
+                        <span>Enter sends. Shift+Enter adds a new line. Choose a player to send privately.</span>
+                    }
+                    else
+                    {
+                        <span>Only active players can send new messages.</span>
+                    }
+                </p>
+            </div>
+
+            <div class="flex flex-wrap items-center justify-between gap-3">
+                <p class="text-xs uppercase tracking-[0.2em] text-slate-500">
+                    @Text.Length / 1024 characters
+                </p>
+                <button class="ui-button-primary" @onclick="() => OnSend.InvokeAsync()" disabled="@IsSendingMessage">
+                    @(IsSendingMessage ? "Sending..." : "Send message")
+                </button>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="ui-empty-state">
+            This composer is disabled because you are no longer an active player in this game.
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public bool IsCurrentUserActive { get; set; }
+
+    [Parameter, EditorRequired]
+    public Guid CurrentPlayerId { get; set; }
+
+    [Parameter, EditorRequired]
+    public IReadOnlyList<GamePlayerView> Players { get; set; } = [];
+
+    [Parameter]
+    public string Text { get; set; } = string.Empty;
+
+    [Parameter]
+    public EventCallback<string> TextChanged { get; set; }
+
+    [Parameter]
+    public string? SelectedRecipientPlayerIdString { get; set; }
+
+    [Parameter]
+    public EventCallback<string?> SelectedRecipientPlayerIdStringChanged { get; set; }
+
+    [Parameter]
+    public bool IsSendingMessage { get; set; }
+
+    [Parameter]
+    public EventCallback OnSend { get; set; }
+
+    private ElementReference composerTextArea;
+    private IJSObjectReference? module;
+    private DotNetObjectReference<LobbyMessageComposer>? dotNetReference;
+    private bool isSubmitAttached;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            try
+            {
+                module = await JS.InvokeAsync<IJSObjectReference>(
+                    "import",
+                    "./_content/Spx.Web.Components/Components/Lobby/LobbyMessageComposer.razor.js"
+                );
+                dotNetReference = DotNetObjectReference.Create(this);
+            }
+            catch (TaskCanceledException exception)
+            {
+                LogIgnoredInteropException(exception, "importing the message composer module");
+            }
+            catch (JSDisconnectedException exception)
+            {
+                LogIgnoredInteropException(exception, "importing the message composer module");
+            }
+        }
+
+        if (module is null || dotNetReference is null)
+        {
+            return;
+        }
+
+        if (IsCurrentUserActive && !isSubmitAttached)
+        {
+            try
+            {
+                await module.InvokeVoidAsync("setComposerSubmit", composerTextArea, dotNetReference);
+                isSubmitAttached = true;
+            }
+            catch (TaskCanceledException exception)
+            {
+                LogIgnoredInteropException(exception, "attaching the composer submit handler");
+            }
+            catch (JSDisconnectedException exception)
+            {
+                LogIgnoredInteropException(exception, "attaching the composer submit handler");
+            }
+        }
+        else if (!IsCurrentUserActive && isSubmitAttached)
+        {
+            try
+            {
+                await module.InvokeVoidAsync("clearComposerSubmit", composerTextArea);
+            }
+            catch (TaskCanceledException exception)
+            {
+                LogIgnoredInteropException(exception, "clearing the composer submit handler");
+            }
+            catch (JSDisconnectedException exception)
+            {
+                LogIgnoredInteropException(exception, "clearing the composer submit handler");
+            }
+
+            isSubmitAttached = false;
+        }
+    }
+
+    [JSInvokable]
+    public Task HandleComposerEnterAsync()
+        => OnSend.InvokeAsync();
+
+    public async ValueTask DisposeAsync()
+    {
+        if (module is not null)
+        {
+            try
+            {
+                await module.InvokeVoidAsync("clearComposerSubmit", composerTextArea);
+                await module.DisposeAsync();
+            }
+            catch (TaskCanceledException exception)
+            {
+                LogIgnoredInteropException(exception, "disposing the message composer module");
+            }
+            catch (JSDisconnectedException exception)
+            {
+                LogIgnoredInteropException(exception, "disposing the message composer module");
+            }
+        }
+
+        dotNetReference?.Dispose();
+    }
+
+    private void LogIgnoredInteropException(Exception exception, string operation)
+        => Logger.LogDebug(exception, "Ignoring expected JS interop interruption while {Operation}.", operation);
+
+    private Task HandleTextInput(ChangeEventArgs args)
+        => TextChanged.InvokeAsync(args.Value?.ToString() ?? string.Empty);
+
+    private Task HandleRecipientChanged(ChangeEventArgs args)
+    {
+        var value = args.Value?.ToString();
+        return SelectedRecipientPlayerIdStringChanged.InvokeAsync(string.IsNullOrWhiteSpace(value) ? null : value);
+    }
+}

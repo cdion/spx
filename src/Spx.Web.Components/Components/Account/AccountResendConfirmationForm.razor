@@ -1,0 +1,30 @@
+<FormPage Title="Resend confirmation email"
+          Description="Enter the email address you used to register and you will receive an email with a new confirmation link if the account still needs one.">
+    @if (!string.IsNullOrWhiteSpace(Status))
+    {
+        <AlertBanner Tone="AlertBanner.AlertTone.Success" Role="status">@Status</AlertBanner>
+    }
+
+    @if (!string.IsNullOrWhiteSpace(Error))
+    {
+        <AlertBanner>@Error</AlertBanner>
+    }
+
+    <form method="post" action="/account/resend-confirmation" class="ui-flow">
+        @FormTokens
+
+        <div class="ui-field">
+            <label class="ui-label" for="email">Email</label>
+            <input id="email" name="email" type="email" value="@Email" autocomplete="email" required class="ui-input" />
+        </div>
+
+        <button class="ui-button-primary" type="submit">Resend email</button>
+    </form>
+</FormPage>
+
+@code {
+    [Parameter] public string? Email { get; set; }
+    [Parameter] public string? Error { get; set; }
+    [Parameter] public string? Status { get; set; }
+    [Parameter] public RenderFragment? FormTokens { get; set; }
+}

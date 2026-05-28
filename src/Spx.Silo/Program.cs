@@ -17,6 +17,13 @@ builder.UseOrleans(siloBuilder =>
         options.ServiceId = orleansServiceId;
     });
 
+    siloBuilder.UseRedisClustering(
+        builder.Configuration.GetConnectionString("orleans-redis")
+            ?? throw new InvalidOperationException(
+                "Connection string 'orleans-redis' was not configured."
+            )
+    );
+
     siloBuilder.AddFaultTolerantAdoNetGrainStorageAsDefault(
         builder.Configuration.GetConnectionString("orleansdb")
             ?? throw new InvalidOperationException(

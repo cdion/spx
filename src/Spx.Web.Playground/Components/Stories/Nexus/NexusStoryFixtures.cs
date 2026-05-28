@@ -1,5 +1,5 @@
-using Spx.Game.Application;
-using Spx.Game.Domain;
+using Spx.Nexus.Application;
+using Spx.Nexus.Domain;
 using Spx.Web.Components.Lobby;
 
 namespace Spx.Web.Playground.Components.Stories.Nexus;
@@ -389,8 +389,8 @@ internal static class NexusStoryFixtures
 
     private static GameplayScenario BuildScenario(string label, string description, int rounds)
     {
-        var state = new NexusGameState();
-        NexusGameEngine.Initialize(
+        var state = new NexusState();
+        NexusEngine.Initialize(
             state,
             new InitializeNexusGameCommand(
                 ImmutableArray.Create(
@@ -404,12 +404,12 @@ internal static class NexusStoryFixtures
         var rng = new Random(0);
         for (var i = 0; i < rounds; i++)
         {
-            NexusGameEngine.SubmitOrders(
+            NexusEngine.SubmitOrders(
                 state,
                 new NexusTurnOrdersCommand(Player1Id, state.RoundNumber, [], [], false),
                 rng
             );
-            NexusGameEngine.SubmitOrders(
+            NexusEngine.SubmitOrders(
                 state,
                 new NexusTurnOrdersCommand(Player2Id, state.RoundNumber, [], [], false),
                 rng
@@ -419,14 +419,14 @@ internal static class NexusStoryFixtures
         return new GameplayScenario(
             label,
             description,
-            NexusGameEngine.BuildView(state, Guid.NewGuid(), Player1Id)
+            NexusEngine.BuildView(state, Guid.NewGuid(), Player1Id)
         );
     }
 
     private static GameplayScenario BuildWaitingScenario()
     {
-        var state = new NexusGameState();
-        NexusGameEngine.Initialize(
+        var state = new NexusState();
+        NexusEngine.Initialize(
             state,
             new InitializeNexusGameCommand(
                 ImmutableArray.Create(
@@ -438,17 +438,17 @@ internal static class NexusStoryFixtures
         );
 
         var rng = new Random(0);
-        NexusGameEngine.SubmitOrders(
+        NexusEngine.SubmitOrders(
             state,
             new NexusTurnOrdersCommand(Player1Id, 1, [], [], false),
             rng
         );
-        NexusGameEngine.SubmitOrders(
+        NexusEngine.SubmitOrders(
             state,
             new NexusTurnOrdersCommand(Player2Id, 1, [], [], false),
             rng
         );
-        NexusGameEngine.SubmitOrders(
+        NexusEngine.SubmitOrders(
             state,
             new NexusTurnOrdersCommand(Player2Id, 2, [], [], false),
             rng
@@ -457,14 +457,14 @@ internal static class NexusStoryFixtures
         return new GameplayScenario(
             "Waiting",
             "P2 has already submitted orders; P1 still needs to commit.",
-            NexusGameEngine.BuildView(state, Guid.NewGuid(), Player1Id)
+            NexusEngine.BuildView(state, Guid.NewGuid(), Player1Id)
         );
     }
 
     private static GameplayScenario BuildEndedScenario()
     {
-        var state = new NexusGameState();
-        NexusGameEngine.Initialize(
+        var state = new NexusState();
+        NexusEngine.Initialize(
             state,
             new InitializeNexusGameCommand(
                 ImmutableArray.Create(
@@ -475,12 +475,12 @@ internal static class NexusStoryFixtures
             new Random(42)
         );
 
-        NexusGameEngine.Abandon(state, Player2Id);
+        NexusEngine.Abandon(state, Player2Id);
 
         return new GameplayScenario(
             "Ended",
             "P2 abandoned; P1 wins.",
-            NexusGameEngine.BuildView(state, Guid.NewGuid(), Player1Id)
+            NexusEngine.BuildView(state, Guid.NewGuid(), Player1Id)
         );
     }
 }

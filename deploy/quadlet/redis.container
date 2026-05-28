@@ -1,0 +1,18 @@
+[Unit]
+Description=Spx Redis
+After=network-online.target
+Wants=network-online.target
+
+[Container]
+Image=docker.io/redis:7
+ContainerName=redis
+HostName=redis
+Network=spx.network
+Volume=redis-data:/data
+Exec=redis-server --appendonly yes
+
+[Service]
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

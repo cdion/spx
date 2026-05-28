@@ -1,6 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Spx.Data;
-using Spx.Game.Application;
+using Spx.Nexus.Application;
 
 namespace Microsoft.Extensions.DependencyInjection;
 

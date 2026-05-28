@@ -1,1 +1,1 @@
-global using Spx.Game.Domain;
+global using Spx.Nexus.Domain;

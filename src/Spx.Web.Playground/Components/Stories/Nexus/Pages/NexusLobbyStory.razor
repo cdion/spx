@@ -2,7 +2,7 @@
 @rendermode InteractiveServer
 
 <StoryHeader Title="Nexus Lobby">
-    Shared <code class="text-sky-300">GameLobbyListPanel</code> rendered in the same high-level states as the production
+    Shared <code class="text-sky-300">LobbyListPanel</code> rendered in the same high-level states as the production
     lobby page.
 </StoryHeader>
 
@@ -46,7 +46,7 @@
         </div>
     </section>
 
-<GameLobbyListPanel Games="CurrentGames" IsLoading="IsLoading" LoadError="@LoadError" CreateGameHref="#"
+<LobbyListPanel Games="CurrentGames" IsLoading="IsLoading" LoadError="@LoadError" CreateGameHref="#"
                     JoinGameHref="#" GameHrefBase="#/games" />
 
 @code {

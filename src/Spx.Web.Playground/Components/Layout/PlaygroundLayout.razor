@@ -7,35 +7,37 @@
             @foreach (var navSection in Sections)
             {
                 <section class="space-y-2">
-                    <p class="px-3 text-[0.65rem] font-semibold uppercase tracking-[0.22em] text-slate-500">@navSection.Title</p>
+                    <p class="px-3 text-[0.65rem] font-semibold uppercase tracking-[0.22em] text-slate-500">
+                        @navSection.Title</p>
 
-                    @foreach (var group in navSection.Groups)
-                    {
-                        <div class="space-y-0.5">
-                            <p class="px-3 pt-1 text-[0.65rem] font-semibold uppercase tracking-[0.2em] text-slate-600">@group.Title</p>
-                            <ul class="space-y-0.5">
-                                @foreach (var item in group.Items)
-                                {
-                                    <li>
-                                        <NavLink href="@item.Href"
-                                                 class="block rounded-md px-3 py-2 text-sm text-slate-400 transition-colors hover:bg-white/5 hover:text-slate-200"
-                                                 ActiveClass="bg-white/10 text-white">
-                                            @item.Label
-                                        </NavLink>
-                                    </li>
-                                }
-                            </ul>
-                        </div>
+                        @foreach (var group in navSection.Groups)
+                        {
+                            <div class="space-y-0.5">
+                                <p class="px-3 pt-1 text-[0.65rem] font-semibold uppercase tracking-[0.2em] text-slate-600">
+                                    @group.Title</p>
+                                    <ul class="space-y-0.5">
+                                        @foreach (var item in group.Items)
+                                        {
+                                            <li>
+                                                <NavLink href="@item.Href"
+                                                         class="block rounded-md px-3 py-2 text-sm text-slate-400 transition-colors hover:bg-white/5 hover:text-slate-200"
+                                                         ActiveClass="bg-white/10 text-white">
+                                                    @item.Label
+                                                </NavLink>
+                                            </li>
+                                        }
+                                    </ul>
+                                </div>
+                            }
+                        </section>
                     }
-                </section>
-            }
-        </div>
-    </nav>
+                </div>
+            </nav>
 
-    <main class="min-w-0 flex-1 overflow-auto p-6">
-        @Body
-    </main>
-</div>
+            <main class="min-w-0 flex-1 overflow-auto p-6">
+                @Body
+            </main>
+        </div>
 
 @code {
     private static IReadOnlyList<NavSection> Sections { get; } =
@@ -72,6 +74,18 @@
                         new NavItem("Lobby", "/stories/nexus/pages/lobby"),
                         new NavItem("Forms", "/stories/nexus/pages/forms"),
                         new NavItem("Page", "/stories/nexus/pages/page")
+                    ]
+                )
+            ]
+        ),
+        new NavSection(
+            "Account",
+            [
+                new NavGroup(
+                    "Pages",
+                    [
+                        new NavItem("Forms", "/stories/account/forms"),
+                        new NavItem("Access", "/stories/account/access")
                     ]
                 )
             ]

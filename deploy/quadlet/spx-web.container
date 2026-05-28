@@ -1,0 +1,20 @@
+[Unit]
+Description=Spx web application
+After=postgres.service redis.service spx-silo.service
+Requires=postgres.service redis.service spx-silo.service
+
+[Container]
+Image=localhost/spx-web:latest
+ContainerName=spx-web
+HostName=spx-web
+Network=spx.network
+EnvironmentFile=/etc/spx/prod.env
+Environment=ASPNETCORE_URLS=http://+:8080
+Volume=spx-keys:/var/lib/spx/keys
+
+[Service]
+Restart=always
+TimeoutStartSec=300
+
+[Install]
+WantedBy=multi-user.target

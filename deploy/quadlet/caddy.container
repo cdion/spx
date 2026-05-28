@@ -1,0 +1,22 @@
+[Unit]
+Description=Spx Caddy reverse proxy
+After=spx-web.service
+Wants=spx-web.service
+
+[Container]
+Image=docker.io/caddy:2
+ContainerName=caddy
+HostName=caddy
+Network=spx.network
+PublishPort=80:80
+PublishPort=443:443
+PublishPort=443:443/udp
+Volume=caddy-data:/data
+Volume=caddy-config:/config
+Volume=/etc/spx/Caddyfile:/etc/caddy/Caddyfile:ro,z
+
+[Service]
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

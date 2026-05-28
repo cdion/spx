@@ -1,0 +1,3 @@
+mostlyhuman.ca {
+    reverse_proxy spx-web:8080
+}

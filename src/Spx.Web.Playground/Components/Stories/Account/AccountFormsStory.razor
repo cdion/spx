@@ -1,0 +1,95 @@
+@page "/stories/account/forms"
+@rendermode InteractiveServer
+
+<StoryHeader Title="Account Forms">
+    The five identity forms that cover registration, sign-in, and password recovery, all composed from the shared
+    <code class="text-sky-300">AccountLoginForm</code>, <code class="text-sky-300">AccountRegisterForm</code>, etc.
+    components.
+</StoryHeader>
+
+<div class="mb-3 flex flex-wrap gap-2">
+    @foreach (var (label, index) in _pages.Select((page, i) => (page, i)))
+    {
+        <button class="@PageBtnClass(index)" @onclick="() => _pageIndex = index">
+            @label
+        </button>
+    }
+</div>
+
+<div class="mb-6 grid gap-3 lg:grid-cols-[1.45fr_1fr]">
+    <div class="ui-panel-card space-y-4">
+        <SectionHeader Eyebrow="Story controls" Title="Form state" />
+
+        <div class="flex flex-wrap gap-2">
+            @foreach (var (label, index) in _states.Select((state, i) => (state, i)))
+            {
+                <button class="@StateBtnClass(index)" @onclick="() => _stateIndex = index">
+                    @label
+                </button>
+            }
+        </div>
+
+        <div class="flex flex-wrap gap-2 text-xs uppercase tracking-[0.2em] text-slate-500">
+            <span class="rounded-full border border-white/10 px-3 py-1">Form: @_pages[_pageIndex]</span>
+            <span class="rounded-full border border-sky-400/20 bg-sky-500/10 px-3 py-1 text-sky-200">
+                State: @_states[_stateIndex]
+            </span>
+        </div>
+    </div>
+
+    <div class="ui-panel-card space-y-3 text-sm leading-6 text-slate-300">
+        <SectionHeader Eyebrow="Coverage" Title="What to review" />
+        <p>Each tab mirrors the corresponding account page. The <strong>Error</strong> and <strong>Success</strong>
+            banners
+            match what the route-based outcome redirects produce.</p>
+            <p>The <strong>Reset Password</strong> page also shows its broken-link warning when Email/Code are
+                cleared.</p>
+            </div>
+        </div>
+
+        @switch (_pageIndex)
+        {
+            case 0:
+                <AccountLoginForm Email="@SampleEmail" Error="@ErrorText" Status="@StatusText" />
+                break;
+            case 1:
+                <AccountRegisterForm Email="@SampleEmail" Error="@ErrorText" />
+                break;
+            case 2:
+                <AccountForgotPasswordForm Email="@SampleEmail" Error="@ErrorText" Status="@StatusText" />
+                break;
+            case 3:
+                @if (ShowInvalidLink)
+                {
+                    <AccountResetPasswordForm Email="" Code="" Error="@ErrorText" />
+                }
+                else
+                {
+                    <AccountResetPasswordForm Email="user@example.com" Code="reset-token-abc123" Error="@ErrorText" />
+                }
+                break;
+            case 4:
+                <AccountResendConfirmationForm Email="@SampleEmail" Error="@ErrorText" Status="@StatusText" />
+                break;
+        }
+
+@code {
+    private readonly string[] _pages = ["Login", "Register", "Forgot Password", "Reset Password", "Resend"];
+    private readonly string[] _states = ["Idle", "Error", "Success", "Invalid link (Reset only)"];
+    private int _pageIndex;
+    private int _stateIndex;
+
+    private string SampleEmail => _stateIndex > 0 ? "user@example.com" : "";
+
+    private string? ErrorText =>
+        _stateIndex == 1 ? "Something went wrong. Please check your details and try again." : null;
+
+    private string? StatusText =>
+        _stateIndex == 2 ? "Done! Check your email for the next step." : null;
+
+    private bool ShowInvalidLink => _stateIndex == 3;
+
+    private string PageBtnClass(int index) => index == _pageIndex ? "ui-pg-tab-active" : "ui-pg-tab";
+
+    private string StateBtnClass(int index) => index == _stateIndex ? "ui-pg-tab-active" : "ui-pg-tab";
+}

@@ -1,0 +1,16 @@
+@page "/resend-confirmation"
+@attribute [AllowAnonymous]
+
+<PageTitle>Resend confirmation</PageTitle>
+
+<AccountResendConfirmationForm Email="@Email" Error="@Error" Status="@Status">
+    <FormTokens>
+        <AntiforgeryToken />
+    </FormTokens>
+</AccountResendConfirmationForm>
+
+@code {
+    [SupplyParameterFromQuery(Name = "status")] public string? Status { get; set; }
+    [SupplyParameterFromQuery(Name = "error")] public string? Error { get; set; }
+    [SupplyParameterFromQuery(Name = "email")] public string? Email { get; set; }
+}

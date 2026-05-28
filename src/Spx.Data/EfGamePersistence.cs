@@ -2,8 +2,8 @@ using System.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.Logging;
-using Spx.Game.Application;
-using Spx.Game.Domain;
+using Spx.Nexus.Application;
+using Spx.Nexus.Domain;
 
 namespace Spx.Data;
 

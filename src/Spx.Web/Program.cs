@@ -2,15 +2,16 @@
 // inherent to the composition root pattern and not a refactoring candidate.
 #pragma warning disable CA1506
 using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Orleans.Configuration;
 using Spx.Account;
 using Spx.Data;
-using Spx.Game.Application;
+using Spx.Nexus.Application;
+using Spx.Web.Adapters;
 using Spx.Web.Adapters.Account;
-using Spx.Web.Adapters.Games;
 using Spx.Web.Components;
 using Spx.Web.Endpoints;
 using Spx.Web.Hubs;
@@ -39,6 +40,12 @@ builder.UseOrleansClient(clientBuilder =>
         options.ClusterId = orleansClusterId;
         options.ServiceId = orleansServiceId;
     });
+    clientBuilder.UseRedisClustering(
+        builder.Configuration.GetConnectionString("orleans-redis")
+            ?? throw new InvalidOperationException(
+                "Connection string 'orleans-redis' was not configured."
+            )
+    );
 });
 builder.Services.Configure<AppUrlOptions>(
     builder.Configuration.GetSection(AppUrlOptions.SectionName)
@@ -57,11 +64,11 @@ builder
                 "The orleans-redis connection string was not configured."
             )
     );
-builder.Services.AddSingleton<GameInvalidationHubBridge>();
+builder.Services.AddSingleton<NexusInvalidationHubBridge>();
 builder.Services.AddSingleton<IGameInvalidationHubBridge>(sp =>
-    sp.GetRequiredService<GameInvalidationHubBridge>()
+    sp.GetRequiredService<NexusInvalidationHubBridge>()
 );
-builder.Services.AddHostedService(sp => sp.GetRequiredService<GameInvalidationHubBridge>());
+builder.Services.AddHostedService(sp => sp.GetRequiredService<NexusInvalidationHubBridge>());
 builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddAuthentication(IdentityConstants.ApplicationScheme).AddIdentityCookies();
@@ -116,17 +123,17 @@ else
 
 builder.Services.AddAccountApplication();
 builder.Services.AddAccountWebAdapters();
-builder.Services.AddGameWebAdapters();
-builder.Services.AddGameApplication();
+builder.Services.AddWebAdapters();
+builder.Services.AddApplicationServices();
 builder.Services.AddGameDataAdapters();
 
-var app = builder.Build();
-
-await using (var scope = app.Services.CreateAsyncScope())
+if (!builder.Environment.IsDevelopment())
 {
-    var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    await dbContext.Database.MigrateAsync();
+    var keyRingPath = builder.Configuration["DataProtection:KeyRingPath"] ?? "/var/lib/spx/keys";
+    builder.Services.AddDataProtection().PersistKeysToFileSystem(new DirectoryInfo(keyRingPath));
 }
+
+var app = builder.Build();
 
 // Configure the HTTP request pipeline.
 app.UseForwardedHeaders();
@@ -134,16 +141,14 @@ app.UseForwardedHeaders();
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Error", createScopeForErrors: true);
-    // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
     app.UseHsts();
-    app.UseHttpsRedirection();
 }
 
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseAntiforgery();
 
-app.MapHub<GameHub>("/hubs/game");
+app.MapHub<NexusHub>("/hubs/game");
 app.MapAccountEndpoints();
 app.MapStaticAssets();
 app.MapRazorComponents<App>().AddInteractiveServerRenderMode();

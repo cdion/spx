@@ -2,7 +2,7 @@
 @rendermode InteractiveServer
 
 <StoryHeader Title="Timeline">
-    Shared <code class="text-sky-300">GameTimelinePanel</code> rendered inside the same timeline wrapper used by the
+    Shared <code class="text-sky-300">NexusTimelinePanel</code> rendered inside the same timeline wrapper used by the
     production Nexus page.
 </StoryHeader>
 
@@ -58,7 +58,7 @@
             }
 
             <div class="mt-4">
-                <GameTimelinePanel CurrentUserName="Captain Red" TimelineItems="_items" MessageError="@CurrentError"
+                <NexusTimelinePanel CurrentUserName="Captain Red" TimelineItems="_items" MessageError="@CurrentError"
                                    IsTimelineLoading="@IsLoading" IsLoadingOlderMessages="@_isLoadingOlderMessages"
                                    HasOlderMessages="@_hasOlderMessages" EditingMessageId="@_editingMessageId"
                                    @bind-EditMessageText="_editText" IsSavingEdit="false" OnLoadOlderMessages="HandleLoadOlderMessages"

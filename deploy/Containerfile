@@ -1,0 +1,103 @@
+# ==============================================================================
+# Multi-stage build for Spx.Web and Spx.Silo
+#
+# Produces two named targets:
+#   web   — Blazor web application
+#   silo  — Orleans silo host
+#
+# Build:
+#   podman build -f deploy/Containerfile --target web  -t localhost/spx-web:latest  .
+#   podman build -f deploy/Containerfile --target silo -t localhost/spx-silo:latest .
+#
+# The Tailwind CLI binary must exist at tools/tailwind/bin/tailwindcss-linux-x64
+# because Spx.Web.Components invokes it as a BeforeTargets=Build;Publish MSBuild target.
+# ==============================================================================
+
+ARG SDK_IMAGE=mcr.microsoft.com/dotnet/sdk:10.0
+ARG ASPNET_IMAGE=mcr.microsoft.com/dotnet/aspnet:10.0
+
+# ------------------------------------------------------------------------------
+# build — restore and publish both projects
+# ------------------------------------------------------------------------------
+FROM ${SDK_IMAGE} AS build
+WORKDIR /src
+
+# Copy project files first for layer-cached restore.
+COPY Directory.Build.props ./
+COPY src/Spx.Account/Spx.Account.csproj                                   src/Spx.Account/
+COPY src/Spx.Contracts/Spx.Game.Contract.csproj                           src/Spx.Contracts/
+COPY src/Spx.Data/Spx.Data.csproj                                          src/Spx.Data/
+COPY src/Spx.Game.Application/Spx.Game.Application.csproj                 src/Spx.Game.Application/
+COPY src/Spx.Game.Domain/Spx.Game.Domain.csproj                            src/Spx.Game.Domain/
+COPY src/Spx.Grains/Spx.Game.Grain.csproj                                  src/Spx.Grains/
+COPY src/Spx.ServiceDefaults/Spx.ServiceDefaults.csproj                    src/Spx.ServiceDefaults/
+COPY src/Spx.Silo/Spx.Silo.csproj                                          src/Spx.Silo/
+COPY src/Spx.Web/Spx.Web.csproj                                            src/Spx.Web/
+COPY src/Spx.Web.Components/Spx.Web.Components.csproj                     src/Spx.Web.Components/
+
+RUN dotnet restore src/Spx.Web/Spx.Web.csproj
+RUN dotnet restore src/Spx.Silo/Spx.Silo.csproj
+
+# Copy the full source tree (filtered by .dockerignore).
+COPY . .
+
+# Download the Tailwind standalone binary (gitignored, so not in the build context).
+# Path must match the TailwindCli property in Spx.Web.Components.csproj.
+RUN mkdir -p tools/tailwind/bin && \
+    curl -fsSL -o tools/tailwind/bin/tailwindcss-linux-x64 \
+        https://github.com/tailwindlabs/tailwindcss/releases/download/v4.3.0/tailwindcss-linux-x64 && \
+    chmod +x tools/tailwind/bin/tailwindcss-linux-x64
+
+# Publish web — Tailwind CLI runs as part of BeforeTargets=Publish inside
+# Spx.Web.Components; the binary must be executable and at the expected path.
+RUN dotnet publish src/Spx.Web/Spx.Web.csproj \
+        -c Release \
+        -o /out/web \
+        --no-restore
+
+# Build a self-contained EF migrations bundle so the operator can run migrations
+# without spinning up the full web host (which needs Orleans/Redis at startup).
+RUN dotnet tool install --global dotnet-ef && \
+    /root/.dotnet/tools/dotnet-ef migrations bundle \
+        --project src/Spx.Data/Spx.Data.csproj \
+        --startup-project src/Spx.Web/Spx.Web.csproj \
+        --self-contained \
+        -o /out/migrate
+
+# Publish silo.
+RUN dotnet publish src/Spx.Silo/Spx.Silo.csproj \
+        -c Release \
+        -o /out/silo \
+        --no-restore
+
+# ------------------------------------------------------------------------------
+# web runtime image
+# ------------------------------------------------------------------------------
+FROM ${ASPNET_IMAGE} AS web
+WORKDIR /app
+
+COPY --from=build /out/web ./
+# Migrations bundle — run with: podman run --rm ... spx-web:latest /app/migrate
+COPY --from=build /out/migrate ./migrate
+
+# Data Protection key ring — mount a persistent volume here in production.
+VOLUME /var/lib/spx/keys
+
+ENV ASPNETCORE_URLS=http://+:8080
+ENV ASPNETCORE_ENVIRONMENT=Production
+EXPOSE 8080
+ENTRYPOINT ["dotnet", "Spx.Web.dll"]
+
+# ------------------------------------------------------------------------------
+# silo runtime image
+# ------------------------------------------------------------------------------
+FROM ${ASPNET_IMAGE} AS silo
+WORKDIR /app
+
+COPY --from=build /out/silo ./
+
+ENV ASPNETCORE_URLS=http://+:8080
+ENV ASPNETCORE_ENVIRONMENT=Production
+# 8080: HTTP health/API   11111: Orleans silo-to-silo   30000: Orleans gateway
+EXPOSE 8080 11111 30000
+ENTRYPOINT ["dotnet", "Spx.Silo.dll"]

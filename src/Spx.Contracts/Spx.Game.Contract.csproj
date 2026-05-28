@@ -6,7 +6,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Spx.Game.Domain\Spx.Game.Domain.csproj" />
+    <ProjectReference Include="..\Spx.Nexus.Domain\Spx.Nexus.Domain.csproj" />
     <PackageReference Include="Microsoft.Orleans.Core.Abstractions" Version="10.1.0" />
   </ItemGroup>
 </Project>

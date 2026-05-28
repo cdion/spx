@@ -21,6 +21,6 @@
 
   <ItemGroup>
     <ProjectReference Include="../../src/Spx.Grains/Spx.Game.Grain.csproj" />
-    <ProjectReference Include="../../src/Spx.Game.Domain/Spx.Game.Domain.csproj" />
+    <ProjectReference Include="../../src/Spx.Nexus.Domain/Spx.Nexus.Domain.csproj" />
   </ItemGroup>
 </Project>

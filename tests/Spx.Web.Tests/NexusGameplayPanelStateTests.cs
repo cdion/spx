@@ -1,4 +1,4 @@
-using Spx.Web.Components.Gameplay;
+using Spx.Web.Components.Nexus;
 using Xunit;
 
 namespace Spx.Web.Tests;

@@ -1,0 +1,19 @@
+[Unit]
+Description=Spx Orleans silo
+After=postgres.service redis.service
+Requires=postgres.service redis.service
+
+[Container]
+Image=localhost/spx-silo:latest
+ContainerName=spx-silo
+HostName=spx-silo
+Network=spx.network
+EnvironmentFile=/etc/spx/prod.env
+Environment=ASPNETCORE_URLS=http://+:8080
+
+[Service]
+Restart=always
+TimeoutStartSec=300
+
+[Install]
+WantedBy=multi-user.target

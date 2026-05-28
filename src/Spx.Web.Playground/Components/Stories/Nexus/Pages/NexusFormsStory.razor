@@ -30,7 +30,7 @@
 
         <div class="flex flex-wrap gap-2 text-xs uppercase tracking-[0.2em] text-slate-500">
             <span class="rounded-full border border-white/10 px-3 py-1">Route: @(IsCreatePage ? "/games/create" :
-                                    "/games/join")</span>
+                                                    "/games/join")</span>
                 <span class="rounded-full border border-sky-400/20 bg-sky-500/10 px-3 py-1 text-sky-200">State:
                     @_states[_stateIndex]</span>
                 </div>
@@ -47,7 +47,7 @@
 
             @if (IsCreatePage)
             {
-                <FormPage Eyebrow="Lobby" Title="Create a game"
+                <FormPage Title="Create a game"
                           Description="Creating a game reserves the invite code and seats you immediately as player one.">
                     @if (ShowError)
                     {
@@ -78,8 +78,7 @@
             }
             else
             {
-                <FormPage Eyebrow="Lobby" Title="Join a game"
-                          Description="Enter the invite code and the player name you want to use inside that game.">
+                <FormPage Title="Join a game" Description="Enter the invite code and the player name you want to use inside that game.">
                     @if (ShowError)
                     {
                         <AlertBanner>That invite code is unavailable or already full.</AlertBanner>

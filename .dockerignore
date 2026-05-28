@@ -1,0 +1,29 @@
+# Build artifacts
+**/bin/
+**/obj/
+**/TestResults/
+coverage/
+
+# Git history (keep HEAD + refs so build logs can reference commit if needed)
+.git/
+!.git/HEAD
+!.git/refs/
+
+# VS Code and editor files
+.vscode/
+.editorconfig
+
+# Dev-only tools (Tailwind binary is linux-x64 and copied below explicitly)
+tools/dev/
+
+# Test projects — not needed in production images
+tests/
+
+# Local secrets and environment files
+*.env
+*.env.*
+!*.env.example
+
+# Aspire AppHost and Playground — not deployed
+src/Spx.AppHost/
+src/Spx.Web.Playground/
