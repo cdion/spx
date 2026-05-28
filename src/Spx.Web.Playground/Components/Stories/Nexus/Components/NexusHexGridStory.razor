@@ -71,25 +71,19 @@
 </div>
 
 @code {
-    private static readonly Guid P1 = Guid.Parse("aaaaaaaa-0000-0000-0000-000000000001");
-    private static readonly Guid P2 = Guid.Parse("bbbbbbbb-0000-0000-0000-000000000002");
+    private static readonly Guid P1 = NexusStoryFixtures.Player1Id;
+    private static readonly Guid P2 = NexusStoryFixtures.Player2Id;
 
-    private NexusGameView _view = null!;
+    private NexusSessionView _view = null!;
     private HexCoord? _selected;
     private IReadOnlyList<HexCoord> _validTargets = [];
-    private readonly List<NexusMoveOrder> _pendingMoves = [];
+    private readonly List<NexusMoveRequest> _pendingMoves = [];
     private HexCoord? _pendingFrom;
     private NexusGateProgress _gateProgress = NexusGateProgress.None;
 
     protected override void OnInitialized()
     {
-        var state = new NexusState();
-        NexusEngine.Initialize(
-            state,
-            new InitializeNexusGameCommand(
-                ImmutableArray.Create(new GameSessionParticipant(P1), new GameSessionParticipant(P2))),
-            new Random(42));
-        _view = NexusEngine.BuildView(state, Guid.NewGuid(), P1);
+        _view = NexusStoryFixtures.CreateGameplayScenarios()[0].View;
     }
 
     private void OnSystemClicked(HexCoord coord)
@@ -103,7 +97,7 @@
                     ?.Units.GetValueOrDefault(P1);
                 if (units is { Count: > 0 })
                 {
-                    _pendingMoves.Add(new NexusMoveOrder(
+                    _pendingMoves.Add(new NexusMoveRequest(
                         _pendingFrom.Value,
                         coord,
                         units.ToImmutableDictionary()));
@@ -124,7 +118,7 @@
         }
 
         _selected = coord;
-        _validTargets = NexusViewQueries.GetValidMoveDestinations(_view, P1, coord);
+        _validTargets = NexusSessionViewQueries.GetValidMoveDestinations(_view, P1, coord);
 
         if (_validTargets.Count > 0)
             _pendingFrom = coord;

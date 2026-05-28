@@ -1,5 +1,8 @@
 @page "/stories/nexus/components/live-gameplay"
 @rendermode InteractiveServer
+@using Spx.Game.Application.Nexus.Features.EnsureNexusSession
+@using Spx.Game.Application.Nexus.Features.GetNexusPage
+@using Spx.Game.Application.Nexus.Features.SubmitOrders
 
 <div class="flex h-full flex-col">
     <StoryHeader Title="Nexus Live Gameplay">
@@ -45,64 +48,82 @@
 @code {
     private static readonly Guid Player1Id = NexusStoryFixtures.Player1Id;
     private static readonly Guid Player2Id = NexusStoryFixtures.Player2Id;
+    private const string Player1UserId = Spx.Web.Playground.Nexus.PlaygroundNexusUsers.Player1UserId;
+    private const string Player2UserId = Spx.Web.Playground.Nexus.PlaygroundNexusUsers.Player2UserId;
 
-    private NexusState _state = new();
     private Guid _gameId;
-    private Random _rng = new();
-    private Guid _viewingPlayerId;
-    private NexusGameView _view = null!;
+    private string _viewingUserId = Player1UserId;
+    private Guid _viewingPlayerId = Player1Id;
+    private NexusSessionView _view = null!;
     private GameLobbyView _lobby = null!;
     private string? _error;
 
+    [Inject]
+    private IEnsureNexusSessionHandler EnsureNexusSessionHandler { get; set; } = null!;
+
+    [Inject]
+    private IGetNexusPageHandler GetNexusPageHandler { get; set; } = null!;
+
+    [Inject]
+    private ISubmitOrdersHandler SubmitOrdersHandler { get; set; } = null!;
+
     private Guid OtherPlayerId => _viewingPlayerId == Player1Id ? Player2Id : Player1Id;
+    private string OtherUserId => _viewingUserId == Player1UserId ? Player2UserId : Player1UserId;
 
-    protected override void OnInitialized() => InitGame();
+    protected override async Task OnInitializedAsync() => await InitGameAsync();
 
-    private void InitGame()
+    private async Task InitGameAsync()
     {
-        _state = new NexusState();
         _gameId = Guid.NewGuid();
-        _rng = new Random();
+        _viewingUserId = Player1UserId;
         _viewingPlayerId = Player1Id;
         _error = null;
 
-        NexusEngine.Initialize(
-            _state,
-            new InitializeNexusGameCommand(
-                [new GameSessionParticipant(Player1Id), new GameSessionParticipant(Player2Id)]
-            ),
-            _rng
-        );
-
-        _lobby = NexusStoryFixtures.CreateLobby(_gameId);
-        RefreshView();
-    }
-
-    private void SwitchPlayer()
-    {
-        _viewingPlayerId = OtherPlayerId;
-        RefreshView();
-        _error = null;
-    }
-
-    private void Restart() => InitGame();
-
-    private void HandleSubmitOrders(NexusTurnOrdersCommand command)
-    {
-        var result = NexusEngine.SubmitOrders(_state, command, _rng);
-        _error = result is NexusTurnOrdersRejected rejected ? rejected.ErrorMessage : null;
-        RefreshView();
-    }
-
-    private void RefreshView()
-    {
-        _lobby = _lobby with
+        if (!await EnsureNexusSessionHandler.HandleAsync(_gameId))
         {
-            CurrentPlayerId = _viewingPlayerId,
-            CurrentPlayerName = PlayerName(_viewingPlayerId),
-            IsCurrentUserActive = true,
-        };
-        _view = NexusEngine.BuildView(_state, _gameId, _viewingPlayerId);
+            _error = "Playground session could not be initialized.";
+            _lobby = NexusStoryFixtures.CreateLobby(_gameId);
+            _view = NexusStoryFixtures.CreateGameplayScenarios()[0].View with { GameId = _gameId };
+            return;
+        }
+
+        await RefreshViewAsync();
+    }
+
+    private async Task SwitchPlayer()
+    {
+        _viewingUserId = OtherUserId;
+        _viewingPlayerId = OtherPlayerId;
+        _error = null;
+        await RefreshViewAsync();
+    }
+
+    private Task Restart() => InitGameAsync();
+
+    private async Task HandleSubmitOrders(NexusSubmitTurnCommand command)
+    {
+        var outcome = await SubmitOrdersHandler.HandleAsync(_gameId, command);
+        _error = outcome is GameSessionCommandFailed failed ? failed.ErrorMessage : null;
+        await RefreshViewAsync();
+    }
+
+    private async Task RefreshViewAsync()
+    {
+        var page = await GetNexusPageHandler.HandleAsync(_gameId, _viewingUserId);
+        if (page is null || page.Session is null)
+        {
+            _error ??= "Playground session unavailable.";
+            _lobby = NexusStoryFixtures.CreateLobby(_gameId) with
+            {
+                CurrentPlayerId = _viewingPlayerId,
+                CurrentPlayerName = PlayerName(_viewingPlayerId),
+            };
+            _view = NexusStoryFixtures.CreateGameplayScenarios()[0].View with { GameId = _gameId };
+            return;
+        }
+
+        _lobby = page.Lobby;
+        _view = page.Session;
     }
 
     private static string PlayerName(Guid id) =>
@@ -110,7 +131,11 @@
 
     private string PlayerStatusClass(Guid id)
     {
-        var player = _state.Players.FirstOrDefault(p => p.PlayerId == id);
+        var player = _view.CurrentPlayer.PlayerId == id
+            ? _view.CurrentPlayer
+            : _view.Opponent.PlayerId == id
+                ? _view.Opponent
+                : null;
         if (player is null)
             return "text-slate-500";
         return player.HasSubmittedOrders ? "font-medium text-emerald-400" : "text-slate-400";

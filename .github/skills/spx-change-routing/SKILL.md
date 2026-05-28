@@ -1,6 +1,6 @@
 ---
 name: spx-change-routing
-description: 'Route a change to the correct project before editing. Use when deciding whether behavior belongs in Spx.Account, Spx.Game.Application, Spx.Web, Spx.Data, Spx.Grains, Spx.Silo, or Spx.AppHost. Trigger words: which project owns this, where should this change go, account vs web, game application vs data, grain vs adapter, routing a feature, ownership boundary.'
+description: 'Route a change to the correct project before editing. Use when deciding whether behavior belongs in Spx.Account.Application, Spx.Game.Application, Spx.Web, Spx.Data, Spx.Grains, Spx.Silo, or Spx.AppHost. Trigger words: which project owns this, where should this change go, account vs web, game application vs data, grain vs adapter, routing a feature, ownership boundary.'
 argument-hint: 'Describe the behavior, bug, or feature and the current entry point.'
 ---
 
@@ -10,7 +10,7 @@ Use this skill before changing code when the entry point is visible but the owni
 
 ## Ownership Map
 
-- `src/Spx.Account`: account use cases, account outcomes, validation and branching for login, register, confirm email, resend confirmation, forgot password, reset password.
+- `src/Spx.Account.Application`: account use cases, account outcomes, validation and branching for login, register, confirm email, resend confirmation, forgot password, reset password.
 - `src/Spx.Game.Application`: game use cases, validation, outcome shaping, request models, and pure helper logic.
 - `src/Spx.Web`: Blazor UI, endpoint mapping, adapters, redirect/query behavior, and integration with account or game services.
 - `src/Spx.Data`: EF Core model, migrations, and persistence adapters.
@@ -32,7 +32,7 @@ Use this skill before changing code when the entry point is visible but the owni
 
 ## Common Routing Rules
 
-- If the change is business validation or a user-facing outcome, it usually belongs in `Spx.Account` or `Spx.Game.Application`.
+- If the change is business validation or a user-facing outcome, it usually belongs in `Spx.Account.Application` or `Spx.Game.Application`.
 - If the change is HTTP binding, redirects, route/query handling, or Blazor wiring, it belongs in `Spx.Web`.
 - If the change is query shape, persistence state, migrations, or EF configuration, it belongs in `Spx.Data`.
 - If the change depends on Orleans lifecycle or observer behavior, it belongs in `Spx.Grains` or `Spx.Silo`.
@@ -40,7 +40,7 @@ Use this skill before changing code when the entry point is visible but the owni
 
 ## Validation Shortcuts
 
-- Account behavior: `dotnet test tests/Spx.Account.Tests/Spx.Account.Tests.csproj`
+- Account behavior: `dotnet test tests/Spx.Account.Application.Tests/Spx.Account.Application.Tests.csproj`
 - Game application behavior: `dotnet test tests/Spx.Game.Application.Tests/Spx.Game.Application.Tests.csproj`
 - EF-backed game persistence: `dotnet test tests/Spx.Game.Application.IntegrationTests/Spx.Game.Application.IntegrationTests.csproj`
 - Web adapters and endpoints: `dotnet test tests/Spx.Web.Tests/Spx.Web.Tests.csproj`
@@ -71,6 +71,6 @@ Use this skill before changing code when the entry point is visible but the owni
 - `README.md`
 - `TESTING.md`
 - `src/Spx.AppHost/Program.cs`
-- `src/Spx.Account/AccountOutcomes.cs`
+- `src/Spx.Account.Application/AccountOutcomes.cs`
 - `src/Spx.Game.Application/GameModels.cs`
 - `src/Spx.Game.Application/GameTimelineModels.cs`

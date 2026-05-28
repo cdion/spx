@@ -23,7 +23,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="../../src/Spx.Account/Spx.Account.csproj" />
+    <ProjectReference Include="../../src/Spx.Account.Application/Spx.Account.Application.csproj" />
     <ProjectReference Include="../../src/Spx.Data/Spx.Data.csproj" />
     <ProjectReference Include="../../src/Spx.Web/Spx.Web.csproj" />
   </ItemGroup>

@@ -1,6 +1,6 @@
 using System.Collections.Immutable;
 using Spx.Contracts;
-using Spx.Nexus.Application;
+using Spx.Game.Application;
 
 namespace Spx.Web.Tests;
 
@@ -31,12 +31,12 @@ internal static class GamePageCoordinatorTestData
             isCurrentUserActive
         );
 
-    public static NexusGameView CreateSession(Guid gameId, int roundNumber = 1) =>
+    public static NexusSessionView CreateSession(Guid gameId, int roundNumber = 1) =>
         new(
             gameId,
             roundNumber,
             [],
-            new NexusPlayerView(
+            new NexusPlayerSnapshot(
                 CurrentPlayerId,
                 NexusFactionColor.Red,
                 0,
@@ -49,7 +49,7 @@ internal static class GamePageCoordinatorTestData
                 0,
                 0
             ),
-            new NexusPlayerView(
+            new NexusPlayerSnapshot(
                 OpponentPlayerId,
                 NexusFactionColor.Blue,
                 0,
@@ -69,7 +69,7 @@ internal static class GamePageCoordinatorTestData
     public static GamePageView CreatePage(
         Guid gameId,
         GamePresenceView? presence = null,
-        NexusGameView? session = null
+        NexusSessionView? session = null
     ) =>
         new(
             CreateLobby(gameId),

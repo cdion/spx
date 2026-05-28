@@ -1,5 +1,5 @@
 using Microsoft.EntityFrameworkCore;
-using Spx.Nexus.Application;
+using Spx.Game.Application;
 
 namespace Spx.Data;
 

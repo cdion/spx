@@ -18,8 +18,8 @@ public sealed class GameSessionGrainIntegrationTests(OrleansClusterFixture fixtu
     private static InitializeNexusGameCommand MakeInitCommand() =>
         new(
             ImmutableArray.Create(
-                new GameSessionParticipant(FirstPlayerId),
-                new GameSessionParticipant(SecondPlayerId)
+                new NexusSessionPlayer(FirstPlayerId),
+                new NexusSessionPlayer(SecondPlayerId)
             )
         );
 

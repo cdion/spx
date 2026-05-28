@@ -2,15 +2,15 @@ using System.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.Logging;
-using Spx.Nexus.Application;
-using Spx.Nexus.Domain;
+using Spx.Game.Application;
+using Spx.Game.Application.Nexus;
 
 namespace Spx.Data;
 
 internal sealed partial class EfGamePersistence(
     IDbContextFactory<ApplicationDbContext> contextFactory,
     ILogger<EfGamePersistence> logger
-) : IGamePersistence
+) : IGamePersistence, INexusSessionRosterProvider
 {
     private const int MaxPlayersPerGame = 2;
 
@@ -346,7 +346,7 @@ internal sealed partial class EfGamePersistence(
         );
     }
 
-    public async Task<IReadOnlyList<GameSessionParticipant>?> GetActiveSessionPlayersAsync(
+    public async Task<IReadOnlyList<Guid>?> GetActiveSessionPlayersAsync(
         Guid gameId,
         CancellationToken cancellationToken
     )
@@ -356,7 +356,7 @@ internal sealed partial class EfGamePersistence(
             .GamePlayers.AsNoTracking()
             .Where(entry => entry.GameId == gameId && entry.LeftAtUtc == null)
             .OrderBy(entry => entry.JoinedAtUtc)
-            .Select(entry => new GameSessionParticipant(entry.Id))
+            .Select(entry => entry.Id)
             .ToListAsync(cancellationToken);
 
         return players.Count == 0 ? null : players;

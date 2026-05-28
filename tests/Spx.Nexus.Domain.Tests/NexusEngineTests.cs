@@ -200,10 +200,7 @@ public class NexusGameEngineInitTests
         NexusEngine.Initialize(
             state,
             new InitializeNexusGameCommand(
-                ImmutableArray.Create(
-                    new GameSessionParticipant(P1Id),
-                    new GameSessionParticipant(P2Id)
-                )
+                ImmutableArray.Create(new NexusSessionPlayer(P1Id), new NexusSessionPlayer(P2Id))
             ),
             new Random(42)
         );
@@ -268,9 +265,7 @@ public class NexusGameEngineInitTests
         Assert.Throws<InvalidOperationException>(() =>
             NexusEngine.Initialize(
                 state,
-                new InitializeNexusGameCommand(
-                    ImmutableArray.Create(new GameSessionParticipant(P1Id))
-                ),
+                new InitializeNexusGameCommand(ImmutableArray.Create(new NexusSessionPlayer(P1Id))),
                 new Random(0)
             )
         );
@@ -295,10 +290,7 @@ public class NexusMoveValidationTests
         NexusEngine.Initialize(
             state,
             new InitializeNexusGameCommand(
-                ImmutableArray.Create(
-                    new GameSessionParticipant(P1Id),
-                    new GameSessionParticipant(P2Id)
-                )
+                ImmutableArray.Create(new NexusSessionPlayer(P1Id), new NexusSessionPlayer(P2Id))
             ),
             new Random(42)
         );
@@ -458,10 +450,7 @@ public class NexusRoundResolutionTests
         NexusEngine.Initialize(
             state,
             new InitializeNexusGameCommand(
-                ImmutableArray.Create(
-                    new GameSessionParticipant(P1Id),
-                    new GameSessionParticipant(P2Id)
-                )
+                ImmutableArray.Create(new NexusSessionPlayer(P1Id), new NexusSessionPlayer(P2Id))
             ),
             new Random(42)
         );
@@ -706,10 +695,7 @@ public class NexusPersistentDamageTests
         NexusEngine.Initialize(
             state,
             new InitializeNexusGameCommand(
-                ImmutableArray.Create(
-                    new GameSessionParticipant(P1Id),
-                    new GameSessionParticipant(P2Id)
-                )
+                ImmutableArray.Create(new NexusSessionPlayer(P1Id), new NexusSessionPlayer(P2Id))
             ),
             new Random(42)
         );
@@ -909,10 +895,7 @@ public class NexusGateTests
         NexusEngine.Initialize(
             state,
             new InitializeNexusGameCommand(
-                ImmutableArray.Create(
-                    new GameSessionParticipant(P1Id),
-                    new GameSessionParticipant(P2Id)
-                )
+                ImmutableArray.Create(new NexusSessionPlayer(P1Id), new NexusSessionPlayer(P2Id))
             ),
             new Random(42)
         );
@@ -1057,10 +1040,7 @@ public class NexusSupplyCheckTests
         NexusEngine.Initialize(
             state,
             new InitializeNexusGameCommand(
-                ImmutableArray.Create(
-                    new GameSessionParticipant(P1Id),
-                    new GameSessionParticipant(P2Id)
-                )
+                ImmutableArray.Create(new NexusSessionPlayer(P1Id), new NexusSessionPlayer(P2Id))
             ),
             new Random(42)
         );

@@ -10,7 +10,7 @@ Use this skill when adding or updating tests, or when deciding how to validate a
 
 ## Test Placement Rules
 
-- `tests/Spx.Account.Tests`: pure account handler behavior.
+- `tests/Spx.Account.Application.Tests`: pure account handler behavior.
 - `tests/Spx.Game.Domain.Tests`: pure reusable game rule helpers.
 - `tests/Spx.Game.Application.Tests`: pure game application handlers and helpers.
 - `tests/Spx.Game.Application.IntegrationTests`: EF-backed persistence and query behavior.
@@ -32,7 +32,7 @@ Use this skill when adding or updating tests, or when deciding how to validate a
 
 ## Useful Commands
 
-- `dotnet test tests/Spx.Account.Tests/Spx.Account.Tests.csproj`
+- `dotnet test tests/Spx.Account.Application.Tests/Spx.Account.Application.Tests.csproj`
 - `dotnet test tests/Spx.Game.Domain.Tests/Spx.Game.Domain.Tests.csproj`
 - `dotnet test tests/Spx.Game.Application.Tests/Spx.Game.Application.Tests.csproj`
 - `dotnet test tests/Spx.Game.Application.IntegrationTests/Spx.Game.Application.IntegrationTests.csproj`

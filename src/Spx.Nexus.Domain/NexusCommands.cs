@@ -6,12 +6,12 @@ namespace Spx.Nexus.Domain;
 // Kept for lobby infrastructure compatibility (EnsureSessionAsync etc.)
 [GenerateSerializer]
 [Immutable]
-public sealed record GameSessionParticipant([property: Id(0)] Guid PlayerId);
+public sealed record NexusSessionPlayer([property: Id(0)] Guid PlayerId);
 
 [GenerateSerializer]
 [Immutable]
 public sealed record InitializeNexusGameCommand(
-    [property: Id(0)] ImmutableArray<GameSessionParticipant> Players
+    [property: Id(0)] ImmutableArray<NexusSessionPlayer> Players
 );
 
 /// <summary>Build order for one unit type with a count.</summary>

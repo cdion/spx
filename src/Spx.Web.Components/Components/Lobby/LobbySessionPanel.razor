@@ -27,26 +27,26 @@
 
                     <div class="grid gap-4 lg:grid-cols-[1.35fr_0.85fr] lg:gap-5">
                         <NexusTimelinePanel @key="GetTimelinePanelKey()" @ref="timelinePanel"
-                                           CurrentUserName="@ResolvedMessagesState.CurrentUserName" TimelineItems="ResolvedMessagesState.Items"
-                                           MessageError="@ResolvedMessagesState.MessageError"
-                                           IsTimelineLoading="@ResolvedMessagesState.IsTimelineLoading"
-                                           IsLoadingOlderMessages="@ResolvedMessagesState.IsLoadingOlderMessages"
-                                           HasOlderMessages="@ResolvedMessagesState.HasOlderMessages"
-                                           EditingMessageId="@ResolvedMessagesState.EditingMessageId"
-                                           EditMessageText="@ResolvedMessagesState.EditMessageText"
-                                           EditMessageTextChanged="HandleEditMessageTextChanged"
-                                           IsSavingEdit="@ResolvedMessagesState.IsSavingEdit" OnLoadOlderMessages="HandleLoadOlderMessages"
-                                           OnBeginEdit="HandleBeginEdit" OnCancelEdit="HandleCancelEdit" OnSaveEdit="HandleSaveEdit"
-                                           OnDeleteMessage="HandleDeleteMessage" OnRetryPendingMessage="HandleRetryPendingMessage"
-                                           OnDismissPendingMessage="HandleDismissPendingMessage" />
+                                            CurrentUserName="@ResolvedMessagesState.CurrentUserName" TimelineItems="ResolvedMessagesState.Items"
+                                            MessageError="@ResolvedMessagesState.MessageError"
+                                            IsTimelineLoading="@ResolvedMessagesState.IsTimelineLoading"
+                                            IsLoadingOlderMessages="@ResolvedMessagesState.IsLoadingOlderMessages"
+                                            HasOlderMessages="@ResolvedMessagesState.HasOlderMessages"
+                                            EditingMessageId="@ResolvedMessagesState.EditingMessageId"
+                                            EditMessageText="@ResolvedMessagesState.EditMessageText"
+                                            EditMessageTextChanged="HandleEditMessageTextChanged"
+                                            IsSavingEdit="@ResolvedMessagesState.IsSavingEdit" OnLoadOlderMessages="HandleLoadOlderMessages"
+                                            OnBeginEdit="HandleBeginEdit" OnCancelEdit="HandleCancelEdit" OnSaveEdit="HandleSaveEdit"
+                                            OnDeleteMessage="HandleDeleteMessage" OnRetryPendingMessage="HandleRetryPendingMessage"
+                                            OnDismissPendingMessage="HandleDismissPendingMessage" />
 
                         <LobbyMessageComposer @key="GetMessageComposerKey()"
-                                             IsCurrentUserActive="@ResolvedMessagesState.IsCurrentUserActive"
-                                             CurrentPlayerId="@ResolvedMessagesState.CurrentPlayerId" Players="@ResolvedMessagesState.Players"
-                                             Text="@ResolvedMessagesState.ComposerText" TextChanged="HandleComposerTextChanged"
-                                             SelectedRecipientPlayerIdString="@ResolvedMessagesState.SelectedRecipientPlayerIdString"
-                                             SelectedRecipientPlayerIdStringChanged="HandleRecipientChanged"
-                                             IsSendingMessage="@ResolvedMessagesState.IsSendingMessage" OnSend="HandleSendMessage" />
+                                              IsCurrentUserActive="@ResolvedMessagesState.IsCurrentUserActive"
+                                              CurrentPlayerId="@ResolvedMessagesState.CurrentPlayerId" Players="@ResolvedMessagesState.Players"
+                                              Text="@ResolvedMessagesState.ComposerText" TextChanged="HandleComposerTextChanged"
+                                              SelectedRecipientPlayerIdString="@ResolvedMessagesState.SelectedRecipientPlayerIdString"
+                                              SelectedRecipientPlayerIdStringChanged="HandleRecipientChanged"
+                                              IsSendingMessage="@ResolvedMessagesState.IsSendingMessage" OnSend="HandleSendMessage" />
                     </div>
                 }
                 else if (ResolvedSessionState.Session is not null)
@@ -98,7 +98,7 @@
     public GameLobbyView? Lobby { get; set; }
 
     [Parameter]
-    public NexusGameView? Session { get; set; }
+    public NexusSessionView? Session { get; set; }
 
     [Parameter]
     public bool IsSubmittingAction { get; set; }
@@ -107,7 +107,7 @@
     public string? GameplayError { get; set; }
 
     [Parameter]
-    public EventCallback<NexusTurnOrdersCommand> OnSubmitOrders { get; set; }
+    public EventCallback<NexusSubmitTurnCommand> OnSubmitOrders { get; set; }
 
     private LobbySessionTab _selectedTab = LobbySessionTab.Timeline;
     private NexusTimelinePanel? timelinePanel;

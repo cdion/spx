@@ -1,5 +1,8 @@
 @page "/stories/nexus/pages/page"
 @rendermode InteractiveServer
+@using Spx.Game.Application.Nexus.Features.EnsureNexusSession
+@using Spx.Game.Application.Nexus.Features.GetNexusPage
+@using Spx.Game.Application.Nexus.Features.SubmitOrders
 
 <StoryHeader Title="Nexus Page">
     Full lobby and gameplay composition using the extracted shared components, including the same empty and alert
@@ -9,7 +12,7 @@
 <div class="mb-4 flex flex-wrap gap-2">
     @foreach (var (label, index) in _states.Select((state, i) => (state, i)))
     {
-        <button class="@ScenarioBtnClass(index)" @onclick="() => SelectState(index)">
+        <button class="@ScenarioBtnClass(index)" @onclick="() => SelectStateAsync(index)">
             @label
         </button>
     }
@@ -131,9 +134,9 @@
 @code {
     private readonly string[] _states = ["Loading", "Unavailable", "Active", "Waiting", "Archived"];
     private int _stateIndex;
-    private IReadOnlyList<NexusStoryFixtures.GameplayScenario> _gameplayScenarios = null!;
+    private Guid _activeGameId;
     private GameLobbyView? _lobby;
-    private NexusGameView? _session;
+    private NexusSessionView? _session;
     private GamePresenceView _presence = GamePresenceView.Empty;
     private List<TimelineEntryState> _timelineItems = [];
     private Guid? _editingMessageId;
@@ -145,6 +148,15 @@
     private bool _showGameplayError;
     private bool _showTimelineError;
     private LobbySessionTab _selectedSessionTab = LobbySessionTab.Timeline;
+
+    [Inject]
+    private IEnsureNexusSessionHandler EnsureNexusSessionHandler { get; set; } = null!;
+
+    [Inject]
+    private IGetNexusPageHandler GetNexusPageHandler { get; set; } = null!;
+
+    [Inject]
+    private ISubmitOrdersHandler SubmitOrdersHandler { get; set; } = null!;
 
     private string? PageError => _showPageError ? "We couldn't refresh the lobby snapshot. Existing UI remains visible while the page retries." : null;
 
@@ -205,13 +217,12 @@
             ? [LobbySessionTab.Timeline, LobbySessionTab.Game]
             : [LobbySessionTab.Timeline];
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
-        _gameplayScenarios = NexusStoryFixtures.CreateGameplayScenarios();
-        SelectState(2);
+        await SelectStateAsync(2);
     }
 
-    private void SelectState(int index)
+    private async Task SelectStateAsync(int index)
     {
         _stateIndex = index;
         _lobby = null;
@@ -236,9 +247,9 @@
                 _presence = GamePresenceView.Empty;
                 break;
             case 2:
-                _lobby = NexusStoryFixtures.CreateLobby(_gameplayScenarios[2].View.GameId);
-                _session = _gameplayScenarios[2].View;
-                _presence = NexusStoryFixtures.CreatePresence(NexusStoryFixtures.Player1Id, NexusStoryFixtures.Player2Id);
+                _activeGameId = Guid.NewGuid();
+                await EnsureNexusSessionHandler.HandleAsync(_activeGameId);
+                await LoadActivePageAsync();
                 _selectedSessionTab = LobbySessionTab.Game;
                 break;
             case 3:
@@ -261,10 +272,19 @@
         _selectedSessionTab = tab;
     }
 
-    private Task HandleSubmitOrders(NexusTurnOrdersCommand command)
+    private async Task HandleSubmitOrders(NexusSubmitTurnCommand command)
     {
+        var outcome = await SubmitOrdersHandler.HandleAsync(_activeGameId, command);
+        if (outcome is GameSessionCommandFailed failed)
+        {
+            _showGameplayError = true;
+            _lastAction = failed.ErrorMessage;
+            return;
+        }
+
+        _showGameplayError = false;
+        await LoadActivePageAsync();
         _lastAction = $"Submitted round {command.ExpectedRoundNumber} with {command.MoveOrders.Length} move(s).";
-        return Task.CompletedTask;
     }
 
     private Task SendMessage()
@@ -340,6 +360,18 @@
     {
         _selectedSessionTab = tab;
         return Task.CompletedTask;
+    }
+
+    private async Task LoadActivePageAsync()
+    {
+        var page = await GetNexusPageHandler.HandleAsync(
+            _activeGameId,
+            Spx.Web.Playground.Nexus.PlaygroundNexusUsers.Player1UserId
+        );
+
+        _lobby = page?.Lobby;
+        _session = page?.Session;
+        _presence = page?.Presence ?? GamePresenceView.Empty;
     }
 
     private string ScenarioBtnClass(int index) =>

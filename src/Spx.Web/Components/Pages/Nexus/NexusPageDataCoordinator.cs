@@ -1,6 +1,6 @@
-using Spx.Nexus.Application;
-using Spx.Nexus.Application.Features.GetGamePresence;
-using Spx.Nexus.Application.Features.GetNexusPage;
+using Spx.Game.Application;
+using Spx.Game.Application.Features.GetGamePresence;
+using Spx.Game.Application.Nexus.Features.GetNexusPage;
 
 namespace Spx.Web.Components.Pages.Nexus;
 

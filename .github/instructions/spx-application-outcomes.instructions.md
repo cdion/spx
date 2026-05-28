@@ -1,7 +1,7 @@
 ---
 description: 'Use when editing account or game application handlers, defining business-facing results, choosing outcome shapes, or deciding between explicit outcomes and exceptions.'
 name: 'Spx Application Outcomes'
-applyTo: '{src/Spx.Account/**,src/Spx.Game.Application/**}'
+applyTo: '{src/Spx.Account.Application/**,src/Spx.Game.Application/**}'
 ---
 
 # Spx Application Outcomes

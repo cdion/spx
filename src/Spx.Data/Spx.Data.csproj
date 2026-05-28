@@ -6,7 +6,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Spx.Nexus.Application\Spx.Nexus.Application.csproj" />
+    <ProjectReference Include="..\Spx.Game.Application\Spx.Game.Application.csproj" />
   </ItemGroup>
 
   <ItemGroup>

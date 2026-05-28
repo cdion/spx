@@ -1,4 +1,3 @@
-@using Spx.Nexus.Domain
 @using System.Text
 
 <g @onclick="HandleClick" @onclick:stopPropagation="true" class="@(IsClickable ? "cursor-pointer" : "")">
@@ -27,7 +26,7 @@
 
 @code {
     [Parameter, EditorRequired]
-    public NexusSystemView System { get; set; } = default!;
+    public NexusSystemSnapshot System { get; set; } = default!;
 
     [Parameter, EditorRequired]
     public (double X, double Y) Center { get; set; }
@@ -56,8 +55,7 @@
         {
             if (System.IsNexus || System.HomePlayerId.HasValue)
                 return string.Empty;
-            if (!NexusMap.SectorNames.TryGetValue(System.Coord, out var name))
-                return string.Empty;
+            var name = NexusMapTopology.GetSectorDisplayName(System.Coord);
             const string style =
                 "fill=\"rgba(148,163,184,0.45)\" font-size=\"7\"";
             var y = NexusHexHelpers.Fmt(Center.Y - 10);

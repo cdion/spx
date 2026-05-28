@@ -1,5 +1,5 @@
 using Microsoft.AspNetCore.Identity;
-using Spx.Account;
+using Spx.Account.Application;
 using Spx.Data;
 
 namespace Spx.Web.Adapters.Account;

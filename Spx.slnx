@@ -1,23 +1,25 @@
 <Solution>
   <Folder Name="/src/">
-    <Project Path="src/Spx.Account/Spx.Account.csproj" />
+    <Project Path="src/Spx.Account.Application/Spx.Account.Application.csproj" />
     <Project Path="src/Spx.AppHost/Spx.AppHost.csproj" />
     <Project Path="src/Spx.Contracts/Spx.Game.Contract.csproj" />
     <Project Path="src/Spx.Data/Spx.Data.csproj" />
     <Project Path="src/Spx.Nexus.Domain/Spx.Nexus.Domain.csproj" />
-    <Project Path="src/Spx.Nexus.Application/Spx.Nexus.Application.csproj" />
+    <Project Path="src/Spx.Game.Application/Spx.Game.Application.csproj" />
+    <Project Path="src/Spx.Nexus.Mapping/Spx.Nexus.Mapping.csproj" />
     <Project Path="src/Spx.Grains/Spx.Game.Grain.csproj" />
     <Project Path="src/Spx.Silo/Spx.Silo.csproj" />
+    <Project Path="src/Spx.Nexus.Primitives/Spx.Nexus.Primitives.csproj" />
     <Project Path="src/Spx.ServiceDefaults/Spx.ServiceDefaults.csproj" />
     <Project Path="src/Spx.Web/Spx.Web.csproj" />
     <Project Path="src/Spx.Web.Components/Spx.Web.Components.csproj" />
     <Project Path="src/Spx.Web.Playground/Spx.Web.Playground.csproj" />
   </Folder>
   <Folder Name="/tests/">
-    <Project Path="tests/Spx.Account.Tests/Spx.Account.Tests.csproj" />
-    <Project Path="tests/Spx.Nexus.Application.Tests/Spx.Nexus.Application.Tests.csproj" />
+    <Project Path="tests/Spx.Account.Application.Tests/Spx.Account.Application.Tests.csproj" />
+    <Project Path="tests/Spx.Game.Application.Tests/Spx.Game.Application.Tests.csproj" />
     <Project Path="tests/Spx.Nexus.Domain.Tests/Spx.Nexus.Domain.Tests.csproj" />
-    <Project Path="tests/Spx.Nexus.Application.IntegrationTests/Spx.Nexus.Application.IntegrationTests.csproj" />
+    <Project Path="tests/Spx.Game.Application.IntegrationTests/Spx.Game.Application.IntegrationTests.csproj" />
     <Project Path="tests/Spx.Grains.IntegrationTests/Spx.Grains.IntegrationTests.csproj" />
     <Project Path="tests/Spx.Grains.Tests/Spx.Grains.Tests.csproj" />
     <Project Path="tests/Spx.Web.Tests/Spx.Web.Tests.csproj" />

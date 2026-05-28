@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Spx.Data;
-using Spx.Nexus.Application;
+using Spx.Game.Application;
+using Spx.Game.Application.Nexus;
 
 namespace Microsoft.Extensions.DependencyInjection;
 
@@ -10,6 +11,7 @@ public static class GameDataAdaptersServiceCollectionExtensions
     {
         services.AddScoped<IGamePersistence, EfGamePersistence>();
         services.AddScoped<IGameMessagePersistence, EfGameMessagePersistence>();
+        services.AddScoped<INexusSessionRosterProvider, EfGamePersistence>();
 
         return services;
     }

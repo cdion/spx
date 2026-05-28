@@ -1,12 +1,12 @@
 using Microsoft.AspNetCore.Http.Extensions;
-using Spx.Account;
-using Spx.Account.Features.ConfirmEmail;
-using Spx.Account.Features.ForgotPassword;
-using Spx.Account.Features.Login;
-using Spx.Account.Features.Logout;
-using Spx.Account.Features.Register;
-using Spx.Account.Features.ResendConfirmation;
-using Spx.Account.Features.ResetPassword;
+using Spx.Account.Application;
+using Spx.Account.Application.Features.ConfirmEmail;
+using Spx.Account.Application.Features.ForgotPassword;
+using Spx.Account.Application.Features.Login;
+using Spx.Account.Application.Features.Logout;
+using Spx.Account.Application.Features.Register;
+using Spx.Account.Application.Features.ResendConfirmation;
+using Spx.Account.Application.Features.ResetPassword;
 
 namespace Spx.Web.Endpoints;
 

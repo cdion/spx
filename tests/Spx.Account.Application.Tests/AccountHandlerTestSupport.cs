@@ -1,0 +1,141 @@
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
+using Spx.Account.Application;
+
+namespace Spx.Account.Application.Tests;
+
+internal static class AccountHandlerTestServices
+{
+    public static ServiceProvider Create(
+        FakeAccountIdentity identity,
+        FakeAccountEmailSender? emailSender = null
+    )
+    {
+        var services = new ServiceCollection();
+        services.AddAccountApplication();
+        services.AddSingleton<IAccountIdentity>(identity);
+        services.AddSingleton<IAccountEmailSender>(emailSender ?? new FakeAccountEmailSender());
+        services.AddSingleton(typeof(ILogger<>), typeof(NullLogger<>));
+        return services.BuildServiceProvider();
+    }
+}
+
+internal sealed class FakeAccountIdentity : IAccountIdentity
+{
+    public AccountUser? FindByEmailResult { get; init; }
+
+    public AccountUser? FindByIdResult { get; init; }
+
+    public AccountPasswordSignInOutcome PasswordSignInResult { get; init; } =
+        new(AccountPasswordSignInStatus.Failed);
+
+    public AccountCreateOutcome CreateUserResult { get; init; } = new AccountCreateFailed([]);
+
+    public string EmailConfirmationToken { get; init; } = string.Empty;
+
+    public AccountOperationOutcome ConfirmEmailResult { get; init; } =
+        new AccountOperationFailed([]);
+
+    public bool IsEmailConfirmedResult { get; init; }
+
+    public string PasswordResetToken { get; init; } = string.Empty;
+
+    public AccountOperationOutcome ResetPasswordResult { get; init; } =
+        new AccountOperationFailed([]);
+
+    public bool SignOutCalled { get; private set; }
+
+    public Task<AccountUser?> FindByEmailAsync(string email) => Task.FromResult(FindByEmailResult);
+
+    public Task<AccountUser?> FindByIdAsync(string userId) => Task.FromResult(FindByIdResult);
+
+    public Task<AccountPasswordSignInOutcome> PasswordSignInAsync(
+        AccountUser user,
+        string password
+    ) => Task.FromResult(PasswordSignInResult);
+
+    public Task SignOutAsync()
+    {
+        SignOutCalled = true;
+        return Task.CompletedTask;
+    }
+
+    public Task<AccountCreateOutcome> CreateUserAsync(string email, string password) =>
+        Task.FromResult(CreateUserResult);
+
+    public Task<string> GenerateEmailConfirmationTokenAsync(AccountUser user) =>
+        Task.FromResult(EmailConfirmationToken);
+
+    public Task<AccountOperationOutcome> ConfirmEmailAsync(AccountUser user, string code) =>
+        Task.FromResult(ConfirmEmailResult);
+
+    public Task<bool> IsEmailConfirmedAsync(AccountUser user) =>
+        Task.FromResult(IsEmailConfirmedResult);
+
+    public Task<string> GeneratePasswordResetTokenAsync(AccountUser user) =>
+        Task.FromResult(PasswordResetToken);
+
+    public Task<AccountOperationOutcome> ResetPasswordAsync(
+        AccountUser user,
+        string code,
+        string password
+    ) => Task.FromResult(ResetPasswordResult);
+}
+
+internal sealed class FakeAccountEmailSender : IAccountEmailSender
+{
+    public Exception? SendConfirmationException { get; init; }
+
+    public Exception? SendPasswordResetException { get; init; }
+
+    public bool ConfirmationEmailSent { get; private set; }
+
+    public bool PasswordResetEmailSent { get; private set; }
+
+    public string? LastConfirmationEmail { get; private set; }
+
+    public string? LastConfirmationUserId { get; private set; }
+
+    public string? LastConfirmationCode { get; private set; }
+
+    public string? LastPasswordResetEmail { get; private set; }
+
+    public string? LastPasswordResetCode { get; private set; }
+
+    public Task SendConfirmationEmailAsync(
+        string email,
+        string userId,
+        string code,
+        CancellationToken cancellationToken = default
+    )
+    {
+        if (SendConfirmationException is not null)
+        {
+            throw SendConfirmationException;
+        }
+
+        ConfirmationEmailSent = true;
+        LastConfirmationEmail = email;
+        LastConfirmationUserId = userId;
+        LastConfirmationCode = code;
+        return Task.CompletedTask;
+    }
+
+    public Task SendPasswordResetEmailAsync(
+        string email,
+        string code,
+        CancellationToken cancellationToken = default
+    )
+    {
+        if (SendPasswordResetException is not null)
+        {
+            throw SendPasswordResetException;
+        }
+
+        PasswordResetEmailSent = true;
+        LastPasswordResetEmail = email;
+        LastPasswordResetCode = code;
+        return Task.CompletedTask;
+    }
+}

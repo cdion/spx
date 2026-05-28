@@ -54,7 +54,7 @@
                     <div id="@ActiveSidebarPanelId" role="tabpanel" aria-labelledby="@ActiveSidebarTabId">
                         @if (_activeSidebarTab == NexusGameplayTab.Events)
                         {
-                            <NexusResolveEventsPanel Events="@Session.LastResolveEvents" PlayerNames="@GetPlayerNames()"
+                            <NexusResolveEventsPanel Events="@Session.ResolveEvents" PlayerNames="@GetPlayerNames()"
                                                      RowClassSelector="GetEventRowClass" OnEventClicked="OnEventClicked"
                                                      OnEventHovered="OnEventHovered" OnEventHoverCleared="OnEventHoverCleared" />
                         }
@@ -104,7 +104,7 @@
 
 @code {
     [Parameter, EditorRequired]
-    public NexusGameView Session { get; set; } = default!;
+    public NexusSessionView Session { get; set; } = default!;
 
     [Parameter, EditorRequired]
     public GameLobbyView Lobby { get; set; } = default!;
@@ -116,7 +116,7 @@
     public string? GameplayError { get; set; }
 
     [Parameter]
-    public EventCallback<NexusTurnOrdersCommand> OnSubmitOrders { get; set; }
+    public EventCallback<NexusSubmitTurnCommand> OnSubmitOrders { get; set; }
 
     [Parameter]
     public NexusGameplayTab? SelectedTab { get; set; }
@@ -124,8 +124,8 @@
     [Parameter]
     public bool HideTabHeader { get; set; }
 
-    private readonly List<NexusMoveOrder> _pendingMoveOrders = [];
-    private readonly List<NexusBuildOrder> _pendingBuildOrders = [];
+    private readonly List<NexusMoveRequest> _pendingMoveOrders = [];
+    private readonly List<NexusBuildRequest> _pendingBuildOrders = [];
     private bool _pendingBeginNexusGate;
     private Guid? _lastKnownGameId;
     private int? _lastKnownRound;
@@ -158,15 +158,15 @@
         _hoverEventFocus = EventFocus.None;
         _pinnedEventFocus = EventFocus.None;
 
-        if (Session.LastResolveEvents.Length == 0)
+        if (Session.ResolveEvents.Length == 0)
         {
             _activeSidebarTab = NexusGameplayTab.Orders;
         }
 
-        if (Session.LastResolveEvents.Length > 0)
+        if (Session.ResolveEvents.Length > 0)
         {
             _activeSidebarTab = NexusGameplayTab.Events;
-            var firstFocusable = Session.LastResolveEvents
+            var firstFocusable = Session.ResolveEvents
                 .Select(GetEventFocus)
                 .FirstOrDefault(f => f.HasTarget);
             if (firstFocusable is not null)
@@ -222,7 +222,7 @@
 
         if (_selectedSystem.HasValue && !_stagedMoveUnits.IsEmpty && _validMoveTargets.Contains(coord))
         {
-            _pendingMoveOrders.Add(new NexusMoveOrder(_selectedSystem.Value, coord, _stagedMoveUnits));
+            _pendingMoveOrders.Add(new NexusMoveRequest(_selectedSystem.Value, coord, _stagedMoveUnits));
             _stagedMoveUnits = ImmutableDictionary<NexusUnitType, int>.Empty;
             _validMoveTargets = [];
             return;
@@ -238,7 +238,7 @@
         ClearSelection();
     }
 
-    private void RemoveMoveOrder(NexusMoveOrder order) => _pendingMoveOrders.Remove(order);
+    private void RemoveMoveOrder(NexusMoveRequest order) => _pendingMoveOrders.Remove(order);
 
     private void RemoveBuildOrder(NexusUnitType unit)
     {
@@ -251,7 +251,7 @@
             _pendingBuildOrders[idx] = _pendingBuildOrders[idx] with { Count = _pendingBuildOrders[idx].Count - 1 };
     }
 
-    private void RemoveBuildOrder(NexusBuildOrder order)
+    private void RemoveBuildOrder(NexusBuildRequest order)
     {
         _pendingBuildOrders.RemoveAll(o => o.UnitType == order.UnitType);
     }
@@ -273,7 +273,7 @@
             return;
         }
 
-        _validMoveTargets = NexusViewQueries.GetValidMoveDestinations(
+        _validMoveTargets = NexusSessionViewQueries.GetValidMoveDestinations(
             Session, Session.CurrentPlayer.PlayerId, _selectedSystem!.Value);
     }
 
@@ -285,7 +285,7 @@
         if (idx >= 0)
             _pendingBuildOrders[idx] = _pendingBuildOrders[idx] with { Count = _pendingBuildOrders[idx].Count + 1 };
         else
-            _pendingBuildOrders.Add(new NexusBuildOrder(unit, 1));
+            _pendingBuildOrders.Add(new NexusBuildRequest(unit, 1));
     }
 
     private void AddBuildOrderMax(NexusUnitType unit)
@@ -349,7 +349,7 @@
 
     private async Task SubmitOrdersAsync()
     {
-        var command = new NexusTurnOrdersCommand(
+        var command = new NexusSubmitTurnCommand(
             Session.CurrentPlayer.PlayerId,
             Session.RoundNumber,
             _pendingMoveOrders.ToImmutableArray(),
@@ -366,7 +366,7 @@
 
     private void SetTab(NexusGameplayTab tab)
     {
-        if (tab == NexusGameplayTab.Events && Session.LastResolveEvents.Length == 0)
+        if (tab == NexusGameplayTab.Events && Session.ResolveEvents.Length == 0)
             return;
 
         _activeSidebarTab = tab;
@@ -381,7 +381,7 @@
         };
 
     private bool IsSidebarTabDisabled(NexusGameplayTab tab) =>
-        tab == NexusGameplayTab.Events && Session.LastResolveEvents.Length == 0;
+        tab == NexusGameplayTab.Events && Session.ResolveEvents.Length == 0;
 
     private string GetSidebarTabId(NexusGameplayTab tab) => $"nexus-sidebar-tab-{tab.ToString().ToLowerInvariant()}";
 
@@ -391,7 +391,7 @@
 
     private string ActiveSidebarPanelId => GetSidebarPanelId(_activeSidebarTab);
 
-    private void OnEventHovered(NexusResolveEvent evt)
+    private void OnEventHovered(NexusSessionEvent evt)
     {
         var focus = GetEventFocus(evt);
         if (!focus.HasTarget)
@@ -415,7 +415,7 @@
             _selectedSystem = _pinnedEventFocus.Primary.Value;
     }
 
-    private void OnEventClicked(NexusResolveEvent evt)
+    private void OnEventClicked(NexusSessionEvent evt)
     {
         var focus = GetEventFocus(evt);
         if (!focus.HasTarget)
@@ -426,7 +426,7 @@
             _selectedSystem = focus.Primary.Value;
     }
 
-    private string GetEventRowClass(NexusResolveEvent evt)
+    private string GetEventRowClass(NexusSessionEvent evt)
     {
         const string baseRowClass =
             "w-full rounded-lg px-3 py-2.5 text-left text-base transition-colors";
@@ -464,22 +464,22 @@
         return a.Primary == b.Primary && a.From == b.From && a.To == b.To;
     }
 
-    private static EventFocus GetEventFocus(NexusResolveEvent evt) =>
+    private static EventFocus GetEventFocus(NexusSessionEvent evt) =>
         evt switch
         {
-            NexusUnitsMovedEvent e =>
+            NexusUnitsMovedSessionEvent e =>
                 new EventFocus([e.From, e.To], e.From, e.To, e.To),
-            NexusPlanetaryControlEvent e => new EventFocus([e.System], Primary: e.System),
-            NexusSystemContestedEvent e => new EventFocus([e.System], Primary: e.System),
-            NexusSystemUncontrolledEvent e => new EventFocus([e.System], Primary: e.System),
-            NexusCombatBeganEvent e => new EventFocus([e.System], Primary: e.System),
-            NexusPhaseResultEvent e => new EventFocus([e.System], Primary: e.System),
-            NexusSystemClearedEvent e => new EventFocus([e.System], Primary: e.System),
-            NexusUnitDeployedEvent e => new EventFocus([e.HomeSystem], Primary: e.HomeSystem),
-            NexusGateStartedEvent e => new EventFocus([e.System], Primary: e.System),
-            NexusGateCompletedEvent e => new EventFocus([e.System], Primary: e.System),
-            NexusGateCancelledEvent e => new EventFocus([e.System], Primary: e.System),
-            NexusIncomeEvent e when e.Sources.Length > 0 =>
+            NexusPlanetaryControlSessionEvent e => new EventFocus([e.System], Primary: e.System),
+            NexusSystemContestedSessionEvent e => new EventFocus([e.System], Primary: e.System),
+            NexusSystemUncontrolledSessionEvent e => new EventFocus([e.System], Primary: e.System),
+            NexusCombatBeganSessionEvent e => new EventFocus([e.System], Primary: e.System),
+            NexusPhaseResultSessionEvent e => new EventFocus([e.System], Primary: e.System),
+            NexusSystemClearedSessionEvent e => new EventFocus([e.System], Primary: e.System),
+            NexusUnitDeployedSessionEvent e => new EventFocus([e.HomeSystem], Primary: e.HomeSystem),
+            NexusGateStartedSessionEvent e => new EventFocus([e.System], Primary: e.System),
+            NexusGateCompletedSessionEvent e => new EventFocus([e.System], Primary: e.System),
+            NexusGateCancelledSessionEvent e => new EventFocus([e.System], Primary: e.System),
+            NexusIncomeSessionEvent e when e.Sources.Length > 0 =>
                 new EventFocus(e.Sources.ToArray(), Primary: e.Sources[0]),
             _ => EventFocus.None,
         };
@@ -503,11 +503,11 @@
 
         return Session.Completion.Outcome switch
         {
-            NexusGameOutcome.Victory
+            NexusSessionOutcome.Victory
                 when Session.Completion.WinnerId == Session.CurrentPlayer.PlayerId =>
                 "You activated the Nexus gate. Victory!",
-            NexusGameOutcome.Victory => $"{OpponentPlayerName} activated the Nexus gate.",
-            NexusGameOutcome.Draw => "The match ended in a draw.",
+            NexusSessionOutcome.Victory => $"{OpponentPlayerName} activated the Nexus gate.",
+            NexusSessionOutcome.Draw => "The match ended in a draw.",
             _ => "The match has ended.",
         };
     }

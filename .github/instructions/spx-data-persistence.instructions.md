@@ -8,7 +8,7 @@ applyTo: '{src/Spx.Data/**,tests/Spx.Game.Application.IntegrationTests/**}'
 
 - Keep EF-specific behavior, schema changes, and persistence adapters in `src/Spx.Data`.
 - Validate EF query shape and persistence behavior with focused integration tests instead of broad host-level tests.
-- Keep application validation and branching in `Spx.Account` or `Spx.Game.Application`, not in data adapters.
+- Keep application validation and branching in `Spx.Account.Application` or `Spx.Game.Application`, not in data adapters.
 
 ## EF Workflow
 

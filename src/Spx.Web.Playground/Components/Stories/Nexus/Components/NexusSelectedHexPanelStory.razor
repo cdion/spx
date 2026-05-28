@@ -61,7 +61,7 @@
 @code {
     private const int BaseEnergy = 20;
 
-    private readonly List<NexusBuildOrder> _buildOrders = [];
+    private readonly List<NexusBuildRequest> _buildOrders = [];
     private ImmutableDictionary<NexusUnitType, int> _fleetSelection = ImmutableDictionary<NexusUnitType, int>.Empty;
     private bool _pendingGate;
     private int _scenarioIndex;
@@ -100,7 +100,7 @@
         if (idx >= 0)
             _buildOrders[idx] = _buildOrders[idx] with { Count = _buildOrders[idx].Count + 1 };
         else
-            _buildOrders.Add(new NexusBuildOrder(unit, 1));
+            _buildOrders.Add(new NexusBuildRequest(unit, 1));
 
         return Task.CompletedTask;
     }

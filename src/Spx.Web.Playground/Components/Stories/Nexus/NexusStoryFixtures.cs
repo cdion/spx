@@ -1,22 +1,21 @@
-using Spx.Nexus.Application;
+using Spx.Game.Application;
+using Spx.Game.Application.Nexus;
 using Spx.Nexus.Domain;
+using Spx.Nexus.Mapping;
 using Spx.Web.Components.Lobby;
 
 namespace Spx.Web.Playground.Components.Stories.Nexus;
 
 internal static class NexusStoryFixtures
 {
-    public static readonly Guid Player1Id = Guid.Parse("aaaaaaaa-0000-0000-0000-000000000001");
-    public static readonly Guid Player2Id = Guid.Parse("bbbbbbbb-0000-0000-0000-000000000002");
+    public static readonly Guid Player1Id = Spx.Web.Playground.Nexus.PlaygroundNexusUsers.Player1Id;
+    public static readonly Guid Player2Id = Spx.Web.Playground.Nexus.PlaygroundNexusUsers.Player2Id;
 
-    public static readonly IReadOnlyDictionary<Guid, string> PlayerNames = new Dictionary<
-        Guid,
-        string
-    >
-    {
-        [Player1Id] = "Player One",
-        [Player2Id] = "Player Two",
-    };
+    public static readonly IReadOnlyDictionary<Guid, string> PlayerNames = Spx.Web
+        .Playground
+        .Nexus
+        .PlaygroundNexusUsers
+        .PlayerNames;
 
     public static GameLobbyView CreateLobby(Guid gameId) =>
         new(
@@ -284,23 +283,29 @@ internal static class NexusStoryFixtures
             BuildEndedScenario(),
         ];
 
-    public static IReadOnlyList<NexusResolveEvent> CreateSampleResolveEvents() =>
+    public static IReadOnlyList<NexusSessionEvent> CreateSampleResolveEvents() =>
         [
-            new NexusUnitsMovedEvent(
-                Player1Id,
-                NexusMap.Player1HomeCoord,
-                new HexCoord(1, -2),
-                ImmutableDictionary<NexusUnitType, int>.Empty.Add(NexusUnitType.Carrier, 1),
-                IsRetreat: false
-            ),
-            new NexusCombatBeganEvent(new HexCoord(1, -2), Player1Id, Player2Id),
-            new NexusIncomeEvent(
-                Player1Id,
-                11,
-                ImmutableArray.Create(
+            NexusSeamMapper.ToApplication(
+                new NexusUnitsMovedEvent(
+                    Player1Id,
                     NexusMap.Player1HomeCoord,
                     new HexCoord(1, -2),
-                    new HexCoord(0, -1)
+                    ImmutableDictionary<NexusUnitType, int>.Empty.Add(NexusUnitType.Carrier, 1),
+                    IsRetreat: false
+                )
+            ),
+            NexusSeamMapper.ToApplication(
+                new NexusCombatBeganEvent(new HexCoord(1, -2), Player1Id, Player2Id)
+            ),
+            NexusSeamMapper.ToApplication(
+                new NexusIncomeEvent(
+                    Player1Id,
+                    11,
+                    ImmutableArray.Create(
+                        NexusMap.Player1HomeCoord,
+                        new HexCoord(1, -2),
+                        new HexCoord(0, -1)
+                    )
                 )
             ),
         ];
@@ -309,7 +314,7 @@ internal static class NexusStoryFixtures
         [
             new(
                 "Home",
-                new NexusSystemView(
+                new NexusSystemSnapshot(
                     NexusMap.Player1HomeCoord,
                     false,
                     3,
@@ -331,7 +336,7 @@ internal static class NexusStoryFixtures
             ),
             new(
                 "Nexus",
-                new NexusSystemView(
+                new NexusSystemSnapshot(
                     NexusMap.NexusCoord,
                     true,
                     0,
@@ -358,7 +363,7 @@ internal static class NexusStoryFixtures
             ),
             new(
                 "Income",
-                new NexusSystemView(
+                new NexusSystemSnapshot(
                     new HexCoord(1, -1),
                     false,
                     4,
@@ -378,11 +383,11 @@ internal static class NexusStoryFixtures
             ),
         ];
 
-    public sealed record GameplayScenario(string Label, string Description, NexusGameView View);
+    public sealed record GameplayScenario(string Label, string Description, NexusSessionView View);
 
     public sealed record SelectedHexScenario(
         string Label,
-        NexusSystemView System,
+        NexusSystemSnapshot System,
         ImmutableDictionary<NexusUnitType, int> AvailableUnits,
         NexusGateProgress GateProgress
     );
@@ -394,8 +399,8 @@ internal static class NexusStoryFixtures
             state,
             new InitializeNexusGameCommand(
                 ImmutableArray.Create(
-                    new GameSessionParticipant(Player1Id),
-                    new GameSessionParticipant(Player2Id)
+                    new NexusSessionPlayer(Player1Id),
+                    new NexusSessionPlayer(Player2Id)
                 )
             ),
             new Random(42)
@@ -419,7 +424,7 @@ internal static class NexusStoryFixtures
         return new GameplayScenario(
             label,
             description,
-            NexusEngine.BuildView(state, Guid.NewGuid(), Player1Id)
+            NexusSeamMapper.ToApplication(NexusEngine.BuildView(state, Guid.NewGuid(), Player1Id))
         );
     }
 
@@ -430,8 +435,8 @@ internal static class NexusStoryFixtures
             state,
             new InitializeNexusGameCommand(
                 ImmutableArray.Create(
-                    new GameSessionParticipant(Player1Id),
-                    new GameSessionParticipant(Player2Id)
+                    new NexusSessionPlayer(Player1Id),
+                    new NexusSessionPlayer(Player2Id)
                 )
             ),
             new Random(42)
@@ -457,7 +462,7 @@ internal static class NexusStoryFixtures
         return new GameplayScenario(
             "Waiting",
             "P2 has already submitted orders; P1 still needs to commit.",
-            NexusEngine.BuildView(state, Guid.NewGuid(), Player1Id)
+            NexusSeamMapper.ToApplication(NexusEngine.BuildView(state, Guid.NewGuid(), Player1Id))
         );
     }
 
@@ -468,8 +473,8 @@ internal static class NexusStoryFixtures
             state,
             new InitializeNexusGameCommand(
                 ImmutableArray.Create(
-                    new GameSessionParticipant(Player1Id),
-                    new GameSessionParticipant(Player2Id)
+                    new NexusSessionPlayer(Player1Id),
+                    new NexusSessionPlayer(Player2Id)
                 )
             ),
             new Random(42)
@@ -480,7 +485,7 @@ internal static class NexusStoryFixtures
         return new GameplayScenario(
             "Ended",
             "P2 abandoned; P1 wins.",
-            NexusEngine.BuildView(state, Guid.NewGuid(), Player1Id)
+            NexusSeamMapper.ToApplication(NexusEngine.BuildView(state, Guid.NewGuid(), Player1Id))
         );
     }
 }

@@ -1,4 +1,4 @@
-using Spx.Nexus.Application;
+using Spx.Game.Application;
 
 namespace Spx.Web.Components.Lobby;
 

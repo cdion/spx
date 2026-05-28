@@ -11,7 +11,7 @@
                 <button type="button" class="whitespace-pre-line @GetRowClass(evt)"
                         @onclick="() => OnEventClicked.InvokeAsync(evt)" @onmouseenter="() => OnEventHovered.InvokeAsync(evt)"
                         @onmouseleave="OnEventHoverCleared">
-                    @NexusResolveEventMessageFormatter.Format(evt, PlayerNames)
+                    @NexusSessionEventFormatter.Format(evt, PlayerNames)
                 </button>
             }
         </div>
@@ -20,24 +20,24 @@
 
 @code {
     [Parameter, EditorRequired]
-    public IReadOnlyList<NexusResolveEvent> Events { get; set; } = [];
+    public IReadOnlyList<NexusSessionEvent> Events { get; set; } = [];
 
     [Parameter, EditorRequired]
     public IReadOnlyDictionary<Guid, string> PlayerNames { get; set; } =
         new Dictionary<Guid, string>();
 
     [Parameter, EditorRequired]
-    public Func<NexusResolveEvent, string> RowClassSelector { get; set; } =
+    public Func<NexusSessionEvent, string> RowClassSelector { get; set; } =
         _ => "w-full rounded-lg border border-white/10 bg-slate-950/40 px-3 py-2 text-left text-sm text-slate-300";
 
     [Parameter]
-    public EventCallback<NexusResolveEvent> OnEventClicked { get; set; }
+    public EventCallback<NexusSessionEvent> OnEventClicked { get; set; }
 
     [Parameter]
-    public EventCallback<NexusResolveEvent> OnEventHovered { get; set; }
+    public EventCallback<NexusSessionEvent> OnEventHovered { get; set; }
 
     [Parameter]
     public EventCallback OnEventHoverCleared { get; set; }
 
-    private string GetRowClass(NexusResolveEvent evt) => RowClassSelector(evt);
+    private string GetRowClass(NexusSessionEvent evt) => RowClassSelector(evt);
 }

@@ -1,5 +1,5 @@
 using Microsoft.Extensions.Logging;
-using Spx.Account;
+using Spx.Account.Application;
 
 namespace Spx.Web.Adapters.Account;
 

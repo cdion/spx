@@ -14,10 +14,10 @@
     public HexCoord? CurrentPlayerHomeCoord { get; set; }
 
     [Parameter, EditorRequired]
-    public IReadOnlyList<NexusMoveOrder> MoveOrders { get; set; } = [];
+    public IReadOnlyList<NexusMoveRequest> MoveOrders { get; set; } = [];
 
     [Parameter, EditorRequired]
-    public IReadOnlyList<NexusBuildOrder> BuildOrders { get; set; } = [];
+    public IReadOnlyList<NexusBuildRequest> BuildOrders { get; set; } = [];
 
     [Parameter]
     public bool BeginNexusGate { get; set; }
@@ -26,10 +26,10 @@
     public bool IsEditable { get; set; }
 
     [Parameter]
-    public EventCallback<NexusMoveOrder> OnRemoveMoveOrder { get; set; }
+    public EventCallback<NexusMoveRequest> OnRemoveMoveOrder { get; set; }
 
     [Parameter]
-    public EventCallback<NexusBuildOrder> OnRemoveBuildOrder { get; set; }
+    public EventCallback<NexusBuildRequest> OnRemoveBuildOrder { get; set; }
 
     [Parameter]
     public EventCallback OnRemoveGateOrder { get; set; }

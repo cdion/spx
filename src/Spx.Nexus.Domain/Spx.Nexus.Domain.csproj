@@ -6,6 +6,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Spx.Nexus.Primitives\Spx.Nexus.Primitives.csproj" />
     <PackageReference Include="Microsoft.Orleans.Core.Abstractions" Version="10.1.0" />
   </ItemGroup>
 </Project>

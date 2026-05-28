@@ -24,7 +24,7 @@ WORKDIR /src
 
 # Copy project files first for layer-cached restore.
 COPY Directory.Build.props ./
-COPY src/Spx.Account/Spx.Account.csproj                                   src/Spx.Account/
+COPY src/Spx.Account.Application/Spx.Account.Application.csproj                                   src/Spx.Account.Application/
 COPY src/Spx.Contracts/Spx.Game.Contract.csproj                           src/Spx.Contracts/
 COPY src/Spx.Data/Spx.Data.csproj                                          src/Spx.Data/
 COPY src/Spx.Game.Application/Spx.Game.Application.csproj                 src/Spx.Game.Application/

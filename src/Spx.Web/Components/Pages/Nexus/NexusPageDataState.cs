@@ -1,5 +1,5 @@
-using Spx.Nexus.Application;
-using Spx.Nexus.Domain;
+using Spx.Game.Application;
+using Spx.Game.Application.Nexus;
 
 namespace Spx.Web.Components.Pages.Nexus;
 
@@ -7,7 +7,7 @@ internal sealed class NexusPageDataState
 {
     public GameLobbyView? Lobby { get; private set; }
 
-    public NexusGameView? Session { get; private set; }
+    public NexusSessionView? Session { get; private set; }
 
     public GamePresenceView Presence { get; private set; } = GamePresenceView.Empty;
 
@@ -45,7 +45,7 @@ internal sealed class NexusPageDataState
 
     public void ClearPresence() => Presence = GamePresenceView.Empty;
 
-    public void ApplySession(NexusGameView? session) => Session = session;
+    public void ApplySession(NexusSessionView? session) => Session = session;
 
     public void ClearErrorMessage() => ErrorMessage = null;
 

@@ -2,8 +2,11 @@ using System.Collections.Immutable;
 using Orleans;
 using Orleans.Runtime;
 using Spx.Contracts;
-using Spx.Nexus.Application;
+using Spx.Game.Application;
+using Spx.Game.Application.Nexus;
 using Spx.Nexus.Domain;
+using Spx.Nexus.Mapping;
+using Spx.Nexus.Primitives;
 
 namespace Spx.Web.Adapters;
 
@@ -104,11 +107,11 @@ public sealed partial class OrleansNexusRuntimeClient(
 
     public async Task<bool> EnsureSessionAsync(
         Guid gameId,
-        IReadOnlyList<GameSessionParticipant> players,
+        IReadOnlyList<Guid> playerIds,
         CancellationToken cancellationToken = default
     )
     {
-        if (players.Count is < 2 or > 4)
+        if (playerIds.Count is < 2 or > 4)
         {
             return false;
         }
@@ -119,9 +122,7 @@ public sealed partial class OrleansNexusRuntimeClient(
                 .GetGrain<INexusSessionGrain>(gameId)
                 .InitializeAsync(
                     new InitializeNexusGameCommand(
-                        players
-                            .Select(p => new GameSessionParticipant(p.PlayerId))
-                            .ToImmutableArray()
+                        playerIds.Select(id => new NexusSessionPlayer(id)).ToImmutableArray()
                     )
                 );
             return true;
@@ -149,7 +150,9 @@ public sealed partial class OrleansNexusRuntimeClient(
             var view = await clusterClient
                 .GetGrain<INexusSessionGrain>(gameId)
                 .GetViewAsync(playerId);
-            return view is null ? new GameSessionUnavailable() : new GameSessionFound(view);
+            return view is null
+                ? new GameSessionUnavailable()
+                : new GameSessionFound(NexusSeamMapper.ToApplication(view));
         }
         catch (OrleansException exception)
         {
@@ -165,15 +168,16 @@ public sealed partial class OrleansNexusRuntimeClient(
 
     public async Task<GameSessionCommandOutcome> SubmitOrdersAsync(
         Guid gameId,
-        NexusTurnOrdersCommand command,
+        NexusSubmitTurnCommand command,
         CancellationToken cancellationToken = default
     )
     {
         try
         {
+            var domainCommand = NexusSeamMapper.ToDomain(command);
             var result = await clusterClient
                 .GetGrain<INexusSessionGrain>(gameId)
-                .SubmitOrdersAsync(command);
+                .SubmitOrdersAsync(domainCommand);
 
             if (result is NexusTurnOrdersRejected rejected)
             {

@@ -46,8 +46,12 @@
         return builder.ToImmutable();
     }
 
-    private record State(string Label, NexusSystemView System, NexusGateProgress Gate = NexusGateProgress.None,
-NexusFactionColor Faction = NexusFactionColor.Blue);
+    private record State(
+        string Label,
+        NexusSystemSnapshot System,
+        NexusGateProgress Gate = NexusGateProgress.None,
+        NexusFactionColor Faction = NexusFactionColor.Blue
+    );
 
     private static readonly State[] States =
     [

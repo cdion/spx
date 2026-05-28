@@ -1,5 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
-using Spx.Account;
+using Spx.Account.Application;
 using Spx.Web.Adapters.Account;
 
 namespace Microsoft.Extensions.DependencyInjection;

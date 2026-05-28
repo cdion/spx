@@ -1,7 +1,7 @@
 using System.Net.Http.Json;
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.Options;
-using Spx.Account;
+using Spx.Account.Application;
 using Spx.Web.Options;
 
 namespace Spx.Web.Adapters.Account;

@@ -1,5 +1,4 @@
 @using System.Collections.Immutable
-@using Spx.Nexus.Domain
 
 <div class="relative h-full w-full select-none">
     <svg viewBox="@ViewBox" class="h-full w-full" xmlns="http://www.w3.org/2000/svg" @onclick="OnBackgroundClicked">
@@ -123,7 +122,7 @@
 
 @code {
     [Parameter, EditorRequired]
-    public IReadOnlyList<NexusSystemView> Systems { get; set; } = [];
+    public IReadOnlyList<NexusSystemSnapshot> Systems { get; set; } = [];
 
     [Parameter, EditorRequired]
     public Guid CurrentPlayerId { get; set; }
@@ -141,7 +140,7 @@
     public bool IsEditable { get; set; }
 
     [Parameter]
-    public IReadOnlyList<NexusMoveOrder> PendingMoveOrders { get; set; } = [];
+    public IReadOnlyList<NexusMoveRequest> PendingMoveOrders { get; set; } = [];
 
     [Parameter]
     public HexCoord? SelectedSystem { get; set; }

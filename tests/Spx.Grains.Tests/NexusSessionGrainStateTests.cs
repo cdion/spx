@@ -19,8 +19,8 @@ public sealed class NexusSessionGrainStateTests
     public void Initialize_sets_players_on_embedded_game_state()
     {
         var grainState = new NexusSessionGrainState();
-        var first = new GameSessionParticipant(Guid.NewGuid());
-        var second = new GameSessionParticipant(Guid.NewGuid());
+        var first = new NexusSessionPlayer(Guid.NewGuid());
+        var second = new NexusSessionPlayer(Guid.NewGuid());
 
         NexusEngine.Initialize(
             grainState.Game,
@@ -42,8 +42,8 @@ public sealed class NexusSessionGrainStateTests
     public void Initialize_assigns_each_participant_a_distinct_faction()
     {
         var grainState = new NexusSessionGrainState();
-        var first = new GameSessionParticipant(Guid.NewGuid());
-        var second = new GameSessionParticipant(Guid.NewGuid());
+        var first = new NexusSessionPlayer(Guid.NewGuid());
+        var second = new NexusSessionPlayer(Guid.NewGuid());
 
         NexusEngine.Initialize(
             grainState.Game,

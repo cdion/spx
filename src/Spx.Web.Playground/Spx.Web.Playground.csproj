@@ -7,6 +7,9 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="../Spx.Game.Application/Spx.Game.Application.csproj" />
+    <ProjectReference Include="../Spx.Nexus.Domain/Spx.Nexus.Domain.csproj" />
+    <ProjectReference Include="../Spx.Nexus.Mapping/Spx.Nexus.Mapping.csproj" />
     <ProjectReference Include="../Spx.Web.Components/Spx.Web.Components.csproj" />
   </ItemGroup>
 </Project>

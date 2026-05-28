@@ -22,7 +22,7 @@ else
         {
             <li class="flex items-center justify-between gap-2 rounded-xl border border-white/10 bg-slate-950/60 px-3 py-2">
                 <span class="text-base text-slate-300">Build @order.Count× @order.UnitType (@(order.UnitType.Cost() *
-                                                    order.Count)⚡)</span>
+                                                                        order.Count)⚡)</span>
                     @if (IsEditable)
                     {
                         <button class="text-base text-slate-500 transition-colors hover:text-rose-400" title="Remove order"
@@ -56,10 +56,10 @@ else
     public HexCoord? CurrentPlayerHomeCoord { get; set; }
 
     [Parameter, EditorRequired]
-    public IReadOnlyList<NexusMoveOrder> MoveOrders { get; set; } = [];
+    public IReadOnlyList<NexusMoveRequest> MoveOrders { get; set; } = [];
 
     [Parameter, EditorRequired]
-    public IReadOnlyList<NexusBuildOrder> BuildOrders { get; set; } = [];
+    public IReadOnlyList<NexusBuildRequest> BuildOrders { get; set; } = [];
 
     [Parameter]
     public bool BeginNexusGate { get; set; }
@@ -68,15 +68,15 @@ else
     public bool IsEditable { get; set; }
 
     [Parameter]
-    public EventCallback<NexusMoveOrder> OnRemoveMoveOrder { get; set; }
+    public EventCallback<NexusMoveRequest> OnRemoveMoveOrder { get; set; }
 
     [Parameter]
-    public EventCallback<NexusBuildOrder> OnRemoveBuildOrder { get; set; }
+    public EventCallback<NexusBuildRequest> OnRemoveBuildOrder { get; set; }
 
     [Parameter]
     public EventCallback OnRemoveGateOrder { get; set; }
 
-    private string GetMoveDescription(NexusMoveOrder order)
+    private string GetMoveDescription(NexusMoveRequest order)
     {
         var unitSummary = string.Join(", ", order.Units.Select(kv => $"{kv.Value}× {kv.Key}"));
         return $"{GetSystemDisplayName(order.From)} → {GetSystemDisplayName(order.To)}: {unitSummary}";
@@ -87,6 +87,6 @@ else
         if (CurrentPlayerHomeCoord.HasValue && coord == CurrentPlayerHomeCoord.Value)
             return $"{CurrentPlayerName}'s System";
 
-        return NexusMap.GetSectorDisplayName(coord);
+        return NexusMapTopology.GetSectorDisplayName(coord);
     }
 }

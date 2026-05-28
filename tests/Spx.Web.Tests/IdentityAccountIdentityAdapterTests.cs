@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using Spx.Account;
+using Spx.Account.Application;
 using Spx.Data;
 using Spx.Web.Adapters.Account;
 using Xunit;

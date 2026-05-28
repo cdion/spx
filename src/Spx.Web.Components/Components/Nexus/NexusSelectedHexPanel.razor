@@ -168,7 +168,7 @@
     ];
 
     [Parameter, EditorRequired]
-    public NexusSystemView System { get; set; } = default!;
+    public NexusSystemSnapshot System { get; set; } = default!;
 
     [Parameter, EditorRequired]
     public Guid CurrentPlayerId { get; set; }
@@ -202,7 +202,7 @@
         ImmutableDictionary<NexusUnitType, int>.Empty;
 
     [Parameter]
-    public IReadOnlyList<NexusBuildOrder> PendingBuildOrders { get; set; } = [];
+    public IReadOnlyList<NexusBuildRequest> PendingBuildOrders { get; set; } = [];
 
     [Parameter]
     public EventCallback<ImmutableDictionary<NexusUnitType, int>> OnFleetSelectionChanged { get; set; }
@@ -260,7 +260,7 @@
     private string GetSystemLabel()
     {
         if (!System.HomePlayerId.HasValue)
-            return NexusMap.GetSectorDisplayName(System.Coord);
+            return NexusMapTopology.GetSectorDisplayName(System.Coord);
 
         if (System.HomePlayerId == CurrentPlayerId)
             return $"{CurrentPlayerName}'s System";

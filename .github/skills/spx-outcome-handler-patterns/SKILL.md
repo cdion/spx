@@ -36,6 +36,6 @@ Use this skill when changing a handler, service, or adapter boundary that return
 
 ## References
 
-- `src/Spx.Account/AccountOutcomes.cs`
+- `src/Spx.Account.Application/AccountOutcomes.cs`
 - `src/Spx.Game.Application/GameModels.cs`
 - `src/Spx.Game.Application/GameTimelineModels.cs`

@@ -388,11 +388,11 @@
 
         return item.Message.Kind switch
         {
-            Spx.Nexus.Application.GameMessageKind.GameCreated => "Game created",
-            Spx.Nexus.Application.GameMessageKind.PlayerJoined => "Player joined",
-            Spx.Nexus.Application.GameMessageKind.PlayerLeft => "Player left",
-            Spx.Nexus.Application.GameMessageKind.GameEnded => "Game ended",
-            Spx.Nexus.Application.GameMessageKind.GameplayEvent => "Gameplay",
+            Spx.Game.Application.GameMessageKind.GameCreated => "Game created",
+            Spx.Game.Application.GameMessageKind.PlayerJoined => "Player joined",
+            Spx.Game.Application.GameMessageKind.PlayerLeft => "Player left",
+            Spx.Game.Application.GameMessageKind.GameEnded => "Game ended",
+            Spx.Game.Application.GameMessageKind.GameplayEvent => "Gameplay",
             _ => item.Message.SenderDisplayName
         };
     }
@@ -411,10 +411,10 @@
 
         return (item.Message?.Kind ?? item.Local?.Kind) switch
         {
-            Spx.Nexus.Application.GameMessageKind.GameCreated or Spx.Nexus.Application.GameMessageKind.PlayerJoined or
-                Spx.Nexus.Application.GameMessageKind.PlayerLeft or Spx.Nexus.Application.GameMessageKind.GameEnded =>
+            Spx.Game.Application.GameMessageKind.GameCreated or Spx.Game.Application.GameMessageKind.PlayerJoined or
+                Spx.Game.Application.GameMessageKind.PlayerLeft or Spx.Game.Application.GameMessageKind.GameEnded =>
                 "border-emerald-400/30",
-            Spx.Nexus.Application.GameMessageKind.GameplayEvent => "border-sky-400/30",
+            Spx.Game.Application.GameMessageKind.GameplayEvent => "border-sky-400/30",
             _ => "border-white/10"
         };
     }
@@ -438,11 +438,11 @@
 
         return item.Message.Kind switch
         {
-            Spx.Nexus.Application.GameMessageKind.GameCreated => $"{item.Message.SenderDisplayName} created the game.",
-            Spx.Nexus.Application.GameMessageKind.PlayerJoined => $"{item.Message.SenderDisplayName} joined the game.",
-            Spx.Nexus.Application.GameMessageKind.PlayerLeft => $"{item.Message.SenderDisplayName} left the game.",
-            Spx.Nexus.Application.GameMessageKind.GameEnded => "The game ended.",
-            Spx.Nexus.Application.GameMessageKind.GameplayEvent => item.Message.Body,
+            Spx.Game.Application.GameMessageKind.GameCreated => $"{item.Message.SenderDisplayName} created the game.",
+            Spx.Game.Application.GameMessageKind.PlayerJoined => $"{item.Message.SenderDisplayName} joined the game.",
+            Spx.Game.Application.GameMessageKind.PlayerLeft => $"{item.Message.SenderDisplayName} left the game.",
+            Spx.Game.Application.GameMessageKind.GameEnded => "The game ended.",
+            Spx.Game.Application.GameMessageKind.GameplayEvent => item.Message.Body,
             _ => item.Message.Body
         };
     }
