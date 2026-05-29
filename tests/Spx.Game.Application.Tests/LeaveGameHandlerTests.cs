@@ -45,6 +45,43 @@ public sealed class LeaveGameHandlerTests
     }
 
     [Fact]
+    public async Task HandleAsync_still_publishes_invalidations_when_abandon_throws()
+    {
+        var gameId = Guid.NewGuid();
+        var playerId = Guid.NewGuid();
+        var persistence = Substitute.For<IGamePersistence>();
+        persistence
+            .LeaveGameAsync(Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new LeaveGamePersistenceResult(new GameCommandSucceeded(gameId), playerId));
+        var sessionService = Substitute.For<INexusSessionService>();
+        sessionService
+            .AbandonAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException(new InvalidOperationException("boom")));
+        var lobbyPublisher = Substitute.For<ILobbyInvalidationPublisher>();
+        var messagePublisher = Substitute.For<IGameMessageInvalidationPublisher>();
+        using var services = CreateServices(
+            persistence,
+            sessionService,
+            lobbyPublisher,
+            messagePublisher
+        );
+
+        var handler = services.GetRequiredService<ILeaveGameHandler>();
+        var result = await handler.HandleAsync(gameId, "user-1");
+
+        Assert.IsType<GameCommandSucceeded>(result);
+        await sessionService
+            .Received(1)
+            .AbandonAsync(gameId, playerId, Arg.Any<CancellationToken>());
+        await lobbyPublisher
+            .Received(1)
+            .PublishLobbyInvalidatedAsync(gameId, Arg.Any<CancellationToken>());
+        await messagePublisher
+            .Received(1)
+            .PublishMessagesInvalidatedAsync(gameId, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task HandleAsync_does_not_abandon_or_publish_when_leave_result_is_unchanged()
     {
         var gameId = Guid.NewGuid();

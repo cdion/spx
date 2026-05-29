@@ -1,12 +1,14 @@
+using Microsoft.Extensions.Logging;
 using Spx.Game.Application.Nexus.Features.EnsureNexusSession;
 
 namespace Spx.Game.Application.Features.JoinGame;
 
-internal sealed class JoinGameHandler(
+internal sealed partial class JoinGameHandler(
     IGamePersistence gamePersistence,
     IEnsureNexusSessionHandler ensureGameSessionHandler,
     ILobbyInvalidationPublisher gameLobbyInvalidationPublisher,
-    IGameMessageInvalidationPublisher gameMessageInvalidationPublisher
+    IGameMessageInvalidationPublisher gameMessageInvalidationPublisher,
+    ILogger<JoinGameHandler> logger
 ) : IJoinGameHandler
 {
     public async Task<GameCommandOutcome> HandleAsync(
@@ -42,7 +44,14 @@ internal sealed class JoinGameHandler(
         {
             if (joinResult.MessagesGameId.HasValue)
             {
-                await ensureGameSessionHandler.HandleAsync(lobbyGameId, cancellationToken);
+                var ensured = await ensureGameSessionHandler.HandleAsync(
+                    lobbyGameId,
+                    cancellationToken
+                );
+                if (!ensured)
+                {
+                    LogEnsureSessionFailed(logger, lobbyGameId, userId);
+                }
             }
 
             await gameLobbyInvalidationPublisher.PublishLobbyInvalidatedAsync(
@@ -60,4 +69,10 @@ internal sealed class JoinGameHandler(
 
         return joinResult.Result;
     }
+
+    [LoggerMessage(
+        Level = LogLevel.Warning,
+        Message = "Failed to ensure Nexus session during join for game {GameId} user {UserId}."
+    )]
+    private static partial void LogEnsureSessionFailed(ILogger logger, Guid gameId, string userId);
 }

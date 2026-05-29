@@ -109,7 +109,7 @@ public sealed partial class OrleansNexusRuntimeClient(
         CancellationToken cancellationToken = default
     )
     {
-        if (playerIds.Count is < 2 or > 4)
+        if (playerIds.Count != 2)
         {
             return false;
         }

@@ -38,7 +38,13 @@ internal static class GameFeatureTestFactory
 
         return new GameFeatureSet(
             new CreateGameHandler(gamePersistence, notifier, messagePublisher),
-            new JoinGameHandler(gamePersistence, ensureGameSession, notifier, messagePublisher),
+            new JoinGameHandler(
+                gamePersistence,
+                ensureGameSession,
+                notifier,
+                messagePublisher,
+                NullLogger<JoinGameHandler>.Instance
+            ),
             new LeaveGameHandler(
                 gamePersistence,
                 sessionService,

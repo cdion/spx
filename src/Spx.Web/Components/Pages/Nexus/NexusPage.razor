@@ -241,7 +241,7 @@ else
         }
 
         hubConnection = new HubConnectionBuilder()
-            .WithUrl(Navigation.ToAbsoluteUri($"/hubs/game?gameId={gameId}&playerId={currentPlayerId}"))
+            .WithUrl(Navigation.ToAbsoluteUri($"/hubs/game?gameId={gameId}"))
             .WithAutomaticReconnect()
             .Build();
 

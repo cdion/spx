@@ -69,6 +69,7 @@ builder.Services.AddSingleton<IGameInvalidationHubBridge>(sp =>
     sp.GetRequiredService<NexusInvalidationHubBridge>()
 );
 builder.Services.AddHostedService(sp => sp.GetRequiredService<NexusInvalidationHubBridge>());
+builder.Services.AddScoped<INexusHubAccessService, NexusHubAccessService>();
 builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddAuthentication(IdentityConstants.ApplicationScheme).AddIdentityCookies();
@@ -148,7 +149,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.UseAntiforgery();
 
-app.MapHub<NexusHub>("/hubs/game");
+app.MapHub<NexusHub>("/hubs/game").RequireAuthorization();
 app.MapAccountEndpoints();
 app.MapStaticAssets();
 app.MapRazorComponents<App>().AddInteractiveServerRenderMode();

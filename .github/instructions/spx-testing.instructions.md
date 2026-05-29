@@ -25,6 +25,13 @@ applyTo: 'tests/**'
 - Prefer the touched test project over a repo-wide test run.
 - Use `dotnet tool restore` before coverage or EF tool workflows.
 
+## Test Doubles
+
+- Prefer `NSubstitute` for lightweight mocking in unit-style tests when it is clearer than a hand-rolled fake or stub.
+- Match the repo-standard package version when adding it to a test project: `NSubstitute` `5.3.0`.
+- If a test uses `Substitute` or `Arg`, add `using NSubstitute;` in the file or the test project's global usings.
+- Keep direct stub classes for simple coordinator/state tests when they are easier to read than a mock setup.
+
 ## Build Quality Gate
 
 - `Directory.Build.props` sets `AnalysisMode=Recommended` and `EnforceCodeStyleInBuild=true` for every project. CA and IDE rule violations are **build errors**, not warnings.

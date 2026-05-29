@@ -1,4 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Spx.Game.Application;
 using Spx.Game.Application.Features.JoinGame;
 using Xunit;
@@ -144,12 +146,14 @@ public sealed class JoinGameHandlerTests
                 Arg.Any<CancellationToken>()
             )
             .Returns(false);
+        var logger = new TestLogger<JoinGameHandler>();
         using var services = CreateServices(
             persistence,
             sessionRosterProvider,
             lobbyPublisher,
             messagePublisher,
-            sessionService
+            sessionService,
+            logger
         );
 
         var handler = services.GetRequiredService<IJoinGameHandler>();
@@ -173,6 +177,9 @@ public sealed class JoinGameHandlerTests
         await messagePublisher
             .Received(1)
             .PublishMessagesInvalidatedAsync(gameId, Arg.Any<CancellationToken>());
+        var warning = Assert.Single(logger.Entries, entry => entry.LogLevel == LogLevel.Warning);
+        Assert.Contains(gameId.ToString(), warning.Message, StringComparison.Ordinal);
+        Assert.Contains("user-1", warning.Message, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -226,7 +233,8 @@ public sealed class JoinGameHandlerTests
         INexusSessionRosterProvider sessionRosterProvider,
         ILobbyInvalidationPublisher lobbyPublisher,
         IGameMessageInvalidationPublisher messagePublisher,
-        INexusSessionService sessionService
+        INexusSessionService sessionService,
+        ILogger<JoinGameHandler>? logger = null
     )
     {
         var services = new ServiceCollection();
@@ -237,6 +245,30 @@ public sealed class JoinGameHandlerTests
         services.AddSingleton(lobbyPublisher);
         services.AddSingleton(messagePublisher);
         services.AddSingleton(Substitute.For<IGameMessagePersistence>());
+        services.AddSingleton(logger ?? NullLogger<JoinGameHandler>.Instance);
         return services.BuildServiceProvider();
     }
+
+    private sealed class TestLogger<T> : ILogger<T>
+    {
+        public List<LogEntry> Entries { get; } = [];
+
+        public IDisposable? BeginScope<TState>(TState state)
+            where TState : notnull => null;
+
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(
+            LogLevel logLevel,
+            EventId eventId,
+            TState state,
+            Exception? exception,
+            Func<TState, Exception?, string> formatter
+        )
+        {
+            Entries.Add(new LogEntry(logLevel, formatter(state, exception)));
+        }
+    }
+
+    private sealed record LogEntry(LogLevel LogLevel, string Message);
 }
