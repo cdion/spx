@@ -57,9 +57,15 @@ Common local entry points from the repo root:
 just ci
 just image-build
 just publish
-just release-prod
+just promote-prod
 just deploy
 ```
+
+On `main`, the CI workflow is the producer of the deployable versioned images.
+It runs `just ci`, then publishes the immutable commit-derived tags to GHCR. The
+deploy workflow is gated on CI success and only promotes that already-published
+version to the stable `prod` tags before running `just deploy`. Deploy does not
+rebuild the images.
 
 The canonical build version is shared between container image tags and the web
 UI. By default it is derived from the current Git commit in a SemVer-compatible
@@ -68,6 +74,7 @@ format, and you can override it when needed:
 ```bash
 SPX_VERSION=1.2.3-rc.1 just ci
 SPX_VERSION=1.2.3-rc.1 IMAGE_TAG=1.2.3-rc.1 just publish
+IMAGE_TAG=1.2.3-rc.1 just promote-prod
 ```
 
 `just bootstrap` remains the one-time VM setup path. It now also handles GHCR
