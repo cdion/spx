@@ -1,6 +1,8 @@
 using System.Collections.Immutable;
 using Spx.Game.Application;
+using Spx.Game.Application.Nexus;
 using Spx.Game.Application.Nexus.Features.SubmitOrders;
+using Spx.Nexus.Domain;
 using Xunit;
 
 namespace Spx.Game.Application.Tests;
@@ -12,13 +14,35 @@ public sealed class SubmitOrdersHandlerTests
     private static readonly Guid BluePlayerId = Guid.NewGuid();
 
     [Fact]
+    public void Format_WhenViewingPlayerMatchesHomeOwner_UsesYourHomeSystem()
+    {
+        var playerNames = new Dictionary<Guid, string>
+        {
+            [RedPlayerId] = "Alice",
+            [BluePlayerId] = "Bob",
+        };
+        var evt = new NexusUnitsMovedEvent(
+            RedPlayerId,
+            NexusMapTopology.Player1HomeCoord,
+            new HexCoord(1, -2),
+            ImmutableDictionary<NexusUnitType, int>.Empty.Add(NexusUnitType.Fighter, 1),
+            IsRetreat: false
+        );
+
+        var message = NexusSessionEventFormatter.Format(evt, playerNames, RedPlayerId);
+
+        Assert.Contains("Your Home System", message);
+        Assert.DoesNotContain("home system", message);
+    }
+
+    [Fact]
     public async Task HandleAsync_returns_failed_outcome_when_session_service_rejects()
     {
         var sessionService = Substitute.For<INexusSessionService>();
         sessionService
             .SubmitOrdersAsync(
                 Arg.Any<Guid>(),
-                Arg.Any<NexusSubmitTurnCommand>(),
+                Arg.Any<NexusTurnOrdersCommand>(),
                 Arg.Any<CancellationToken>()
             )
             .Returns(new GameSessionCommandFailed("rejected"));
@@ -35,7 +59,7 @@ public sealed class SubmitOrdersHandlerTests
             persistence,
             messagesPersistence
         );
-        var command = new NexusSubmitTurnCommand(RedPlayerId, 1, [], [], false);
+        var command = new NexusTurnOrdersCommand(RedPlayerId, 1, [], [], false);
         var result = await handler.HandleAsync(GameId, command);
 
         Assert.IsType<GameSessionCommandFailed>(result);
@@ -57,7 +81,7 @@ public sealed class SubmitOrdersHandlerTests
         sessionService
             .SubmitOrdersAsync(
                 Arg.Any<Guid>(),
-                Arg.Any<NexusSubmitTurnCommand>(),
+                Arg.Any<NexusTurnOrdersCommand>(),
                 Arg.Any<CancellationToken>()
             )
             .Returns(new GameSessionCommandSucceeded(session));
@@ -74,7 +98,7 @@ public sealed class SubmitOrdersHandlerTests
             persistence,
             messagesPersistence
         );
-        var command = new NexusSubmitTurnCommand(RedPlayerId, 1, [], [], false);
+        var command = new NexusTurnOrdersCommand(RedPlayerId, 1, [], [], false);
         var result = await handler.HandleAsync(GameId, command);
 
         Assert.IsType<GameSessionCommandSucceeded>(result);
@@ -90,10 +114,10 @@ public sealed class SubmitOrdersHandlerTests
     [Fact]
     public async Task HandleAsync_writes_formatted_events_when_round_resolves()
     {
-        var resolveEvents = new NexusSessionEvent[]
+        var resolveEvents = new NexusResolveEvent[]
         {
-            new NexusIncomeSessionEvent(RedPlayerId, []),
-            new NexusIncomeSessionEvent(BluePlayerId, []),
+            new NexusIncomeEvent(RedPlayerId, 0, []),
+            new NexusIncomeEvent(BluePlayerId, 0, []),
         };
 
         var session = CreateSession(resolveEvents: resolveEvents);
@@ -102,7 +126,7 @@ public sealed class SubmitOrdersHandlerTests
         sessionService
             .SubmitOrdersAsync(
                 Arg.Any<Guid>(),
-                Arg.Any<NexusSubmitTurnCommand>(),
+                Arg.Any<NexusTurnOrdersCommand>(),
                 Arg.Any<CancellationToken>()
             )
             .Returns(new GameSessionCommandSucceeded(session));
@@ -126,7 +150,7 @@ public sealed class SubmitOrdersHandlerTests
             persistence,
             messagesPersistence
         );
-        var command = new NexusSubmitTurnCommand(RedPlayerId, 1, [], [], false);
+        var command = new NexusTurnOrdersCommand(RedPlayerId, 1, [], [], false);
         var result = await handler.HandleAsync(GameId, command);
 
         Assert.IsType<GameSessionCommandSucceeded>(result);
@@ -144,10 +168,7 @@ public sealed class SubmitOrdersHandlerTests
     [Fact]
     public async Task HandleAsync_falls_back_to_faction_name_when_player_not_found()
     {
-        var resolveEvents = new NexusSessionEvent[]
-        {
-            new NexusIncomeSessionEvent(RedPlayerId, []),
-        };
+        var resolveEvents = new NexusResolveEvent[] { new NexusIncomeEvent(RedPlayerId, 0, []) };
 
         var session = CreateSession(resolveEvents: resolveEvents);
 
@@ -155,7 +176,7 @@ public sealed class SubmitOrdersHandlerTests
         sessionService
             .SubmitOrdersAsync(
                 Arg.Any<Guid>(),
-                Arg.Any<NexusSubmitTurnCommand>(),
+                Arg.Any<NexusTurnOrdersCommand>(),
                 Arg.Any<CancellationToken>()
             )
             .Returns(new GameSessionCommandSucceeded(session));
@@ -176,7 +197,7 @@ public sealed class SubmitOrdersHandlerTests
             persistence,
             messagesPersistence
         );
-        var command = new NexusSubmitTurnCommand(RedPlayerId, 1, [], [], false);
+        var command = new NexusTurnOrdersCommand(RedPlayerId, 1, [], [], false);
         var expectedFallbackName = RedPlayerId.ToString("N").Substring(0, 8);
         await handler.HandleAsync(GameId, command);
 
@@ -191,9 +212,9 @@ public sealed class SubmitOrdersHandlerTests
             );
     }
 
-    private static NexusSessionView CreateSession(IReadOnlyList<NexusSessionEvent> resolveEvents)
+    private static NexusGameView CreateSession(IReadOnlyList<NexusResolveEvent> resolveEvents)
     {
-        var currentPlayer = new NexusPlayerSnapshot(
+        var currentPlayer = new NexusPlayerView(
             RedPlayerId,
             NexusFactionColor.Red,
             0,
@@ -206,7 +227,7 @@ public sealed class SubmitOrdersHandlerTests
             0,
             0
         );
-        var opponentPlayer = new NexusPlayerSnapshot(
+        var opponentPlayer = new NexusPlayerView(
             BluePlayerId,
             NexusFactionColor.Blue,
             0,
@@ -219,7 +240,7 @@ public sealed class SubmitOrdersHandlerTests
             0,
             0
         );
-        return new NexusSessionView(
+        return new NexusGameView(
             GameId,
             2,
             [],

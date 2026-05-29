@@ -1,11 +1,10 @@
-using Spx.Nexus.Primitives;
+using Spx.Nexus.Domain;
 
 namespace Spx.Game.Application.Nexus;
 
 /// <summary>
-/// Pure query helpers derived from a <see cref="NexusSessionView"/>.
-/// Mirrors the engine's private validation rules so the UI can surface valid moves
-/// without depending on <c>Spx.Nexus.Domain</c>.
+/// Pure query helpers derived from a <see cref="NexusGameView"/>.
+/// Mirrors the engine's private validation rules so the UI can surface valid moves.
 /// </summary>
 public static class NexusSessionViewQueries
 {
@@ -15,7 +14,7 @@ public static class NexusSessionViewQueries
     /// Returns an empty list if the player has no units at the source system.
     /// </summary>
     public static IReadOnlyList<HexCoord> GetValidMoveDestinations(
-        NexusSessionView view,
+        NexusGameView view,
         Guid playerId,
         HexCoord fromSystem
     )

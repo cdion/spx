@@ -2,7 +2,6 @@ using System.Collections.Immutable;
 using Spx.Game.Application;
 using Spx.Game.Application.Nexus;
 using Spx.Nexus.Domain;
-using Spx.Nexus.Mapping;
 
 namespace Spx.Web.Playground.Nexus;
 
@@ -62,14 +61,12 @@ internal sealed class PlaygroundNexusHarness
         }
 
         var view = NexusEngine.BuildView(session.State, gameId, playerId);
-        return Task.FromResult<GameSessionOutcome>(
-            new GameSessionFound(NexusSeamMapper.ToApplication(view))
-        );
+        return Task.FromResult<GameSessionOutcome>(new GameSessionFound(view));
     }
 
     public async Task<GameSessionCommandOutcome> SubmitOrdersAsync(
         Guid gameId,
-        NexusSubmitTurnCommand command,
+        NexusTurnOrdersCommand command,
         CancellationToken cancellationToken = default
     )
     {
@@ -78,11 +75,7 @@ internal sealed class PlaygroundNexusHarness
             return new GameSessionCommandFailed("Game session unavailable.");
         }
 
-        var result = NexusEngine.SubmitOrders(
-            session.State,
-            NexusSeamMapper.ToDomain(command),
-            session.Random
-        );
+        var result = NexusEngine.SubmitOrders(session.State, command, session.Random);
         if (result is NexusTurnOrdersRejected rejected)
         {
             return new GameSessionCommandFailed(rejected.ErrorMessage);

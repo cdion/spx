@@ -5,8 +5,6 @@ using Spx.Contracts;
 using Spx.Game.Application;
 using Spx.Game.Application.Nexus;
 using Spx.Nexus.Domain;
-using Spx.Nexus.Mapping;
-using Spx.Nexus.Primitives;
 
 namespace Spx.Web.Adapters;
 
@@ -150,9 +148,7 @@ public sealed partial class OrleansNexusRuntimeClient(
             var view = await clusterClient
                 .GetGrain<INexusSessionGrain>(gameId)
                 .GetViewAsync(playerId);
-            return view is null
-                ? new GameSessionUnavailable()
-                : new GameSessionFound(NexusSeamMapper.ToApplication(view));
+            return view is null ? new GameSessionUnavailable() : new GameSessionFound(view);
         }
         catch (OrleansException exception)
         {
@@ -168,16 +164,15 @@ public sealed partial class OrleansNexusRuntimeClient(
 
     public async Task<GameSessionCommandOutcome> SubmitOrdersAsync(
         Guid gameId,
-        NexusSubmitTurnCommand command,
+        NexusTurnOrdersCommand command,
         CancellationToken cancellationToken = default
     )
     {
         try
         {
-            var domainCommand = NexusSeamMapper.ToDomain(command);
             var result = await clusterClient
                 .GetGrain<INexusSessionGrain>(gameId)
-                .SubmitOrdersAsync(domainCommand);
+                .SubmitOrdersAsync(command);
 
             if (result is NexusTurnOrdersRejected rejected)
             {

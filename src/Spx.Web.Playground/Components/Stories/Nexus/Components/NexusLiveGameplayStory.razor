@@ -54,8 +54,8 @@
     private Guid _gameId;
     private string _viewingUserId = Player1UserId;
     private Guid _viewingPlayerId = Player1Id;
-    private NexusSessionView _view = null!;
-    private GameLobbyView _lobby = null!;
+    private NexusGameView _view = NexusStoryFixtures.CreateGameplayScenarios()[0].View with { GameId = Guid.Empty };
+    private GameLobbyView _lobby = NexusStoryFixtures.CreateLobby(Guid.Empty);
     private string? _error;
 
     [Inject]
@@ -100,7 +100,7 @@
 
     private Task Restart() => InitGameAsync();
 
-    private async Task HandleSubmitOrders(NexusSubmitTurnCommand command)
+    private async Task HandleSubmitOrders(NexusTurnOrdersCommand command)
     {
         var outcome = await SubmitOrdersHandler.HandleAsync(_gameId, command);
         _error = outcome is GameSessionCommandFailed failed ? failed.ErrorMessage : null;

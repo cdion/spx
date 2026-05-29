@@ -45,6 +45,7 @@
                                         var selected = _selection.GetValueOrDefault(unitType);
                                         var canInteract = IsEditable && available > 0;
                                         <button type="button" class="@GetFleetRowClass(unitType, canInteract)"
+                                            data-testid="@GetFleetButtonTestId(unitType)"
                                                 disabled="@(!canInteract)" @onclick="e => OnFleetRowClickAsync(unitType, e)"
                                                 @ondblclick="() => SelectAllFleetAsync(unitType)" @oncontextmenu:preventDefault="true"
                                                 @oncontextmenu="() => RemoveOneFleetAsync(unitType)">
@@ -132,9 +133,11 @@
                             var count = PendingBuildOrders.FirstOrDefault(o => o.UnitType == unitType)?.Count ?? 0;
                             var canAdd = ProjectedEnergy >= cost;
                             <button type="button" class="@GetBuildRowClass(unitType, count, canAdd)"
+                                    data-testid="@GetBuildButtonTestId(unitType)"
                                     @onclick="e => OnBuildRowClickAsync(unitType, e)"
-                                    @ondblclick="() => OnBuildAddMax.InvokeAsync(unitType)" @oncontextmenu:preventDefault="true"
-                                    @oncontextmenu="() => OnBuildRemoveOne.InvokeAsync(unitType)">
+                                    @ondblclick="() => OnOrderDraftRequested.InvokeAsync(OrderDraftRequest.BuildDraftAdjusted(unitType, BuildDraftAdjustmentKind.AddMax))"
+                                    @oncontextmenu:preventDefault="true"
+                                    @oncontextmenu="() => OnOrderDraftRequested.InvokeAsync(OrderDraftRequest.BuildDraftAdjusted(unitType, BuildDraftAdjustmentKind.RemoveOne))">
                                 <span class="text-base text-slate-100">@unitType <span
                                     class="ml-1 text-yellow-400">@cost⚡</span></span>
                                     <span class="text-base text-slate-400">@count</span>
@@ -151,7 +154,8 @@
     {
         <div class="space-y-2 border-t border-white/10 pt-3">
             <p class="text-base font-semibold text-slate-300">Nexus Gate</p>
-            <button class="@GateButtonClass" @onclick="OnToggleNexusGate">
+            <button class="@GateButtonClass" data-testid="@NexusGameplayPanelTestIds.NexusGateDraftToggle"
+                    @onclick="OnNexusGateDraftChangedAsync">
                 <span>Begin Nexus Gate</span>
                 <span class="text-yellow-400">12⚡</span>
             </button>
@@ -162,13 +166,16 @@
 @code {
     private static readonly UnitGroup[] UnitGroups =
     [
-        new("Strike", Enum.GetValues<NexusUnitType>().Where(unitType => unitType.Category() == NexusUnitCategory.Strike).ToArray()),
-        new("Capital", Enum.GetValues<NexusUnitType>().Where(unitType => unitType.Category() == NexusUnitCategory.Capital).ToArray()),
-        new("Planetary", Enum.GetValues<NexusUnitType>().Where(unitType => unitType.Category() == NexusUnitCategory.Planetary).ToArray()),
+        new("Strike", Enum.GetValues<NexusUnitType>().Where(unitType => unitType.Category() ==
+NexusUnitCategory.Strike).ToArray()),
+        new("Capital", Enum.GetValues<NexusUnitType>().Where(unitType => unitType.Category() ==
+NexusUnitCategory.Capital).ToArray()),
+        new("Planetary", Enum.GetValues<NexusUnitType>().Where(unitType => unitType.Category() ==
+NexusUnitCategory.Planetary).ToArray()),
     ];
 
     [Parameter, EditorRequired]
-    public NexusSystemSnapshot System { get; set; } = default!;
+    public NexusSystemView System { get; set; } = default!;
 
     [Parameter, EditorRequired]
     public Guid CurrentPlayerId { get; set; }
@@ -202,25 +209,10 @@
         ImmutableDictionary<NexusUnitType, int>.Empty;
 
     [Parameter]
-    public IReadOnlyList<NexusBuildRequest> PendingBuildOrders { get; set; } = [];
+    public IReadOnlyList<NexusBuildOrder> PendingBuildOrders { get; set; } = [];
 
     [Parameter]
-    public EventCallback<ImmutableDictionary<NexusUnitType, int>> OnFleetSelectionChanged { get; set; }
-
-    [Parameter]
-    public EventCallback<NexusUnitType> OnBuildAddOne { get; set; }
-
-    [Parameter]
-    public EventCallback<NexusUnitType> OnBuildAddMax { get; set; }
-
-    [Parameter]
-    public EventCallback<NexusUnitType> OnBuildRemoveOne { get; set; }
-
-    [Parameter]
-    public EventCallback<NexusUnitType> OnBuildRemoveAll { get; set; }
-
-    [Parameter]
-    public EventCallback OnToggleNexusGate { get; set; }
+    public EventCallback<OrderDraftRequest> OnOrderDraftRequested { get; set; }
 
     private readonly Dictionary<NexusUnitType, int> _selection = [];
     private HexCoord _previousCoord;
@@ -397,18 +389,41 @@
     private Task OnBuildRowClickAsync(NexusUnitType unitType, MouseEventArgs e)
     {
         if (e.ShiftKey)
-            return OnBuildRemoveAll.InvokeAsync(unitType);
+        {
+            return OnOrderDraftRequested.InvokeAsync(
+                OrderDraftRequest.BuildDraftAdjusted(unitType, BuildDraftAdjustmentKind.RemoveAll)
+            );
+        }
 
-        return OnBuildAddOne.InvokeAsync(unitType);
+        return OnOrderDraftRequested.InvokeAsync(
+            OrderDraftRequest.BuildDraftAdjusted(unitType, BuildDraftAdjustmentKind.AddOne)
+        );
     }
 
     private Task PublishSelectionAsync()
     {
         if (!SelectionIsValid)
-            return OnFleetSelectionChanged.InvokeAsync(ImmutableDictionary<NexusUnitType, int>.Empty);
+        {
+            return OnOrderDraftRequested.InvokeAsync(
+                OrderDraftRequest.MoveDraftChanged(ImmutableDictionary<NexusUnitType, int>.Empty)
+            );
+        }
 
-        return OnFleetSelectionChanged.InvokeAsync(_selection.ToImmutableDictionary());
+        return OnOrderDraftRequested.InvokeAsync(
+            OrderDraftRequest.MoveDraftChanged(_selection.ToImmutableDictionary())
+        );
     }
+
+    private Task OnNexusGateDraftChangedAsync() =>
+        OnOrderDraftRequested.InvokeAsync(
+            OrderDraftRequest.NexusGateDraftChanged(!PendingBeginNexusGate)
+        );
+
+    private static string GetFleetButtonTestId(NexusUnitType unitType) =>
+        NexusGameplayPanelTestIds.FleetUnit(unitType);
+
+    private static string GetBuildButtonTestId(NexusUnitType unitType) =>
+        NexusGameplayPanelTestIds.BuildUnit(unitType);
 
     private sealed record UnitGroup(string Label, IReadOnlyList<NexusUnitType> UnitTypes);
 }

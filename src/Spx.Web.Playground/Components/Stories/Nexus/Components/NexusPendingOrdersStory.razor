@@ -12,12 +12,12 @@
 
     <NexusPendingOrdersListComponent MoveOrders="@_moveOrders" BuildOrders="@_buildOrders" BeginNexusGate="@_gate"
                                      CurrentPlayerName="Player One" CurrentPlayerHomeCoord="@NexusMapTopology.Player1HomeCoord" IsEditable
-                                     OnRemoveMoveOrder="RemoveMove" OnRemoveBuildOrder="RemoveBuild" OnRemoveGateOrder="() => _gate = false" />
+                                     OnPendingOrderRequested="HandlePendingOrderRequest" />
 </section>
 
 @code {
     // Editable state
-    private readonly List<NexusMoveRequest> _moveOrders =
+    private readonly List<NexusMoveOrder> _moveOrders =
     [
         new(NexusMapTopology.Player1HomeCoord, new HexCoord(1, -2),
             ImmutableDictionary<NexusUnitType, int>.Empty
@@ -25,9 +25,22 @@
                 .Add(NexusUnitType.Infantry, 2)),
     ];
 
-    private readonly List<NexusBuildRequest> _buildOrders = [];
+    private readonly List<NexusBuildOrder> _buildOrders = [];
     private bool _gate;
 
-    private void RemoveMove(NexusMoveRequest order) => _moveOrders.Remove(order);
-    private void RemoveBuild(NexusBuildRequest order) => _buildOrders.Remove(order);
+    private void HandlePendingOrderRequest(PendingOrderRequest request)
+    {
+        switch (request.Kind)
+        {
+            case PendingOrderRequestKind.RemoveMoveOrder:
+                _moveOrders.Remove(request.MoveOrder!);
+                return;
+            case PendingOrderRequestKind.RemoveBuildOrder:
+                _buildOrders.Remove(request.BuildOrder!);
+                return;
+            case PendingOrderRequestKind.ClearNexusGate:
+                _gate = false;
+                return;
+        }
+    }
 }

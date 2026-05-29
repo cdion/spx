@@ -1,3 +1,5 @@
+using Spx.Nexus.Domain;
+
 namespace Spx.Game.Application.Nexus;
 
 public interface INexusSessionService
@@ -16,7 +18,7 @@ public interface INexusSessionService
 
     Task<GameSessionCommandOutcome> SubmitOrdersAsync(
         Guid gameId,
-        NexusSubmitTurnCommand command,
+        NexusTurnOrdersCommand command,
         CancellationToken cancellationToken = default
     );
 

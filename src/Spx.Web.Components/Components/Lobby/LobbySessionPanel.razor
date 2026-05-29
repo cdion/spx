@@ -98,7 +98,7 @@
     public GameLobbyView? Lobby { get; set; }
 
     [Parameter]
-    public NexusSessionView? Session { get; set; }
+    public NexusGameView? Session { get; set; }
 
     [Parameter]
     public bool IsSubmittingAction { get; set; }
@@ -107,7 +107,7 @@
     public string? GameplayError { get; set; }
 
     [Parameter]
-    public EventCallback<NexusSubmitTurnCommand> OnSubmitOrders { get; set; }
+    public EventCallback<NexusTurnOrdersCommand> OnSubmitOrders { get; set; }
 
     private LobbySessionTab _selectedTab = LobbySessionTab.Timeline;
     private NexusTimelinePanel? timelinePanel;

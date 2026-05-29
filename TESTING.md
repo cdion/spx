@@ -127,6 +127,18 @@ Good candidates here:
 - `IdentityAccountIdentityAdapter`
 - email adapter link generation if it becomes more complex
 
+### UI Component Testing Policy
+
+For Blazor/bUnit interaction tests in `tests/Spx.Web.Tests`:
+
+- add a `data-testid` to every element a test clicks, hovers, types into, or asserts by presence/absence
+- use semantic, domain-shaped test ids such as `nexus-map-system-q2-r-2` or `nexus-pending-move-order-0-q2-r-2-to-q1-r-2`
+- do not use CSS classes, Tailwind utilities, `title` attributes, text matching, or `FindAll()[n]` ordering to locate interactive targets
+- when a test needs to observe UI state, expose an explicit state attribute such as `data-state`, `data-focus-state`, `aria-selected`, `aria-expanded`, or `aria-pressed` instead of asserting on class strings
+- if a component lacks a stable selector, add one in the component rather than writing a brittle test around its presentation markup
+
+Semantic selectors are still appropriate when the accessibility contract itself is the thing under test. Tests for roles, ARIA wiring, or stable ids may query by `role`, `aria-*`, or element id directly.
+
 Do not use this project for pure `Spx.Account.Application` handler tests.
 
 ### `tests/Spx.Grains.Tests`

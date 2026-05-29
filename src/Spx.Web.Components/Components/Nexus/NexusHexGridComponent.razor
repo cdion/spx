@@ -1,7 +1,8 @@
 @using System.Collections.Immutable
 
 <div class="relative h-full w-full select-none">
-    <svg viewBox="@ViewBox" class="h-full w-full" xmlns="http://www.w3.org/2000/svg" @onclick="OnBackgroundClicked">
+    <svg viewBox="@ViewBox" class="h-full w-full" xmlns="http://www.w3.org/2000/svg"
+         data-testid="@NexusGameplayPanelTestIds.MapBackground" @onclick="OnBackgroundClicked">
         @* Pass 1: Hex cells *@
         @foreach (var system in Systems)
         {
@@ -9,7 +10,7 @@
             <NexusHexCellComponent System="system" Center="center" CurrentPlayerId="CurrentPlayerId"
                                    OpponentPlayerId="@OpponentPlayerId" CurrentPlayerFaction="CurrentPlayerFaction"
                                    CurrentPlayerGateProgress="CurrentPlayerGateProgress" IsClickable="IsEditable"
-                                   OnClicked="OnSystemClicked" />
+                                   OnClicked="HandleSystemSelected" />
         }
 
         @* Pass 2a: Valid-target rings *@
@@ -122,7 +123,7 @@
 
 @code {
     [Parameter, EditorRequired]
-    public IReadOnlyList<NexusSystemSnapshot> Systems { get; set; } = [];
+    public IReadOnlyList<NexusSystemView> Systems { get; set; } = [];
 
     [Parameter, EditorRequired]
     public Guid CurrentPlayerId { get; set; }
@@ -140,7 +141,7 @@
     public bool IsEditable { get; set; }
 
     [Parameter]
-    public IReadOnlyList<NexusMoveRequest> PendingMoveOrders { get; set; } = [];
+    public IReadOnlyList<NexusMoveOrder> PendingMoveOrders { get; set; } = [];
 
     [Parameter]
     public HexCoord? SelectedSystem { get; set; }
@@ -158,12 +159,13 @@
     public HexCoord? EventFocusTo { get; set; }
 
     [Parameter]
-    public EventCallback<HexCoord> OnSystemClicked { get; set; }
+    public EventCallback<SelectionRequest> OnSelectionRequested { get; set; }
 
-    [Parameter]
-    public EventCallback OnMapBackgroundClicked { get; set; }
+    private Task OnBackgroundClicked() =>
+        OnSelectionRequested.InvokeAsync(SelectionRequest.SelectionCleared());
 
-    private Task OnBackgroundClicked() => OnMapBackgroundClicked.InvokeAsync();
+    private Task HandleSystemSelected(HexCoord coord) =>
+        OnSelectionRequested.InvokeAsync(SelectionRequest.SystemSelected(coord));
 
     private string ViewBox
     {

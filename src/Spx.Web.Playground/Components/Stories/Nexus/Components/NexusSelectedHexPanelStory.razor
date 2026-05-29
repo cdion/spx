@@ -20,8 +20,7 @@
                            CurrentPlayerFaction="NexusFactionColor.Blue" CurrentPlayerGateProgress="@CurrentScenario.GateProgress"
                            PendingBeginNexusGate="@_pendingGate" IsEditable="true" ProjectedEnergy="@ProjectedEnergy"
                            AvailableUnits="@CurrentScenario.AvailableUnits" PendingBuildOrders="@_buildOrders"
-                           OnFleetSelectionChanged="OnFleetSelectionChanged" OnBuildAddOne="AddBuildOne" OnBuildAddMax="AddBuildMax"
-                           OnBuildRemoveOne="RemoveBuildOne" OnBuildRemoveAll="RemoveBuildAll" OnToggleNexusGate="ToggleGate" />
+                           OnOrderDraftRequested="HandleOrderDraftRequest" />
 
     <section class="ui-surface-section space-y-3 p-4 lg:p-5">
         <p class="ui-panel-label">Live state</p>
@@ -61,7 +60,7 @@
 @code {
     private const int BaseEnergy = 20;
 
-    private readonly List<NexusBuildRequest> _buildOrders = [];
+    private readonly List<NexusBuildOrder> _buildOrders = [];
     private ImmutableDictionary<NexusUnitType, int> _fleetSelection = ImmutableDictionary<NexusUnitType, int>.Empty;
     private bool _pendingGate;
     private int _scenarioIndex;
@@ -85,56 +84,76 @@
     private string ScenarioClass(int index) =>
         index == _scenarioIndex ? "ui-pg-tab-active" : "ui-pg-tab";
 
-    private Task OnFleetSelectionChanged(ImmutableDictionary<NexusUnitType, int> selected)
+    private Task HandleOrderDraftRequest(OrderDraftRequest request)
     {
-        _fleetSelection = selected;
-        return Task.CompletedTask;
+        switch (request.Kind)
+        {
+            case OrderDraftRequestKind.MoveDraftChanged:
+                _fleetSelection = request.MoveDraftUnits ?? ImmutableDictionary<NexusUnitType, int>.Empty;
+                return Task.CompletedTask;
+            case OrderDraftRequestKind.BuildDraftAdjusted:
+                ApplyBuildDraftAdjustment(request.UnitType!.Value, request.BuildAdjustment!.Value);
+                return Task.CompletedTask;
+            case OrderDraftRequestKind.NexusGateDraftChanged:
+                _pendingGate = request.BeginNexusGate ?? false;
+                return Task.CompletedTask;
+            default:
+                return Task.CompletedTask;
+        }
     }
 
-    private Task AddBuildOne(NexusUnitType unit)
+    private void ApplyBuildDraftAdjustment(NexusUnitType unit, BuildDraftAdjustmentKind adjustment)
+    {
+        switch (adjustment)
+        {
+            case BuildDraftAdjustmentKind.AddOne:
+                AddBuildOne(unit);
+                return;
+            case BuildDraftAdjustmentKind.AddMax:
+                AddBuildMax(unit);
+                return;
+            case BuildDraftAdjustmentKind.RemoveOne:
+                RemoveBuildOne(unit);
+                return;
+            case BuildDraftAdjustmentKind.RemoveAll:
+                RemoveBuildAll(unit);
+                return;
+        }
+    }
+
+    private void AddBuildOne(NexusUnitType unit)
     {
         if (ProjectedEnergy < unit.Cost())
-            return Task.CompletedTask;
+            return;
 
         var idx = _buildOrders.FindIndex(o => o.UnitType == unit);
         if (idx >= 0)
             _buildOrders[idx] = _buildOrders[idx] with { Count = _buildOrders[idx].Count + 1 };
         else
-            _buildOrders.Add(new NexusBuildRequest(unit, 1));
-
-        return Task.CompletedTask;
+            _buildOrders.Add(new NexusBuildOrder(unit, 1));
     }
 
-    private async Task AddBuildMax(NexusUnitType unit)
+    private void AddBuildMax(NexusUnitType unit)
     {
         var maxAdd = ProjectedEnergy / unit.Cost();
         for (var i = 0; i < maxAdd; i++)
-            await AddBuildOne(unit);
+            AddBuildOne(unit);
     }
 
-    private Task RemoveBuildOne(NexusUnitType unit)
+    private void RemoveBuildOne(NexusUnitType unit)
     {
         var idx = _buildOrders.FindIndex(o => o.UnitType == unit);
         if (idx < 0)
-            return Task.CompletedTask;
+            return;
 
         if (_buildOrders[idx].Count <= 1)
             _buildOrders.RemoveAt(idx);
         else
             _buildOrders[idx] = _buildOrders[idx] with { Count = _buildOrders[idx].Count - 1 };
-
-        return Task.CompletedTask;
     }
 
-    private Task RemoveBuildAll(NexusUnitType unit)
+    private void RemoveBuildAll(NexusUnitType unit)
     {
         _buildOrders.RemoveAll(o => o.UnitType == unit);
-        return Task.CompletedTask;
-    }
-
-    private Task ToggleGate()
-    {
-        _pendingGate = !_pendingGate;
-        return Task.CompletedTask;
     }
 }

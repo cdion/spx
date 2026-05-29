@@ -281,8 +281,10 @@ public class NexusMoveValidationTests
 
     // P1 home is Player1HomeCoord = (2,-2); valid adjacent target is (1,-2) or (2,-1)
     private static readonly HexCoord P1Home = NexusMap.Player1HomeCoord;
+    private static readonly HexCoord P2Home = NexusMap.Player2HomeCoord;
     private static readonly HexCoord Adjacent1 = new(1, -2);
     private static readonly HexCoord Adjacent2 = new(2, -1);
+    private static readonly HexCoord P2Adjacent = new(-1, 2);
 
     private static NexusState MakeState()
     {
@@ -356,6 +358,34 @@ public class NexusMoveValidationTests
     }
 
     [Fact]
+    public void Move_MoreUnitsThanAvailable_ErrorIncludesSectorName()
+    {
+        var s = MakeState();
+
+        var result = Submit(s, P1Id, [Move(P1Home, Adjacent1, (NexusUnitType.Infantry, 5))]);
+
+        var rejected = Assert.IsType<NexusTurnOrdersRejected>(result);
+        Assert.Equal(
+            "Insufficient Infantry at Your Home System: need 5, have 4.",
+            rejected.ErrorMessage
+        );
+    }
+
+    [Fact]
+    public void Move_FromOpponentHomeSystem_ErrorUsesOpponentHomeSystemName()
+    {
+        var s = MakeState();
+
+        var result = Submit(s, P1Id, [Move(P2Home, P2Adjacent, (NexusUnitType.Carrier, 1))]);
+
+        var rejected = Assert.IsType<NexusTurnOrdersRejected>(result);
+        Assert.Equal(
+            "Insufficient Fleet Capacity at Opponent Home System: need 8, have 0.",
+            rejected.ErrorMessage
+        );
+    }
+
+    [Fact]
     public void Move_StrikeWithNoCarrier_IsRejected()
     {
         var s = MakeState();
@@ -365,7 +395,12 @@ public class NexusMoveValidationTests
             .RemoveUnits(P1Id, NexusUnitType.Carrier, 1);
         s.Systems.First(sys => sys.HomePlayerId == P1Id).AddUnits(P1Id, NexusUnitType.Frigate, 0); // no extra ships
         var result = Submit(s, P1Id, [Move(P1Home, Adjacent1, (NexusUnitType.Fighter, 1))]);
-        Assert.IsType<NexusTurnOrdersRejected>(result);
+
+        var rejected = Assert.IsType<NexusTurnOrdersRejected>(result);
+        Assert.Equal(
+            "Insufficient Fleet Capacity for move from Your Home System to Pi: need 1, have 0.",
+            rejected.ErrorMessage
+        );
     }
 
     [Fact]

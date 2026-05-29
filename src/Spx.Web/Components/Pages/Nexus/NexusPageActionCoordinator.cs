@@ -1,6 +1,7 @@
 using Spx.Game.Application;
 using Spx.Game.Application.Features.LeaveGame;
 using Spx.Game.Application.Nexus.Features.SubmitOrders;
+using Spx.Nexus.Domain;
 
 namespace Spx.Web.Components.Pages.Nexus;
 
@@ -51,7 +52,7 @@ internal sealed partial class NexusPageActionCoordinator(
 
     public async Task SubmitOrdersAsync(
         Guid gameId,
-        NexusSubmitTurnCommand command,
+        NexusTurnOrdersCommand command,
         CancellationToken cancellationToken = default
     )
     {

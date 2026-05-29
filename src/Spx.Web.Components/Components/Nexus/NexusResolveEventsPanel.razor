@@ -6,13 +6,15 @@
     else
     {
         <div class="space-y-2">
-            @foreach (var evt in Events)
+            @for (var index = 0; index < Events.Count; index++)
             {
-                <button type="button" class="whitespace-pre-line @GetRowClass(evt)"
-                        @onclick="() => OnEventClicked.InvokeAsync(evt)" @onmouseenter="() => OnEventHovered.InvokeAsync(evt)"
-                        @onmouseleave="OnEventHoverCleared">
-                    @NexusSessionEventFormatter.Format(evt, PlayerNames)
-                </button>
+                var evt = Events[index];
+                <div class="whitespace-pre-line @GetRowClass(evt)"
+                     data-testid="@NexusGameplayPanelTestIds.ResolveEventRow(index)" data-focus-state="@GetRowState(evt)"
+                     @onmouseenter="() => OnEventFocusRequested.InvokeAsync(EventFocusRequest.PreviewRequested(evt))"
+                     @onmouseleave="() => OnEventFocusRequested.InvokeAsync(EventFocusRequest.PreviewCleared())">
+                    @FormatEvent(evt)
+                </div>
             }
         </div>
     }
@@ -20,24 +22,39 @@
 
 @code {
     [Parameter, EditorRequired]
-    public IReadOnlyList<NexusSessionEvent> Events { get; set; } = [];
+    public IReadOnlyList<NexusResolveEvent> Events { get; set; } = [];
 
     [Parameter, EditorRequired]
     public IReadOnlyDictionary<Guid, string> PlayerNames { get; set; } =
         new Dictionary<Guid, string>();
 
     [Parameter, EditorRequired]
-    public Func<NexusSessionEvent, string> RowClassSelector { get; set; } =
+    public Guid ViewingPlayerId { get; set; }
+
+    [Parameter, EditorRequired]
+    public string CurrentPlayerName { get; set; } = string.Empty;
+
+    [Parameter, EditorRequired]
+    public string OpponentPlayerName { get; set; } = string.Empty;
+
+    [Parameter, EditorRequired]
+    public Func<NexusResolveEvent, string> RowClassSelector { get; set; } =
         _ => "w-full rounded-lg border border-white/10 bg-slate-950/40 px-3 py-2 text-left text-sm text-slate-300";
 
-    [Parameter]
-    public EventCallback<NexusSessionEvent> OnEventClicked { get; set; }
+    [Parameter, EditorRequired]
+    public Func<NexusResolveEvent, string> RowStateSelector { get; set; } = _ => "inactive";
 
     [Parameter]
-    public EventCallback<NexusSessionEvent> OnEventHovered { get; set; }
+    public EventCallback<EventFocusRequest> OnEventFocusRequested { get; set; }
 
-    [Parameter]
-    public EventCallback OnEventHoverCleared { get; set; }
+    private string GetRowClass(NexusResolveEvent evt) => RowClassSelector(evt);
 
-    private string GetRowClass(NexusSessionEvent evt) => RowClassSelector(evt);
+    private string GetRowState(NexusResolveEvent evt) => RowStateSelector(evt);
+
+    private string FormatEvent(NexusResolveEvent evt) =>
+        NexusHomeSystemNames.ReplacePerspectiveLabels(
+            NexusSessionEventFormatter.Format(evt, PlayerNames, ViewingPlayerId),
+            CurrentPlayerName,
+            OpponentPlayerName
+        );
 }

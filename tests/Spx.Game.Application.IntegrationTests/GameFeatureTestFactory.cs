@@ -13,6 +13,7 @@ using Spx.Game.Application.Features.LeaveGame;
 using Spx.Game.Application.Features.SendPrivateMessage;
 using Spx.Game.Application.Features.SendPublicMessage;
 using Spx.Game.Application.Nexus.Features.EnsureNexusSession;
+using Spx.Nexus.Domain;
 
 namespace Spx.Game.Application.IntegrationTests;
 
@@ -89,7 +90,7 @@ internal sealed class FakeGameSessionService : INexusSessionService
 
     public Task<GameSessionCommandOutcome> SubmitOrdersAsync(
         Guid gameId,
-        NexusSubmitTurnCommand command,
+        NexusTurnOrdersCommand command,
         CancellationToken cancellationToken = default
     ) =>
         Task.FromResult<GameSessionCommandOutcome>(

@@ -1,3 +1,5 @@
+using Spx.Nexus.Domain;
+
 namespace Spx.Game.Application.Nexus.Features.SubmitOrders;
 
 internal sealed class SubmitOrdersHandler(
@@ -10,7 +12,7 @@ internal sealed class SubmitOrdersHandler(
 {
     public async Task<GameSessionCommandOutcome> HandleAsync(
         Guid gameId,
-        NexusSubmitTurnCommand command,
+        NexusTurnOrdersCommand command,
         CancellationToken cancellationToken = default
     )
     {
@@ -22,7 +24,7 @@ internal sealed class SubmitOrdersHandler(
 
         if (outcome is GameSessionCommandSucceeded { Session: { } session })
         {
-            if (session.ResolveEvents.Length > 0)
+            if (session.LastResolveEvents.Length > 0)
             {
                 await WriteResolveEventsAsync(gameId, session, cancellationToken);
             }
@@ -32,7 +34,7 @@ internal sealed class SubmitOrdersHandler(
                 cancellationToken
             );
 
-            if (session.ResolveEvents.Length > 0)
+            if (session.LastResolveEvents.Length > 0)
             {
                 await messageInvalidationPublisher.PublishMessagesInvalidatedAsync(
                     gameId,
@@ -46,7 +48,7 @@ internal sealed class SubmitOrdersHandler(
 
     private async Task WriteResolveEventsAsync(
         Guid gameId,
-        NexusSessionView session,
+        NexusGameView session,
         CancellationToken cancellationToken
     )
     {
@@ -54,7 +56,7 @@ internal sealed class SubmitOrdersHandler(
         var playerNames = players.ToDictionary(p => p.PlayerId, p => p.Name);
 
         var bodies = session
-            .ResolveEvents.Select(evt => NexusSessionEventFormatter.Format(evt, playerNames))
+            .LastResolveEvents.Select(evt => NexusSessionEventFormatter.Format(evt, playerNames))
             .ToList();
 
         await messagesPersistence.WriteGameplayEventsAsync(gameId, bodies, cancellationToken);

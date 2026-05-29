@@ -89,7 +89,7 @@ else
 
     private GameLobbyView? lobby => data.Lobby;
 
-    private NexusSessionView? session => data.Session;
+    private NexusGameView? session => data.Session;
 
     private GamePresenceView presence => data.Presence;
 
@@ -300,7 +300,7 @@ else
         }
     }
 
-    private Task SubmitOrdersAsync(NexusSubmitTurnCommand command)
+    private Task SubmitOrdersAsync(NexusTurnOrdersCommand command)
         => actionCoordinator!.SubmitOrdersAsync(GameId, command);
 
     private async Task LoadInitialMessagesAsync()

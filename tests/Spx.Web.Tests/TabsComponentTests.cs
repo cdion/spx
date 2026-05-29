@@ -23,10 +23,11 @@ public sealed class TabsComponentTests : TestContext
                     EventCallback.Factory.Create<string>(this, value => captured = value)
                 )
                 .Add(x => x.ItemIdSelector, x => $"tab-{x.ToLowerInvariant()}")
+                .Add(x => x.ItemTestIdSelector, x => $"test-tab-{x.ToLowerInvariant()}")
                 .Add(x => x.PanelIdSelector, x => $"panel-{x.ToLowerInvariant()}")
         );
 
-        cut.Find("button[role='tab'][aria-selected='true']").KeyDown("ArrowRight");
+        cut.Find("[data-testid='test-tab-orders']").KeyDown("ArrowRight");
 
         Assert.Equal("Events", captured);
     }

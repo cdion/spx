@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
 using Spx.Contracts;
 using Spx.Game.Application;
+using Spx.Nexus.Domain;
 
 namespace Spx.Web.Tests;
 
@@ -12,6 +13,9 @@ internal static class GamePageCoordinatorTestData
     public static readonly Guid OpponentPlayerId = Guid.Parse(
         "5740ca93-14a6-4c1c-8d08-f5aa7c847f22"
     );
+    public static readonly HexCoord CurrentPlayerHomeCoord = NexusMapTopology.Player1HomeCoord;
+    public static readonly HexCoord MoveTargetCoord = new(1, -2);
+    public static readonly HexCoord AlternateFocusCoord = new(2, -1);
 
     public static GameLobbyView CreateLobby(Guid gameId, bool isCurrentUserActive = true) =>
         new(
@@ -31,12 +35,12 @@ internal static class GamePageCoordinatorTestData
             isCurrentUserActive
         );
 
-    public static NexusSessionView CreateSession(Guid gameId, int roundNumber = 1) =>
+    public static NexusGameView CreateSession(Guid gameId, int roundNumber = 1) =>
         new(
             gameId,
             roundNumber,
             [],
-            new NexusPlayerSnapshot(
+            new NexusPlayerView(
                 CurrentPlayerId,
                 NexusFactionColor.Red,
                 0,
@@ -49,7 +53,7 @@ internal static class GamePageCoordinatorTestData
                 0,
                 0
             ),
-            new NexusPlayerSnapshot(
+            new NexusPlayerView(
                 OpponentPlayerId,
                 NexusFactionColor.Blue,
                 0,
@@ -66,14 +70,91 @@ internal static class GamePageCoordinatorTestData
             null
         );
 
+    public static NexusGameView CreateGameplayPanelSession(
+        Guid gameId,
+        int roundNumber = 1,
+        ImmutableArray<NexusResolveEvent>? lastResolveEvents = null,
+        int currentPlayerEnergy = 20
+    )
+    {
+        var baseSession = CreateSession(gameId, roundNumber);
+
+        return baseSession with
+        {
+            Systems =
+            [
+                CreateSystem(
+                    CurrentPlayerHomeCoord,
+                    homePlayerId: CurrentPlayerId,
+                    controlOwner: CurrentPlayerId,
+                    units: ImmutableDictionary<
+                        Guid,
+                        ImmutableDictionary<NexusUnitType, int>
+                    >.Empty.Add(
+                        CurrentPlayerId,
+                        ImmutableDictionary<NexusUnitType, int>
+                            .Empty.Add(NexusUnitType.Carrier, 1)
+                            .Add(NexusUnitType.Fighter, 1)
+                            .Add(NexusUnitType.Infantry, 2)
+                    )
+                ),
+                CreateSystem(MoveTargetCoord, incomeValue: 1),
+                CreateSystem(AlternateFocusCoord, incomeValue: 2),
+                CreateSystem(
+                    NexusMapTopology.Player2HomeCoord,
+                    homePlayerId: OpponentPlayerId,
+                    controlOwner: OpponentPlayerId,
+                    units: ImmutableDictionary<
+                        Guid,
+                        ImmutableDictionary<NexusUnitType, int>
+                    >.Empty.Add(
+                        OpponentPlayerId,
+                        ImmutableDictionary<NexusUnitType, int>.Empty.Add(NexusUnitType.Fighter, 1)
+                    )
+                ),
+            ],
+            CurrentPlayer = baseSession.CurrentPlayer with { Energy = currentPlayerEnergy },
+            LastResolveEvents = lastResolveEvents ?? [],
+        };
+    }
+
+    public static ImmutableArray<NexusResolveEvent> CreateGameplayPanelResolveEvents() =>
+        [
+            new NexusUnitsMovedEvent(
+                CurrentPlayerId,
+                CurrentPlayerHomeCoord,
+                MoveTargetCoord,
+                ImmutableDictionary<NexusUnitType, int>.Empty.Add(NexusUnitType.Fighter, 1),
+                IsRetreat: false
+            ),
+            new NexusPlanetaryControlEvent(AlternateFocusCoord, CurrentPlayerId),
+        ];
+
     public static GamePageView CreatePage(
         Guid gameId,
         GamePresenceView? presence = null,
-        NexusSessionView? session = null
+        NexusGameView? session = null
     ) =>
         new(
             CreateLobby(gameId),
             session ?? CreateSession(gameId),
             presence ?? GamePresenceView.Empty
+        );
+
+    private static NexusSystemView CreateSystem(
+        HexCoord coord,
+        bool isNexus = false,
+        int incomeValue = 0,
+        Guid? homePlayerId = null,
+        Guid? controlOwner = null,
+        ImmutableDictionary<Guid, ImmutableDictionary<NexusUnitType, int>>? units = null
+    ) =>
+        new(
+            coord,
+            isNexus,
+            incomeValue,
+            homePlayerId,
+            controlOwner,
+            units ?? ImmutableDictionary<Guid, ImmutableDictionary<NexusUnitType, int>>.Empty
         );
 }

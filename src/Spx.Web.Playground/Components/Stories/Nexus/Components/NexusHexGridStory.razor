@@ -12,7 +12,7 @@
             <NexusHexGridComponent Systems="@_view.Systems" CurrentPlayerId="@P1" OpponentPlayerId="@P2"
                                    CurrentPlayerFaction="@_view.CurrentPlayer.Faction" CurrentPlayerGateProgress="@_gateProgress"
                                    IsEditable="true" PendingMoveOrders="@_pendingMoves" SelectedSystem="@_selected"
-                                   ValidMoveTargets="@_validTargets" OnSystemClicked="OnSystemClicked" />
+                                   ValidMoveTargets="@_validTargets" OnSelectionRequested="HandleSelectionRequest" />
         </div>
     </section>
 
@@ -74,10 +74,10 @@
     private static readonly Guid P1 = NexusStoryFixtures.Player1Id;
     private static readonly Guid P2 = NexusStoryFixtures.Player2Id;
 
-    private NexusSessionView _view = null!;
+    private NexusGameView _view = null!;
     private HexCoord? _selected;
     private IReadOnlyList<HexCoord> _validTargets = [];
-    private readonly List<NexusMoveRequest> _pendingMoves = [];
+    private readonly List<NexusMoveOrder> _pendingMoves = [];
     private HexCoord? _pendingFrom;
     private NexusGateProgress _gateProgress = NexusGateProgress.None;
 
@@ -86,8 +86,17 @@
         _view = NexusStoryFixtures.CreateGameplayScenarios()[0].View;
     }
 
-    private void OnSystemClicked(HexCoord coord)
+    private void HandleSelectionRequest(SelectionRequest request)
     {
+        if (request.Kind == SelectionRequestKind.ClearSelection)
+        {
+            _pendingFrom = null;
+            _selected = null;
+            _validTargets = [];
+            return;
+        }
+
+        var coord = request.System!.Value;
         if (_pendingFrom.HasValue)
         {
             // Second click — queue a move if valid target, then clear
@@ -97,7 +106,7 @@
                     ?.Units.GetValueOrDefault(P1);
                 if (units is { Count: > 0 })
                 {
-                    _pendingMoves.Add(new NexusMoveRequest(
+                    _pendingMoves.Add(new NexusMoveOrder(
                         _pendingFrom.Value,
                         coord,
                         units.ToImmutableDictionary()));

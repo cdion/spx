@@ -6,10 +6,8 @@
     <Project Path="src/Spx.Data/Spx.Data.csproj" />
     <Project Path="src/Spx.Nexus.Domain/Spx.Nexus.Domain.csproj" />
     <Project Path="src/Spx.Game.Application/Spx.Game.Application.csproj" />
-    <Project Path="src/Spx.Nexus.Mapping/Spx.Nexus.Mapping.csproj" />
     <Project Path="src/Spx.Grains/Spx.Game.Grain.csproj" />
     <Project Path="src/Spx.Silo/Spx.Silo.csproj" />
-    <Project Path="src/Spx.Nexus.Primitives/Spx.Nexus.Primitives.csproj" />
     <Project Path="src/Spx.ServiceDefaults/Spx.ServiceDefaults.csproj" />
     <Project Path="src/Spx.Web/Spx.Web.csproj" />
     <Project Path="src/Spx.Web.Components/Spx.Web.Components.csproj" />

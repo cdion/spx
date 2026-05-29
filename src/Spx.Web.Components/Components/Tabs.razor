@@ -7,10 +7,12 @@
         var selected = EqualityComparer<TItem>.Default.Equals(item, SelectedItem);
         var disabled = DisabledSelector?.Invoke(item) ?? false;
         var tabId = GetTabId(item, i);
+        var tabTestId = GetTabTestId(item, i);
         var panelId = GetPanelId(item, i);
         <button type="button" class="@(selected ? ActiveItemClass : InactiveItemClass)" id="@tabId" role="tab"
-                aria-selected="@(selected ? "true" : "false")" aria-controls="@panelId" tabindex="@(selected ? 0 : -1)"
-                disabled="@disabled" @onkeydown="e => OnTabKeyDownAsync(e, i)" @onclick="() => OnSelected.InvokeAsync(item)">
+                data-testid="@tabTestId" aria-selected="@(selected ? "true" : "false")" aria-controls="@panelId"
+                tabindex="@(selected ? 0 : -1)" disabled="@disabled" @onkeydown="e => OnTabKeyDownAsync(e, i)"
+                @onclick="() => OnSelected.InvokeAsync(item)">
             @ItemLabelSelector(item)
         </button>
     }
@@ -37,6 +39,9 @@
 
     [Parameter]
     public Func<TItem, string>? PanelIdSelector { get; set; }
+
+    [Parameter]
+    public Func<TItem, string>? ItemTestIdSelector { get; set; }
 
     [Parameter]
     public string ContainerClass { get; set; } = "flex items-center gap-2";
@@ -66,6 +71,14 @@
             return PanelIdSelector(item);
 
         return $"tabs-{AriaLabel.ToLowerInvariant().Replace(' ', '-')}-panel-{index}";
+    }
+
+    private string GetTabTestId(TItem item, int index)
+    {
+        if (ItemTestIdSelector is not null)
+            return ItemTestIdSelector(item);
+
+        return $"tabs-{AriaLabel.ToLowerInvariant().Replace(' ', '-')}-item-{index}";
     }
 
     private async Task OnTabKeyDownAsync(KeyboardEventArgs e, int currentIndex)

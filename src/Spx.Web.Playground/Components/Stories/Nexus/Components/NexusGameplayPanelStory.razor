@@ -36,7 +36,7 @@
     private int _scenarioIndex;
     private bool _submitting;
     private string? _error;
-    private NexusSubmitTurnCommand? _lastCommand;
+    private NexusTurnOrdersCommand? _lastCommand;
 
     protected override void OnInitialized()
     {
@@ -52,7 +52,7 @@
         _submitting = false;
     }
 
-    private async Task OnSubmitOrders(NexusSubmitTurnCommand command)
+    private async Task OnSubmitOrders(NexusTurnOrdersCommand command)
     {
         _submitting = true;
         _lastCommand = null;

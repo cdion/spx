@@ -159,21 +159,23 @@ public static class NexusEngine
         foreach (var order in orders)
         {
             if (!NexusMap.IsValidCoord(order.From))
-                return new NexusTurnOrdersRejected(
-                    $"Source system {order.From} is not on the map."
-                );
+                return new NexusTurnOrdersRejected("Selected Source System is not on the map.");
             if (!NexusMap.IsValidCoord(order.To))
                 return new NexusTurnOrdersRejected(
-                    $"Destination system {order.To} is not on the map."
+                    "Selected Destination System is not on the map."
                 );
             if (!NexusMap.AreAdjacent(order.From, order.To))
-                return new NexusTurnOrdersRejected($"{order.To} is not adjacent to {order.From}.");
+                return new NexusTurnOrdersRejected(
+                    $"{FormatSystem(state, playerId, order.To)} is not adjacent to {FormatSystem(state, playerId, order.From)}."
+                );
             if (order.Units.Count == 0)
                 return new NexusTurnOrdersRejected("A move order must include at least one unit.");
 
             var system = GetSystem(state, order.From);
             if (system is null)
-                return new NexusTurnOrdersRejected($"Source system {order.From} not found.");
+                return new NexusTurnOrdersRejected(
+                    $"Source System {FormatSystem(state, playerId, order.From)} was not found in the current game state."
+                );
 
             if (!committed.TryGetValue(order.From, out var fromCommitted))
             {
@@ -195,10 +197,25 @@ public static class NexusEngine
                 var available = system.GetUnitCount(playerId, unitType);
 
                 if (alreadyCommitted + count > available)
+                {
+                    if (unitType.CarryCapacity() > 0)
+                    {
+                        var availableCapacity = GetAvailableCarryCapacity(system, playerId);
+                        var requestedCapacity =
+                            GetCommittedCarryCapacity(fromCommitted)
+                            + GetRequestedCarryCapacity(order.Units);
+
+                        return new NexusTurnOrdersRejected(
+                            $"Insufficient Fleet Capacity at {FormatSystem(state, playerId, order.From)}: "
+                                + $"need {requestedCapacity}, have {availableCapacity}."
+                        );
+                    }
+
                     return new NexusTurnOrdersRejected(
-                        $"Insufficient {unitType} at {order.From}: "
+                        $"Insufficient {unitType} at {FormatSystem(state, playerId, order.From)}: "
                             + $"need {alreadyCommitted + count}, have {available}."
                     );
+                }
 
                 fromCommitted[unitType] = alreadyCommitted + count;
                 capacityProvided += unitType.CarryCapacity() * count;
@@ -207,12 +224,34 @@ public static class NexusEngine
 
             if (capacityNeeded > capacityProvided)
                 return new NexusTurnOrdersRejected(
-                    $"Insufficient carry capacity for move from {order.From} to {order.To}: "
-                        + $"need {capacityNeeded} slots, have {capacityProvided}."
+                    $"Insufficient Fleet Capacity for move from {FormatSystem(state, playerId, order.From)} to {FormatSystem(state, playerId, order.To)}: "
+                        + $"need {capacityNeeded}, have {capacityProvided}."
                 );
         }
 
         return null;
+    }
+
+    private static int GetAvailableCarryCapacity(NexusSystemState system, Guid playerId) =>
+        system.GetPlayerUnits(playerId).Sum(kv => kv.Key.CarryCapacity() * kv.Value);
+
+    private static int GetCommittedCarryCapacity(Dictionary<NexusUnitType, int> committedUnits) =>
+        committedUnits.Sum(kv => kv.Key.CarryCapacity() * kv.Value);
+
+    private static int GetRequestedCarryCapacity(
+        IReadOnlyDictionary<NexusUnitType, int> requestedUnits
+    ) => requestedUnits.Sum(kv => kv.Key.CarryCapacity() * kv.Value);
+
+    private static string FormatSystem(NexusState state, Guid playerId, HexCoord coord)
+    {
+        var homePlayerId = GetSystem(state, coord)?.HomePlayerId;
+        if (homePlayerId == playerId)
+            return "Your Home System";
+
+        if (homePlayerId.HasValue)
+            return "Opponent Home System";
+
+        return NexusMap.GetSectorDisplayName(coord);
     }
 
     private static NexusTurnOrdersRejected? ValidateBuildAndGate(

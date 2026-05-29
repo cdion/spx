@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Spx.Game.Application;
 using Spx.Game.Application.Features.LeaveGame;
 using Spx.Game.Application.Nexus.Features.SubmitOrders;
+using Spx.Nexus.Domain;
 using Spx.Web.Components.Pages.Nexus;
 using Xunit;
 
@@ -64,7 +65,7 @@ public sealed class GamePageActionCoordinatorTests
             }
         );
 
-        var command = new NexusSubmitTurnCommand(
+        var command = new NexusTurnOrdersCommand(
             GamePageCoordinatorTestData.CurrentPlayerId,
             2,
             [],
@@ -93,7 +94,7 @@ public sealed class GamePageActionCoordinatorTests
             }
         );
 
-        var command = new NexusSubmitTurnCommand(
+        var command = new NexusTurnOrdersCommand(
             GamePageCoordinatorTestData.CurrentPlayerId,
             2,
             [],
@@ -124,7 +125,7 @@ public sealed class GamePageActionCoordinatorTests
             submitOrdersHandler: submitHandler
         );
 
-        var command = new NexusSubmitTurnCommand(
+        var command = new NexusTurnOrdersCommand(
             GamePageCoordinatorTestData.CurrentPlayerId,
             2,
             [],
@@ -141,7 +142,7 @@ public sealed class GamePageActionCoordinatorTests
         out NexusPageDataState data,
         out NexusPageActionState actions,
         GameLobbyView? lobby = null,
-        NexusSessionView? session = null,
+        NexusGameView? session = null,
         StubLeaveGameHandler? leaveHandler = null,
         StubSubmitOrdersHandler? submitOrdersHandler = null
     )
@@ -208,7 +209,7 @@ public sealed class GamePageActionCoordinatorTests
 
         public Task<GameSessionCommandOutcome> HandleAsync(
             Guid gameId,
-            NexusSubmitTurnCommand command,
+            NexusTurnOrdersCommand command,
             CancellationToken cancellationToken = default
         )
         {

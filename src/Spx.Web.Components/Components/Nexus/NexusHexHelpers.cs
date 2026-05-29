@@ -1,6 +1,6 @@
 using System.Text;
 using Spx.Game.Application.Nexus;
-using Spx.Nexus.Primitives;
+using Spx.Nexus.Domain;
 
 namespace Spx.Web.Components.Nexus;
 
@@ -79,7 +79,7 @@ internal static class NexusHexHelpers
 
     /// <summary>Background fill for a hex, tinted by who controls the system.</summary>
     public static string GetHexFill(
-        NexusSystemSnapshot system,
+        NexusSystemView system,
         Guid currentPlayerId,
         NexusFactionColor currentPlayerFaction
     ) =>
@@ -99,7 +99,7 @@ internal static class NexusHexHelpers
 
     /// <summary>Cap triangle fill for home/Nexus systems; null = no cap.</summary>
     public static string? GetCapFill(
-        NexusSystemSnapshot system,
+        NexusSystemView system,
         Guid currentPlayerId,
         NexusFactionColor currentPlayerFaction
     )
@@ -130,7 +130,7 @@ internal static class NexusHexHelpers
 
     /// <summary>Returns the Capital/Strike/Planetary breakdown for a single player's units in a system.</summary>
     public static (int Capital, int Strike, int Planetary) GetUnitCounts(
-        NexusSystemSnapshot system,
+        NexusSystemView system,
         Guid playerId
     )
     {

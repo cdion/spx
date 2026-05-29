@@ -117,8 +117,8 @@
                             }
 
                             <LobbySessionPanel State="SessionState" MessagesState="MessagesState" MessagesCallbacks="MessagesCallbacks"
-                                              SelectedTab="@_selectedSessionTab" SelectedTabChanged="HandleSessionTabChanged"
-                                              OnSubmitOrders="HandleSubmitOrders" />
+                                               SelectedTab="@_selectedSessionTab" SelectedTabChanged="HandleSessionTabChanged"
+                                               OnSubmitOrders="HandleSubmitOrders" />
 
                             <LobbyCurrentUserPanel Lobby="@lobby" IsLeaving="false" OnLeave="NoOp" />
 
@@ -136,7 +136,7 @@
     private int _stateIndex;
     private Guid _activeGameId;
     private GameLobbyView? _lobby;
-    private NexusSessionView? _session;
+    private NexusGameView? _session;
     private GamePresenceView _presence = GamePresenceView.Empty;
     private List<TimelineEntryState> _timelineItems = [];
     private Guid? _editingMessageId;
@@ -272,7 +272,7 @@
         _selectedSessionTab = tab;
     }
 
-    private async Task HandleSubmitOrders(NexusSubmitTurnCommand command)
+    private async Task HandleSubmitOrders(NexusTurnOrdersCommand command)
     {
         var outcome = await SubmitOrdersHandler.HandleAsync(_activeGameId, command);
         if (outcome is GameSessionCommandFailed failed)

@@ -1,6 +1,7 @@
 @using System.Text
 
-<g @onclick="HandleClick" @onclick:stopPropagation="true" class="@(IsClickable ? "cursor-pointer" : "")">
+<g @onclick="HandleClick" @onclick:stopPropagation="true" class="@(IsClickable ? "cursor-pointer" : "")"
+   data-testid="@NexusGameplayPanelTestIds.System(System.Coord)">
     <polygon points="@NexusHexHelpers.HexPoints(Center)"
              fill="@NexusHexHelpers.GetHexFill(System, CurrentPlayerId, CurrentPlayerFaction)"
              stroke="rgba(255,255,255,0.12)" stroke-width="1" opacity="0.92" />
@@ -26,7 +27,7 @@
 
 @code {
     [Parameter, EditorRequired]
-    public NexusSystemSnapshot System { get; set; } = default!;
+    public NexusSystemView System { get; set; } = default!;
 
     [Parameter, EditorRequired]
     public (double X, double Y) Center { get; set; }

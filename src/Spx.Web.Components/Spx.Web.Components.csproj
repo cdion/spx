@@ -12,7 +12,7 @@
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
     <ProjectReference Include="../Spx.Game.Application/Spx.Game.Application.csproj" />
-    <ProjectReference Include="../Spx.Nexus.Primitives/Spx.Nexus.Primitives.csproj" />
+    <ProjectReference Include="../Spx.Nexus.Domain/Spx.Nexus.Domain.csproj" />
   </ItemGroup>
 
   <Target Name="EnsureTailwindCli" BeforeTargets="Build;Publish">

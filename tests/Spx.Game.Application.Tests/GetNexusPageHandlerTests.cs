@@ -2,7 +2,7 @@ using System.Collections.Immutable;
 using Microsoft.Extensions.DependencyInjection;
 using Spx.Game.Application;
 using Spx.Game.Application.Nexus.Features.GetNexusPage;
-using Spx.Nexus.Primitives;
+using Spx.Nexus.Domain;
 using Xunit;
 
 namespace Spx.Game.Application.Tests;
@@ -120,9 +120,9 @@ public sealed class GetGamePageHandlerTests
         return services.BuildServiceProvider();
     }
 
-    private static NexusSessionView CreateSession(Guid gameId, int roundNumber)
+    private static NexusGameView CreateSession(Guid gameId, int roundNumber)
     {
-        var currentPlayer = new NexusPlayerSnapshot(
+        var currentPlayer = new NexusPlayerView(
             CurrentPlayerId,
             NexusFactionColor.Red,
             0,
@@ -135,7 +135,7 @@ public sealed class GetGamePageHandlerTests
             0,
             0
         );
-        var opponentPlayer = new NexusPlayerSnapshot(
+        var opponentPlayer = new NexusPlayerView(
             OpponentPlayerId,
             NexusFactionColor.Blue,
             0,
@@ -149,15 +149,7 @@ public sealed class GetGamePageHandlerTests
             0
         );
 
-        return new NexusSessionView(
-            gameId,
-            roundNumber,
-            [],
-            currentPlayer,
-            opponentPlayer,
-            [],
-            null
-        );
+        return new NexusGameView(gameId, roundNumber, [], currentPlayer, opponentPlayer, [], null);
     }
 
     private sealed class FakeGamePersistence : IGamePersistence
@@ -206,7 +198,7 @@ public sealed class GetGamePageHandlerTests
 
     private sealed class FakeGameSessionService : INexusSessionService
     {
-        public NexusSessionView? Session { get; set; }
+        public NexusGameView? Session { get; set; }
 
         public int InitializeCalls { get; private set; }
 
@@ -233,7 +225,7 @@ public sealed class GetGamePageHandlerTests
 
         public Task<GameSessionCommandOutcome> SubmitOrdersAsync(
             Guid gameId,
-            NexusSubmitTurnCommand command,
+            NexusTurnOrdersCommand command,
             CancellationToken cancellationToken = default
         ) => throw new NotSupportedException();
 
