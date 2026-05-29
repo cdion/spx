@@ -67,6 +67,10 @@ deploy workflow is gated on CI success and only promotes that already-published
 version to the stable `prod` tags before running `just deploy`. Deploy does not
 rebuild the images.
 
+The workflows authenticate to GHCR with repository secrets `GHCR_USERNAME` and
+`GHCR_TOKEN` rather than relying on the built-in `GITHUB_TOKEN`. That avoids
+package-linkage and workflow-access issues with pre-existing GHCR packages.
+
 The canonical build version is shared between container image tags and the web
 UI. By default it is derived from the current Git commit in a SemVer-compatible
 format, and you can override it when needed:
@@ -87,6 +91,8 @@ The deploy workflow expects these GitHub secrets:
 - `VM`: SSH target in the form `user@host`
 - `VM_SSH_KEY`: private key for that host
 - `VM_KNOWN_HOSTS`: pinned known-host entry for the VM
+- `GHCR_USERNAME`: the GHCR account name, for example `cdion`
+- `GHCR_TOKEN`: a classic personal access token with at least `write:packages` and `read:packages`
 
 ## Local Development
 

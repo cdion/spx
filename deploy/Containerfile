@@ -47,12 +47,8 @@ RUN dotnet restore src/Spx.Silo/Spx.Silo.csproj
 # Copy the full source tree (filtered by .dockerignore).
 COPY . .
 
-# Download the Tailwind standalone binary (gitignored, so not in the build context).
-# Path must match the TailwindCli property in Spx.Web.Components.csproj.
-RUN mkdir -p tools/tailwind/bin && \
-    curl -fsSL -o tools/tailwind/bin/tailwindcss-linux-x64 \
-        https://github.com/tailwindlabs/tailwindcss/releases/download/v4.3.0/tailwindcss-linux-x64 && \
-    chmod +x tools/tailwind/bin/tailwindcss-linux-x64
+# Download the Tailwind standalone binary using the repo's single installer path.
+RUN ./tools/tailwind/install.sh
 
 # Publish web — Tailwind CLI runs as part of BeforeTargets=Publish inside
 # Spx.Web.Components; the binary must be executable and at the expected path.

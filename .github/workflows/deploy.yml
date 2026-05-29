@@ -42,8 +42,13 @@ jobs:
           sudo apt-get install -y just podman
 
       - name: Log in to GHCR
+        env:
+          GHCR_USERNAME: ${{ secrets.GHCR_USERNAME }}
+          GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
         run: |
-          printf '%s' '${{ secrets.GITHUB_TOKEN }}' | podman login ghcr.io --username '${{ github.actor }}' --password-stdin
+          test -n "$GHCR_USERNAME"
+          test -n "$GHCR_TOKEN"
+          printf '%s' "$GHCR_TOKEN" | podman login ghcr.io --username "$GHCR_USERNAME" --password-stdin
 
       - name: Configure SSH
         run: |

@@ -16,8 +16,6 @@ container_cli := env("CONTAINER_CLI", "podman")
 vm            := env("VM", "core@mostlyhuman.ca")
 registry      := env("IMAGE_REGISTRY", "ghcr.io")
 namespace     := env("IMAGE_NAMESPACE", "cdion")
-tailwind_version := env("TAILWIND_VERSION", "v4.3.0")
-tailwind_cli     := "tools/tailwind/bin/tailwindcss-linux-x64"
 git_sha       := `git rev-parse --short=12 HEAD 2>/dev/null || echo dev`
 git_ref       := `git rev-parse HEAD 2>/dev/null || echo dev`
 app_version   := env("SPX_VERSION", "0.0.0-sha." + git_sha)
@@ -43,14 +41,7 @@ version:
 
 # Ensure the repo-local Tailwind standalone binary exists for web builds
 ensure-tailwind:
-    @if [ ! -x {{tailwind_cli}} ]; then \
-        echo "==> Downloading Tailwind CLI {{tailwind_version}}..."; \
-        mkdir -p tools/tailwind/bin; \
-        curl -fsSL -o {{tailwind_cli}} "https://github.com/tailwindlabs/tailwindcss/releases/download/{{tailwind_version}}/tailwindcss-linux-x64"; \
-        chmod +x {{tailwind_cli}}; \
-    else \
-        echo "==> Tailwind CLI already present at {{tailwind_cli}}."; \
-    fi
+    @./tools/tailwind/install.sh
 
 # Restore .NET workloads and local tools
 restore: ensure-tailwind
