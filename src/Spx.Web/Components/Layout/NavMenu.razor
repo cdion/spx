@@ -1,5 +1,12 @@
+@using System.Reflection
+
 <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-    <a class="text-lg font-semibold tracking-[0.2em] text-white uppercase" href="">Spx</a>
+    <div class="flex flex-col gap-1">
+        <a class="text-lg font-semibold tracking-[0.2em] text-white uppercase" href="">Spx</a>
+        <span class="text-xs font-medium uppercase tracking-widest text-slate-400">
+            Version @AppVersion
+        </span>
+    </div>
 
     <nav class="flex flex-wrap items-center gap-3 lg:justify-end">
         <NavLink class="ui-nav-pill" href="" Match="NavLinkMatch.All">
@@ -35,4 +42,11 @@
         </AuthorizeView>
     </nav>
 </div>
+
+@code {
+    private static readonly string AppVersion =
+        typeof(NavMenu).Assembly
+            .GetCustomAttribute<AssemblyInformationalVersionAttribute>()
+            ?.InformationalVersion ?? typeof(NavMenu).Assembly.GetName().Version?.ToString() ?? "dev";
+}
 

@@ -15,11 +15,17 @@
 
 ARG SDK_IMAGE=mcr.microsoft.com/dotnet/sdk:10.0
 ARG ASPNET_IMAGE=mcr.microsoft.com/dotnet/aspnet:10.0
+ARG SPX_VERSION=0.0.0-dev
+ARG SPX_SOURCE=https://github.com/cdion/spx
+ARG SPX_REVISION=dev
 
 # ------------------------------------------------------------------------------
 # build — restore and publish both projects
 # ------------------------------------------------------------------------------
 FROM ${SDK_IMAGE} AS build
+ARG SPX_VERSION
+ARG SPX_SOURCE
+ARG SPX_REVISION
 WORKDIR /src
 
 # Copy project files first for layer-cached restore.
@@ -53,6 +59,9 @@ RUN mkdir -p tools/tailwind/bin && \
 RUN dotnet publish src/Spx.Web/Spx.Web.csproj \
         -c Release \
         -o /out/web \
+    -p:Version=${SPX_VERSION} \
+    -p:InformationalVersion=${SPX_VERSION} \
+    -p:SourceRevisionId=${SPX_REVISION} \
         --no-restore
 
 # Build a self-contained EF migrations bundle so the operator can run migrations
@@ -68,6 +77,9 @@ RUN dotnet tool install --global dotnet-ef && \
 RUN dotnet publish src/Spx.Silo/Spx.Silo.csproj \
         -c Release \
         -o /out/silo \
+    -p:Version=${SPX_VERSION} \
+    -p:InformationalVersion=${SPX_VERSION} \
+    -p:SourceRevisionId=${SPX_REVISION} \
         --no-restore
 
 # ------------------------------------------------------------------------------
@@ -84,7 +96,15 @@ RUN apt-get update && \
 # web runtime image
 # ------------------------------------------------------------------------------
 FROM runtime-base AS web
+ARG SPX_VERSION
+ARG SPX_SOURCE
+ARG SPX_REVISION
 WORKDIR /app
+
+LABEL org.opencontainers.image.source=${SPX_SOURCE}
+LABEL org.opencontainers.image.version=${SPX_VERSION}
+LABEL org.opencontainers.image.revision=${SPX_REVISION}
+LABEL org.opencontainers.image.description="Spx Blazor web application"
 
 COPY --from=build /out/web ./
 # Migrations bundle — run with: podman run --rm ... spx-web:latest /app/migrate
@@ -102,7 +122,15 @@ ENTRYPOINT ["dotnet", "Spx.Web.dll"]
 # silo runtime image
 # ------------------------------------------------------------------------------
 FROM runtime-base AS silo
+ARG SPX_VERSION
+ARG SPX_SOURCE
+ARG SPX_REVISION
 WORKDIR /app
+
+LABEL org.opencontainers.image.source=${SPX_SOURCE}
+LABEL org.opencontainers.image.version=${SPX_VERSION}
+LABEL org.opencontainers.image.revision=${SPX_REVISION}
+LABEL org.opencontainers.image.description="Spx Orleans silo host"
 
 COPY --from=build /out/silo ./
 

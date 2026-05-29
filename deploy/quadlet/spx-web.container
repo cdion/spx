@@ -4,7 +4,7 @@ After=postgres.service redis.service spx-silo.service
 Requires=postgres.service redis.service spx-silo.service
 
 [Container]
-Image=localhost/spx-web:latest
+Image=ghcr.io/cdion/spx-web:prod
 ContainerName=spx-web
 HostName=spx-web
 Network=spx.network

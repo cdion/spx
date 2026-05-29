@@ -46,6 +46,41 @@ Restore repo-local tools before using EF commands or coverage tasks:
 dotnet tool restore
 ```
 
+## CI And Deployment
+
+The repo now treats `justfile` as the source of truth for CI/CD orchestration.
+GitHub Actions should stay thin and call the same Just recipes you can run locally.
+
+Common local entry points from the repo root:
+
+```bash
+just ci
+just image-build
+just publish
+just release-prod
+just deploy
+```
+
+The canonical build version is shared between container image tags and the web
+UI. By default it is derived from the current Git commit in a SemVer-compatible
+format, and you can override it when needed:
+
+```bash
+SPX_VERSION=1.2.3-rc.1 just ci
+SPX_VERSION=1.2.3-rc.1 IMAGE_TAG=1.2.3-rc.1 just publish
+```
+
+`just bootstrap` remains the one-time VM setup path. It now also handles GHCR
+login for the VM's root Podman context when `GHCR_USERNAME` and `GHCR_TOKEN` are
+present in the shell environment. That keeps registry bootstrap and Quadlet file
+installation in the same path used for first-time environment setup.
+
+The deploy workflow expects these GitHub secrets:
+
+- `VM`: SSH target in the form `user@host`
+- `VM_SSH_KEY`: private key for that host
+- `VM_KNOWN_HOSTS`: pinned known-host entry for the VM
+
 ## Local Development
 
 The intended local entry point is the Aspire AppHost:
@@ -162,6 +197,7 @@ The repo testing strategy is documented in `TESTING.md`.
 Common commands from the repo root:
 
 ```bash
+just ci
 dotnet test tests/Spx.Account.Application.Tests/Spx.Account.Application.Tests.csproj
 dotnet test tests/Spx.Game.Application.Tests/Spx.Game.Application.Tests.csproj
 dotnet test tests/Spx.Game.Application.IntegrationTests/Spx.Game.Application.IntegrationTests.csproj
