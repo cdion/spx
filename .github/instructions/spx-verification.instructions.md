@@ -31,7 +31,7 @@ Use the matching test project; only escalate to a full solution test run when th
 CSharpier is enforced by the pre-commit hook. Do **not** attempt to manually reformat code; run the formatter if you added new files or made substantial structural edits:
 
 ```sh
-dotnet csharpier <path>
+dotnet csharpier format <path>
 ```
 
 ## What counts as "done"

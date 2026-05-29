@@ -109,7 +109,7 @@ Typical local auth test flow:
 4. Register, resend confirmation, or request a password reset.
 5. Copy the logged link into the browser.
 
-Outside development, the app uses a Resend-backed email sender. Production configuration must provide `Resend:ApiKey` and `Resend:FromEmail`.
+Outside development, the app uses a Resend-backed email sender. Production configuration must provide `Resend:ApiKey` and `Resend:FromEmail`, and the `FromEmail` address must belong to a Resend-verified domain or subdomain such as `mail.mostlyhuman.ca`.
 
 ## Data And Storage
 

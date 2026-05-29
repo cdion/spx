@@ -28,8 +28,8 @@ COPY src/Spx.Account.Application/Spx.Account.Application.csproj                 
 COPY src/Spx.Contracts/Spx.Game.Contract.csproj                           src/Spx.Contracts/
 COPY src/Spx.Data/Spx.Data.csproj                                          src/Spx.Data/
 COPY src/Spx.Game.Application/Spx.Game.Application.csproj                 src/Spx.Game.Application/
-COPY src/Spx.Game.Domain/Spx.Game.Domain.csproj                            src/Spx.Game.Domain/
 COPY src/Spx.Grains/Spx.Game.Grain.csproj                                  src/Spx.Grains/
+COPY src/Spx.Nexus.Domain/Spx.Nexus.Domain.csproj                          src/Spx.Nexus.Domain/
 COPY src/Spx.ServiceDefaults/Spx.ServiceDefaults.csproj                    src/Spx.ServiceDefaults/
 COPY src/Spx.Silo/Spx.Silo.csproj                                          src/Spx.Silo/
 COPY src/Spx.Web/Spx.Web.csproj                                            src/Spx.Web/
@@ -71,9 +71,19 @@ RUN dotnet publish src/Spx.Silo/Spx.Silo.csproj \
         --no-restore
 
 # ------------------------------------------------------------------------------
+# runtime base image
+# ------------------------------------------------------------------------------
+FROM ${ASPNET_IMAGE} AS runtime-base
+
+# Npgsql probes for GSSAPI support and loads this library when present.
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends libgssapi-krb5-2 && \
+    rm -rf /var/lib/apt/lists/*
+
+# ------------------------------------------------------------------------------
 # web runtime image
 # ------------------------------------------------------------------------------
-FROM ${ASPNET_IMAGE} AS web
+FROM runtime-base AS web
 WORKDIR /app
 
 COPY --from=build /out/web ./
@@ -91,7 +101,7 @@ ENTRYPOINT ["dotnet", "Spx.Web.dll"]
 # ------------------------------------------------------------------------------
 # silo runtime image
 # ------------------------------------------------------------------------------
-FROM ${ASPNET_IMAGE} AS silo
+FROM runtime-base AS silo
 WORKDIR /app
 
 COPY --from=build /out/silo ./

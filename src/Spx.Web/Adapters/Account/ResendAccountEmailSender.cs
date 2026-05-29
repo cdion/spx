@@ -69,7 +69,29 @@ public sealed class ResendAccountEmailSender(
         );
 
         using var response = await httpClient.SendAsync(request, cancellationToken);
-        response.EnsureSuccessStatusCode();
+        if (response.IsSuccessStatusCode)
+        {
+            return;
+        }
+
+        var responseBody = await response.Content.ReadAsStringAsync(cancellationToken);
+        throw new HttpRequestException(
+            $"Response status code does not indicate success: {(int)response.StatusCode} ({response.StatusCode}). Resend response: {FormatResponseBody(responseBody)}",
+            null,
+            response.StatusCode
+        );
+    }
+
+    private static string FormatResponseBody(string responseBody)
+    {
+        if (string.IsNullOrWhiteSpace(responseBody))
+        {
+            return "<empty>";
+        }
+
+        const int maxLength = 512;
+        var trimmed = responseBody.Trim();
+        return trimmed.Length <= maxLength ? trimmed : trimmed[..maxLength] + "...";
     }
 
     private sealed record ResendEmailRequest(
