@@ -35,7 +35,7 @@ public sealed class GameEndpointRouteBuilderExtensionsTests
 
         var client = app.GetTestClient();
         var response = await client.PostAsync(
-            "/games/create",
+            "/games/create/submit",
             CreateFormContent(("gameName", "Weekend Match"), ("playerName", "Captain Red"))
         );
 
@@ -63,7 +63,7 @@ public sealed class GameEndpointRouteBuilderExtensionsTests
 
         var client = app.GetTestClient();
         var response = await client.PostAsync(
-            "/games/create",
+            "/games/create/submit",
             CreateFormContent(("gameName", "A"), ("playerName", "Captain Red"))
         );
 
@@ -89,7 +89,7 @@ public sealed class GameEndpointRouteBuilderExtensionsTests
 
         var client = app.GetTestClient();
         var response = await client.PostAsync(
-            "/games/join",
+            "/games/join/submit",
             CreateFormContent(("inviteCode", "ABC123"), ("playerName", "Captain Blue"))
         );
 

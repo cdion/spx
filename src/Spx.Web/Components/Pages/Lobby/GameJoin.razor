@@ -3,23 +3,24 @@
 
 <PageTitle>Join Game</PageTitle>
 
-<FormPage Eyebrow="Lobby"
-          Title="Join a game"
+<FormPage Eyebrow="Lobby" Title="Join a game"
           Description="Enter the invite code and the player name you want to use for this game.">
     @if (!string.IsNullOrWhiteSpace(Error))
     {
         <AlertBanner>@Error</AlertBanner>
     }
 
-    <form method="post" action="/games/join" class="ui-flow">
+    <form method="post" action="/games/join/submit" class="ui-flow">
         <AntiforgeryToken />
 
         <FormField For="invite-code" Label="Invite code">
-            <input id="invite-code" name="inviteCode" class="ui-input ui-input-code" maxlength="6" placeholder="ABC123" value="@InviteCode" required />
+            <input id="invite-code" name="inviteCode" class="ui-input ui-input-code" maxlength="6" placeholder="ABC123"
+                   value="@InviteCode" required />
         </FormField>
 
         <FormField For="join-player-name" Label="Player name">
-            <input id="join-player-name" name="playerName" class="ui-input" maxlength="40" placeholder="Captain Blue" value="@PlayerName" required />
+            <input id="join-player-name" name="playerName" class="ui-input" maxlength="40" placeholder="Captain Blue"
+                   value="@PlayerName" required />
         </FormField>
 
         <div class="ui-actions">

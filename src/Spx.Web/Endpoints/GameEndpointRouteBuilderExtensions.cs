@@ -12,8 +12,8 @@ public static partial class GameEndpointRouteBuilderExtensions
     {
         var group = endpoints.MapGroup("/games").RequireAuthorization();
 
-        group.MapPost("/create", CreateGameAsync);
-        group.MapPost("/join", JoinGameAsync);
+        group.MapPost("/create/submit", CreateGameAsync);
+        group.MapPost("/join/submit", JoinGameAsync);
 
         return endpoints;
     }
@@ -31,9 +31,7 @@ public static partial class GameEndpointRouteBuilderExtensions
 
         if (string.IsNullOrWhiteSpace(userId))
         {
-            return Results.LocalRedirect(
-                BuildRedirect("/login", ("returnUrl", httpContext.Request.Path))
-            );
+            return Results.LocalRedirect(BuildRedirect("/login", ("returnUrl", "/games/create")));
         }
 
         try
@@ -95,9 +93,7 @@ public static partial class GameEndpointRouteBuilderExtensions
 
         if (string.IsNullOrWhiteSpace(userId))
         {
-            return Results.LocalRedirect(
-                BuildRedirect("/login", ("returnUrl", httpContext.Request.Path))
-            );
+            return Results.LocalRedirect(BuildRedirect("/login", ("returnUrl", "/games/join")));
         }
 
         try

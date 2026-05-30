@@ -10,15 +10,17 @@
         <AlertBanner>@Error</AlertBanner>
     }
 
-    <form method="post" action="/games/create" class="ui-flow">
+    <form method="post" action="/games/create/submit" class="ui-flow">
         <AntiforgeryToken />
 
         <FormField For="game-name" Label="Game name">
-            <input id="game-name" name="gameName" class="ui-input" maxlength="100" placeholder="Weekend match" value="@GameName" required />
+            <input id="game-name" name="gameName" class="ui-input" maxlength="100" placeholder="Weekend match"
+                   value="@GameName" required />
         </FormField>
 
         <FormField For="player-name" Label="Player name">
-            <input id="player-name" name="playerName" class="ui-input" maxlength="40" placeholder="Captain Red" value="@PlayerName" required />
+            <input id="player-name" name="playerName" class="ui-input" maxlength="40" placeholder="Captain Red"
+                   value="@PlayerName" required />
         </FormField>
 
         <div class="ui-actions">
