@@ -36,6 +36,21 @@ public sealed class SubmitOrdersHandlerTests
     }
 
     [Fact]
+    public void Format_WhenCombatPhaseResolves_IncludesPhaseName()
+    {
+        var playerNames = new Dictionary<Guid, string>
+        {
+            [RedPlayerId] = "Alice",
+            [BluePlayerId] = "Bob",
+        };
+        var evt = new NexusPhaseResultEvent(new HexCoord(0, 0), CombatPhase.Engage, [], []);
+
+        var message = NexusSessionEventFormatter.Format(evt, playerNames, RedPlayerId);
+
+        Assert.Contains("Engage phase resolved", message);
+    }
+
+    [Fact]
     public async Task HandleAsync_returns_failed_outcome_when_session_service_rejects()
     {
         var sessionService = Substitute.For<INexusSessionService>();

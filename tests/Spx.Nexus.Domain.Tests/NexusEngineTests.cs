@@ -129,62 +129,128 @@ public class NexusMapTests
 public class NexusCombatSpecTests
 {
     [Fact]
-    public void P1_Interceptor_Hits_Bomber_At2Plus() =>
-        Assert.Equal(
-            2,
-            NexusCombatSpec.GetHitThreshold(NexusUnitType.Interceptor, 1, NexusUnitType.Bomber)
+    public void ExceptionThresholds_AreFullyCoveredAndShifted()
+    {
+        var expected = new Dictionary<
+            (NexusUnitType Attacker, CombatPhase? Phase, NexusUnitType Target),
+            (int RawThreshold, CombatPhase[] AppliedPhases, int ShiftedThreshold)
+        >
+        {
+            [(NexusUnitType.Interceptor, null, NexusUnitType.Bomber)] = (
+                2,
+                [CombatPhase.Screen, CombatPhase.Engage],
+                2
+            ),
+            [(NexusUnitType.Interceptor, null, NexusUnitType.Fighter)] = (
+                5,
+                [CombatPhase.Screen, CombatPhase.Engage],
+                4
+            ),
+            [(NexusUnitType.Bomber, null, NexusUnitType.Interceptor)] = (
+                6,
+                [CombatPhase.Screen, CombatPhase.Engage],
+                5
+            ),
+            [(NexusUnitType.Destroyer, CombatPhase.Engage, NexusUnitType.Interceptor)] = (
+                6,
+                [CombatPhase.Engage],
+                5
+            ),
+            [(NexusUnitType.Destroyer, CombatPhase.Engage, NexusUnitType.Fighter)] = (
+                6,
+                [CombatPhase.Engage],
+                5
+            ),
+            [(NexusUnitType.Destroyer, CombatPhase.Engage, NexusUnitType.Bomber)] = (
+                6,
+                [CombatPhase.Engage],
+                5
+            ),
+            [(NexusUnitType.Infantry, null, NexusUnitType.Armor)] = (5, [CombatPhase.Assault], 4),
+            [(NexusUnitType.Armor, null, NexusUnitType.Armor)] = (4, [CombatPhase.Assault], 3),
+        };
+
+        var field = typeof(NexusCombatSpec).GetField(
+            "Exceptions",
+            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static
+        );
+        Assert.NotNull(field);
+
+        var actual = Assert.IsType<
+            Dictionary<(NexusUnitType Attacker, CombatPhase? Phase, NexusUnitType Target), int>
+        >(field!.GetValue(null));
+
+        Assert.Equal(expected.Count, actual.Count);
+        Assert.All(
+            actual.Keys,
+            pair => Assert.True(expected.ContainsKey(pair), $"Unexpected exception: {pair}")
         );
 
-    [Fact]
-    public void P1_Fighter_Hits_AllStrike_At4Plus()
-    {
-        Assert.Equal(
-            4,
-            NexusCombatSpec.GetHitThreshold(NexusUnitType.Fighter, 1, NexusUnitType.Interceptor)
-        );
-        Assert.Equal(
-            4,
-            NexusCombatSpec.GetHitThreshold(NexusUnitType.Fighter, 1, NexusUnitType.Fighter)
-        );
-        Assert.Equal(
-            4,
-            NexusCombatSpec.GetHitThreshold(NexusUnitType.Fighter, 1, NexusUnitType.Bomber)
-        );
+        foreach (var (pair, expectation) in expected)
+        {
+            Assert.True(
+                actual.TryGetValue(pair, out var rawThreshold),
+                $"Missing exception: {pair}"
+            );
+            Assert.Equal(expectation.RawThreshold, rawThreshold);
+
+            foreach (var phase in expectation.AppliedPhases)
+                Assert.Equal(
+                    expectation.ShiftedThreshold,
+                    NexusCombatSpec.GetHitThreshold(pair.Attacker, phase, pair.Target)
+                );
+        }
     }
 
-    [Fact]
-    public void P2_Cruiser_Hits_Ships_At3Plus() =>
-        Assert.Equal(
-            3,
-            NexusCombatSpec.GetHitThreshold(NexusUnitType.Cruiser, 2, NexusUnitType.Frigate)
-        );
-
-    [Fact]
-    public void P4_Armor_Hits_Infantry_At3Plus() =>
-        Assert.Equal(
-            3,
-            NexusCombatSpec.GetHitThreshold(NexusUnitType.Armor, 4, NexusUnitType.Infantry)
-        );
+    [Theory]
+    [InlineData(NexusUnitType.Destroyer, CombatPhase.Screen, NexusUnitType.Interceptor, 4)]
+    [InlineData(NexusUnitType.Destroyer, CombatPhase.Engage, NexusUnitType.Interceptor, 5)]
+    [InlineData(NexusUnitType.Fighter, CombatPhase.Screen, NexusUnitType.Interceptor, 3)]
+    [InlineData(NexusUnitType.Fighter, CombatPhase.Screen, NexusUnitType.Fighter, 3)]
+    [InlineData(NexusUnitType.Fighter, CombatPhase.Screen, NexusUnitType.Bomber, 3)]
+    [InlineData(NexusUnitType.Cruiser, CombatPhase.Engage, NexusUnitType.Frigate, 3)]
+    [InlineData(NexusUnitType.Cruiser, CombatPhase.Bombard, NexusUnitType.Infantry, 4)]
+    [InlineData(NexusUnitType.Armor, CombatPhase.Assault, NexusUnitType.Infantry, 2)]
+    public void BaseThresholds_DecreaseByOneWithFloor(
+        NexusUnitType attacker,
+        CombatPhase phase,
+        NexusUnitType target,
+        int expectedThreshold
+    ) => Assert.Equal(expectedThreshold, NexusCombatSpec.GetHitThreshold(attacker, phase, target));
 
     [Fact]
     public void Planetary_NotTargetableInP1() =>
-        Assert.False(NexusCombatSpec.IsTargetable(NexusUnitType.Infantry, 1));
+        Assert.False(NexusCombatSpec.IsTargetable(NexusUnitType.Infantry, CombatPhase.Screen));
 
     [Fact]
     public void Destroyer_NotTargetableInP1() =>
-        Assert.False(NexusCombatSpec.IsTargetable(NexusUnitType.Destroyer, 1));
+        Assert.False(NexusCombatSpec.IsTargetable(NexusUnitType.Destroyer, CombatPhase.Screen));
 
     [Fact]
     public void Ships_NotTargetableInP4() =>
-        Assert.False(NexusCombatSpec.IsTargetable(NexusUnitType.Cruiser, 4));
+        Assert.False(NexusCombatSpec.IsTargetable(NexusUnitType.Cruiser, CombatPhase.Assault));
 
     [Fact]
     public void Infantry_CanAttackInP4() =>
-        Assert.True(NexusCombatSpec.CanAttack(NexusUnitType.Infantry, 4));
+        Assert.True(NexusCombatSpec.CanAttack(NexusUnitType.Infantry, CombatPhase.Assault));
+
+    [Fact]
+    public void Interceptor_CanAttackInP2() =>
+        Assert.True(NexusCombatSpec.CanAttack(NexusUnitType.Interceptor, CombatPhase.Engage));
+
+    [Fact]
+    public void Interceptor_CannotHitShipsInP2() =>
+        Assert.Null(
+            NexusCombatSpec.GetHitThreshold(
+                NexusUnitType.Interceptor,
+                CombatPhase.Engage,
+                NexusUnitType.Frigate
+            )
+        );
 
     [Fact]
     public void Carrier_CannotAttackInP1() =>
-        Assert.False(NexusCombatSpec.CanAttack(NexusUnitType.Carrier, 1));
+        Assert.False(NexusCombatSpec.CanAttack(NexusUnitType.Carrier, CombatPhase.Screen));
 }
 
 // ── Engine — Initialize ───────────────────────────────────────────────────────

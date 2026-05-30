@@ -82,17 +82,17 @@ Three categories of units: **Capital**, **Strike**, and **Planetary**.
 | Unit | Category | Cost | Hull | Silhouette | Base hit | Combat role |
 |---|---|---|---|---|---|---|
 | **Frigate** | Capital | 4 | 2 | 2 | 4+ | Anti-ship; weak against strike craft |
-| **Destroyer** | Capital | 5 | 2 | 2 | 3+ | Anti-strike and anti-ship; participates in Screen and Engage |
-| **Cruiser** | Capital | 6 | 3 | 3 | 3+ | Heavy anti-ship; capacity 2 (any mix of strike craft and planetary units) |
+| **Destroyer** | Capital | 5 | 2 | 2 | 4+ | Anti-strike and anti-ship; participates in Screen and Engage |
+| **Cruiser** | Capital | 6 | 2 | 3 | 3+ | Heavy anti-capital with bombard support; needs escort against strike craft; capacity 2 (any mix of strike craft and planetary units) |
 | **Carrier** | Capital | 8 | 4 | 4 | 6+ | Transport; capacity 8 (any mix of strike craft and planetary units) |
 
 ### Strike
 
 | Unit | Category | Cost | Hull | Silhouette | Base hit | Combat role |
 |---|---|---|---|---|---|---|
-| **Interceptor** | Strike | 2 | 1 | 1 | 4+ | Counters fighters and bombers; cannot attack ships |
+| **Interceptor** | Strike | 2 | 1 | 1 | 4+ | Counters fighters and bombers across Screen and Engage; cannot attack ships |
 | **Fighter** | Strike | 2 | 1 | 1 | 4+ | General-purpose; engages all enemy strike craft |
-| **Bomber** | Strike | 4 | 2 | 2 | 5+ | Attacks capital ships in Engage; bombards planetary units in Bombard |
+| **Bomber** | Strike | 4 | 1 | 2 | 5+ | Attacks capital ships in Engage; bombards planetary units in Bombard |
 
 ### Planetary
 
@@ -177,11 +177,11 @@ Each unit rolls 1d6 in each phase it participates in. A result at or above the u
 | Attacker | vs Strike | vs Capital | vs Planetary |
 |---|---|---|---|
 | **Fighter** | 4+ (P1) | 6+ (P2) | — |
-| **Interceptor** | 2+ vs bomber · 4+ vs fighter/interceptor (P1) | — | — |
+| **Interceptor** | 2+ vs bomber · 4+ vs fighter (P1, P2) · 3+ vs interceptor (P1, P2) | — | — |
 | **Bomber** | 5+ vs fighter/bomber · 6+ vs interceptor (P1) | 4+ (P2) | 4+ (P3) |
-| **Destroyer** | 3+ (P1) | 3+ vs strike · 5+ vs capital (P2) | — |
+| **Destroyer** | 4+ (P1) | 5+ vs strike · 4+ vs capital (P2) | — |
 | **Frigate** | 5+ (P2) | 4+ (P2) | — |
-| **Cruiser** | 6+ (P2) | 3+ (P2) | 6+ (P3) |
+| **Cruiser** | 6+ (P2) | 3+ (P2) | 4+ (P3) |
 | **Carrier** | 6+ (P2) | 6+ (P2) | — |
 | **Infantry** | — | — | 4+ vs inf · 5+ vs armor (P4) |
 | **Armor** | — | — | 3+ vs inf · 4+ vs armor (P4) |
@@ -195,7 +195,7 @@ Each unit rolls 1d6 in each phase it participates in. A result at or above the u
 
 | Unit | P1 Screen | P2 Engage | P3 Bombard | P4 Assault |
 |---|---|---|---|---|
-| **Interceptor** | A · T | T only | — | — |
+| **Interceptor** | A · T | A · T | — | — |
 | **Fighter** | A · T | A · T | — | — |
 | **Bomber** | A · T | A · T | A | — |
 | **Destroyer** | A only (not targetable) | A · T | — | — |
@@ -213,7 +213,7 @@ Interceptors, fighters, and bombers attack other strike craft. Destroyers attack
 
 ### Phase 2 — Engage
 
-All capital ships participate. Surviving strike craft remain present and are targetable, but only fighters, bombers, and destroyers can attack strike craft (interceptors cannot attack in Engage). Skipped if neither side has any capital ships.
+All capital ships participate. Surviving strike craft remain present and are targetable, and fighters, interceptors, bombers, and destroyers can attack strike craft. Interceptors still cannot attack capital ships in Engage. Skipped if neither side has any capital ships.
 
 ### Phase 3 — Bombard
 

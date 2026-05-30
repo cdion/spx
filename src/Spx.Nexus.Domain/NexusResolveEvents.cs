@@ -85,7 +85,7 @@ public sealed record NexusCombatBeganEvent(
 [Immutable]
 public sealed record NexusPhaseResultEvent(
     [property: Id(0)] HexCoord System,
-    [property: Id(1)] int Phase,
+    [property: Id(1)] CombatPhase Phase,
     [property: Id(2)] ImmutableArray<NexusCombatLoss> Losses,
     [property: Id(3)] ImmutableArray<NexusCombatAttackRoll> AttackRolls
 ) : NexusResolveEvent;

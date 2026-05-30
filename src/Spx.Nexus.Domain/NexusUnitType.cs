@@ -22,7 +22,8 @@ public enum NexusPhaseParticipation
 /// <summary>
 /// Full combat and targeting profile for a unit type.
 /// <para><see cref="Hull"/> is HP (hits to destroy). <see cref="AttacksIn"/> encodes which phases
-/// the unit rolls dice as an attacker. Targetability is derived from <see cref="Category"/>.</para>
+/// the unit rolls dice as an attacker, and <see cref="AttacksPerRound"/> is the number of attack
+/// rolls the unit makes in each eligible phase. Targetability is derived from <see cref="Category"/>.</para>
 /// <para>Threshold fields are the base d6 roll needed to hit a unit of that category.
 /// <c>null</c> means the unit cannot target that category at all. Per-unit exceptions
 /// are applied on top of these base values in <see cref="NexusCombatSpec"/>.</para>
@@ -31,6 +32,7 @@ public record NexusUnitProfile(
     NexusUnitCategory Category,
     int Hull,
     NexusPhaseParticipation AttacksIn,
+    int AttacksPerRound,
     int? StrikeThreshold,
     int? CapitalThreshold,
     int? PlanetaryThreshold
@@ -64,7 +66,8 @@ public static class NexusUnitTypeExtensions
             NexusUnitType.Interceptor => new(
                 NexusUnitCategory.Strike,
                 1,
-                NexusPhaseParticipation.Screen,
+                NexusPhaseParticipation.Screen | NexusPhaseParticipation.Engage,
+                1,
                 StrikeThreshold: 4,
                 CapitalThreshold: null,
                 PlanetaryThreshold: null
@@ -73,16 +76,18 @@ public static class NexusUnitTypeExtensions
                 NexusUnitCategory.Strike,
                 1,
                 NexusPhaseParticipation.Screen | NexusPhaseParticipation.Engage,
+                1,
                 StrikeThreshold: 4,
                 CapitalThreshold: 6,
                 PlanetaryThreshold: null
             ),
             NexusUnitType.Bomber => new(
                 NexusUnitCategory.Strike,
-                2,
+                1,
                 NexusPhaseParticipation.Screen
                     | NexusPhaseParticipation.Engage
                     | NexusPhaseParticipation.Bombard,
+                1,
                 StrikeThreshold: 5,
                 CapitalThreshold: 4,
                 PlanetaryThreshold: 4
@@ -91,6 +96,7 @@ public static class NexusUnitTypeExtensions
                 NexusUnitCategory.Capital,
                 2,
                 NexusPhaseParticipation.Engage,
+                1,
                 StrikeThreshold: 5,
                 CapitalThreshold: 4,
                 PlanetaryThreshold: null
@@ -99,22 +105,25 @@ public static class NexusUnitTypeExtensions
                 NexusUnitCategory.Capital,
                 2,
                 NexusPhaseParticipation.Screen | NexusPhaseParticipation.Engage,
-                StrikeThreshold: 3,
+                1,
+                StrikeThreshold: 5,
                 CapitalThreshold: 5,
                 PlanetaryThreshold: null
             ),
             NexusUnitType.Cruiser => new(
                 NexusUnitCategory.Capital,
-                3,
+                2,
                 NexusPhaseParticipation.Engage | NexusPhaseParticipation.Bombard,
+                2,
                 StrikeThreshold: 6,
-                CapitalThreshold: 3,
-                PlanetaryThreshold: 6
+                CapitalThreshold: 4,
+                PlanetaryThreshold: 5
             ),
             NexusUnitType.Carrier => new(
                 NexusUnitCategory.Capital,
                 4,
                 NexusPhaseParticipation.Engage,
+                1,
                 StrikeThreshold: 6,
                 CapitalThreshold: 6,
                 PlanetaryThreshold: null
@@ -123,6 +132,7 @@ public static class NexusUnitTypeExtensions
                 NexusUnitCategory.Planetary,
                 1,
                 NexusPhaseParticipation.Assault,
+                1,
                 StrikeThreshold: null,
                 CapitalThreshold: null,
                 PlanetaryThreshold: 4
@@ -131,6 +141,7 @@ public static class NexusUnitTypeExtensions
                 NexusUnitCategory.Planetary,
                 2,
                 NexusPhaseParticipation.Assault,
+                1,
                 StrikeThreshold: null,
                 CapitalThreshold: null,
                 PlanetaryThreshold: 3
@@ -144,6 +155,9 @@ public static class NexusUnitTypeExtensions
     /// <summary>Hit points — the number of hits required to destroy this unit.</summary>
     public static int Hull(this NexusUnitType t) => t.Profile().Hull;
 
+    /// <summary>The number of attack rolls this unit makes in each eligible combat phase.</summary>
+    public static int AttacksPerRound(this NexusUnitType t) => t.Profile().AttacksPerRound;
+
     /// <summary>Returns true if this is a Capital-category unit.</summary>
     public static bool IsCapital(this NexusUnitType t) => t.Category() == NexusUnitCategory.Capital;
 
@@ -156,7 +170,7 @@ public static class NexusUnitTypeExtensions
 
     /// <summary>
     /// Silhouette is the targeting weight used for random hit allocation.
-    /// Equal to Hull for now; the two values will diverge in a future tuning pass.
+    /// It usually tracks bulk, but it can diverge from Hull for balance reasons.
     /// </summary>
     public static int Silhouette(this NexusUnitType t) =>
         t switch

@@ -604,7 +604,7 @@ public static class NexusEngine
         var hadPlanetary2 = units2.Any(u => u.Type.IsPlanetary());
         var groundCombatOccurred = hadPlanetary1 && hadPlanetary2;
 
-        for (var phase = 1; phase <= 4; phase++)
+        foreach (var phase in Enum.GetValues<CombatPhase>())
         {
             var canAttack1 = units1.Any(u =>
                 !u.IsDestroyed && NexusCombatSpec.CanAttack(u.Type, phase)
@@ -691,7 +691,7 @@ public static class NexusEngine
         List<CombatUnit> targets,
         Guid attackerPlayerId,
         Guid targetPlayerId,
-        int phase,
+        CombatPhase phase,
         Random rng,
         List<(CombatUnit Target, Guid TargetPlayerId)> pendingHits,
         List<NexusCombatAttackRoll> attackRolls
@@ -713,26 +713,29 @@ public static class NexusEngine
             if (eligible.Count == 0)
                 continue;
 
-            var target = PickTargetByWeight(eligible, rng);
-            var threshold = NexusCombatSpec
-                .GetHitThreshold(attacker.Type, phase, target.Type)!
-                .Value;
-            var roll = rng.Next(1, 7); // 1–6 inclusive
-            var isHit = roll >= threshold;
+            for (var attackIndex = 0; attackIndex < attacker.Type.AttacksPerRound(); attackIndex++)
+            {
+                var target = PickTargetByWeight(eligible, rng);
+                var threshold = NexusCombatSpec
+                    .GetHitThreshold(attacker.Type, phase, target.Type)!
+                    .Value;
+                var roll = rng.Next(1, 7); // 1–6 inclusive
+                var isHit = roll >= threshold;
 
-            attackRolls.Add(
-                new NexusCombatAttackRoll(
-                    attackerPlayerId,
-                    attacker.Type,
-                    target.Type,
-                    roll,
-                    threshold,
-                    isHit
-                )
-            );
+                attackRolls.Add(
+                    new NexusCombatAttackRoll(
+                        attackerPlayerId,
+                        attacker.Type,
+                        target.Type,
+                        roll,
+                        threshold,
+                        isHit
+                    )
+                );
 
-            if (isHit)
-                pendingHits.Add((target, targetPlayerId));
+                if (isHit)
+                    pendingHits.Add((target, targetPlayerId));
+            }
         }
     }
 

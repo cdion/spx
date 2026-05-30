@@ -28,7 +28,7 @@ public static class NexusSessionEventFormatter
             NexusCombatBeganEvent e =>
                 $"Combat erupted at {SectorName(e.System, ownerPlayerId: null, viewingPlayerId)} between {PlayerName(e.Player1Id, playerNames)} and {PlayerName(e.Player2Id, playerNames)}",
             NexusPhaseResultEvent e =>
-                $"Combat phase resolved at {SectorName(e.System, ownerPlayerId: null, viewingPlayerId)}",
+                $"{e.Phase} phase resolved at {SectorName(e.System, ownerPlayerId: null, viewingPlayerId)}",
             NexusSystemClearedEvent e =>
                 $"{PlayerName(e.VictorId, playerNames)} cleared {SectorName(e.System, ownerPlayerId: null, viewingPlayerId)}",
             NexusIncomeEvent e =>
