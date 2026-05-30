@@ -2,6 +2,7 @@ bin/
 obj/
 .tools/
 coverage/
+artifacts/
 .env.prod
 
 .vs/

@@ -68,6 +68,9 @@ builder.Services.AddSingleton<NexusInvalidationHubBridge>();
 builder.Services.AddSingleton<IGameInvalidationHubBridge>(sp =>
     sp.GetRequiredService<NexusInvalidationHubBridge>()
 );
+builder.Services.AddSingleton<IGameInvalidationNotifier>(sp =>
+    sp.GetRequiredService<NexusInvalidationHubBridge>()
+);
 builder.Services.AddHostedService(sp => sp.GetRequiredService<NexusInvalidationHubBridge>());
 builder.Services.AddScoped<INexusHubAccessService, NexusHubAccessService>();
 builder.Services.AddCascadingAuthenticationState();
