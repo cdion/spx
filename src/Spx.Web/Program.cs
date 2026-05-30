@@ -2,6 +2,7 @@
 // inherent to the composition root pattern and not a refactoring candidate.
 #pragma warning disable CA1506
 using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.AspNetCore.Components.Server.Circuits;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
@@ -16,6 +17,7 @@ using Spx.Web.Components;
 using Spx.Web.Endpoints;
 using Spx.Web.Hubs;
 using Spx.Web.Options;
+using Spx.Web.Presence;
 
 var builder = WebApplication.CreateBuilder(args);
 var orleansClusterId = builder.Configuration["Orleans:ClusterId"] ?? "spx-local-cluster";
@@ -56,23 +58,13 @@ builder.Services.Configure<ResendOptions>(
 
 // Add services to the container.
 builder.Services.AddRazorComponents().AddInteractiveServerComponents();
-builder
-    .Services.AddSignalR()
-    .AddStackExchangeRedis(
-        builder.Configuration.GetConnectionString("orleans-redis")
-            ?? throw new InvalidOperationException(
-                "The orleans-redis connection string was not configured."
-            )
-    );
 builder.Services.AddSingleton<NexusInvalidationHubBridge>();
-builder.Services.AddSingleton<IGameInvalidationHubBridge>(sp =>
-    sp.GetRequiredService<NexusInvalidationHubBridge>()
-);
 builder.Services.AddSingleton<IGameInvalidationNotifier>(sp =>
     sp.GetRequiredService<NexusInvalidationHubBridge>()
 );
 builder.Services.AddHostedService(sp => sp.GetRequiredService<NexusInvalidationHubBridge>());
-builder.Services.AddScoped<INexusHubAccessService, NexusHubAccessService>();
+builder.Services.AddScoped<NexusPresenceLeaseCoordinator>();
+builder.Services.AddScoped<CircuitHandler, NexusPresenceCircuitHandler>();
 builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddAuthentication(IdentityConstants.ApplicationScheme).AddIdentityCookies();
@@ -152,7 +144,6 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.UseAntiforgery();
 
-app.MapHub<NexusHub>("/hubs/game").RequireAuthorization();
 app.MapAccountEndpoints();
 app.MapGameEndpoints();
 app.MapStaticAssets();

@@ -1,15 +1,9 @@
 using System.Collections.Concurrent;
-using Microsoft.AspNetCore.SignalR;
+using Microsoft.Extensions.Logging;
 using Orleans;
 using Spx.Contracts;
 
 namespace Spx.Web.Hubs;
-
-public interface IGameInvalidationHubBridge
-{
-    Task OnGameConnectedAsync(Guid gameId);
-    Task OnGameDisconnectedAsync(Guid gameId);
-}
 
 public interface IGameInvalidationSubscriber
 {
@@ -22,17 +16,12 @@ public interface IGameInvalidationNotifier
 {
     Task SubscribeAsync(Guid gameId, IGameInvalidationSubscriber subscriber);
     Task UnsubscribeAsync(Guid gameId, IGameInvalidationSubscriber subscriber);
-    Task NotifyPresenceChangedAsync(Guid gameId);
 }
 
-public sealed class NexusInvalidationHubBridge(
-    IHubContext<NexusHub> hubContext,
-    IClusterClient clusterClient
-)
-    : ILobbyInvalidationObserver,
-        IGameInvalidationHubBridge,
-        IGameInvalidationNotifier,
-        IHostedService
+public sealed partial class NexusInvalidationHubBridge(
+    IClusterClient clusterClient,
+    ILogger<NexusInvalidationHubBridge> logger
+) : ILobbyInvalidationObserver, IGameInvalidationNotifier, IHostedService
 {
     private readonly ConcurrentDictionary<Guid, int> listenerCounts = new();
     private readonly ConcurrentDictionary<
@@ -48,16 +37,6 @@ public sealed class NexusInvalidationHubBridge(
     }
 
     public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
-
-    public async Task OnGameConnectedAsync(Guid gameId)
-    {
-        await AddListenerAsync(gameId);
-    }
-
-    public async Task OnGameDisconnectedAsync(Guid gameId)
-    {
-        await RemoveListenerAsync(gameId);
-    }
 
     public async Task SubscribeAsync(Guid gameId, IGameInvalidationSubscriber subscriber)
     {
@@ -103,17 +82,16 @@ public sealed class NexusInvalidationHubBridge(
         await RemoveListenerAsync(gameId);
     }
 
-    public Task NotifyPresenceChangedAsync(Guid gameId) => NotifyPresenceChangedCoreAsync(gameId);
-
     public void OnLobbyInvalidated(Guid gameId) => _ = NotifyGameStateChangedAsync(gameId);
 
     public void OnSessionInvalidated(Guid gameId) => _ = NotifyGameStateChangedAsync(gameId);
 
     public void OnMessagesInvalidated(Guid gameId) => _ = NotifyMessagesChangedAsync(gameId);
 
+    public void OnPresenceInvalidated(Guid gameId) => _ = NotifyPresenceChangedCoreAsync(gameId);
+
     private async Task NotifyGameStateChangedAsync(Guid gameId)
     {
-        await hubContext.Clients.Group($"game:{gameId}").SendAsync("GameStateChanged", gameId);
         await NotifySubscribersAsync(
             gameId,
             static (subscriber, id) => subscriber.OnGameStateChangedAsync(id)
@@ -122,7 +100,6 @@ public sealed class NexusInvalidationHubBridge(
 
     private async Task NotifyMessagesChangedAsync(Guid gameId)
     {
-        await hubContext.Clients.Group($"game:{gameId}").SendAsync("MessagesChanged", gameId);
         await NotifySubscribersAsync(
             gameId,
             static (subscriber, id) => subscriber.OnMessagesChangedAsync(id)
@@ -131,7 +108,6 @@ public sealed class NexusInvalidationHubBridge(
 
     private async Task NotifyPresenceChangedCoreAsync(Guid gameId)
     {
-        await hubContext.Clients.Group($"game:{gameId}").SendAsync("PresenceChanged", gameId);
         await NotifySubscribersAsync(
             gameId,
             static (subscriber, id) => subscriber.OnPresenceChangedAsync(id)
@@ -149,8 +125,37 @@ public sealed class NexusInvalidationHubBridge(
         }
 
         return Task.WhenAll(
-            gameSubscribers.Keys.Select(subscriber => notifyAsync(subscriber, gameId))
+            gameSubscribers.Keys.Select(subscriber =>
+                NotifySubscriberSafelyAsync(gameId, subscriber, notifyAsync)
+            )
         );
+    }
+
+    private async Task NotifySubscriberSafelyAsync(
+        Guid gameId,
+        IGameInvalidationSubscriber subscriber,
+        Func<IGameInvalidationSubscriber, Guid, Task> notifyAsync
+    )
+    {
+        try
+        {
+            await notifyAsync(subscriber, gameId);
+        }
+        catch (Exception exception)
+        {
+            LogInvalidationCallbackFailed(
+                logger,
+                exception,
+                gameId,
+                subscriber.GetType().FullName ?? subscriber.GetType().Name
+            );
+
+            try
+            {
+                await UnsubscribeAsync(gameId, subscriber);
+            }
+            catch { }
+        }
     }
 
     private async Task AddListenerAsync(Guid gameId)
@@ -178,4 +183,15 @@ public sealed class NexusInvalidationHubBridge(
 
     private ILobbyInvalidationObserver GetObserverRef() =>
         observerRef ??= clusterClient.CreateObjectReference<ILobbyInvalidationObserver>(this);
+
+    [LoggerMessage(
+        Level = LogLevel.Error,
+        Message = "Invalidation callback failed for game {GameId} on subscriber {SubscriberType}. Removing subscriber."
+    )]
+    private static partial void LogInvalidationCallbackFailed(
+        ILogger logger,
+        Exception exception,
+        Guid gameId,
+        string subscriberType
+    );
 }

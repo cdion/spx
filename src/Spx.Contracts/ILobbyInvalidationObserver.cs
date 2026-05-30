@@ -9,4 +9,6 @@ public interface ILobbyInvalidationObserver : IGrainObserver
     void OnSessionInvalidated(Guid gameId);
 
     void OnMessagesInvalidated(Guid gameId);
+
+    void OnPresenceInvalidated(Guid gameId);
 }

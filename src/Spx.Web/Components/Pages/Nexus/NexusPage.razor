@@ -7,6 +7,7 @@
 @using Spx.Contracts
 @using Spx.Data
 @using Spx.Web.Hubs
+@using Spx.Web.Presence
 @using System.Security.Claims
 @inject IGetNexusPageHandler GetNexusPageHandler
 @inject IGetGamePresenceHandler GetGamePresenceHandler
@@ -18,11 +19,12 @@
 @inject IEditMessageHandler EditMessageHandler
 @inject IDeleteMessageHandler DeleteMessageHandler
 @inject ISubmitOrdersHandler SubmitOrdersHandler
-@inject IClusterClient ClusterClient
 @inject IGameInvalidationNotifier InvalidationNotifier
+@inject NexusPresenceLeaseCoordinator PresenceLeaseCoordinator
 @inject ILogger<NexusPage> Logger
 @inject ILogger<NexusPageActionCoordinator> ActionCoordinatorLogger
 @inject ILogger<NexusPageDataCoordinator> DataCoordinatorLogger
+@inject ILogger<NexusPagePresenceCoordinator> PresenceCoordinatorLogger
 @inject NavigationManager Navigation
 
 <PageTitle>Game</PageTitle>
@@ -82,15 +84,14 @@ else
 
     private readonly NexusPageDataState data = new();
     private readonly NexusPageActionState actions = new();
+    private readonly NexusPagePresenceState presenceState = new();
     private readonly NexusTimelineState timeline = new();
 
     private string currentUserId = string.Empty;
     private Guid currentPlayerId;
     private NexusPageActionCoordinator? actionCoordinator;
     private NexusPageDataCoordinator? dataCoordinator;
-    private Guid connectedGameId;
-    private Guid connectedPresencePlayerId;
-    private bool isPresenceRegistered;
+    private NexusPagePresenceCoordinator? presenceCoordinator;
     private LobbySessionPanel? sessionPanel;
 
     private GameLobbyView? lobby => data.Lobby;
@@ -164,6 +165,13 @@ else
             GetGamePresenceHandler,
             DataCoordinatorLogger,
             data);
+        presenceCoordinator = new NexusPagePresenceCoordinator(
+            GetGamePresenceHandler,
+            InvalidationNotifier,
+            PresenceLeaseCoordinator,
+            PresenceCoordinatorLogger,
+            data,
+            presenceState);
     }
 
     protected override async Task OnParametersSetAsync()
@@ -177,29 +185,28 @@ else
 
         if (lobby is null)
         {
-            await DisconnectFromGameAsync();
+            await presenceCoordinator!.DisconnectAsync(this);
             ResetTimelineState();
             return;
         }
 
-        var isNewGame = connectedGameId != lobby.GameId;
+        var isNewGame = !presenceCoordinator!.IsConnectedTo(lobby.GameId);
         if (isNewGame)
         {
-            await DisconnectFromGameAsync();
             ResetTimelineState();
             await LoadInitialMessagesAsync();
-            await ConnectToGameAsync(lobby.GameId);
+            await presenceCoordinator.ChangeGameAsync(lobby.GameId, this);
             timeline.RequestScrollToBottom();
             return;
         }
 
-        if (connectedGameId == Guid.Empty)
+        if (!presenceCoordinator.HasConnectedGame)
         {
-            await ConnectToGameAsync(lobby.GameId);
+            await presenceCoordinator.ConnectAsync(lobby.GameId, this);
         }
         else
         {
-            await SyncPresenceAsync();
+            await presenceCoordinator.SyncAsync();
         }
 
         if (timeline.Items.Count == 0)
@@ -226,77 +233,10 @@ else
     private Task LoadPageAsync()
         => dataCoordinator!.LoadPageAsync(GameId, currentUserId);
 
-    private async Task LoadPresenceAsync()
-    {
-        if (lobby is null)
-        {
-            data.ClearPresence();
-            return;
-        }
-
-        await dataCoordinator!.ReloadPresenceAsync(lobby.GameId);
-    }
-
-    private async Task ConnectToGameAsync(Guid gameId)
-    {
-        await InvalidationNotifier.SubscribeAsync(gameId, this);
-        connectedGameId = gameId;
-        await SyncPresenceAsync();
-    }
-
-    private async Task DisconnectFromGameAsync()
-    {
-        if (connectedGameId == Guid.Empty)
-        {
-            return;
-        }
-
-        await InvalidationNotifier.UnsubscribeAsync(connectedGameId, this);
-
-        if (isPresenceRegistered)
-        {
-            await ClusterClient.GetGrain<IGamePresenceGrain>(connectedGameId).SetOfflineAsync(connectedPresencePlayerId);
-            await InvalidationNotifier.NotifyPresenceChangedAsync(connectedGameId);
-        }
-
-        connectedGameId = Guid.Empty;
-        connectedPresencePlayerId = Guid.Empty;
-        isPresenceRegistered = false;
-    }
-
-    private async Task SyncPresenceAsync()
-    {
-        if (lobby is null || connectedGameId == Guid.Empty)
-        {
-            return;
-        }
-
-        var shouldBeOnline = lobby.IsCurrentUserActive;
-        var nextPlayerId = lobby.CurrentPlayerId;
-
-        if (isPresenceRegistered && (!shouldBeOnline || connectedPresencePlayerId != nextPlayerId))
-        {
-            await ClusterClient.GetGrain<IGamePresenceGrain>(connectedGameId).SetOfflineAsync(connectedPresencePlayerId);
-            isPresenceRegistered = false;
-            connectedPresencePlayerId = Guid.Empty;
-            await InvalidationNotifier.NotifyPresenceChangedAsync(connectedGameId);
-        }
-
-        if (!shouldBeOnline || isPresenceRegistered)
-        {
-            return;
-        }
-
-        await ClusterClient.GetGrain<IGamePresenceGrain>(connectedGameId).SetOnlineAsync(nextPlayerId);
-        connectedPresencePlayerId = nextPlayerId;
-        isPresenceRegistered = true;
-        await LoadPresenceAsync();
-        await InvalidationNotifier.NotifyPresenceChangedAsync(connectedGameId);
-    }
     public Task OnGameStateChangedAsync(Guid gameId)
         => InvokeAsync(async () =>
         {
-            if (gameId != connectedGameId)
+            if (!presenceCoordinator!.IsConnectedTo(gameId))
             {
                 return;
             }
@@ -304,13 +244,13 @@ else
             await LoadPageAsync();
             if (lobby is null)
             {
-                await DisconnectFromGameAsync();
+                await presenceCoordinator.DisconnectAsync(this);
                 ResetTimelineState();
             }
             else
             {
                 currentPlayerId = lobby.CurrentPlayerId;
-                await SyncPresenceAsync();
+                await presenceCoordinator.SyncAsync();
             }
 
             StateHasChanged();
@@ -319,7 +259,7 @@ else
     public Task OnMessagesChangedAsync(Guid gameId)
         => InvokeAsync(async () =>
         {
-            if (gameId != connectedGameId)
+            if (!presenceCoordinator!.IsConnectedTo(gameId))
             {
                 return;
             }
@@ -331,12 +271,12 @@ else
     public Task OnPresenceChangedAsync(Guid gameId)
         => InvokeAsync(async () =>
         {
-            if (gameId != connectedGameId)
+            if (!presenceCoordinator!.IsConnectedTo(gameId))
             {
                 return;
             }
 
-            await LoadPresenceAsync();
+            await presenceCoordinator.LoadPresenceAsync();
             StateHasChanged();
         });
 
@@ -673,7 +613,7 @@ currentPlayerId);
 
     public async ValueTask DisposeAsync()
     {
-        await DisconnectFromGameAsync();
+        await presenceCoordinator!.DisposeAsync(this);
     }
 
     private void ResetTimelineState()

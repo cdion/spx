@@ -5,9 +5,9 @@ namespace Spx.Contracts;
 
 public interface IGamePresenceGrain : IGrainWithGuidKey
 {
-    Task SetOnlineAsync(Guid playerId);
+    Task RenewLeaseAsync(Guid playerId, Guid leaseId, TimeSpan ttl);
 
-    Task SetOfflineAsync(Guid playerId);
+    Task RevokeLeaseAsync(Guid leaseId);
 
     Task<GamePresenceSnapshot> GetSnapshotAsync();
 }

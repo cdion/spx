@@ -13,4 +13,6 @@ public interface ILobbyInvalidationGrain : IGrainWithGuidKey
     Task PublishSessionInvalidated();
 
     Task PublishMessagesInvalidated();
+
+    Task PublishPresenceInvalidated();
 }
