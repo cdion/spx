@@ -112,11 +112,11 @@ publish: image-build image-push
 # Promote the current build to the stable production tags
 promote-prod:
     @echo "==> Promoting {{web_image}} to {{deploy_web_image}}..."
-    {{container_cli}} pull {{web_image}}
+    @{{container_cli}} image exists {{web_image}} || {{container_cli}} pull {{web_image}}
     {{container_cli}} tag {{web_image}} {{deploy_web_image}}
     {{container_cli}} push {{deploy_web_image}}
     @echo "==> Promoting {{silo_image}} to {{deploy_silo_image}}..."
-    {{container_cli}} pull {{silo_image}}
+    @{{container_cli}} image exists {{silo_image}} || {{container_cli}} pull {{silo_image}}
     {{container_cli}} tag {{silo_image}} {{deploy_silo_image}}
     {{container_cli}} push {{deploy_silo_image}}
 
@@ -210,13 +210,6 @@ _enable-services:
 # ===========================================================================
 # Diagnostics
 # ===========================================================================
-
-# Stop and remove any old nex containers that conflict with spx names/ports
-retire-nex:
-    @echo "==> Stopping old nex containers on {{vm}}..."
-    ssh {{vm}} "sudo systemctl stop caddy postgres nex 2>/dev/null; \
-        sudo {{container_cli}} rm -f postgres caddy nex 2>/dev/null; \
-        echo done"
 
 # Follow logs for a service (e.g.: just logs spx-web)
 logs service:
