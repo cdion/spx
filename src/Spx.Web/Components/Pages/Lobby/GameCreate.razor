@@ -1,78 +1,45 @@
 @page "/games/create"
 @attribute [Authorize]
-@using System.Security.Claims
-@inject ICreateGameHandler CreateGameHandler
-@inject ILogger<GameCreate> Logger
-@inject NavigationManager Navigation
 
 <PageTitle>Create Game</PageTitle>
 
 <FormPage Eyebrow="Lobby" Title="Create a game"
           Description="Creating a game reserves an invite code and seats you immediately as player one.">
-    @if (!string.IsNullOrWhiteSpace(errorMessage))
+    @if (!string.IsNullOrWhiteSpace(Error))
     {
-        <AlertBanner>@errorMessage</AlertBanner>
+        <AlertBanner>@Error</AlertBanner>
     }
 
-    <FormField For="game-name" Label="Game name">
-        <input id="game-name" class="ui-input" maxlength="100" placeholder="Weekend match" @bind="gameName" />
-    </FormField>
+    <form method="post" action="/games/create" class="ui-flow">
+        <AntiforgeryToken />
 
-    <FormField For="player-name" Label="Player name">
-        <input id="player-name" class="ui-input" maxlength="40" placeholder="Captain Red" @bind="playerName" />
-    </FormField>
+        <FormField For="game-name" Label="Game name">
+            <input id="game-name" name="gameName" class="ui-input" maxlength="100" placeholder="Weekend match" value="@GameName" required />
+        </FormField>
 
-    <div class="ui-actions">
-        <button class="ui-button-primary" @onclick="CreateGameAsync" disabled="@isSubmitting">
-            @(isSubmitting ? "Creating game..." : "Create and join")
-        </button>
-        <a class="ui-button-secondary" href="/games">
-            Cancel
-        </a>
-    </div>
+        <FormField For="player-name" Label="Player name">
+            <input id="player-name" name="playerName" class="ui-input" maxlength="40" placeholder="Captain Red" value="@PlayerName" required />
+        </FormField>
+
+        <div class="ui-actions">
+            <button class="ui-button-primary" type="submit">
+                Create and join
+            </button>
+            <a class="ui-button-secondary" href="/games">
+                Cancel
+            </a>
+        </div>
+    </form>
 </FormPage>
 
 @code {
-    [CascadingParameter]
-    private Task<AuthenticationState> AuthenticationStateTask { get; set; } = default!;
+    [SupplyParameterFromQuery(Name = "error")]
+    public string? Error { get; set; }
 
-    private string gameName = string.Empty;
-    private string playerName = string.Empty;
-    private string? errorMessage;
-    private bool isSubmitting;
+    [SupplyParameterFromQuery(Name = "gameName")]
+    public string? GameName { get; set; }
 
-    private async Task CreateGameAsync()
-    {
-        if (isSubmitting)
-        {
-            return;
-        }
-
-        isSubmitting = true;
-        errorMessage = null;
-
-        try
-        {
-            var userId = await UiHelpers.GetUserIdAsync(AuthenticationStateTask);
-            var result = await CreateGameHandler.HandleAsync(userId, new CreateGameRequest(gameName, playerName));
-
-            if (result is not GameCommandSucceeded succeeded)
-            {
-                errorMessage = ((GameCommandFailed)result).ErrorMessage;
-                return;
-            }
-
-            Navigation.NavigateTo($"/games/{succeeded.GameId}");
-        }
-        catch (Exception exception)
-        {
-            Logger.LogError(exception, "Failed to create a game for the current user.");
-            errorMessage = "We couldn't create a game right now. Please try again.";
-        }
-        finally
-        {
-            isSubmitting = false;
-        }
-    }
+    [SupplyParameterFromQuery(Name = "playerName")]
+    public string? PlayerName { get; set; }
 
 }

@@ -1,79 +1,46 @@
 @page "/games/join"
 @attribute [Authorize]
-@using System.Security.Claims
-@inject IJoinGameHandler JoinGameHandler
-@inject ILogger<GameJoin> Logger
-@inject NavigationManager Navigation
 
 <PageTitle>Join Game</PageTitle>
 
 <FormPage Eyebrow="Lobby"
           Title="Join a game"
           Description="Enter the invite code and the player name you want to use for this game.">
-    @if (!string.IsNullOrWhiteSpace(errorMessage))
+    @if (!string.IsNullOrWhiteSpace(Error))
     {
-        <AlertBanner>@errorMessage</AlertBanner>
+        <AlertBanner>@Error</AlertBanner>
     }
 
-    <FormField For="invite-code" Label="Invite code">
-        <input id="invite-code" class="ui-input ui-input-code" maxlength="6" placeholder="ABC123" @bind="inviteCode" />
-    </FormField>
+    <form method="post" action="/games/join" class="ui-flow">
+        <AntiforgeryToken />
 
-    <FormField For="join-player-name" Label="Player name">
-        <input id="join-player-name" class="ui-input" maxlength="40" placeholder="Captain Blue" @bind="playerName" />
-    </FormField>
+        <FormField For="invite-code" Label="Invite code">
+            <input id="invite-code" name="inviteCode" class="ui-input ui-input-code" maxlength="6" placeholder="ABC123" value="@InviteCode" required />
+        </FormField>
 
-    <div class="ui-actions">
-        <button class="ui-button-primary" @onclick="JoinGameAsync" disabled="@isSubmitting">
-            @(isSubmitting ? "Joining game..." : "Join game")
-        </button>
-        <a class="ui-button-secondary" href="/games">
-            Cancel
-        </a>
-    </div>
+        <FormField For="join-player-name" Label="Player name">
+            <input id="join-player-name" name="playerName" class="ui-input" maxlength="40" placeholder="Captain Blue" value="@PlayerName" required />
+        </FormField>
+
+        <div class="ui-actions">
+            <button class="ui-button-primary" type="submit">
+                Join game
+            </button>
+            <a class="ui-button-secondary" href="/games">
+                Cancel
+            </a>
+        </div>
+    </form>
 </FormPage>
 
 @code {
-    [CascadingParameter]
-    private Task<AuthenticationState> AuthenticationStateTask { get; set; } = default!;
+    [SupplyParameterFromQuery(Name = "error")]
+    public string? Error { get; set; }
 
-    private string inviteCode = string.Empty;
-    private string playerName = string.Empty;
-    private string? errorMessage;
-    private bool isSubmitting;
+    [SupplyParameterFromQuery(Name = "inviteCode")]
+    public string? InviteCode { get; set; }
 
-    private async Task JoinGameAsync()
-    {
-        if (isSubmitting)
-        {
-            return;
-        }
-
-        isSubmitting = true;
-        errorMessage = null;
-
-        try
-        {
-            var userId = await UiHelpers.GetUserIdAsync(AuthenticationStateTask);
-            var result = await JoinGameHandler.HandleAsync(userId, new JoinGameRequest(inviteCode, playerName));
-
-            if (result is not GameCommandSucceeded succeeded)
-            {
-                errorMessage = ((GameCommandFailed)result).ErrorMessage;
-                return;
-            }
-
-            Navigation.NavigateTo($"/games/{succeeded.GameId}");
-        }
-        catch (Exception exception)
-        {
-            Logger.LogError(exception, "Failed to join a game for the current user.");
-            errorMessage = "We couldn't join that game right now. Please try again.";
-        }
-        finally
-        {
-            isSubmitting = false;
-        }
-    }
+    [SupplyParameterFromQuery(Name = "playerName")]
+    public string? PlayerName { get; set; }
 
 }

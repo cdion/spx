@@ -151,6 +151,7 @@ app.UseAntiforgery();
 
 app.MapHub<NexusHub>("/hubs/game").RequireAuthorization();
 app.MapAccountEndpoints();
+app.MapGameEndpoints();
 app.MapStaticAssets();
 app.MapRazorComponents<App>().AddInteractiveServerRenderMode();
 app.MapDefaultEndpoints();
