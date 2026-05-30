@@ -6,7 +6,7 @@
 <div class="ui-panel-card-tight">
     @if (IsLoadingOlderMessages)
     {
-        <div class="mb-3 flex justify-end px-2 text-xs uppercase tracking-[0.2em] text-slate-400">
+        <div class="mb-3 flex justify-end px-2 ui-type-overline">
             <span>Loading older...</span>
         </div>
     }
@@ -38,7 +38,7 @@
             <div class="space-y-3">
                 @if (HasOlderMessages)
                 {
-                    <div class="px-2 py-1 text-center text-xs uppercase tracking-[0.2em] text-slate-500">
+                    <div class="px-2 py-1 text-center ui-type-overline text-slate-500">
                         Scroll up to load older history
                     </div>
                 }
@@ -72,8 +72,7 @@
 
                                 <p class="text-sm leading-6 text-slate-200 whitespace-pre-wrap">@GetTimelineBody(item)</p>
 
-                                <div
-                                    class="flex flex-wrap items-center gap-3 text-xs uppercase tracking-[0.2em] text-slate-500">
+                                <div class="flex flex-wrap items-center gap-3 ui-type-overline text-slate-500">
                                     <span>@UiFormatHelpers.FormatDateTime(GetTimelineCreatedAt(item))</span>
                                     @if (IsEdited(item))
                                     {

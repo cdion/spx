@@ -1,0 +1,15 @@
+<div class="ui-field">
+    <label class="ui-label" for="@For">@Label</label>
+    @ChildContent
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public string For { get; set; } = string.Empty;
+
+    [Parameter, EditorRequired]
+    public string Label { get; set; } = string.Empty;
+
+    [Parameter, EditorRequired]
+    public RenderFragment ChildContent { get; set; } = default!;
+}

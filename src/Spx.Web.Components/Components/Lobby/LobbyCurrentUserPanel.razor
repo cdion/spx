@@ -1,9 +1,9 @@
 <aside class="ui-surface-form-tight">
-    <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+    <div class="ui-lobby-stack-split">
         <div class="space-y-3 text-sm leading-6 text-slate-300">
             <p>@GetPlayerPanelMessage()</p>
 
-            <div class="flex flex-wrap gap-4 text-xs uppercase tracking-[0.2em] text-slate-500">
+            <div class="flex flex-wrap gap-4 ui-type-overline text-slate-500">
                 <span>Created @UiFormatHelpers.FormatDateTime(Lobby.CreatedAtUtc)</span>
                 @if (Lobby.EndedAtUtc is not null)
                 {

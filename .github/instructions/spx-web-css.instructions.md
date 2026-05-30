@@ -2,16 +2,20 @@
 description: 'Use when writing or editing Blazor components, adding CSS classes, styling game UI, or deciding between named utilities and inline Tailwind classes in Spx.Web.'
 name: 'Spx Web CSS and Tailwind'
 applyTo:
-  - 'src/Spx.Web/Styles/**'
   - 'src/Spx.Web/Components/**/*.razor'
   - 'src/Spx.Web/Components/**/*.css'
   - 'src/Spx.Web/Components/**/*.cs'
+  - 'src/Spx.Web.Components/Styles/**'
+  - 'src/Spx.Web.Components/Components/**/*.razor'
+  - 'src/Spx.Web.Components/Components/**/*.css'
+  - 'src/Spx.Web.Components/Components/**/*.cs'
+  - 'src/Spx.Web.Playground/Components/**/*.razor'
 ---
 
 # Spx Web CSS and Tailwind
 
 - Tailwind v4, CSS-first config. No `tailwind.config.*` file exists or should be created.
-- Source: `src/Spx.Web/Styles/app.css`. Compiled output: `src/Spx.Web/wwwroot/app.css`. Never edit the compiled output directly.
+- Source: `src/Spx.Web.Components/Styles/app.css`. Compiled output: `src/Spx.Web.Components/wwwroot/app.css`. Never edit the compiled output directly.
 - After editing `app.css`, run the `tailwind: build css` VS Code task to recompile.
 - Extend Tailwind via `@theme` in `app.css`. Do not use `tailwind.config.*`.
 

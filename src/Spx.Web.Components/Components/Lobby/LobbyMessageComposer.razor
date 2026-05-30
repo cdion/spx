@@ -25,19 +25,12 @@
                           placeholder="Write something for the game timeline..." value="@Text" @oninput="HandleTextInput"
                           @ref="composerTextArea"></textarea>
                 <p class="text-sm leading-6 text-slate-300">
-                    @if (IsCurrentUserActive)
-                    {
-                        <span>Enter sends. Shift+Enter adds a new line. Choose a player to send privately.</span>
-                    }
-                    else
-                    {
-                        <span>Only active players can send new messages.</span>
-                    }
+                    <span>Enter sends. Shift+Enter adds a new line. Choose a player to send privately.</span>
                 </p>
             </div>
 
-            <div class="flex flex-wrap items-center justify-between gap-3">
-                <p class="text-xs uppercase tracking-[0.2em] text-slate-500">
+            <div class="ui-lobby-row">
+                <p class="ui-type-overline text-slate-500">
                     @Text.Length / 1024 characters
                 </p>
                 <button class="ui-button-primary" @onclick="() => OnSend.InvokeAsync()" disabled="@IsSendingMessage">

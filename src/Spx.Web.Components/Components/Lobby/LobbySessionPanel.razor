@@ -2,16 +2,18 @@
 @implements ILobbyMessagesViewport
 
 @* Routes between the pre-game waiting state and the active gameplay panel. *@
-<section class="ui-surface-form-tight space-y-5">
-    @if (HasMessagesShell)
-    {
-        <div class="space-y-4">
+@if (HasMessagesShell)
+{
+    <SurfacePanelShell SurfaceClass="ui-surface-form-tight space-y-5" HeaderClass="space-y-4" BodyClass="">
+        <HeaderContent>
             <Tabs TItem="LobbySessionTab" Items="VisibleTabs" SelectedItem="@_selectedTab" ItemIdSelector="GetTabId"
                   PanelIdSelector="GetPanelId"
-                  ActiveItemClass="rounded-md border border-white/15 bg-white/10 px-3.5 py-2 text-base font-semibold text-white"
-                  InactiveItemClass="rounded-md border border-white/10 px-3.5 py-2 text-base text-slate-400 transition-colors hover:text-slate-200"
+                  ActiveItemClass="ui-tab-button-lg-active"
+                  InactiveItemClass="ui-tab-button-lg"
                   ItemLabelSelector="GetTabLabel" OnSelected="SetTabAsync" AriaLabel="Session view" />
+        </HeaderContent>
 
+        <ChildContent>
             <div id="@ActivePanelId" role="tabpanel" aria-labelledby="@ActiveTabId" class="space-y-4">
                 @if (_selectedTab == LobbySessionTab.Timeline)
                 {
@@ -56,27 +58,35 @@
                                         GameplayError="@ResolvedSessionState.GameplayError" OnSubmitOrders="OnSubmitOrders" />
                 }
             </div>
-        </div>
-    }
-    else if (Session is null)
-    {
-        <p class="text-sm leading-6 text-slate-300">@GetDescription()</p>
+        </ChildContent>
+    </SurfacePanelShell>
+}
+else if (Session is null)
+{
+    <SurfacePanelShell SurfaceClass="ui-surface-form-tight space-y-5" BodyClass="space-y-4">
+        <ChildContent>
+            <p class="text-sm leading-6 text-slate-300">@GetDescription()</p>
 
-        @if (!string.IsNullOrWhiteSpace(GameplayError))
-        {
-            <AlertBanner>@GameplayError</AlertBanner>
-        }
+            @if (!string.IsNullOrWhiteSpace(GameplayError))
+            {
+                <AlertBanner>@GameplayError</AlertBanner>
+            }
 
-        <div class="ui-empty-state">
-            @GetEmptyStateMessage()
-        </div>
-    }
-    else
-    {
+            <div class="ui-empty-state">
+                @GetEmptyStateMessage()
+            </div>
+        </ChildContent>
+    </SurfacePanelShell>
+}
+else
+{
+    <SurfacePanelShell SurfaceClass="ui-surface-form-tight space-y-5" BodyClass="">
+        <ChildContent>
         <NexusGameplayPanel Session="Session" Lobby="Lobby" IsSubmittingAction="IsSubmittingAction"
                             GameplayError="@GameplayError" OnSubmitOrders="OnSubmitOrders" />
-    }
-</section>
+        </ChildContent>
+    </SurfacePanelShell>
+}
 
 @code {
     [Parameter]
@@ -157,11 +167,6 @@
             ? requestedTab
             : GetDefaultTab();
     }
-
-    private string GetHeadline() =>
-        !ResolvedSessionState.Lobby.IsCurrentUserActive ? "Archived seat" :
-        ResolvedSessionState.Lobby.Players.Count < ResolvedSessionState.Lobby.MaxPlayers ? "Waiting for an opponent" :
-        "Session syncing";
 
     private string GetTimelineDescription() =>
         ResolvedSessionState.Session is null

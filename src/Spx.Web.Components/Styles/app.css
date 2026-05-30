@@ -29,6 +29,47 @@
 }
 
 @layer components {
+    .ui-app-shell {
+        @apply min-h-screen bg-[radial-gradient(circle_at_top,#0f172a_0%,#020617_60%)] text-slate-100;
+    }
+
+    .ui-app-header {
+        @apply sticky top-0 z-20 w-full border-b border-white/10 bg-slate-900/80 backdrop-blur;
+    }
+
+    .ui-app-header-inner {
+        @apply mx-auto w-full max-w-7xl px-5 py-4 lg:px-6;
+    }
+
+    .ui-app-main {
+        @apply mx-auto flex w-full max-w-7xl flex-1;
+    }
+
+    .ui-app-content {
+        @apply w-full px-5 py-6 sm:px-6 lg:px-10 lg:py-8;
+    }
+
+    .ui-app-nav {
+        @apply flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between;
+    }
+
+    .ui-app-brand {
+        @apply flex flex-col gap-1;
+    }
+
+    .ui-app-brand-link {
+        @apply text-lg font-semibold uppercase text-white;
+        letter-spacing: 0.2em;
+    }
+
+    .ui-app-version {
+        @apply text-xs font-medium uppercase tracking-widest text-slate-400;
+    }
+
+    .ui-app-nav-links {
+        @apply flex flex-wrap items-center gap-3 lg:justify-end;
+    }
+
     .ui-page {
         @apply mx-auto flex max-w-2xl flex-col gap-8;
     }
@@ -51,10 +92,6 @@
 
     .ui-page-copy {
         @apply max-w-2xl text-base leading-7 text-slate-300 sm:text-lg;
-    }
-
-    .ui-surface {
-        @apply rounded-3xl border border-white/10 bg-white/5 shadow-2xl shadow-slate-950/40 backdrop-blur;
     }
 
     .ui-surface-form {
@@ -85,6 +122,26 @@
         @apply flex items-center justify-between rounded-2xl border border-white/10 bg-slate-950/40 px-4 py-4;
     }
 
+    .ui-lobby-row {
+        @apply flex flex-wrap items-center justify-between gap-3;
+    }
+
+    .ui-lobby-meta {
+        @apply flex flex-wrap items-center gap-3 text-sm text-slate-300;
+    }
+
+    .ui-lobby-roster-wrap {
+        @apply flex overflow-x-auto;
+    }
+
+    .ui-lobby-roster {
+        @apply ml-auto flex min-w-max items-center gap-4 text-sm text-slate-300;
+    }
+
+    .ui-lobby-stack-split {
+        @apply flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between;
+    }
+
     .ui-surface-section {
         @apply rounded-3xl border border-white/10 bg-slate-950/40;
     }
@@ -112,12 +169,8 @@
     /* Typography scale */
 
     .ui-type-overline {
-        @apply text-sm font-semibold uppercase text-slate-400;
+        @apply text-xs font-semibold uppercase text-slate-400;
         letter-spacing: 0.2em;
-    }
-
-    .ui-type-body {
-        @apply text-base leading-6 text-slate-200;
     }
 
     .ui-type-meta {
@@ -131,6 +184,16 @@
     .ui-panel-label {
         @apply text-sm font-semibold uppercase text-slate-400;
         letter-spacing: 0.2em;
+    }
+
+    .ui-code-token {
+        @apply font-semibold uppercase;
+        letter-spacing: 0.2em;
+    }
+
+    .ui-input-code {
+        @apply uppercase;
+        letter-spacing: 0.35em;
     }
 
     .ui-input {
@@ -164,6 +227,14 @@
     .ui-button-compact {
         @apply rounded-full px-3 py-2 text-xs font-semibold uppercase transition;
         letter-spacing: 0.2em;
+    }
+
+    .ui-tab-button-lg-active {
+        @apply rounded-md border border-white/15 bg-white/10 px-3.5 py-2 text-base font-semibold text-white;
+    }
+
+    .ui-tab-button-lg {
+        @apply rounded-md border border-white/10 px-3.5 py-2 text-base text-slate-400 transition-colors hover:text-slate-200;
     }
 
     .ui-inline-links {

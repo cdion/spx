@@ -1,4 +1,4 @@
-Tailwind standalone binary setup for Spx.Web.
+Tailwind standalone binary setup for Spx.Web.Components.
 
 - Version: v4.3.0
 - Platform: linux-x64 only
@@ -6,5 +6,5 @@ Tailwind standalone binary setup for Spx.Web.
 - Installer: ./tools/tailwind/install.sh
 
 This repo uses the standalone Tailwind binary for CSS generation.
-Source CSS lives in src/Spx.Web/Styles/app.css.
-Generated output is written to src/Spx.Web/wwwroot/app.css and is ignored by git.
+Source CSS lives in src/Spx.Web.Components/Styles/app.css.
+Generated output is written to src/Spx.Web.Components/wwwroot/app.css and is ignored by git.

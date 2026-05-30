@@ -20,4 +20,4 @@ applyTo: '{src/Spx.AppHost/**,src/Spx.ServiceDefaults/**}'
 
 - `dotnet build src/Spx.AppHost/Spx.AppHost.csproj`
 - `dotnet run --project src/Spx.AppHost/Spx.AppHost.csproj`
-- `./tools/tailwind/bin/tailwindcss-linux-x64 -i src/Spx.Web/Styles/app.css -o src/Spx.Web/wwwroot/app.css --minify`
+- `./tools/tailwind/bin/tailwindcss-linux-x64 -i src/Spx.Web.Components/Styles/app.css -o src/Spx.Web.Components/wwwroot/app.css --minify`

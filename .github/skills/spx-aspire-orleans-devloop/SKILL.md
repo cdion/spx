@@ -29,13 +29,13 @@ This should start the web app, silo, Redis, PostgreSQL, and the Aspire dashboard
 
 - Route validation for Blazor pages should use GET requests, not HEAD. A HEAD request may return 404 even when GET succeeds.
 - Orleans hosting in this repo should not rely on PostgreSQL grain storage through the Aspire Orleans hosting integration.
-- Tailwind source lives in `src/Spx.Web/Styles/app.css` and the generated output is `src/Spx.Web/wwwroot/app.css`.
+- Tailwind source lives in `src/Spx.Web.Components/Styles/app.css` and the generated output is `src/Spx.Web.Components/wwwroot/app.css`.
 
 ## Useful Commands
 
 - `dotnet run --project src/Spx.AppHost/Spx.AppHost.csproj`
 - `dotnet build src/Spx.AppHost/Spx.AppHost.csproj`
-- `./tools/tailwind/bin/tailwindcss-linux-x64 -i src/Spx.Web/Styles/app.css -o src/Spx.Web/wwwroot/app.css --minify`
+- `./tools/tailwind/bin/tailwindcss-linux-x64 -i src/Spx.Web.Components/Styles/app.css -o src/Spx.Web.Components/wwwroot/app.css --minify`
 
 ## References
 

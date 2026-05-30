@@ -3,7 +3,21 @@
     {
         <p class="@EyebrowCssClass">@Eyebrow</p>
     }
-    <h2 class="ui-section-title">@Title</h2>
+
+    @if (PageTitle)
+    {
+        <h1 class="ui-page-title">@Title</h1>
+    }
+    else
+    {
+        <h2 class="ui-section-title">@Title</h2>
+    }
+
+    @if (!string.IsNullOrWhiteSpace(Description))
+    {
+        <p class="@DescriptionCssClass">@Description</p>
+    }
+
     @ChildContent
 </div>
 
@@ -20,6 +34,12 @@
     public string Title { get; set; } = string.Empty;
 
     [Parameter]
+    public string? Description { get; set; }
+
+    [Parameter]
+    public bool PageTitle { get; set; }
+
+    [Parameter]
     public RenderFragment? ChildContent { get; set; }
 
     private string EyebrowCssClass => Tone switch
@@ -28,4 +48,8 @@
         EyebrowTone.Muted => "ui-section-eyebrow text-slate-400",
         _ => "ui-section-eyebrow"
     };
+
+    private string DescriptionCssClass => PageTitle
+        ? "ui-page-copy"
+        : "max-w-xl text-sm leading-6 text-slate-300";
 }

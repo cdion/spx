@@ -30,7 +30,7 @@
 
         <div class="flex flex-wrap gap-2 text-xs uppercase tracking-[0.2em] text-slate-500">
             <span class="rounded-full border border-white/10 px-3 py-1">Route: @(IsCreatePage ? "/games/create" :
-                                                    "/games/join")</span>
+                                                                    "/games/join")</span>
                 <span class="rounded-full border border-sky-400/20 bg-sky-500/10 px-3 py-1 text-sky-200">State:
                     @_states[_stateIndex]</span>
                 </div>
@@ -47,8 +47,8 @@
 
             @if (IsCreatePage)
             {
-                <FormPage Title="Create a game"
-                          Description="Creating a game reserves the invite code and seats you immediately as player one.">
+                <FormPage Eyebrow="Lobby" Title="Create a game"
+                          Description="Creating a game reserves an invite code and seats you immediately as player one.">
                     @if (ShowError)
                     {
                         <AlertBanner>We couldn't create a game right now. Please try again.</AlertBanner>
@@ -78,7 +78,8 @@
             }
             else
             {
-                <FormPage Title="Join a game" Description="Enter the invite code and the player name you want to use inside that game.">
+                <FormPage Eyebrow="Lobby" Title="Join a game"
+                          Description="Enter the invite code and the player name you want to use for this game.">
                     @if (ShowError)
                     {
                         <AlertBanner>That invite code is unavailable or already full.</AlertBanner>
@@ -86,7 +87,7 @@
 
                     <div class="ui-field">
                         <label class="ui-label" for="story-invite-code">Invite code</label>
-                        <input id="story-invite-code" class="ui-input uppercase tracking-[0.35em]" maxlength="6" placeholder="ABC123"
+                        <input id="story-invite-code" class="ui-input ui-input-code" maxlength="6" placeholder="ABC123"
                                @bind="_inviteCode" disabled="@IsSubmitting" />
                     </div>
 

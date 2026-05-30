@@ -1,14 +1,14 @@
 @inherits LayoutComponentBase
 
-<div class="min-h-screen bg-[radial-gradient(circle_at_top,#0f172a_0%,#020617_60%)] text-slate-100">
-    <header class="sticky top-0 z-20 w-full border-b border-white/10 bg-slate-900/80 backdrop-blur">
-        <div class="mx-auto w-full max-w-7xl px-5 py-4 lg:px-6">
+<div class="ui-app-shell">
+    <header class="ui-app-header">
+        <div class="ui-app-header-inner">
             <NavMenu />
         </div>
     </header>
 
-    <main class="mx-auto flex w-full max-w-7xl flex-1">
-        <article class="w-full px-5 py-6 sm:px-6 lg:px-10 lg:py-8">
+    <main class="ui-app-main">
+        <article class="ui-app-content">
             @Body
         </article>
     </main>

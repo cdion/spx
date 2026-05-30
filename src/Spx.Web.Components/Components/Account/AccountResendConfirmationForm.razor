@@ -13,10 +13,9 @@
     <form method="post" action="/account/resend-confirmation" class="ui-flow">
         @FormTokens
 
-        <div class="ui-field">
-            <label class="ui-label" for="email">Email</label>
+        <FormField For="email" Label="Email">
             <input id="email" name="email" type="email" value="@Email" autocomplete="email" required class="ui-input" />
-        </div>
+        </FormField>
 
         <button class="ui-button-primary" type="submit">Resend email</button>
     </form>

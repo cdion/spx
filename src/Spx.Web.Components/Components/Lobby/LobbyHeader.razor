@@ -1,22 +1,22 @@
 @using Spx.Game.Application
 
 <header class="ui-surface-form-tight space-y-4">
-    <div class="flex flex-wrap items-center justify-between gap-3">
+    <div class="ui-lobby-row">
         <a class="ui-button-secondary" href="@BackHref">
             Back to My Games
         </a>
 
-        <div class="flex flex-wrap items-center gap-3 text-sm text-slate-300">
+        <div class="ui-lobby-meta">
             <StatusBadge>
                 @Lobby.Status
             </StatusBadge>
             <p>
-                Invite code <span class="font-semibold tracking-[0.25em] text-sky-300">@Lobby.InviteCode</span>
+                Invite code <span class="ui-code-token text-sky-300">@Lobby.InviteCode</span>
             </p>
         </div>
     </div>
 
-    <div class="flex flex-wrap items-center justify-between gap-3">
+    <div class="ui-lobby-row">
         <h1 class="ui-page-title">@Lobby.Name</h1>
 
         <StatusBadge Tone="StatusBadge.BadgeTone.Success">
@@ -24,8 +24,8 @@
         </StatusBadge>
     </div>
 
-    <div class="flex overflow-x-auto">
-        <div class="ml-auto flex min-w-max items-center gap-4 text-sm text-slate-300">
+    <div class="ui-lobby-roster-wrap">
+        <div class="ui-lobby-roster">
             @foreach (var player in Lobby.Players)
             {
                 <div class="flex items-center gap-2">

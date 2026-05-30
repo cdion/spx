@@ -195,15 +195,15 @@ Current migrations live under `src/Spx.Data/Migrations`.
 
 ## Tailwind Workflow
 
-- Source CSS: `src/Spx.Web/Styles/app.css`
-- Generated CSS: `src/Spx.Web/wwwroot/app.css`
-- The web project runs a one-shot Tailwind build before `Build` and `Publish`
+- Source CSS: `src/Spx.Web.Components/Styles/app.css`
+- Generated CSS: `src/Spx.Web.Components/wwwroot/app.css`
+- The component library runs a one-shot Tailwind build before `Build` and `Publish`
 - The checked-in VS Code task can run the watcher alongside the AppHost during development
 
 You can also build the CSS manually:
 
 ```bash
-./tools/tailwind/bin/tailwindcss-linux-x64 -i src/Spx.Web/Styles/app.css -o src/Spx.Web/wwwroot/app.css --minify
+./tools/tailwind/bin/tailwindcss-linux-x64 -i src/Spx.Web.Components/Styles/app.css -o src/Spx.Web.Components/wwwroot/app.css --minify
 ```
 
 ## Testing

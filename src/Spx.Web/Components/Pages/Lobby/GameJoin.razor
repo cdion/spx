@@ -7,22 +7,21 @@
 
 <PageTitle>Join Game</PageTitle>
 
-<FormPage Title="Join a game" Description="Enter the invite code and the player name you want to use for this game.">
+<FormPage Eyebrow="Lobby"
+          Title="Join a game"
+          Description="Enter the invite code and the player name you want to use for this game.">
     @if (!string.IsNullOrWhiteSpace(errorMessage))
     {
         <AlertBanner>@errorMessage</AlertBanner>
     }
 
-    <div class="ui-field">
-        <label class="ui-label" for="invite-code">Invite code</label>
-        <input id="invite-code" class="ui-input uppercase tracking-[0.35em]" maxlength="6" placeholder="ABC123"
-               @bind="inviteCode" />
-    </div>
+    <FormField For="invite-code" Label="Invite code">
+        <input id="invite-code" class="ui-input ui-input-code" maxlength="6" placeholder="ABC123" @bind="inviteCode" />
+    </FormField>
 
-    <div class="ui-field">
-        <label class="ui-label" for="join-player-name">Player name</label>
+    <FormField For="join-player-name" Label="Player name">
         <input id="join-player-name" class="ui-input" maxlength="40" placeholder="Captain Blue" @bind="playerName" />
-    </div>
+    </FormField>
 
     <div class="ui-actions">
         <button class="ui-button-primary" @onclick="JoinGameAsync" disabled="@isSubmitting">

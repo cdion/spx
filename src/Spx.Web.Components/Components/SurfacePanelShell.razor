@@ -1,0 +1,29 @@
+<section class="@SurfaceClass">
+    @if (HeaderContent is not null)
+    {
+        <div class="@HeaderClass">
+            @HeaderContent
+        </div>
+    }
+
+    <div class="@BodyClass">
+        @ChildContent
+    </div>
+</section>
+
+@code {
+    [Parameter]
+    public string SurfaceClass { get; set; } = "ui-surface-section flex h-full min-h-0 flex-col gap-4 p-4 lg:p-5";
+
+    [Parameter]
+    public string HeaderClass { get; set; } = "flex items-center justify-between gap-2";
+
+    [Parameter]
+    public string BodyClass { get; set; } = "min-h-0 flex-1 overflow-y-auto";
+
+    [Parameter]
+    public RenderFragment? HeaderContent { get; set; }
+
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+}

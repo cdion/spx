@@ -1,72 +1,66 @@
 @page "/"
 
 <div class="space-y-8">
-    <div>
-        <h1 class="text-2xl font-semibold text-slate-100">Playground</h1>
-        <p class="mt-1 text-sm text-slate-400">Component stories and visual tests.</p>
+    <PageHero Eyebrow="Playground" Title="Visual review surface"
+              Description="Use the sidebar for the full story catalog. This home page highlights the fastest routes for UX review instead of duplicating every link.">
+        <div class="ui-actions">
+            <a class="ui-button-primary" href="/stories/nexus/pages/lobby">Review lobby page</a>
+            <a class="ui-button-secondary" href="/stories/account/forms">Review auth forms</a>
+            <a class="ui-button-secondary" href="/stories/nexus/components/gameplay-panel">Review gameplay panel</a>
+        </div>
+    </PageHero>
+
+    <div class="grid gap-6 xl:grid-cols-[1.3fr_0.9fr]">
+        <section class="ui-surface-form space-y-6">
+            <SectionHeader Eyebrow="Coverage" Title="Story groups"
+                           Description="The sidebar remains the source of truth for navigation. These cards just summarize what is available and where to start." />
+
+            <div class="grid gap-4 md:grid-cols-3">
+                @foreach (var section in Sections)
+                {
+                    <article class="ui-panel-card space-y-4">
+                        <div class="space-y-2">
+                            <p class="ui-section-eyebrow">@(section.Title)</p>
+                            <h2 class="ui-section-title">@GetStoryCount(section) story views</h2>
+                            <p class="text-sm leading-6 text-slate-300">@GetGroupSummary(section)</p>
+                        </div>
+
+                        <a class="ui-inline-link" href="@GetFirstHref(section)">Open first story</a>
+                    </article>
+                }
+            </div>
+        </section>
+
+        <aside class="ui-surface-form space-y-6">
+            <SectionHeader Eyebrow="Start Here" Title="Suggested review order"
+                           Description="Walk the highest-value UX surfaces first, then drill into component stories when a page needs deeper inspection." />
+
+            <ol class="space-y-3 pl-5 text-sm leading-6 text-slate-300 list-decimal">
+                <li>Lobby page state coverage</li>
+                <li>Account form and gated-access states</li>
+                <li>Gameplay panel and selected-system panels</li>
+                <li>Timeline rendering and messaging states</li>
+            </ol>
+
+            <div class="ui-inline-links">
+                <a class="ui-inline-link" href="/stories/nexus/pages/lobby">Lobby story</a>
+                <a class="ui-inline-link" href="/stories/account/access">Access story</a>
+                <a class="ui-inline-link" href="/stories/shared/components/timeline">Timeline story</a>
+            </div>
+        </aside>
     </div>
+</div>
 
-    <section class="space-y-2">
-        <h2 class="text-xs font-semibold uppercase tracking-widest text-slate-500">Shared</h2>
-        <ul class="grid grid-cols-2 gap-2 sm:grid-cols-3">
-            <li><a href="/stories/shared/components/timeline"
-                       class="block rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-300 hover:border-white/20 hover:bg-white/10 hover:text-white transition-colors">Timeline</a>
-            </li>
-        </ul>
-    </section>
+@code {
+    private static IReadOnlyList<PlaygroundNavigation.NavSection> Sections => PlaygroundNavigation.Sections;
 
-    <section class="space-y-2">
-        <h2 class="text-xs font-semibold uppercase tracking-widest text-slate-500">Nexus — Components</h2>
-        <ul class="grid grid-cols-2 gap-2 sm:grid-cols-3">
-            <li><a href="/stories/nexus/components/hex-grid"
-                   class="block rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-300 hover:border-white/20 hover:bg-white/10 hover:text-white transition-colors">Hex
-                Grid</a></li>
-                <li><a href="/stories/nexus/components/gameplay-panel"
-                       class="block rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-300 hover:border-white/20 hover:bg-white/10 hover:text-white transition-colors">Gameplay
-                    Panel</a></li>
-                    <li><a href="/stories/nexus/components/live-gameplay"
-                           class="block rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-300 hover:border-white/20 hover:bg-white/10 hover:text-white transition-colors">Live
-                        Gameplay</a></li>
-                        <li><a href="/stories/nexus/components/top-info-bar"
-                               class="block rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-300 hover:border-white/20 hover:bg-white/10 hover:text-white transition-colors">Top
-                            Info Bar</a></li>
-                            <li><a href="/stories/nexus/components/selected-hex-panel"
-                                   class="block rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-300 hover:border-white/20 hover:bg-white/10 hover:text-white transition-colors">Selected
-                                Hex Panel</a></li>
-                                <li><a href="/stories/nexus/components/pending-orders"
-                                       class="block rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-300 hover:border-white/20 hover:bg-white/10 hover:text-white transition-colors">Pending
-                                    Orders</a></li>
-                                    <li><a href="/stories/nexus/components/hex-cell-states"
-                                           class="block rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-300 hover:border-white/20 hover:bg-white/10 hover:text-white transition-colors">Hex
-                                        Cell States</a></li>
-                                    </ul>
-                                </section>
+    private static int GetStoryCount(PlaygroundNavigation.NavSection section) =>
+        section.Groups.Sum(group => group.Items.Count);
 
-                                <section class="space-y-2">
-                                    <h2 class="text-xs font-semibold uppercase tracking-widest text-slate-500">Nexus — Pages</h2>
-                                    <ul class="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                                        <li><a href="/stories/nexus/pages/lobby"
-                                                   class="block rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-300 hover:border-white/20 hover:bg-white/10 hover:text-white transition-colors">Lobby</a>
-                                        </li>
-                                        <li><a href="/stories/nexus/pages/forms"
-                                                   class="block rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-300 hover:border-white/20 hover:bg-white/10 hover:text-white transition-colors">Forms</a>
-                                        </li>
-                                        <li><a href="/stories/nexus/pages/page"
-                                                   class="block rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-300 hover:border-white/20 hover:bg-white/10 hover:text-white transition-colors">Page</a>
-                                        </li>
-                                    </ul>
-                                </section>
+    private static string GetGroupSummary(PlaygroundNavigation.NavSection section) =>
+        string.Join(", ", section.Groups.Select(group => $"{group.Title}: {group.Items.Count}"));
 
-                                <section class="space-y-2">
-                                    <h2 class="text-xs font-semibold uppercase tracking-widest text-slate-500">Account</h2>
-                                    <ul class="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                                        <li><a href="/stories/account/forms"
-                                                   class="block rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-300 hover:border-white/20 hover:bg-white/10 hover:text-white transition-colors">Forms</a>
-                                        </li>
-                                        <li><a href="/stories/account/access"
-                                                   class="block rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-300 hover:border-white/20 hover:bg-white/10 hover:text-white transition-colors">Access</a>
-                                        </li>
-                                    </ul>
-                                </section>
-                            </div>
+    private static string GetFirstHref(PlaygroundNavigation.NavSection section) =>
+        section.Groups.SelectMany(group => group.Items).First().Href;
+}
 

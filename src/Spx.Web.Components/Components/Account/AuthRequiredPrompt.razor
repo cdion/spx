@@ -1,9 +1,5 @@
 <section class="ui-surface-empty mx-auto flex max-w-2xl flex-col gap-6">
-    <div class="space-y-3">
-        <p class="ui-section-eyebrow">Authentication required</p>
-        <h1 class="ui-page-title-compact">@Title</h1>
-        <p class="ui-page-copy">@Message</p>
-    </div>
+    <PageHero Eyebrow="Authentication required" Title="@Title" Description="@Message" Compact />
 
     <div class="ui-actions">
         <a class="ui-button-primary" href="@SignInHref">@SignInText</a>

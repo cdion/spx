@@ -1,14 +1,14 @@
 @using System.Reflection
 
-<div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-    <div class="flex flex-col gap-1">
-        <a class="text-lg font-semibold tracking-[0.2em] text-white uppercase" href="">Spx</a>
-        <span class="text-xs font-medium uppercase tracking-widest text-slate-400">
+<div class="ui-app-nav">
+    <div class="ui-app-brand">
+        <a class="ui-app-brand-link" href="">Spx</a>
+        <span class="ui-app-version">
             Version @AppVersion
         </span>
     </div>
 
-    <nav class="flex flex-wrap items-center gap-3 lg:justify-end">
+    <nav class="ui-app-nav-links">
         <NavLink class="ui-nav-pill" href="" Match="NavLinkMatch.All">
             Lobby Home
         </NavLink>

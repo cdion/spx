@@ -1,5 +1,5 @@
 <section class="ui-page">
-    <PageHero Title="@Title" Description="@Description" />
+    <PageHero Eyebrow="@Eyebrow" Title="@Title" Description="@Description" />
 
     <div class="ui-surface-form">
         <div class="ui-flow">
@@ -9,6 +9,9 @@
 </section>
 
 @code {
+    [Parameter]
+    public string? Eyebrow { get; set; }
+
     [Parameter, EditorRequired]
     public string Title { get; set; } = string.Empty;
 
