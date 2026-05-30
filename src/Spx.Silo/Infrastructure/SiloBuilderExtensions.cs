@@ -1,16 +1,14 @@
-using Microsoft.Extensions.DependencyInjection;
 using Orleans.Hosting;
 
 namespace Spx.Silo.Infrastructure;
 
 internal static class SiloBuilderExtensions
 {
-    internal static ISiloBuilder AddFaultTolerantAdoNetGrainStorageAsDefault(
+    internal static ISiloBuilder AddAdoNetGrainStorageAsDefault(
         this ISiloBuilder siloBuilder,
         string connectionString
     )
     {
-        siloBuilder.Services.AddSingleton<FaultTolerantJsonGrainStorageSerializer>();
         siloBuilder.AddAdoNetGrainStorageAsDefault(optionsBuilder =>
         {
             optionsBuilder.Configure(options =>
@@ -18,9 +16,6 @@ internal static class SiloBuilderExtensions
                 options.Invariant = "Npgsql";
                 options.ConnectionString = connectionString;
             });
-            optionsBuilder.Configure<FaultTolerantJsonGrainStorageSerializer>(
-                (options, serializer) => options.GrainStorageSerializer = serializer
-            );
         });
         return siloBuilder;
     }

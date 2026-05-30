@@ -125,9 +125,11 @@ For normal UI and Razor iteration, prefer that task over the debug launch config
 
 Useful single-purpose tasks are also checked in:
 
+- `just reset-appdb`
 - `web: build`
 - `silo: build`
 - `apphost: build`
+- `just reset-orleansdb`
 - `tailwind: build css`
 - `dev: watch tailwind`
 - `dev: watch apphost`
@@ -171,7 +173,11 @@ The AppHost provisions two PostgreSQL databases:
 
 On web startup, EF Core migrations are applied automatically for `appdb`.
 
+For local development, `just reset-appdb` clears all application tables in `appdb` while preserving `__EFMigrationsHistory`. It targets the running Aspire-managed Postgres container directly, so you do not need to chase the current mapped host port.
+
 On silo startup, the Orleans PostgreSQL SQL assets are bootstrapped automatically into `orleansdb` if the schema is missing.
+
+For local development, `just reset-orleansdb` clears the persisted Orleans grain state from `orleansdb` by talking directly to the running Aspire-managed Postgres container. Restart the AppHost afterward to clear any in-memory grain activations.
 
 Redis remains the clustering backend for Orleans during local development.
 

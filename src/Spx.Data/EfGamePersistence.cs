@@ -397,6 +397,7 @@ internal sealed partial class EfGamePersistence(
             : null;
 
         var viewingPlayer = currentPlayer ?? formerPlayer;
+
         if (viewingPlayer is null)
         {
             return null;

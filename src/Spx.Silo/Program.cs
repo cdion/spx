@@ -24,7 +24,7 @@ builder.UseOrleans(siloBuilder =>
             )
     );
 
-    siloBuilder.AddFaultTolerantAdoNetGrainStorageAsDefault(
+    siloBuilder.AddAdoNetGrainStorageAsDefault(
         builder.Configuration.GetConnectionString("orleansdb")
             ?? throw new InvalidOperationException(
                 "Connection string 'orleansdb' was not configured."

@@ -27,11 +27,7 @@ public sealed partial class OrleansNexusRuntimeClient(
         {
             await clusterClient.GetGrain<ILobbyInvalidationGrain>(gameId).PublishLobbyInvalidated();
         }
-        catch (OrleansException exception)
-        {
-            LogPublishLobbyUpdateFailed(logger, exception, gameId);
-        }
-        catch (TimeoutException exception)
+        catch (Exception exception)
         {
             LogPublishLobbyUpdateFailed(logger, exception, gameId);
         }
@@ -48,11 +44,7 @@ public sealed partial class OrleansNexusRuntimeClient(
                 .GetGrain<ILobbyInvalidationGrain>(gameId)
                 .PublishSessionInvalidated();
         }
-        catch (OrleansException exception)
-        {
-            LogPublishSessionUpdateFailed(logger, exception, gameId);
-        }
-        catch (TimeoutException exception)
+        catch (Exception exception)
         {
             LogPublishSessionUpdateFailed(logger, exception, gameId);
         }
@@ -69,11 +61,7 @@ public sealed partial class OrleansNexusRuntimeClient(
                 .GetGrain<ILobbyInvalidationGrain>(gameId)
                 .PublishMessagesInvalidated();
         }
-        catch (OrleansException exception)
-        {
-            LogPublishMessageUpdateFailed(logger, exception, gameId);
-        }
-        catch (TimeoutException exception)
+        catch (Exception exception)
         {
             LogPublishMessageUpdateFailed(logger, exception, gameId);
         }
@@ -91,12 +79,7 @@ public sealed partial class OrleansNexusRuntimeClient(
                 .GetSnapshotAsync();
             return new GamePresenceView(snapshot.OnlinePlayerIds);
         }
-        catch (OrleansException exception)
-        {
-            LogFetchPresenceFailed(logger, exception, gameId);
-            return GamePresenceView.Empty;
-        }
-        catch (TimeoutException exception)
+        catch (Exception exception)
         {
             LogFetchPresenceFailed(logger, exception, gameId);
             return GamePresenceView.Empty;
@@ -125,12 +108,7 @@ public sealed partial class OrleansNexusRuntimeClient(
                 );
             return true;
         }
-        catch (OrleansException exception)
-        {
-            LogEnsureSessionFailed(logger, exception, gameId);
-            return false;
-        }
-        catch (TimeoutException exception)
+        catch (Exception exception)
         {
             LogEnsureSessionFailed(logger, exception, gameId);
             return false;
@@ -150,12 +128,7 @@ public sealed partial class OrleansNexusRuntimeClient(
                 .GetViewAsync(playerId);
             return view is null ? new GameSessionUnavailable() : new GameSessionFound(view);
         }
-        catch (OrleansException exception)
-        {
-            LogFetchPlayerViewFailed(logger, exception, gameId, playerId);
-            return new GameSessionUnavailable();
-        }
-        catch (TimeoutException exception)
+        catch (Exception exception)
         {
             LogFetchPlayerViewFailed(logger, exception, gameId, playerId);
             return new GameSessionUnavailable();
@@ -190,15 +163,12 @@ public sealed partial class OrleansNexusRuntimeClient(
 
             return new GameSessionCommandSucceeded(found.Session);
         }
-        catch (OrleansException exception)
+        catch (Exception exception)
         {
             LogSubmitOrdersFailed(logger, exception, gameId, command.PlayerId);
-            throw;
-        }
-        catch (TimeoutException exception)
-        {
-            LogSubmitOrdersFailed(logger, exception, gameId, command.PlayerId);
-            throw;
+            throw new InvalidOperationException(
+                "The game session could not process those orders. Please try again."
+            );
         }
     }
 
@@ -208,7 +178,15 @@ public sealed partial class OrleansNexusRuntimeClient(
         CancellationToken cancellationToken = default
     )
     {
-        await clusterClient.GetGrain<INexusSessionGrain>(gameId).AbandonAsync(playerId);
+        try
+        {
+            await clusterClient.GetGrain<INexusSessionGrain>(gameId).AbandonAsync(playerId);
+        }
+        catch (Exception exception)
+        {
+            LogAbandonSessionFailed(logger, exception, gameId, playerId);
+            throw new InvalidOperationException("The game session could not be abandoned.");
+        }
     }
 
     [LoggerMessage(
@@ -288,6 +266,17 @@ public sealed partial class OrleansNexusRuntimeClient(
         Message = "Failed to submit orders for game {GameId} player {PlayerId}."
     )]
     private static partial void LogSubmitOrdersFailed(
+        ILogger logger,
+        Exception exception,
+        Guid gameId,
+        Guid playerId
+    );
+
+    [LoggerMessage(
+        Level = LogLevel.Warning,
+        Message = "Failed to abandon session for game {GameId} player {PlayerId}."
+    )]
+    private static partial void LogAbandonSessionFailed(
         ILogger logger,
         Exception exception,
         Guid gameId,
