@@ -19,10 +19,14 @@
     // Editable state
     private readonly List<NexusMoveOrder> _moveOrders =
     [
-        new(NexusMapTopology.Player1HomeCoord, new HexCoord(1, -2),
-            ImmutableDictionary<NexusUnitType, int>.Empty
-                .Add(NexusUnitType.Carrier, 1)
-                .Add(NexusUnitType.Infantry, 2)),
+        new(
+            NexusMapTopology.Player1HomeCoord,
+            new HexCoord(1, -2),
+            ImmutableArray.Create(
+                new NexusUnitStackGroup(NexusUnitType.Carrier, 4, 1),
+                new NexusUnitStackGroup(NexusUnitType.Infantry, 1, 2)
+            )
+        ),
     ];
 
     private readonly List<NexusBuildOrder> _buildOrders = [];

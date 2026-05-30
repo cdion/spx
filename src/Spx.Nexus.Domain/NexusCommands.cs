@@ -31,7 +31,7 @@ public sealed record NexusBuildOrder(
 public sealed record NexusMoveOrder(
     [property: Id(0)] HexCoord From,
     [property: Id(1)] HexCoord To,
-    [property: Id(2)] ImmutableDictionary<NexusUnitType, int> Units
+    [property: Id(2)] ImmutableArray<NexusUnitStackGroup> Stacks
 );
 
 /// <summary>

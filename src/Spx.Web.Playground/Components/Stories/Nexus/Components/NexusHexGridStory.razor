@@ -103,13 +103,15 @@
             if (_validTargets.Contains(coord))
             {
                 var units = _view.Systems.FirstOrDefault(s => s.Coord == _pendingFrom.Value)
-                    ?.Units.GetValueOrDefault(P1);
+                    ?.GetPlayerUnitCounts(P1);
                 if (units is { Count: > 0 })
                 {
                     _pendingMoves.Add(new NexusMoveOrder(
                         _pendingFrom.Value,
                         coord,
-                        units.ToImmutableDictionary()));
+                        units
+                            .Select(unit => new NexusUnitStackGroup(unit.Key, unit.Key.Hull(), unit.Value))
+                            .ToImmutableArray()));
                 }
             }
 

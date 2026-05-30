@@ -92,7 +92,7 @@
                                     @if (item.Message.CanEdit)
                                     {
                                         <button
-                                            class="ui-button-compact border border-white/10 text-slate-300 hover:border-sky-300/60 hover:text-white"
+                                            class="ui-button-secondary-sm"
                                             @onclick="() => OnBeginEdit.InvokeAsync(item.Message)">
                                             Edit
                                         </button>
@@ -100,7 +100,7 @@
                                     @if (item.Message.CanDelete)
                                     {
                                         <button
-                                            class="ui-button-compact border border-rose-400/40 text-rose-100 hover:border-rose-300 hover:text-white"
+                                            class="ui-button-danger-sm"
                                             @onclick="() => OnDeleteMessage.InvokeAsync(item.Message.Id)">
                                             Delete
                                         </button>
@@ -111,12 +111,12 @@
                             {
                                 <div class="flex flex-wrap gap-2">
                                     <button
-                                        class="ui-button-compact border border-sky-400/30 text-sky-200 hover:border-sky-300/60 hover:text-white"
+                                        class="ui-button-primary-sm"
                                         @onclick="() => OnRetryPendingMessage.InvokeAsync(item.Key)">
                                         Retry
                                     </button>
                                     <button
-                                        class="ui-button-compact border border-white/10 text-slate-300 hover:border-sky-300/60 hover:text-white"
+                                        class="ui-button-secondary-sm"
                                         @onclick="() => OnDismissPendingMessage.InvokeAsync(item.Key)">
                                         Dismiss
                                     </button>
@@ -131,12 +131,12 @@
                                           @oninput="HandleEditMessageInput"></textarea>
                                 <div class="flex flex-wrap justify-end gap-3">
                                     <button
-                                        class="ui-button-compact border border-white/10 px-4 text-slate-300 hover:border-sky-300/60 hover:text-white"
+                                        class="ui-button-secondary-sm"
                                         @onclick="() => OnCancelEdit.InvokeAsync()">
                                         Cancel
                                     </button>
                                     <button
-                                        class="ui-button-compact bg-sky-400 px-4 text-slate-950 hover:bg-sky-300 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400"
+                                        class="ui-button-primary-sm"
                                         @onclick="() => OnSaveEdit.InvokeAsync()" disabled="@IsSavingEdit">
                                         @(IsSavingEdit ? "Saving..." : "Save")
                                     </button>

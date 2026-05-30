@@ -18,7 +18,7 @@ public static class NexusSessionEventFormatter
         evt switch
         {
             NexusUnitsMovedEvent e =>
-                $"{PlayerName(e.PlayerId, playerNames)}'s units {(e.IsRetreat ? "retreated from" : "advanced from")} {SectorName(e.From, e.PlayerId, viewingPlayerId)} to {SectorName(e.To, e.PlayerId, viewingPlayerId)}: {FormatUnits(e.Units)}",
+                $"{PlayerName(e.PlayerId, playerNames)}'s units {(e.IsRetreat ? "retreated from" : "advanced from")} {SectorName(e.From, e.PlayerId, viewingPlayerId)} to {SectorName(e.To, e.PlayerId, viewingPlayerId)}: {FormatUnits(e.Stacks)}",
             NexusPlanetaryControlEvent e =>
                 $"{PlayerName(e.PlayerId, playerNames)} took control of {SectorName(e.System, e.PlayerId, viewingPlayerId)}",
             NexusSystemContestedEvent e =>
@@ -69,6 +69,11 @@ public static class NexusSessionEventFormatter
         return NexusMapTopology.GetSectorDisplayName(coord);
     }
 
-    private static string FormatUnits(ImmutableDictionary<NexusUnitType, int> units) =>
-        string.Join(", ", units.Select(kv => $"{kv.Value}× {kv.Key}"));
+    private static string FormatUnits(ImmutableArray<NexusUnitStackGroup> stacks) =>
+        string.Join(
+            ", ",
+            stacks.Select(stack =>
+                $"{stack.Count}× {stack.UnitType} ({stack.RemainingHull}/{stack.UnitType.Hull()} hull)"
+            )
+        );
 }

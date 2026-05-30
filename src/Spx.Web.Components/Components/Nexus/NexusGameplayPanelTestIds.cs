@@ -12,8 +12,8 @@ public static class NexusGameplayPanelTestIds
 
     public static string System(HexCoord coord) => $"nexus-map-system-{CoordToken(coord)}";
 
-    public static string FleetUnit(NexusUnitType unitType) =>
-        $"nexus-fleet-unit-{UnitToken(unitType)}";
+    public static string FleetStack(NexusUnitType unitType, int remainingHull) =>
+        $"nexus-fleet-unit-{UnitToken(unitType)}-h{remainingHull}";
 
     public static string BuildUnit(NexusUnitType unitType) =>
         $"nexus-build-unit-{UnitToken(unitType)}";

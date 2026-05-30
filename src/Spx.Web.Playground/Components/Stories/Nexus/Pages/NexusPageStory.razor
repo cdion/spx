@@ -141,8 +141,7 @@
     private List<TimelineEntryState> _timelineItems = [];
     private Guid? _editingMessageId;
     private string _editText = string.Empty;
-    private string _composerText = "The center lane is open if you want to pressure it this round.";
-    private string? _recipientPlayerId;
+    private int _composerResetVersion;
     private string? _lastAction;
     private bool _showPageError;
     private bool _showGameplayError;
@@ -189,8 +188,7 @@
                 EditingMessageId = _editingMessageId,
                 EditMessageText = _editText,
                 IsSavingEdit = false,
-                ComposerText = _composerText,
-                SelectedRecipientPlayerIdString = _recipientPlayerId,
+                ComposerResetVersion = _composerResetVersion,
                 IsSendingMessage = false,
                 IsCurrentUserActive = _lobby.IsCurrentUserActive,
                 CurrentPlayerId = _lobby.CurrentPlayerId,
@@ -207,8 +205,6 @@
         DeleteMessageAsync = DeleteMessage,
         RetryPendingMessageAsync = RetryPending,
         DismissPendingMessageAsync = DismissPending,
-        SetComposerTextAsync = SetComposerText,
-        SetRecipientPlayerIdStringAsync = SetRecipientPlayerId,
         SendMessageAsync = SendMessage,
     };
 
@@ -232,8 +228,7 @@
         _timelineItems = [.. NexusStoryFixtures.CreateTimelineEntries()];
         _editingMessageId = null;
         _editText = string.Empty;
-        _composerText = "The center lane is open if you want to pressure it this round.";
-        _recipientPlayerId = null;
+        _composerResetVersion++;
         _lastAction = null;
 
         switch (index)
@@ -287,11 +282,12 @@
         _lastAction = $"Submitted round {command.ExpectedRoundNumber} with {command.MoveOrders.Length} move(s).";
     }
 
-    private Task SendMessage()
+    private Task SendMessage(LobbyMessageComposerSubmitRequest request)
     {
-        _lastAction = string.IsNullOrWhiteSpace(_recipientPlayerId)
+        _lastAction = string.IsNullOrWhiteSpace(request.SelectedRecipientPlayerIdString)
             ? "Sent public message from the composer."
             : "Sent private message from the composer.";
+        _composerResetVersion++;
         return Task.CompletedTask;
     }
 
@@ -343,18 +339,6 @@
     }
 
     private Task NoOp() => Task.CompletedTask;
-
-    private Task SetComposerText(string text)
-    {
-        _composerText = text;
-        return Task.CompletedTask;
-    }
-
-    private Task SetRecipientPlayerId(string? playerId)
-    {
-        _recipientPlayerId = playerId;
-        return Task.CompletedTask;
-    }
 
     private Task HandleSessionTabChanged(LobbySessionTab tab)
     {

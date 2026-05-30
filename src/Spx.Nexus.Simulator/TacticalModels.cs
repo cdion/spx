@@ -20,7 +20,11 @@ public sealed record TacticalSimulationSettings(int IterationsPerMatchup, int Ba
     public static TacticalSimulationSettings Default { get; } = new(100, 20260529);
 }
 
-public sealed record TacticalProfileUnit(NexusUnitType UnitType, int Count, int HitsAbsorbed = 0);
+public sealed record TacticalProfileUnit(
+    NexusUnitType UnitType,
+    int Count,
+    int? RemainingHull = null
+);
 
 public sealed record TacticalProfile(
     string Id,

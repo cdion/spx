@@ -1,159 +1,499 @@
 @page "/stories/nexus/components/selected-hex-panel"
 @rendermode InteractiveServer
 
-<StoryHeader Title="Nexus Selected Hex Panel">
-    <code class="text-sky-300">NexusSelectedHexPanel</code> gesture interactions and home/nexus states.
+<StoryHeader Title="Nexus Selected Hex Panel Wireframe">
+    Default move drafting now optimizes for whole-fleet and whole-stack selection, with split adjustment available on each stack row.
 </StoryHeader>
 
 <div class="mb-4 flex flex-wrap gap-2">
-    @foreach (var (label, index) in _scenarios.Select((s, i) => (s.Label, i)))
+    @foreach (var (label, index) in _scenarios.Select((scenario, i) => (scenario.Label, i)))
     {
         <button class="@ScenarioClass(index)" @onclick="() => SetScenario(index)">@label</button>
     }
 </div>
 
-<div class="grid gap-6 lg:grid-cols-[1fr_260px]">
-    <NexusSelectedHexPanel System="@CurrentScenario.System" CurrentPlayerId="@NexusStoryFixtures.Player1Id"
-                           CurrentPlayerName="@NexusStoryFixtures.PlayerNames[NexusStoryFixtures.Player1Id]"
-                           OpponentPlayerId="@NexusStoryFixtures.Player2Id"
-                           OpponentPlayerName="@NexusStoryFixtures.PlayerNames[NexusStoryFixtures.Player2Id]"
-                           CurrentPlayerFaction="NexusFactionColor.Blue" CurrentPlayerGateProgress="@CurrentScenario.GateProgress"
-                           PendingBeginNexusGate="@_pendingGate" IsEditable="true" ProjectedEnergy="@ProjectedEnergy"
-                           AvailableUnits="@CurrentScenario.AvailableUnits" PendingBuildOrders="@_buildOrders"
-                           OnOrderDraftRequested="HandleOrderDraftRequest" />
+<div class="grid gap-6 xl:grid-cols-[minmax(0,1.25fr)_minmax(18rem,0.75fr)]">
+    <section class="ui-surface-section space-y-4 p-4 lg:p-5">
+        <div class="flex flex-wrap items-start justify-between gap-3 border-b border-white/10 pb-3">
+            <div class="space-y-1">
+                <div class="flex items-center gap-2">
+                    <p class="ui-panel-label text-sky-300">@CurrentScenario.SystemName</p>
+                    @if (CurrentScenario.IsHome)
+                    {
+                        <span class="rounded-full border border-sky-400/30 bg-sky-500/10 px-2 py-0.5 text-xs font-medium text-sky-200">Home</span>
+                    }
+                    @if (CurrentScenario.IsNexus)
+                    {
+                        <span class="rounded-full border border-violet-400/30 bg-violet-500/10 px-2 py-0.5 text-xs font-medium text-violet-200">Nexus</span>
+                    }
+                </div>
+                <p class="text-sm text-slate-400">Income +@CurrentScenario.IncomeValue⚡</p>
+                <p class="text-sm text-slate-500">Primary action: click a stack row to take or clear the whole stack. Use +/- only when splitting a bucket.</p>
+            </div>
 
-    <section class="ui-surface-section space-y-3 p-4 lg:p-5">
-        <p class="ui-panel-label">Live state</p>
-        <p class="text-xs text-slate-400">Fleet selection:</p>
-        @if (_fleetSelection.Count == 0)
-        {
-            <p class="text-xs text-slate-500">None</p>
-        }
-        else
-        {
-            @foreach (var (unit, count) in _fleetSelection)
-            {
-                <p class="text-xs text-slate-300">@count× @unit</p>
-            }
-        }
-
-        <div class="border-t border-white/10 pt-2">
-            <p class="text-xs text-slate-400">Build queue:</p>
-            @if (_buildOrders.Count == 0)
-            {
-                <p class="text-xs text-slate-500">None</p>
-            }
-            else
-            {
-                @foreach (var order in _buildOrders)
-                {
-                    <p class="text-xs text-slate-300">@order.Count× @order.UnitType</p>
-                }
-            }
+            <div class="flex flex-wrap items-center gap-2">
+                <button class="ui-button-control"
+                        @onclick="SelectWholeFleetAsync">
+                    Select Fleet
+                </button>
+                <button class="ui-button-control"
+                        @onclick="ClearSelectionAsync">
+                    Clear
+                </button>
+                <button class="ui-button-control-info"
+                        disabled="@(!SelectionIsValid)"
+                        @onclick="QueuePreviewAsync">
+                    Queue to @CurrentScenario.PreviewDestination
+                </button>
+            </div>
         </div>
 
-        <p class="text-xs text-slate-400">Projected energy: @ProjectedEnergy⚡</p>
-        <p class="text-xs text-slate-400">Gate order: @(_pendingGate ? "On" : "Off")</p>
+        <div class="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.95fr)]">
+            <div class="space-y-4">
+                <section class="space-y-3">
+                    <div class="flex items-center justify-between gap-2">
+                        <p class="text-base font-semibold text-sky-300">Your Fleet</p>
+                        <p class="text-xs uppercase tracking-[0.24em] text-slate-500">Whole stack by default</p>
+                    </div>
+
+                    @foreach (var group in UnitGroups)
+                    {
+                        var stacks = GetStacksForCategory(_playerStacks, group.Category).ToList();
+                        if (stacks.Count == 0)
+                        {
+                            continue;
+                        }
+
+                        <div class="rounded-xl border border-white/10 bg-slate-950/40 p-3">
+                            <p class="mb-2 text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">@group.Label</p>
+                            <div class="space-y-2">
+                                @foreach (var stack in stacks)
+                                {
+                                    <div class="rounded-xl border @GetStackBorderClass(stack) bg-slate-950/70 p-3 transition-colors">
+                                        <div class="flex flex-wrap items-start justify-between gap-3">
+                                            <button type="button"
+                                                    class="flex min-w-0 flex-1 items-start justify-between gap-3 text-left"
+                                                    @onclick="() => ToggleWholeStackAsync(stack.Key)">
+                                                <div class="min-w-0">
+                                                    <div class="flex flex-wrap items-center gap-2">
+                                                        <p class="text-sm font-semibold text-slate-100">@stack.UnitType</p>
+                                                        <span class="rounded-full border px-2 py-0.5 text-xs font-medium @GetHullPillClass(stack)">@stack.RemainingHull/@stack.MaxHull hull</span>
+                                                    </div>
+                                                    <p class="mt-1 text-sm text-slate-400">@stack.AvailableCount available in this stack</p>
+                                                </div>
+
+                                                <div class="shrink-0 text-right">
+                                                    <p class="text-xs uppercase tracking-[0.2em] text-slate-500">Selected</p>
+                                                    <p class="text-lg font-semibold @GetSelectedCountClass(stack)">@stack.SelectedCount<span class="text-sm text-slate-500">/@stack.AvailableCount</span></p>
+                                                </div>
+                                            </button>
+
+                                            <div class="flex items-center gap-2">
+                                                <button type="button"
+                                                        class="ui-button-icon"
+                                                        disabled="@(stack.SelectedCount <= 0)"
+                                                        @onclick="() => AdjustStackAsync(stack.Key, -1)">
+                                                    -
+                                                </button>
+                                                <button type="button"
+                                                        class="ui-button-control"
+                                                        @onclick="() => ToggleWholeStackAsync(stack.Key)">
+                                                    @(stack.SelectedCount == stack.AvailableCount ? "Clear stack" : "Take stack")
+                                                </button>
+                                                <button type="button"
+                                                        class="ui-button-icon"
+                                                        disabled="@(stack.SelectedCount >= stack.AvailableCount)"
+                                                        @onclick="() => AdjustStackAsync(stack.Key, 1)">
+                                                    +
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    }
+                </section>
+
+                <section class="space-y-3 border-t border-white/10 pt-4">
+                    <div class="flex items-center justify-between gap-2">
+                        <p class="text-base font-semibold text-rose-300">Enemy Fleet</p>
+                        <p class="text-xs uppercase tracking-[0.24em] text-slate-500">Read only</p>
+                    </div>
+
+                    @if (_enemyStacks.Count == 0)
+                    {
+                        <div class="rounded-xl border border-white/10 bg-slate-950/40 p-3 text-sm text-slate-500">No opposing units in system.</div>
+                    }
+                    else
+                    {
+                        @foreach (var group in UnitGroups)
+                        {
+                            var stacks = GetStacksForCategory(_enemyStacks, group.Category).ToList();
+                            if (stacks.Count == 0)
+                            {
+                                continue;
+                            }
+
+                            <div class="rounded-xl border border-white/10 bg-slate-950/40 p-3">
+                                <p class="mb-2 text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">@group.Label</p>
+                                <div class="space-y-2">
+                                    @foreach (var stack in stacks)
+                                    {
+                                        <div class="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/10 bg-slate-950/70 px-3 py-2.5">
+                                            <div>
+                                                <p class="text-sm font-semibold text-slate-200">@stack.UnitType</p>
+                                                <p class="mt-1 text-sm text-slate-400">@stack.RemainingHull/@stack.MaxHull hull</p>
+                                            </div>
+                                            <p class="text-base font-semibold text-slate-300">x@stack.AvailableCount</p>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    }
+                </section>
+            </div>
+
+            <div class="space-y-4">
+                <section class="rounded-xl border border-white/10 bg-slate-950/40 p-4">
+                    <div class="flex items-center justify-between gap-2">
+                        <p class="text-base font-semibold text-slate-200">Staged Move</p>
+                        <p class="text-xs uppercase tracking-[0.24em] text-slate-500">@CurrentScenario.SystemName to @CurrentScenario.PreviewDestination</p>
+                    </div>
+
+                    <div class="mt-3 rounded-xl border border-white/10 bg-slate-950/70 px-3 py-2">
+                        <p class="text-sm text-slate-300">Capacity: <span class="font-semibold text-slate-100">@ProvidedCapacity</span> provided / <span class="font-semibold text-slate-100">@NeededCapacity</span> needed</p>
+                    </div>
+
+                    @if (!SelectedStacks.Any())
+                    {
+                        <p class="mt-3 text-sm text-slate-500">No fleet staged yet. Default flow is Select Fleet or Take stack, then trim with +/- if needed.</p>
+                    }
+                    else
+                    {
+                        <div class="mt-3 space-y-2">
+                            @foreach (var stack in SelectedStacks)
+                            {
+                                <div class="flex items-center justify-between gap-3 rounded-xl border border-sky-400/20 bg-sky-500/5 px-3 py-2">
+                                    <div>
+                                        <p class="text-sm font-semibold text-slate-100">@stack.UnitType</p>
+                                        <p class="text-sm text-slate-400">@stack.RemainingHull/@stack.MaxHull hull</p>
+                                    </div>
+                                    <p class="text-base font-semibold text-sky-200">x@stack.SelectedCount</p>
+                                </div>
+                            }
+                        </div>
+                    }
+
+                    <p class="mt-3 text-sm @(SelectionIsValid ? "text-sky-300" : "text-amber-300")">
+                        @(SelectionIsValid ? "Valid move draft. Queue it to preview how exact stack buckets will appear in pending orders." : "Selection exceeds available transport capacity. Trim strike or planetary units, or add more carrying hull.")
+                    </p>
+                </section>
+
+                <section class="rounded-xl border border-white/10 bg-slate-950/40 p-4">
+                    <div class="flex items-center justify-between gap-2">
+                        <p class="text-base font-semibold text-slate-200">Pending Orders Preview</p>
+                        <p class="text-xs uppercase tracking-[0.24em] text-slate-500">Exact stack buckets</p>
+                    </div>
+
+                    @if (_queuedOrders.Count == 0)
+                    {
+                        <p class="mt-3 text-sm text-slate-500">No queued move preview yet.</p>
+                    }
+                    else
+                    {
+                        <div class="mt-3 space-y-3">
+                            @for (var index = 0; index < _queuedOrders.Count; index++)
+                            {
+                                var order = _queuedOrders[index];
+                                <div class="rounded-xl border border-white/10 bg-slate-950/70 p-3">
+                                    <div class="flex items-center justify-between gap-3">
+                                        <p class="text-sm font-semibold text-slate-100">@order.From -> @order.To</p>
+                                        <button type="button"
+                                                class="ui-button-danger-sm"
+                                                @onclick="() => RemoveQueuedOrderAsync(index)">
+                                            Remove
+                                        </button>
+                                    </div>
+                                    <div class="mt-3 space-y-2">
+                                        @foreach (var stack in order.Stacks)
+                                        {
+                                            <div class="flex items-center justify-between gap-3 rounded-lg border border-white/10 px-3 py-2">
+                                                <div>
+                                                    <p class="text-sm font-semibold text-slate-200">@stack.UnitType</p>
+                                                    <p class="text-sm text-slate-400">@stack.RemainingHull/@stack.MaxHull hull</p>
+                                                </div>
+                                                <p class="text-sm font-semibold text-slate-200">x@stack.SelectedCount</p>
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                </section>
+            </div>
+        </div>
+    </section>
+
+    <section class="ui-surface-section space-y-3 p-4 lg:p-5">
+        <p class="ui-panel-label">Wireframe Notes</p>
+        <ul class="space-y-2 text-sm text-slate-300">
+            <li>Row tap or click toggles the whole stack on or off.</li>
+            <li><span class="font-semibold text-slate-100">Select Fleet</span> is the fastest path for common moves.</li>
+            <li><span class="font-semibold text-slate-100">+/-</span> is reserved for splitting a stack bucket after the bulk selection is done.</li>
+            <li>Pending orders keep exact hull buckets so the player can verify they moved the intended damaged or fresh ships.</li>
+        </ul>
     </section>
 </div>
 
 @code {
-    private const int BaseEnergy = 20;
+    private static readonly UnitGroup[] UnitGroups =
+    [
+        new("Strike", NexusUnitCategory.Strike),
+        new("Capital", NexusUnitCategory.Capital),
+        new("Planetary", NexusUnitCategory.Planetary),
+    ];
 
-    private readonly List<NexusBuildOrder> _buildOrders = [];
-    private ImmutableDictionary<NexusUnitType, int> _fleetSelection = ImmutableDictionary<NexusUnitType, int>.Empty;
-    private bool _pendingGate;
+    private readonly IReadOnlyList<WireframeScenario> _scenarios =
+    [
+        new(
+            "Fleet Fast Path",
+            "Captain Red's System",
+            "Mu",
+            3,
+            true,
+            false,
+            [
+                new(NexusUnitType.Carrier, remainingHull: 4, availableCount: 1),
+                new(NexusUnitType.Fighter, remainingHull: 1, availableCount: 2),
+                new(NexusUnitType.Infantry, remainingHull: 1, availableCount: 4),
+            ],
+            [],
+            []
+        ),
+        new(
+            "Mixed Damage",
+            "Vega",
+            "Xi",
+            4,
+            false,
+            false,
+            [
+                new(NexusUnitType.Carrier, remainingHull: 4, availableCount: 1),
+                new(NexusUnitType.Carrier, remainingHull: 2, availableCount: 1),
+                new(NexusUnitType.Cruiser, remainingHull: 1, availableCount: 2),
+                new(NexusUnitType.Fighter, remainingHull: 1, availableCount: 3),
+                new(NexusUnitType.Infantry, remainingHull: 1, availableCount: 2),
+            ],
+            
+            [
+                new(NexusUnitType.Cruiser, remainingHull: 2, availableCount: 1),
+                new(NexusUnitType.Infantry, remainingHull: 1, availableCount: 2),
+            ],
+            []
+        ),
+        new(
+            "Staged Order",
+            "Nexus",
+            "Mu",
+            0,
+            false,
+            true,
+            [
+                new(NexusUnitType.Carrier, remainingHull: 4, availableCount: 1),
+                new(NexusUnitType.Carrier, remainingHull: 3, availableCount: 1, selectedCount: 1),
+                new(NexusUnitType.Fighter, remainingHull: 1, availableCount: 3, selectedCount: 2),
+                new(NexusUnitType.Infantry, remainingHull: 1, availableCount: 2, selectedCount: 1),
+            ],
+            
+            [
+                new(NexusUnitType.Cruiser, remainingHull: 2, availableCount: 1),
+                new(NexusUnitType.Infantry, remainingHull: 1, availableCount: 1),
+            ],
+            
+            [
+                new(
+                    "Nexus",
+                    "Sigma",
+                    [
+                        new(NexusUnitType.Carrier, remainingHull: 4, availableCount: 1, selectedCount: 1),
+                        new(NexusUnitType.Fighter, remainingHull: 1, availableCount: 2, selectedCount: 2),
+                    ]
+                ),
+            ]
+        ),
+    ];
+
+    private readonly List<WireframeStackState> _playerStacks = [];
+    private readonly List<WireframeStackState> _enemyStacks = [];
+    private readonly List<QueuedOrderState> _queuedOrders = [];
+
     private int _scenarioIndex;
 
-    private readonly IReadOnlyList<NexusStoryFixtures.SelectedHexScenario> _scenarios =
-        NexusStoryFixtures.CreateSelectedHexScenarios();
+    private WireframeScenario CurrentScenario => _scenarios[_scenarioIndex];
 
-    private NexusStoryFixtures.SelectedHexScenario CurrentScenario => _scenarios[_scenarioIndex];
+    private IEnumerable<WireframeStackState> SelectedStacks => _playerStacks.Where(stack => stack.SelectedCount > 0);
 
-    private int ProjectedEnergy =>
-        BaseEnergy - _buildOrders.Sum(order => order.Count * order.UnitType.Cost()) - (_pendingGate ? 12 : 0);
+    private int ProvidedCapacity => SelectedStacks.Sum(stack => stack.UnitType.CarryCapacity() * stack.SelectedCount);
+
+    private int NeededCapacity => SelectedStacks.Sum(stack => stack.UnitType.ConsumedCapacity() * stack.SelectedCount);
+
+    private bool HasSelection => SelectedStacks.Any();
+
+    private bool SelectionIsValid => HasSelection && ProvidedCapacity >= NeededCapacity;
+
+    protected override void OnInitialized()
+    {
+        ApplyScenario(CurrentScenario);
+    }
 
     private void SetScenario(int index)
     {
         _scenarioIndex = index;
-        _fleetSelection = ImmutableDictionary<NexusUnitType, int>.Empty;
-        _buildOrders.Clear();
-        _pendingGate = false;
+        ApplyScenario(CurrentScenario);
     }
 
-    private string ScenarioClass(int index) =>
-        index == _scenarioIndex ? "ui-pg-tab-active" : "ui-pg-tab";
-
-    private Task HandleOrderDraftRequest(OrderDraftRequest request)
+    private void ApplyScenario(WireframeScenario scenario)
     {
-        switch (request.Kind)
+        _playerStacks.Clear();
+        _playerStacks.AddRange(scenario.PlayerStacks.Select(CloneStack));
+
+        _enemyStacks.Clear();
+        _enemyStacks.AddRange(scenario.EnemyStacks.Select(CloneStack));
+
+        _queuedOrders.Clear();
+        _queuedOrders.AddRange(scenario.QueuedOrders.Select(order =>
+            new QueuedOrderState(order.From, order.To, order.Stacks.Select(CloneStack).ToList())));
+    }
+
+    private Task ToggleWholeStackAsync(string key)
+    {
+        var stack = FindPlayerStack(key);
+        stack.SelectedCount = stack.SelectedCount == stack.AvailableCount ? 0 : stack.AvailableCount;
+        return Task.CompletedTask;
+    }
+
+    private Task AdjustStackAsync(string key, int delta)
+    {
+        var stack = FindPlayerStack(key);
+        stack.SelectedCount = Math.Clamp(stack.SelectedCount + delta, 0, stack.AvailableCount);
+        return Task.CompletedTask;
+    }
+
+    private Task SelectWholeFleetAsync()
+    {
+        foreach (var stack in _playerStacks)
         {
-            case OrderDraftRequestKind.MoveDraftChanged:
-                _fleetSelection = request.MoveDraftUnits ?? ImmutableDictionary<NexusUnitType, int>.Empty;
-                return Task.CompletedTask;
-            case OrderDraftRequestKind.BuildDraftAdjusted:
-                ApplyBuildDraftAdjustment(request.UnitType!.Value, request.BuildAdjustment!.Value);
-                return Task.CompletedTask;
-            case OrderDraftRequestKind.NexusGateDraftChanged:
-                _pendingGate = request.BeginNexusGate ?? false;
-                return Task.CompletedTask;
-            default:
-                return Task.CompletedTask;
+            stack.SelectedCount = stack.AvailableCount;
         }
+
+        return Task.CompletedTask;
     }
 
-    private void ApplyBuildDraftAdjustment(NexusUnitType unit, BuildDraftAdjustmentKind adjustment)
+    private Task ClearSelectionAsync()
     {
-        switch (adjustment)
+        foreach (var stack in _playerStacks)
         {
-            case BuildDraftAdjustmentKind.AddOne:
-                AddBuildOne(unit);
-                return;
-            case BuildDraftAdjustmentKind.AddMax:
-                AddBuildMax(unit);
-                return;
-            case BuildDraftAdjustmentKind.RemoveOne:
-                RemoveBuildOne(unit);
-                return;
-            case BuildDraftAdjustmentKind.RemoveAll:
-                RemoveBuildAll(unit);
-                return;
+            stack.SelectedCount = 0;
         }
+
+        return Task.CompletedTask;
     }
 
-    private void AddBuildOne(NexusUnitType unit)
+    private Task QueuePreviewAsync()
     {
-        if (ProjectedEnergy < unit.Cost())
-            return;
+        if (!SelectionIsValid)
+        {
+            return Task.CompletedTask;
+        }
 
-        var idx = _buildOrders.FindIndex(o => o.UnitType == unit);
-        if (idx >= 0)
-            _buildOrders[idx] = _buildOrders[idx] with { Count = _buildOrders[idx].Count + 1 };
-        else
-            _buildOrders.Add(new NexusBuildOrder(unit, 1));
+        _queuedOrders.Add(
+            new QueuedOrderState(
+                CurrentScenario.SystemName,
+                CurrentScenario.PreviewDestination,
+                SelectedStacks.Select(CloneStack).ToList()
+            )
+        );
+
+        return ClearSelectionAsync();
     }
 
-    private void AddBuildMax(NexusUnitType unit)
+    private Task RemoveQueuedOrderAsync(int index)
     {
-        var maxAdd = ProjectedEnergy / unit.Cost();
-        for (var i = 0; i < maxAdd; i++)
-            AddBuildOne(unit);
+        _queuedOrders.RemoveAt(index);
+        return Task.CompletedTask;
     }
 
-    private void RemoveBuildOne(NexusUnitType unit)
+    private static IEnumerable<WireframeStackState> GetStacksForCategory(
+        IEnumerable<WireframeStackState> stacks,
+        NexusUnitCategory category
+    ) => stacks.Where(stack => stack.UnitType.Category() == category);
+
+    private static WireframeStackState CloneStack(WireframeStackState stack) =>
+        new(
+            stack.UnitType,
+            stack.RemainingHull,
+            stack.AvailableCount,
+            stack.SelectedCount
+        );
+
+    private WireframeStackState FindPlayerStack(string key) =>
+        _playerStacks.First(stack => stack.Key == key);
+
+    private string ScenarioClass(int index) => index == _scenarioIndex ? "ui-pg-tab-active" : "ui-pg-tab";
+
+    private static string GetStackBorderClass(WireframeStackState stack) =>
+        stack.SelectedCount > 0 ? "border-sky-400/30" : "border-white/10";
+
+    private static string GetHullPillClass(WireframeStackState stack)
     {
-        var idx = _buildOrders.FindIndex(o => o.UnitType == unit);
-        if (idx < 0)
-            return;
+        var ratio = (double)stack.RemainingHull / stack.MaxHull;
+        if (ratio >= 1)
+        {
+            return "border-emerald-400/30 bg-emerald-500/10 text-emerald-200";
+        }
 
-        if (_buildOrders[idx].Count <= 1)
-            _buildOrders.RemoveAt(idx);
-        else
-            _buildOrders[idx] = _buildOrders[idx] with { Count = _buildOrders[idx].Count - 1 };
+        if (ratio > 0.5)
+        {
+            return "border-amber-400/30 bg-amber-500/10 text-amber-200";
+        }
+
+        return "border-rose-400/30 bg-rose-500/10 text-rose-200";
     }
 
-    private void RemoveBuildAll(NexusUnitType unit)
+    private static string GetSelectedCountClass(WireframeStackState stack) =>
+        stack.SelectedCount > 0 ? "text-sky-200" : "text-slate-200";
+
+    private sealed record UnitGroup(string Label, NexusUnitCategory Category);
+
+    private sealed class WireframeStackState(
+        NexusUnitType unitType,
+        int remainingHull,
+        int availableCount,
+        int selectedCount = 0
+    )
     {
-        _buildOrders.RemoveAll(o => o.UnitType == unit);
+        public string Key { get; } = $"{unitType}-{remainingHull}";
+        public NexusUnitType UnitType { get; } = unitType;
+        public int RemainingHull { get; } = remainingHull;
+        public int MaxHull { get; } = unitType.Hull();
+        public int AvailableCount { get; } = availableCount;
+        public int SelectedCount { get; set; } = selectedCount;
     }
+
+    private sealed record QueuedOrderState(string From, string To, List<WireframeStackState> Stacks);
+
+    private sealed record WireframeScenario(
+        string Label,
+        string SystemName,
+        string PreviewDestination,
+        int IncomeValue,
+        bool IsHome,
+        bool IsNexus,
+        IReadOnlyList<WireframeStackState> PlayerStacks,
+        IReadOnlyList<WireframeStackState> EnemyStacks,
+        IReadOnlyList<QueuedOrderState> QueuedOrders
+    );
 }

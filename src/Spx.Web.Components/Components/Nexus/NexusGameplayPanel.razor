@@ -23,8 +23,8 @@
 }
 
 @* Main layout *@
-<div class="mt-4 flex min-h-0 flex-col gap-4 sm:flex-row">
-    <section class="ui-surface-section flex min-h-0 flex-col p-4 lg:p-5 sm:min-w-0 sm:flex-[3_1_0%]">
+<div class="mt-4 flex min-h-0 flex-col gap-4 xl:flex-row">
+    <section class="ui-surface-section flex min-h-0 min-w-0 flex-col p-4 lg:p-5 xl:flex-[3_1_0%]">
         <div class="min-h-0 flex-1">
             <NexusHexGridComponent Systems="@Session.Systems" CurrentPlayerId="@Session.CurrentPlayer.PlayerId"
                                    OpponentPlayerId="@Session.Opponent.PlayerId" CurrentPlayerFaction="@Session.CurrentPlayer.Faction"
@@ -36,7 +36,7 @@
         </div>
     </section>
 
-    <aside class="flex min-h-0 flex-col gap-4 sm:min-w-0 sm:flex-[2_1_0%]">
+    <aside class="flex min-h-0 min-w-0 flex-col gap-4 xl:flex-[2_1_0%]">
         <div class="min-h-0 flex-1">
             <NexusSidebarPanelShell>
                 <HeaderContent>
@@ -44,8 +44,7 @@
                     {
                         <Tabs TItem="NexusGameplayTab" Items="@SidebarTabs" SelectedItem="@_sidebarState.ActiveTab"
                               ItemIdSelector="GetSidebarTabId" PanelIdSelector="GetSidebarPanelId"
-                            ActiveItemClass="ui-tab-button-lg-active"
-                            InactiveItemClass="ui-tab-button-lg"
+                              ActiveItemClass="ui-tab-button-lg-active" InactiveItemClass="ui-tab-button-lg"
                               ItemLabelSelector="GetSidebarTabLabel" DisabledSelector="IsSidebarTabDisabled"
                               OnSelected="SetTab" AriaLabel="Sidebar view" />
                     }
@@ -74,7 +73,7 @@
                                                            CurrentPlayerGateProgress="@Session.CurrentPlayer.GateProgress"
                                                            PendingBeginNexusGate="@_orderDraftState.PendingBeginNexusGate"
                                                            IsEditable="@ShowOrdersForm" ProjectedEnergy="@ProjectedEnergy"
-                                                           AvailableUnits="@GetAvailableUnits(selectedSystem.Coord)"
+                                                           AvailableStacks="@GetAvailableMoveStacks(selectedSystem.Coord)"
                                                            PendingBuildOrders="@_orderDraftState.PendingBuildOrders"
                                                            OnOrderDraftRequested="HandleOrderDraftRequest" />
                                 }
@@ -239,18 +238,18 @@
 
         var coord = request.System!.Value;
         if (_selectionState.SelectedSystem.HasValue
-            && !_selectionState.StagedMoveUnits.IsEmpty
+            && !_selectionState.StagedMoveStacks.IsDefaultOrEmpty
             && _selectionState.ValidMoveTargets.Contains(coord))
         {
             _orderDraftState = NexusGameplayPanelState.QueueMoveOrder(
                 _orderDraftState,
                 _selectionState.SelectedSystem.Value,
                 coord,
-                _selectionState.StagedMoveUnits
+                _selectionState.StagedMoveStacks
             );
             _selectionState = _selectionState with
             {
-                StagedMoveUnits = ImmutableDictionary<NexusUnitType, int>.Empty,
+                StagedMoveStacks = ImmutableArray<NexusUnitStackGroup>.Empty,
                 ValidMoveTargets = [],
             };
             return;
@@ -266,7 +265,9 @@
             case OrderDraftRequestKind.MoveDraftChanged:
                 _selectionState = NexusGameplayPanelState.ApplyMoveDraft(
                     _selectionState,
-                    request.MoveDraftUnits ?? ImmutableDictionary<NexusUnitType, int>.Empty,
+                    request.MoveDraftStacks.IsDefault
+                        ? ImmutableArray<NexusUnitStackGroup>.Empty
+                        : request.MoveDraftStacks,
                     Session,
                     Session.CurrentPlayer.PlayerId
                 );
@@ -317,25 +318,41 @@
         return planetary > 0;
     }
 
-    private ImmutableDictionary<NexusUnitType, int> GetAvailableUnits(HexCoord coord)
+    private ImmutableArray<NexusUnitStackGroup> GetAvailableMoveStacks(HexCoord coord)
     {
         var system = Session.Systems.FirstOrDefault(s => s.Coord == coord);
         if (system is null)
-            return ImmutableDictionary<NexusUnitType, int>.Empty;
+            return ImmutableArray<NexusUnitStackGroup>.Empty;
 
-        if (!system.Units.TryGetValue(Session.CurrentPlayer.PlayerId, out var unitsAtSystem))
-            return ImmutableDictionary<NexusUnitType, int>.Empty;
+        var builder = system.GetPlayerStacks(Session.CurrentPlayer.PlayerId).ToBuilder();
+        foreach (var pendingStack in _orderDraftState.PendingMoveOrders.Where(o => o.From == coord).SelectMany(o => o.Stacks))
+        {
+            for (var index = 0; index < builder.Count; index++)
+            {
+                if (builder[index].UnitType != pendingStack.UnitType || builder[index].RemainingHull != pendingStack.RemainingHull)
+                    continue;
 
-        var assigned = _orderDraftState.PendingMoveOrders
-            .Where(o => o.From == coord)
-            .SelectMany(o => o.Units)
-            .GroupBy(kv => kv.Key)
-            .ToDictionary(g => g.Key, g => g.Sum(kv => kv.Value));
+                var nextCount = builder[index].Count - pendingStack.Count;
+                if (nextCount > 0)
+                    builder[index] = builder[index] with { Count = nextCount };
+                else
+                    builder.RemoveAt(index);
 
-        return unitsAtSystem
-            .Select(kv => (Type: kv.Key, Count: kv.Value - assigned.GetValueOrDefault(kv.Key)))
-            .Where(x => x.Count > 0)
-            .ToImmutableDictionary(x => x.Type, x => x.Count);
+                break;
+            }
+        }
+
+        return builder.ToImmutable();
+    }
+
+    private bool IsSystemContested(HexCoord coord)
+    {
+        var system = Session.Systems.FirstOrDefault(s => s.Coord == coord);
+        if (system is null)
+            return false;
+
+        return system.GetPlayerStacks(Session.CurrentPlayer.PlayerId).Length > 0
+            && system.GetPlayerStacks(Session.Opponent.PlayerId).Length > 0;
     }
 
     private int ProjectedSpend => _orderDraftState.ProjectedSpend;

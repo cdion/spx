@@ -25,7 +25,7 @@ public sealed class SubmitOrdersHandlerTests
             RedPlayerId,
             NexusMapTopology.Player1HomeCoord,
             new HexCoord(1, -2),
-            ImmutableDictionary<NexusUnitType, int>.Empty.Add(NexusUnitType.Fighter, 1),
+            ImmutableArray.Create(new NexusUnitStackGroup(NexusUnitType.Fighter, 1, 1)),
             IsRetreat: false
         );
 

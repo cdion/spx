@@ -33,8 +33,7 @@ else if (Games is not null)
             <div class="space-y-6">
                 <section class="ui-surface-form">
                     <div class="ui-lobby-row items-start">
-                        <SectionHeader Eyebrow="Open" Title="Active seats"
-                                       Tone="SectionHeader.EyebrowTone.Accent" />
+                        <SectionHeader Eyebrow="Open" Title="Active seats" Tone="SectionHeader.EyebrowTone.Accent" />
                         <StatusBadge Tone="StatusBadge.BadgeTone.Success">
                             @Games.OpenGames.Count game(s)
                         </StatusBadge>
@@ -56,66 +55,65 @@ else if (Games is not null)
                                             <StatusBadge>
                                                 @game.ActivePlayerCount / @game.MaxPlayers players
                                             </StatusBadge>
-                                            <a class="ui-button-primary px-4 py-2" href="@($"{GameHrefBase}/{game.GameId}")">
+                                            <a class="ui-button-primary-sm" href="@($"{GameHrefBase}/{game.GameId}")">
                                                 Open lobby
                                             </a>
                                         </div>
                                     </TrailingContent>
                                 </LobbyGameSummaryCard>
-                                }
-                            </div>
-                        }
-                    </section>
-
-                    <section class="ui-surface-form">
-                        <div class="ui-lobby-row items-start">
-                            <SectionHeader Eyebrow="Ended" Title="History"
-                                           Tone="SectionHeader.EyebrowTone.Muted" />
-                            <StatusBadge>
-                                @Games.EndedGames.Count game(s)
-                            </StatusBadge>
+                            }
                         </div>
+                    }
+                </section>
 
-                        @if (Games.EndedGames.Count == 0)
-                        {
-                            <p class="mt-6 ui-empty-state">Ended games will appear here after their final player leaves.</p>
-                        }
-                        else
-                        {
-                            <div class="mt-6 space-y-4">
-                                @foreach (var game in Games.EndedGames)
-                                {
-                                    <LobbyGameSummaryCard Title="@game.Name" InviteCode="@game.InviteCode"
-                                                          PlayerSummary="@($"Your last player name was {game.CurrentPlayerName}.")"
-                                                          InviteCodeCssClass="ui-code-token text-slate-100">
-                                        <TrailingContent>
-                                            <div class="space-y-2 text-sm text-slate-400 sm:text-right">
-                                                <p>Ended @UiFormatHelpers.FormatDateTime(game.EndedAtUtc ?? game.CreatedAtUtc)</p>
-                                                <p>Created @UiFormatHelpers.FormatDateTime(game.CreatedAtUtc)</p>
-                                            </div>
-                                        </TrailingContent>
-                                    </LobbyGameSummaryCard>
-                                }
-                            </div>
-                        }
-                    </section>
-                </div>
+                <section class="ui-surface-form">
+                    <div class="ui-lobby-row items-start">
+                        <SectionHeader Eyebrow="Ended" Title="History" Tone="SectionHeader.EyebrowTone.Muted" />
+                        <StatusBadge>
+                            @Games.EndedGames.Count game(s)
+                        </StatusBadge>
+                    </div>
 
-                <aside class="ui-surface-form space-y-6">
-                    <SectionHeader Eyebrow="Notes" Title="Current rules" />
+                    @if (Games.EndedGames.Count == 0)
+                    {
+                        <p class="mt-6 ui-empty-state">Ended games will appear here after their final player leaves.</p>
+                    }
+                    else
+                    {
+                        <div class="mt-6 space-y-4">
+                            @foreach (var game in Games.EndedGames)
+                            {
+                                <LobbyGameSummaryCard Title="@game.Name" InviteCode="@game.InviteCode"
+                                                      PlayerSummary="@($"Your last player name was {game.CurrentPlayerName}.")"
+                                                      InviteCodeCssClass="ui-code-token text-slate-100">
+                                    <TrailingContent>
+                                        <div class="space-y-2 text-sm text-slate-400 sm:text-right">
+                                            <p>Ended @UiFormatHelpers.FormatDateTime(game.EndedAtUtc ?? game.CreatedAtUtc)</p>
+                                            <p>Created @UiFormatHelpers.FormatDateTime(game.CreatedAtUtc)</p>
+                                        </div>
+                                    </TrailingContent>
+                                </LobbyGameSummaryCard>
+                            }
+                        </div>
+                    }
+                </section>
+            </div>
 
-                    <ul class="space-y-3 text-sm leading-6 text-slate-300">
-                        <li>Every game supports exactly two active player seats in this first slice.</li>
-                        <li>Player names must be unique within a game and can be updated when you reattach.</li>
-                        <li>Active and former players can open the lobby page for a game; only active players can take actions.
-                        </li>
-                        <li>Ended games appear in history for anyone who played in them, whether or not they had left before the
-                            game ended.</li>
-                        </ul>
-                    </aside>
-                </div>
-            </section>
-        }
+            <aside class="ui-surface-form space-y-6">
+                <SectionHeader Eyebrow="Notes" Title="Current rules" />
+
+                <ul class="space-y-3 text-sm leading-6 text-slate-300">
+                    <li>Every game supports exactly two active player seats in this first slice.</li>
+                    <li>Player names must be unique within a game and can be updated when you reattach.</li>
+                    <li>Active and former players can open the lobby page for a game; only active players can take actions.
+                    </li>
+                    <li>Ended games appear in history for anyone who played in them, whether or not they had left before the
+                        game ended.</li>
+                    </ul>
+                </aside>
+            </div>
+        </section>
+    }
 
 @code {
     [Parameter]

@@ -24,10 +24,6 @@ public sealed class LobbyMessagesCallbacks
     public Func<Guid, Task> DismissPendingMessageAsync { get; init; } =
         static _ => Task.CompletedTask;
 
-    public Func<string, Task> SetComposerTextAsync { get; init; } = static _ => Task.CompletedTask;
-
-    public Func<string?, Task> SetRecipientPlayerIdStringAsync { get; init; } =
+    public Func<LobbyMessageComposerSubmitRequest, Task> SendMessageAsync { get; init; } =
         static _ => Task.CompletedTask;
-
-    public Func<Task> SendMessageAsync { get; init; } = static () => Task.CompletedTask;
 }

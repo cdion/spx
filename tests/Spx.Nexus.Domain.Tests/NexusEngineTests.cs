@@ -386,7 +386,14 @@ public class NexusMoveValidationTests
         HexCoord from,
         HexCoord to,
         params (NexusUnitType, int)[] units
-    ) => new(from, to, units.ToImmutableDictionary(x => x.Item1, x => x.Item2));
+    ) =>
+        new(
+            from,
+            to,
+            units
+                .Select(unit => new NexusUnitStackGroup(unit.Item1, unit.Item1.Hull(), unit.Item2))
+                .ToImmutableArray()
+        );
 
     [Fact]
     public void Move_ToNonAdjacentSystem_IsRejected()
@@ -408,7 +415,7 @@ public class NexusMoveValidationTests
         var order = new NexusMoveOrder(
             P1Home,
             Adjacent1,
-            ImmutableDictionary<NexusUnitType, int>.Empty
+            ImmutableArray<NexusUnitStackGroup>.Empty
         );
         var result = Submit(s, P1Id, [order]);
         Assert.IsType<NexusTurnOrdersRejected>(result);
@@ -588,6 +595,40 @@ public class NexusRoundResolutionTests
         );
     }
 
+    private static NexusMoveOrder Move(
+        HexCoord from,
+        HexCoord to,
+        params (NexusUnitType UnitType, int Count)[] units
+    ) =>
+        new(
+            from,
+            to,
+            units
+                .Select(unit => new NexusUnitStackGroup(
+                    unit.UnitType,
+                    unit.UnitType.Hull(),
+                    unit.Count
+                ))
+                .ToImmutableArray()
+        );
+
+    private static NexusMoveOrder MoveExact(
+        HexCoord from,
+        HexCoord to,
+        params (NexusUnitType UnitType, int RemainingHull, int Count)[] stacks
+    ) =>
+        new(
+            from,
+            to,
+            stacks
+                .Select(stack => new NexusUnitStackGroup(
+                    stack.UnitType,
+                    stack.RemainingHull,
+                    stack.Count
+                ))
+                .ToImmutableArray()
+        );
+
     [Fact]
     public void BothPlayersSubmit_AdvancesRound()
     {
@@ -621,12 +662,11 @@ public class NexusRoundResolutionTests
             s,
             p1Moves:
             [
-                new NexusMoveOrder(
+                Move(
                     NexusMap.Player1HomeCoord,
                     target,
-                    ImmutableDictionary<NexusUnitType, int>
-                        .Empty.Add(NexusUnitType.Carrier, 1)
-                        .Add(NexusUnitType.Infantry, 1)
+                    (NexusUnitType.Carrier, 1),
+                    (NexusUnitType.Infantry, 1)
                 ),
             ]
         );
@@ -649,12 +689,11 @@ public class NexusRoundResolutionTests
             s,
             p1Moves:
             [
-                new NexusMoveOrder(
+                Move(
                     NexusMap.Player1HomeCoord,
                     target,
-                    ImmutableDictionary<NexusUnitType, int>
-                        .Empty.Add(NexusUnitType.Carrier, 1)
-                        .Add(NexusUnitType.Infantry, 1)
+                    (NexusUnitType.Carrier, 1),
+                    (NexusUnitType.Infantry, 1)
                 ),
             ]
         );
@@ -671,14 +710,7 @@ public class NexusRoundResolutionTests
 
         SubmitBoth(
             s,
-            p1Moves:
-            [
-                new NexusMoveOrder(
-                    NexusMap.Player1HomeCoord,
-                    target,
-                    ImmutableDictionary<NexusUnitType, int>.Empty.Add(NexusUnitType.Carrier, 1)
-                ),
-            ]
+            p1Moves: [Move(NexusMap.Player1HomeCoord, target, (NexusUnitType.Carrier, 1))]
         );
 
         var sys = s.Systems.First(sys => sys.Coord == target);
@@ -730,12 +762,11 @@ public class NexusRoundResolutionTests
             s,
             p1Moves:
             [
-                new NexusMoveOrder(
+                Move(
                     NexusMap.Player1HomeCoord,
                     nearP1,
-                    ImmutableDictionary<NexusUnitType, int>
-                        .Empty.Add(NexusUnitType.Carrier, 1)
-                        .Add(NexusUnitType.Infantry, 1)
+                    (NexusUnitType.Carrier, 1),
+                    (NexusUnitType.Infantry, 1)
                 ),
             ]
         );
@@ -833,19 +864,53 @@ public class NexusPersistentDamageTests
         );
     }
 
+    private static NexusMoveOrder Move(
+        HexCoord from,
+        HexCoord to,
+        params (NexusUnitType UnitType, int Count)[] units
+    ) =>
+        new(
+            from,
+            to,
+            units
+                .Select(unit => new NexusUnitStackGroup(
+                    unit.UnitType,
+                    unit.UnitType.Hull(),
+                    unit.Count
+                ))
+                .ToImmutableArray()
+        );
+
+    private static NexusMoveOrder MoveExact(
+        HexCoord from,
+        HexCoord to,
+        params (NexusUnitType UnitType, int RemainingHull, int Count)[] stacks
+    ) =>
+        new(
+            from,
+            to,
+            stacks
+                .Select(stack => new NexusUnitStackGroup(
+                    stack.UnitType,
+                    stack.RemainingHull,
+                    stack.Count
+                ))
+                .ToImmutableArray()
+        );
+
     [Fact]
     public void Damage_PersistsBetweenRounds()
     {
         var s = MakeState();
         var p1Home = s.Systems.First(sys => sys.HomePlayerId == P1Id);
 
-        // Replace P1's home units with a single Carrier that already has 1 hit absorbed
+        // Replace P1's home units with a single Carrier that already has 3 remaining hull
         p1Home.Units[P1Id] =
         [
             new NexusUnitStack
             {
                 UnitType = NexusUnitType.Carrier,
-                HitsAbsorbed = 1,
+                RemainingHull = 3,
                 Count = 1,
             },
         ];
@@ -855,7 +920,7 @@ public class NexusPersistentDamageTests
 
         // Damage must survive the round unchanged
         var stack = p1Home.GetPlayerStacks(P1Id).Single(st => st.UnitType == NexusUnitType.Carrier);
-        Assert.Equal(1, stack.HitsAbsorbed);
+        Assert.Equal(3, stack.RemainingHull);
         Assert.Equal(1, stack.Count);
     }
 
@@ -873,25 +938,25 @@ public class NexusPersistentDamageTests
             new NexusUnitStack
             {
                 UnitType = NexusUnitType.Infantry,
-                HitsAbsorbed = 0,
+                RemainingHull = NexusUnitType.Infantry.Hull(),
                 Count = 4,
             },
             new NexusUnitStack
             {
                 UnitType = NexusUnitType.Fighter,
-                HitsAbsorbed = 0,
+                RemainingHull = NexusUnitType.Fighter.Hull(),
                 Count = 2,
             },
             new NexusUnitStack
             {
                 UnitType = NexusUnitType.Frigate,
-                HitsAbsorbed = 1,
+                RemainingHull = 1,
                 Count = 1,
             },
             new NexusUnitStack
             {
                 UnitType = NexusUnitType.Frigate,
-                HitsAbsorbed = 0,
+                RemainingHull = NexusUnitType.Frigate.Hull(),
                 Count = 1,
             },
         ];
@@ -902,7 +967,7 @@ public class NexusPersistentDamageTests
             new NexusUnitStack
             {
                 UnitType = NexusUnitType.Frigate,
-                HitsAbsorbed = 0,
+                RemainingHull = NexusUnitType.Frigate.Hull(),
                 Count = 1,
             },
         ];
@@ -912,21 +977,14 @@ public class NexusPersistentDamageTests
         // P1 retreats 1 Frigate; P2 stays
         SubmitBoth(
             s,
-            p1Moves:
-            [
-                new NexusMoveOrder(
-                    NexusMap.Player1HomeCoord,
-                    adjacent,
-                    ImmutableDictionary<NexusUnitType, int>.Empty.Add(NexusUnitType.Frigate, 1)
-                ),
-            ]
+            p1Moves: [MoveExact(NexusMap.Player1HomeCoord, adjacent, (NexusUnitType.Frigate, 1, 1))]
         );
 
-        // The most-damaged Frigate (HitsAbsorbed=1) should have moved to the destination
+        // The most-damaged Frigate (RemainingHull=1) should have moved to the destination
         var dst = s.Systems.First(sys => sys.Coord == adjacent);
         var movedStack = dst.GetPlayerStacks(P1Id)
             .Single(st => st.UnitType == NexusUnitType.Frigate);
-        Assert.Equal(1, movedStack.HitsAbsorbed);
+        Assert.Equal(1, movedStack.RemainingHull);
     }
 
     [Fact]
@@ -942,7 +1000,7 @@ public class NexusPersistentDamageTests
             new NexusUnitStack
             {
                 UnitType = NexusUnitType.Frigate,
-                HitsAbsorbed = 0,
+                RemainingHull = NexusUnitType.Frigate.Hull(),
                 Count = 1,
             },
         ];
@@ -953,22 +1011,8 @@ public class NexusPersistentDamageTests
         // P1 retreats from contested home; P2 advances from non-contested home
         SubmitBoth(
             s,
-            p1Moves:
-            [
-                new NexusMoveOrder(
-                    NexusMap.Player1HomeCoord,
-                    adjacentToP1,
-                    ImmutableDictionary<NexusUnitType, int>.Empty.Add(NexusUnitType.Carrier, 1)
-                ),
-            ],
-            p2Moves:
-            [
-                new NexusMoveOrder(
-                    NexusMap.Player2HomeCoord,
-                    adjacentToP2,
-                    ImmutableDictionary<NexusUnitType, int>.Empty.Add(NexusUnitType.Carrier, 1)
-                ),
-            ]
+            p1Moves: [Move(NexusMap.Player1HomeCoord, adjacentToP1, (NexusUnitType.Carrier, 1))],
+            p2Moves: [Move(NexusMap.Player2HomeCoord, adjacentToP2, (NexusUnitType.Carrier, 1))]
         );
 
         var p1MoveEvent = s

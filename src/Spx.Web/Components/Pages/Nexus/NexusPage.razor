@@ -129,8 +129,7 @@ else
         EditingMessageId = timeline.EditingMessageId,
         EditMessageText = timeline.EditMessageText,
         IsSavingEdit = timeline.IsSavingEdit,
-        ComposerText = timeline.ComposerText,
-        SelectedRecipientPlayerIdString = timeline.SelectedRecipientPlayerIdString,
+        ComposerResetVersion = timeline.ComposerResetVersion,
         IsSendingMessage = timeline.IsSendingMessage,
         IsCurrentUserActive = lobby!.IsCurrentUserActive,
         CurrentPlayerId = lobby!.CurrentPlayerId,
@@ -147,8 +146,6 @@ else
         DeleteMessageAsync = DeleteMessageAsync,
         RetryPendingMessageAsync = RetryPendingMessageAsync,
         DismissPendingMessageAsync = DismissPendingMessageAsync,
-        SetComposerTextAsync = SetComposerTextAsync,
-        SetRecipientPlayerIdStringAsync = SetRecipientPlayerIdStringAsync,
         SendMessageAsync = SendMessageAsync,
     };
 
@@ -392,7 +389,7 @@ currentPlayerId);
         }
     }
 
-    private async Task SendMessageAsync()
+    private async Task SendMessageAsync(LobbyMessageComposerSubmitRequest request)
     {
         if (lobby is null || !lobby.IsCurrentUserActive || timeline.IsSendingMessage)
         {
@@ -400,14 +397,14 @@ currentPlayerId);
         }
 
         timeline.MessageError = null;
-        var body = timeline.ComposerText.Trim();
+        var body = request.Text.Trim();
         if (string.IsNullOrWhiteSpace(body))
         {
             timeline.MessageError = "Messages cannot be empty.";
             return;
         }
 
-        var recipient = GetSelectedRecipient();
+        var recipient = GetSelectedRecipient(request.SelectedRecipientPlayerIdString);
         var pendingItem = timeline.AddPendingMessage(body, recipient?.PlayerId, recipient?.Name ?? string.Empty, recipient is
 not null);
         timeline.ClearComposer();
@@ -533,18 +530,6 @@ item.Pending.RecipientPlayerId.Value, new SendGameMessageRequest(item.Pending.Bo
         return Task.CompletedTask;
     }
 
-    private Task SetComposerTextAsync(string text)
-    {
-        timeline.ComposerText = text;
-        return Task.CompletedTask;
-    }
-
-    private Task SetRecipientPlayerIdStringAsync(string? value)
-    {
-        timeline.SelectedRecipientPlayerIdString = value;
-        return Task.CompletedTask;
-    }
-
     private async Task SaveEditAsync()
     {
         if (lobby is null || timeline.EditingMessageId is null || timeline.IsSavingEdit)
@@ -622,9 +607,9 @@ currentPlayerId);
         data.ClearGameplayError();
     }
 
-    private PendingRecipient? GetSelectedRecipient()
+    private PendingRecipient? GetSelectedRecipient(string? selectedRecipientPlayerIdString)
     {
-        if (!Guid.TryParse(timeline.SelectedRecipientPlayerIdString, out var recipientPlayerId) || lobby is null)
+        if (!Guid.TryParse(selectedRecipientPlayerIdString, out var recipientPlayerId) || lobby is null)
         {
             return null;
         }

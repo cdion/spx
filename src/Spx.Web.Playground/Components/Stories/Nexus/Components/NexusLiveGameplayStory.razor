@@ -11,9 +11,7 @@
     </StoryHeader>
 
     <div class="mb-4 flex flex-wrap items-center gap-3">
-        <button
-            class="rounded-lg border border-sky-500/30 bg-sky-900/10 px-4 py-1.5 text-sm text-sky-300 hover:bg-sky-900/20 disabled:cursor-not-allowed disabled:opacity-50"
-            @onclick="SwitchPlayer" disabled="@(_view.Completion is not null)">
+        <button class="ui-button-control-info" @onclick="SwitchPlayer" disabled="@(_view.Completion is not null)">
             Viewing: <span class="font-semibold text-white">@PlayerName(_viewingPlayerId)</span>
             &nbsp;&rarr;&nbsp;Switch to @PlayerName(OtherPlayerId)
         </button>
@@ -32,9 +30,7 @@
             </span>
         }
 
-        <button
-            class="ml-auto rounded-lg border border-rose-500/30 bg-rose-900/10 px-4 py-1.5 text-sm text-rose-300 hover:bg-rose-900/20"
-            @onclick="Restart">
+        <button class="ui-button-control-danger ml-auto" @onclick="Restart">
             Restart
         </button>
     </div>

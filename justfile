@@ -78,39 +78,39 @@ ci: restore build test
 # Clear local app data from the AppHost-managed appdb while preserving EF migration history.
 # Requires the local Aspire-managed Postgres container to be running.
 reset-appdb:
-    @container="$$(podman ps --quiet --filter name=postgres- | head -n 1)"; \
-    if [ -z "$$container" ]; then \
+    @container="$({{container_cli}} ps --quiet --filter name=postgres- | head -n 1)"; \
+    if [ -z "$container" ]; then \
         echo "==> No running local Postgres container found. Start the AppHost first."; \
         exit 1; \
     fi; \
-    username="$$(podman exec "$$container" printenv POSTGRES_USER)"; \
-    password="$$(podman exec "$$container" printenv POSTGRES_PASSWORD)"; \
-    if [ -z "$$username" ] || [ -z "$$password" ]; then \
-        echo "==> Could not read POSTGRES_USER/POSTGRES_PASSWORD from $$container."; \
+    username="$({{container_cli}} exec "$container" printenv POSTGRES_USER)"; \
+    password="$({{container_cli}} exec "$container" printenv POSTGRES_PASSWORD)"; \
+    if [ -z "$username" ] || [ -z "$password" ]; then \
+        echo "==> Could not read POSTGRES_USER/POSTGRES_PASSWORD from $container."; \
         exit 1; \
     fi; \
-    echo "==> Clearing application tables from appdb via $$container..."; \
-    podman exec -e PGPASSWORD="$$password" "$$container" \
-        psql -h localhost -U "$$username" -d appdb -c "DO \\\$\\\$ DECLARE truncate_sql text; BEGIN SELECT 'TRUNCATE TABLE ' || string_agg(format('%I.%I', schemaname, tablename), ', ') || ' RESTART IDENTITY CASCADE;' INTO truncate_sql FROM pg_tables WHERE schemaname = 'public' AND tablename <> '__EFMigrationsHistory'; IF truncate_sql IS NOT NULL THEN EXECUTE truncate_sql; END IF; END \\\$\\\$;"; \
+    echo "==> Clearing application tables from appdb via $container..."; \
+    {{container_cli}} exec -e PGPASSWORD="$password" "$container" \
+        psql -h localhost -U "$username" -d appdb -c "DO \$\$ DECLARE truncate_sql text; BEGIN SELECT 'TRUNCATE TABLE ' || string_agg(format('%I.%I', schemaname, tablename), ', ') || ' RESTART IDENTITY CASCADE;' INTO truncate_sql FROM pg_tables WHERE schemaname = 'public' AND tablename <> '__EFMigrationsHistory'; IF truncate_sql IS NOT NULL THEN EXECUTE truncate_sql; END IF; END \$\$;"; \
     echo "==> appdb cleared. Restart the AppHost and sign in again if you need a clean local session."
 
 # Clear local Orleans persistent grain state from the AppHost-managed orleansdb.
 # Requires the local Aspire-managed Postgres container to be running.
 reset-orleansdb:
-    @container="$$(podman ps --quiet --filter name=postgres- | head -n 1)"; \
-    if [ -z "$$container" ]; then \
+    @container="$({{container_cli}} ps --quiet --filter name=postgres- | head -n 1)"; \
+    if [ -z "$container" ]; then \
         echo "==> No running local Postgres container found. Start the AppHost first."; \
         exit 1; \
     fi; \
-    username="$$(podman exec "$$container" printenv POSTGRES_USER)"; \
-    password="$$(podman exec "$$container" printenv POSTGRES_PASSWORD)"; \
-    if [ -z "$$username" ] || [ -z "$$password" ]; then \
-        echo "==> Could not read POSTGRES_USER/POSTGRES_PASSWORD from $$container."; \
+    username="$({{container_cli}} exec "$container" printenv POSTGRES_USER)"; \
+    password="$({{container_cli}} exec "$container" printenv POSTGRES_PASSWORD)"; \
+    if [ -z "$username" ] || [ -z "$password" ]; then \
+        echo "==> Could not read POSTGRES_USER/POSTGRES_PASSWORD from $container."; \
         exit 1; \
     fi; \
-    echo "==> Clearing Orleans grain storage rows from orleansdb via $$container..."; \
-    podman exec -e PGPASSWORD="$$password" "$$container" \
-        psql -h localhost -U "$$username" -d orleansdb -c "TRUNCATE TABLE orleansstorage;"; \
+    echo "==> Clearing Orleans grain storage rows from orleansdb via $container..."; \
+    {{container_cli}} exec -e PGPASSWORD="$password" "$container" \
+        psql -h localhost -U "$username" -d orleansdb -c "TRUNCATE TABLE orleansstorage;"; \
     echo "==> Orleans storage cleared. Restart the AppHost to drop any in-memory grain activations."
 
 # ===========================================================================

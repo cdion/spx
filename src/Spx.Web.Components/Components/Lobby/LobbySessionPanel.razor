@@ -7,9 +7,7 @@
     <SurfacePanelShell SurfaceClass="ui-surface-form-tight space-y-5" HeaderClass="space-y-4" BodyClass="">
         <HeaderContent>
             <Tabs TItem="LobbySessionTab" Items="VisibleTabs" SelectedItem="@_selectedTab" ItemIdSelector="GetTabId"
-                  PanelIdSelector="GetPanelId"
-                  ActiveItemClass="ui-tab-button-lg-active"
-                  InactiveItemClass="ui-tab-button-lg"
+                  PanelIdSelector="GetPanelId" ActiveItemClass="ui-tab-button-lg-active" InactiveItemClass="ui-tab-button-lg"
                   ItemLabelSelector="GetTabLabel" OnSelected="SetTabAsync" AriaLabel="Session view" />
         </HeaderContent>
 
@@ -45,9 +43,7 @@
                         <LobbyMessageComposer @key="GetMessageComposerKey()"
                                               IsCurrentUserActive="@ResolvedMessagesState.IsCurrentUserActive"
                                               CurrentPlayerId="@ResolvedMessagesState.CurrentPlayerId" Players="@ResolvedMessagesState.Players"
-                                              Text="@ResolvedMessagesState.ComposerText" TextChanged="HandleComposerTextChanged"
-                                              SelectedRecipientPlayerIdString="@ResolvedMessagesState.SelectedRecipientPlayerIdString"
-                                              SelectedRecipientPlayerIdStringChanged="HandleRecipientChanged"
+                                              ComposerResetVersion="@ResolvedMessagesState.ComposerResetVersion"
                                               IsSendingMessage="@ResolvedMessagesState.IsSendingMessage" OnSend="HandleSendMessage" />
                     </div>
                 }
@@ -82,8 +78,8 @@ else
 {
     <SurfacePanelShell SurfaceClass="ui-surface-form-tight space-y-5" BodyClass="">
         <ChildContent>
-        <NexusGameplayPanel Session="Session" Lobby="Lobby" IsSubmittingAction="IsSubmittingAction"
-                            GameplayError="@GameplayError" OnSubmitOrders="OnSubmitOrders" />
+            <NexusGameplayPanel Session="Session" Lobby="Lobby" IsSubmittingAction="IsSubmittingAction"
+                                GameplayError="@GameplayError" OnSubmitOrders="OnSubmitOrders" />
         </ChildContent>
     </SurfacePanelShell>
 }
@@ -257,9 +253,6 @@ else
 
     private Task HandleDismissPendingMessage(Guid key) => MessagesCallbacks!.DismissPendingMessageAsync(key);
 
-    private Task HandleComposerTextChanged(string value) => MessagesCallbacks!.SetComposerTextAsync(value);
-
-    private Task HandleRecipientChanged(string? value) => MessagesCallbacks!.SetRecipientPlayerIdStringAsync(value);
-
-    private Task HandleSendMessage() => MessagesCallbacks!.SendMessageAsync();
+    private Task HandleSendMessage(LobbyMessageComposerSubmitRequest request) =>
+        MessagesCallbacks!.SendMessageAsync(request);
 }

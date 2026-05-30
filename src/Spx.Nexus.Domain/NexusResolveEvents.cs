@@ -40,7 +40,7 @@ public sealed record NexusUnitsMovedEvent(
     [property: Id(0)] Guid PlayerId,
     [property: Id(1)] HexCoord From,
     [property: Id(2)] HexCoord To,
-    [property: Id(3)] ImmutableDictionary<NexusUnitType, int> Units,
+    [property: Id(3)] ImmutableArray<NexusUnitStackGroup> Stacks,
     [property: Id(4)] bool IsRetreat
 ) : NexusResolveEvent;
 

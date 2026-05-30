@@ -25,23 +25,22 @@
     private static readonly HexCoord NegCoord = new(-2, 1);
     private static readonly HexCoord NegNegCoord = new(-1, -1);
 
-    private static ImmutableDictionary<Guid, ImmutableDictionary<NexusUnitType, int>> NoUnits =>
-        ImmutableDictionary<Guid, ImmutableDictionary<NexusUnitType, int>>.Empty;
+    private static ImmutableDictionary<Guid, ImmutableArray<NexusUnitStackGroup>> NoUnits =>
+        ImmutableDictionary<Guid, ImmutableArray<NexusUnitStackGroup>>.Empty;
 
-    private static ImmutableDictionary<Guid, ImmutableDictionary<NexusUnitType, int>> WithUnits(
+    private static ImmutableDictionary<Guid, ImmutableArray<NexusUnitStackGroup>> WithUnits(
         params (Guid Player, (NexusUnitType Type, int Count)[] Units)[] entries
     )
     {
-        var builder = ImmutableDictionary.CreateBuilder<
-            Guid,
-            ImmutableDictionary<NexusUnitType, int>
-        >();
+        var builder = ImmutableDictionary.CreateBuilder<Guid, ImmutableArray<NexusUnitStackGroup>>();
         foreach (var (player, units) in entries)
         {
-            var inner = ImmutableDictionary.CreateBuilder<NexusUnitType, int>();
-            foreach (var (type, count) in units)
-                inner.Add(type, count);
-            builder.Add(player, inner.ToImmutable());
+            builder.Add(
+                player,
+                units
+                    .Select(unit => new NexusUnitStackGroup(unit.Type, unit.Type.Hull(), unit.Count))
+                    .ToImmutableArray()
+            );
         }
         return builder.ToImmutable();
     }

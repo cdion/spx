@@ -9,8 +9,7 @@
         <div class="flex min-h-0 flex-1 flex-col space-y-4">
             <div class="space-y-2">
                 <label class="ui-panel-label" for="message-recipient">Recipient</label>
-                <select id="message-recipient" class="ui-select" value="@SelectedRecipientPlayerIdString"
-                        @onchange="HandleRecipientChanged">
+                <select id="message-recipient" class="ui-select" @bind="draftRecipientPlayerIdString">
                     <option value="">All active players</option>
                     @foreach (var player in Players.Where(player => player.PlayerId != CurrentPlayerId))
                     {
@@ -22,7 +21,7 @@
             <div class="flex min-h-0 flex-1 flex-col space-y-2">
                 <label class="ui-panel-label" for="message-composer">Message</label>
                 <textarea id="message-composer" class="ui-textarea min-h-32 flex-1"
-                          placeholder="Write something for the game timeline..." value="@Text" @oninput="HandleTextInput"
+                          placeholder="Write something for the game timeline..." @bind="draftText" @bind:event="oninput"
                           @ref="composerTextArea"></textarea>
                 <p class="text-sm leading-6 text-slate-300">
                     <span>Enter sends. Shift+Enter adds a new line. Choose a player to send privately.</span>
@@ -31,9 +30,9 @@
 
             <div class="ui-lobby-row">
                 <p class="ui-type-overline text-slate-500">
-                    @Text.Length / 1024 characters
+                    @draftText.Length / 1024 characters
                 </p>
-                <button class="ui-button-primary" @onclick="() => OnSend.InvokeAsync()" disabled="@IsSendingMessage">
+                <button class="ui-button-primary" @onclick="SubmitAsync" disabled="@IsSendingMessage">
                     @(IsSendingMessage ? "Sending..." : "Send message")
                 </button>
             </div>
@@ -58,27 +57,33 @@
     public IReadOnlyList<GamePlayerView> Players { get; set; } = [];
 
     [Parameter]
-    public string Text { get; set; } = string.Empty;
-
-    [Parameter]
-    public EventCallback<string> TextChanged { get; set; }
-
-    [Parameter]
-    public string? SelectedRecipientPlayerIdString { get; set; }
-
-    [Parameter]
-    public EventCallback<string?> SelectedRecipientPlayerIdStringChanged { get; set; }
+    public int ComposerResetVersion { get; set; }
 
     [Parameter]
     public bool IsSendingMessage { get; set; }
 
     [Parameter]
-    public EventCallback OnSend { get; set; }
+    public EventCallback<LobbyMessageComposerSubmitRequest> OnSend { get; set; }
 
     private ElementReference composerTextArea;
     private IJSObjectReference? module;
     private DotNetObjectReference<LobbyMessageComposer>? dotNetReference;
     private bool isSubmitAttached;
+    private int lastComposerResetVersion;
+    private string draftText = string.Empty;
+    private string draftRecipientPlayerIdString = string.Empty;
+
+    protected override void OnParametersSet()
+    {
+        if (ComposerResetVersion == lastComposerResetVersion)
+        {
+            return;
+        }
+
+        draftText = string.Empty;
+        draftRecipientPlayerIdString = string.Empty;
+        lastComposerResetVersion = ComposerResetVersion;
+    }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -143,8 +148,7 @@
     }
 
     [JSInvokable]
-    public Task HandleComposerEnterAsync()
-        => OnSend.InvokeAsync();
+    public Task HandleComposerEnterAsync() => SubmitAsync();
 
     public async ValueTask DisposeAsync()
     {
@@ -171,12 +175,15 @@
     private void LogIgnoredInteropException(Exception exception, string operation)
         => Logger.LogDebug(exception, "Ignoring expected JS interop interruption while {Operation}.", operation);
 
-    private Task HandleTextInput(ChangeEventArgs args)
-        => TextChanged.InvokeAsync(args.Value?.ToString() ?? string.Empty);
-
-    private Task HandleRecipientChanged(ChangeEventArgs args)
-    {
-        var value = args.Value?.ToString();
-        return SelectedRecipientPlayerIdStringChanged.InvokeAsync(string.IsNullOrWhiteSpace(value) ? null : value);
-    }
+    private Task SubmitAsync() =>
+        IsSendingMessage
+            ? Task.CompletedTask
+            : OnSend.InvokeAsync(
+                new LobbyMessageComposerSubmitRequest(
+                    draftText,
+                    string.IsNullOrWhiteSpace(draftRecipientPlayerIdString)
+                        ? null
+                        : draftRecipientPlayerIdString
+                )
+            );
 }

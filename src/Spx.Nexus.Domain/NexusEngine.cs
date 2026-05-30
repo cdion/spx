@@ -129,8 +129,14 @@ public static class NexusEngine
                     outer => outer.Key,
                     outer =>
                         outer
-                            .Value.GroupBy(st => st.UnitType)
-                            .ToImmutableDictionary(g => g.Key, g => g.Sum(st => st.Count))
+                            .Value.Select(st => new NexusUnitStackGroup(
+                                st.UnitType,
+                                st.RemainingHull,
+                                st.Count
+                            ))
+                            .OrderBy(st => st.UnitType)
+                            .ThenByDescending(st => st.RemainingHull)
+                            .ToImmutableArray()
                 )
             ))
             .ToImmutableArray();
@@ -154,7 +160,11 @@ public static class NexusEngine
         IEnumerable<NexusMoveOrder> orders
     )
     {
-        var committed = new Dictionary<HexCoord, Dictionary<NexusUnitType, int>>();
+        var committed =
+            new Dictionary<
+                HexCoord,
+                Dictionary<(NexusUnitType UnitType, int RemainingHull), int>
+            >();
 
         foreach (var order in orders)
         {
@@ -168,7 +178,7 @@ public static class NexusEngine
                 return new NexusTurnOrdersRejected(
                     $"{FormatSystem(state, playerId, order.To)} is not adjacent to {FormatSystem(state, playerId, order.From)}."
                 );
-            if (order.Units.Count == 0)
+            if (order.Stacks.Length == 0)
                 return new NexusTurnOrdersRejected("A move order must include at least one unit.");
 
             var system = GetSystem(state, order.From);
@@ -186,24 +196,35 @@ public static class NexusEngine
             var capacityProvided = 0;
             var capacityNeeded = 0;
 
-            foreach (var (unitType, count) in order.Units)
+            foreach (var stack in order.Stacks)
             {
-                if (count <= 0)
+                if (stack.Count <= 0)
                     return new NexusTurnOrdersRejected(
-                        $"Unit count for {unitType} must be positive."
+                        $"Unit count for {stack.UnitType} must be positive."
                     );
 
-                var alreadyCommitted = fromCommitted.GetValueOrDefault(unitType);
-                var available = system.GetUnitCount(playerId, unitType);
+                if (stack.RemainingHull <= 0 || stack.RemainingHull > stack.UnitType.Hull())
+                    return new NexusTurnOrdersRejected(
+                        $"Remaining hull for {stack.UnitType} must be between 1 and {stack.UnitType.Hull()}."
+                    );
 
-                if (alreadyCommitted + count > available)
+                var key = (stack.UnitType, stack.RemainingHull);
+                var alreadyCommitted = fromCommitted.GetValueOrDefault(key);
+                var available = system
+                    .GetPlayerStacks(playerId)
+                    .Where(s =>
+                        s.UnitType == stack.UnitType && s.RemainingHull == stack.RemainingHull
+                    )
+                    .Sum(s => s.Count);
+
+                if (alreadyCommitted + stack.Count > available)
                 {
-                    if (unitType.CarryCapacity() > 0)
+                    if (stack.UnitType.CarryCapacity() > 0)
                     {
                         var availableCapacity = GetAvailableCarryCapacity(system, playerId);
                         var requestedCapacity =
                             GetCommittedCarryCapacity(fromCommitted)
-                            + GetRequestedCarryCapacity(order.Units);
+                            + GetRequestedCarryCapacity(order.Stacks);
 
                         return new NexusTurnOrdersRejected(
                             $"Insufficient Fleet Capacity at {FormatSystem(state, playerId, order.From)}: "
@@ -212,14 +233,14 @@ public static class NexusEngine
                     }
 
                     return new NexusTurnOrdersRejected(
-                        $"Insufficient {unitType} at {FormatSystem(state, playerId, order.From)}: "
-                            + $"need {alreadyCommitted + count}, have {available}."
+                        $"Insufficient {FormatStack(stack)} at {FormatSystem(state, playerId, order.From)}: "
+                            + $"need {alreadyCommitted + stack.Count}, have {available}."
                     );
                 }
 
-                fromCommitted[unitType] = alreadyCommitted + count;
-                capacityProvided += unitType.CarryCapacity() * count;
-                capacityNeeded += unitType.ConsumedCapacity() * count;
+                fromCommitted[key] = alreadyCommitted + stack.Count;
+                capacityProvided += stack.UnitType.CarryCapacity() * stack.Count;
+                capacityNeeded += stack.UnitType.ConsumedCapacity() * stack.Count;
             }
 
             if (capacityNeeded > capacityProvided)
@@ -235,12 +256,18 @@ public static class NexusEngine
     private static int GetAvailableCarryCapacity(NexusSystemState system, Guid playerId) =>
         system.GetPlayerUnits(playerId).Sum(kv => kv.Key.CarryCapacity() * kv.Value);
 
-    private static int GetCommittedCarryCapacity(Dictionary<NexusUnitType, int> committedUnits) =>
-        committedUnits.Sum(kv => kv.Key.CarryCapacity() * kv.Value);
+    private static int GetCommittedCarryCapacity(
+        Dictionary<(NexusUnitType UnitType, int RemainingHull), int> committedUnits
+    ) => committedUnits.Sum(kv => kv.Key.UnitType.CarryCapacity() * kv.Value);
 
     private static int GetRequestedCarryCapacity(
-        IReadOnlyDictionary<NexusUnitType, int> requestedUnits
-    ) => requestedUnits.Sum(kv => kv.Key.CarryCapacity() * kv.Value);
+        ImmutableArray<NexusUnitStackGroup> requestedStacks
+    ) => requestedStacks.Sum(stack => stack.UnitType.CarryCapacity() * stack.Count);
+
+    private static string FormatStack(NexusUnitStackGroup stack) =>
+        stack.RemainingHull == stack.UnitType.Hull()
+            ? stack.UnitType.ToString()
+            : $"{stack.UnitType} ({stack.RemainingHull}/{stack.UnitType.Hull()} hull)";
 
     private static string FormatSystem(NexusState state, Guid playerId, HexCoord coord)
     {
@@ -442,12 +469,12 @@ public static class NexusEngine
 
                 // Collect Capital stacks for this player, cheapest type first.
                 // All Capital costs are unique (4/5/6/8) so ordering by cost is deterministic.
-                // Within a type, most-damaged stacks are taken first.
+                // Within a type, lowest remaining hull is taken first.
                 var capitalStacks = system
                     .GetPlayerStacks(player.PlayerId)
                     .Where(s => s.UnitType.IsCapital())
                     .OrderBy(s => s.UnitType.Cost())
-                    .ThenByDescending(s => s.HitsAbsorbed)
+                    .ThenBy(s => s.RemainingHull)
                     .ToList();
 
                 if (capitalStacks.Count == 0)
@@ -529,20 +556,21 @@ public static class NexusEngine
                 var src = GetSystem(state, order.From)!;
                 var dst = GetSystem(state, order.To)!;
                 var retreating = contestedSystems.Contains(order.From);
-
-                foreach (var (unitType, count) in order.Units)
-                {
-                    var taken = src.TakeUnits(player.PlayerId, unitType, count, retreating);
-                    foreach (var (hitsAbsorbed, takenCount) in taken)
-                        dst.AddUnits(player.PlayerId, unitType, takenCount, hitsAbsorbed);
-                }
+                var movedStacks = src.TakeExactUnits(player.PlayerId, order.Stacks);
+                foreach (var movedStack in movedStacks)
+                    dst.AddUnits(
+                        player.PlayerId,
+                        movedStack.UnitType,
+                        movedStack.Count,
+                        movedStack.RemainingHull
+                    );
 
                 events.Add(
                     new NexusUnitsMovedEvent(
                         player.PlayerId,
                         order.From,
                         order.To,
-                        order.Units,
+                        movedStacks,
                         retreating
                     )
                 );
@@ -641,7 +669,7 @@ public static class NexusEngine
             var losses = new Dictionary<(Guid, NexusUnitType), int>();
             foreach (var (target, targetPlayerId) in pendingHits)
             {
-                target.HitsAbsorbed++;
+                target.RemainingHull--;
                 if (target.IsDestroyed)
                 {
                     var key = (targetPlayerId, target.Type);
@@ -790,8 +818,8 @@ public static class NexusEngine
     private sealed class CombatUnit(NexusUnitType type)
     {
         public NexusUnitType Type { get; } = type;
-        public int HitsAbsorbed { get; set; }
-        public bool IsDestroyed => HitsAbsorbed >= Type.Hull();
+        public int RemainingHull { get; set; } = type.Hull();
+        public bool IsDestroyed => RemainingHull <= 0;
     }
 
     private static List<CombatUnit> ExpandUnits(IReadOnlyList<NexusUnitStack> stacks)
@@ -799,7 +827,7 @@ public static class NexusEngine
         var result = new List<CombatUnit>();
         foreach (var stack in stacks)
             for (var i = 0; i < stack.Count; i++)
-                result.Add(new CombatUnit(stack.UnitType) { HitsAbsorbed = stack.HitsAbsorbed });
+                result.Add(new CombatUnit(stack.UnitType) { RemainingHull = stack.RemainingHull });
         return result;
     }
 
@@ -808,14 +836,14 @@ public static class NexusEngine
         var grouped = new Dictionary<(NexusUnitType, int), int>();
         foreach (var unit in units.Where(u => !u.IsDestroyed))
         {
-            var key = (unit.Type, unit.HitsAbsorbed);
+            var key = (unit.Type, unit.RemainingHull);
             grouped[key] = grouped.GetValueOrDefault(key) + 1;
         }
         return grouped
             .Select(kv => new NexusUnitStack
             {
                 UnitType = kv.Key.Item1,
-                HitsAbsorbed = kv.Key.Item2,
+                RemainingHull = kv.Key.Item2,
                 Count = kv.Value,
             })
             .ToList();

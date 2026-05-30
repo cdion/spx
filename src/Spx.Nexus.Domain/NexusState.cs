@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using Orleans;
 
 namespace Spx.Nexus.Domain;
@@ -27,7 +28,7 @@ public sealed class NexusUnitStack
     public NexusUnitType UnitType { get; set; }
 
     [Id(1)]
-    public int HitsAbsorbed { get; set; }
+    public int RemainingHull { get; set; }
 
     [Id(2)]
     public int Count { get; set; }
@@ -54,7 +55,7 @@ public sealed class NexusSystemState
     [Id(4)]
     public Guid? ControlOwner { get; set; }
 
-    /// <summary>Units present: player ID → list of stacks (unit type + damage level + count).</summary>
+    /// <summary>Units present: player ID → list of stacks (unit type + remaining hull + count).</summary>
     [Id(5)]
     public Dictionary<Guid, List<NexusUnitStack>> Units { get; set; } = [];
 
@@ -82,7 +83,12 @@ public sealed class NexusSystemState
     public IReadOnlyList<NexusUnitStack> GetPlayerStacks(Guid playerId) =>
         Units.TryGetValue(playerId, out var stacks) ? stacks : [];
 
-    public void AddUnits(Guid playerId, NexusUnitType unitType, int count, int hitsAbsorbed = 0)
+    public void AddUnits(
+        Guid playerId,
+        NexusUnitType unitType,
+        int count,
+        int? remainingHull = null
+    )
     {
         if (count <= 0)
             return;
@@ -92,7 +98,8 @@ public sealed class NexusSystemState
             Units[playerId] = stacks;
         }
 
-        var existing = stacks.Find(s => s.UnitType == unitType && s.HitsAbsorbed == hitsAbsorbed);
+        var hullToStore = remainingHull ?? unitType.Hull();
+        var existing = stacks.Find(s => s.UnitType == unitType && s.RemainingHull == hullToStore);
         if (existing is not null)
             existing.Count += count;
         else
@@ -100,7 +107,7 @@ public sealed class NexusSystemState
                 new NexusUnitStack
                 {
                     UnitType = unitType,
-                    HitsAbsorbed = hitsAbsorbed,
+                    RemainingHull = hullToStore,
                     Count = count,
                 }
             );
@@ -115,25 +122,25 @@ public sealed class NexusSystemState
 
     /// <summary>
     /// Removes <paramref name="count"/> units of <paramref name="unitType"/> and returns
-    /// the (HitsAbsorbed, Count) pairs actually taken, ordered by the retreating rule.
+    /// the (RemainingHull, Count) pairs actually taken, ordered by the retreating rule.
     /// </summary>
-    public List<(int HitsAbsorbed, int Count)> TakeUnits(
+    public List<(int RemainingHull, int Count)> TakeUnits(
         Guid playerId,
         NexusUnitType unitType,
         int count,
         bool retreating = false
     )
     {
-        var taken = new List<(int HitsAbsorbed, int Count)>();
+        var taken = new List<(int RemainingHull, int Count)>();
         if (!Units.TryGetValue(playerId, out var stacks))
             return taken;
 
         var ordered = retreating
-            ? stacks
+            ? stacks.Where(s => s.UnitType == unitType).OrderBy(s => s.RemainingHull).ToList()
+            : stacks
                 .Where(s => s.UnitType == unitType)
-                .OrderByDescending(s => s.HitsAbsorbed)
-                .ToList()
-            : stacks.Where(s => s.UnitType == unitType).OrderBy(s => s.HitsAbsorbed).ToList();
+                .OrderByDescending(s => s.RemainingHull)
+                .ToList();
 
         var remaining = count;
         foreach (var stack in ordered)
@@ -143,7 +150,7 @@ public sealed class NexusSystemState
             var take = Math.Min(stack.Count, remaining);
             stack.Count -= take;
             remaining -= take;
-            taken.Add((stack.HitsAbsorbed, take));
+            taken.Add((stack.RemainingHull, take));
         }
 
         stacks.RemoveAll(s => s.Count <= 0);
@@ -151,6 +158,42 @@ public sealed class NexusSystemState
             Units.Remove(playerId);
 
         return taken;
+    }
+
+    public ImmutableArray<NexusUnitStackGroup> TakeExactUnits(
+        Guid playerId,
+        ImmutableArray<NexusUnitStackGroup> requestedStacks
+    )
+    {
+        if (!Units.TryGetValue(playerId, out var stacks))
+            return ImmutableArray<NexusUnitStackGroup>.Empty;
+
+        var taken = ImmutableArray.CreateBuilder<NexusUnitStackGroup>();
+        foreach (var requestedStack in requestedStacks)
+        {
+            var stack = stacks.FirstOrDefault(s =>
+                s.UnitType == requestedStack.UnitType
+                && s.RemainingHull == requestedStack.RemainingHull
+            );
+
+            if (stack is null)
+                continue;
+
+            var take = Math.Min(stack.Count, requestedStack.Count);
+            if (take <= 0)
+                continue;
+
+            stack.Count -= take;
+            taken.Add(
+                new NexusUnitStackGroup(requestedStack.UnitType, requestedStack.RemainingHull, take)
+            );
+        }
+
+        stacks.RemoveAll(s => s.Count <= 0);
+        if (stacks.Count == 0)
+            Units.Remove(playerId);
+
+        return taken.ToImmutable();
     }
 
     public bool HasPlanetaryUnits(Guid playerId)

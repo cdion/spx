@@ -373,7 +373,7 @@ public sealed class TacticalSimulator
     )
     {
         foreach (var unit in profile.Units)
-            battleSystem.AddUnits(playerId, unit.UnitType, unit.Count, unit.HitsAbsorbed);
+            battleSystem.AddUnits(playerId, unit.UnitType, unit.Count, unit.RemainingHull);
     }
 
     private static double ComputeSurvivorCost(IReadOnlyDictionary<NexusUnitType, int> survivors) =>

@@ -22,7 +22,7 @@ public static class NexusViewQueries
         if (system is null)
             return [];
 
-        if (!system.Units.TryGetValue(playerId, out var playerUnits) || playerUnits.Count == 0)
+        if (system.GetPlayerStacks(playerId).Length == 0)
             return [];
 
         return fromSystem.GetNeighbours().Where(NexusMap.IsValidCoord).ToList();

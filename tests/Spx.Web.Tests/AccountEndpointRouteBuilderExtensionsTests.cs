@@ -303,8 +303,12 @@ public sealed class AccountEndpointRouteBuilderExtensionsTests
         Action<IServiceCollection> configureServices
     )
     {
-        var builder = WebApplication.CreateBuilder();
+        var builder = WebApplication.CreateEmptyBuilder(
+            new WebApplicationOptions { EnvironmentName = "Development" }
+        );
         builder.WebHost.UseTestServer();
+        builder.Services.AddRouting();
+        builder.Services.AddLogging();
         configureServices(builder.Services);
 
         var app = builder.Build();

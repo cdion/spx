@@ -22,9 +22,7 @@ public sealed class LobbyMessagesState
 
     public bool IsSavingEdit { get; init; }
 
-    public string ComposerText { get; init; } = string.Empty;
-
-    public string? SelectedRecipientPlayerIdString { get; init; }
+    public int ComposerResetVersion { get; init; }
 
     public bool IsSendingMessage { get; init; }
 

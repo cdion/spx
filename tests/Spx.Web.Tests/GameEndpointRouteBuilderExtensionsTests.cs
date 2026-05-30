@@ -104,8 +104,12 @@ public sealed class GameEndpointRouteBuilderExtensionsTests
         Action<IServiceCollection> configureServices
     )
     {
-        var builder = WebApplication.CreateBuilder();
+        var builder = WebApplication.CreateEmptyBuilder(
+            new WebApplicationOptions { EnvironmentName = "Development" }
+        );
         builder.WebHost.UseTestServer();
+        builder.Services.AddRouting();
+        builder.Services.AddLogging();
         builder
             .Services.AddAuthentication(TestAuthHandler.SchemeName)
             .AddScheme<AuthenticationSchemeOptions, TestAuthHandler>(

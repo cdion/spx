@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using Bunit;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
@@ -149,7 +150,7 @@ public sealed class NexusGameplayPanelInteractionTests : TestContext
             .Click();
 
         var carrierButton = cut.Find(
-            TestIdSelector(NexusGameplayPanelTestIds.FleetUnit(NexusUnitType.Carrier))
+            TestIdSelector(NexusGameplayPanelTestIds.FleetStack(NexusUnitType.Carrier, 4))
         );
 
         carrierButton.Click();
@@ -172,6 +173,126 @@ public sealed class NexusGameplayPanelInteractionTests : TestContext
 
         Assert.Contains("Captain Red's System", pendingOrder.TextContent);
         Assert.Contains("Carrier", pendingOrder.TextContent);
+    }
+
+    [Fact]
+    public void SelectingWholeFleetAndTarget_QueuesAllAvailableStacks()
+    {
+        var gameId = Guid.Parse("57575757-5757-5757-5757-575757575757");
+        var session = GamePageCoordinatorTestData.CreateGameplayPanelSession(gameId);
+
+        var cut = RenderComponent<NexusGameplayPanel>(parameters =>
+            parameters
+                .Add(x => x.Session, session)
+                .Add(x => x.Lobby, GamePageCoordinatorTestData.CreateLobby(gameId))
+                .Add(x => x.SelectedTab, NexusGameplayTab.Orders)
+        );
+
+        cut.Find(
+                TestIdSelector(
+                    NexusGameplayPanelTestIds.System(
+                        GamePageCoordinatorTestData.CurrentPlayerHomeCoord
+                    )
+                )
+            )
+            .Click();
+
+        cut.FindAll("button")
+            .Single(button => button.TextContent.Contains("Select Fleet", StringComparison.Ordinal))
+            .Click();
+        cut.Find(
+                TestIdSelector(
+                    NexusGameplayPanelTestIds.System(GamePageCoordinatorTestData.MoveTargetCoord)
+                )
+            )
+            .Click();
+
+        var pendingOrder = cut.Find(
+            TestIdSelector(
+                NexusGameplayPanelTestIds.PendingMoveOrder(
+                    0,
+                    GamePageCoordinatorTestData.CurrentPlayerHomeCoord,
+                    GamePageCoordinatorTestData.MoveTargetCoord
+                )
+            )
+        );
+
+        Assert.Contains("Carrier (4/4 hull)", pendingOrder.TextContent);
+        Assert.Contains("Fighter (1/1 hull)", pendingOrder.TextContent);
+        Assert.Contains("Infantry (1/1 hull)", pendingOrder.TextContent);
+    }
+
+    [Fact]
+    public void SelectingDamagedStack_QueuesPendingMoveOrderWithExactHullBucket()
+    {
+        var gameId = Guid.Parse("56565656-5656-5656-5656-565656565656");
+        var session = GamePageCoordinatorTestData.CreateGameplayPanelSession(gameId);
+        var damagedHome = session.Systems.Single(system =>
+            system.Coord == GamePageCoordinatorTestData.CurrentPlayerHomeCoord
+        );
+
+        session = session with
+        {
+            Systems =
+            [
+                .. session.Systems.Select(system =>
+                    system.Coord == GamePageCoordinatorTestData.CurrentPlayerHomeCoord
+                        ? damagedHome with
+                        {
+                            UnitStacks = ImmutableDictionary<
+                                Guid,
+                                ImmutableArray<NexusUnitStackGroup>
+                            >.Empty.Add(
+                                GamePageCoordinatorTestData.CurrentPlayerId,
+                                ImmutableArray.Create(
+                                    new NexusUnitStackGroup(NexusUnitType.Carrier, 4, 1),
+                                    new NexusUnitStackGroup(NexusUnitType.Carrier, 3, 1),
+                                    new NexusUnitStackGroup(NexusUnitType.Fighter, 1, 1)
+                                )
+                            ),
+                        }
+                        : system
+                ),
+            ],
+        };
+
+        var cut = RenderComponent<NexusGameplayPanel>(parameters =>
+            parameters
+                .Add(x => x.Session, session)
+                .Add(x => x.Lobby, GamePageCoordinatorTestData.CreateLobby(gameId))
+                .Add(x => x.SelectedTab, NexusGameplayTab.Orders)
+        );
+
+        cut.Find(
+                TestIdSelector(
+                    NexusGameplayPanelTestIds.System(
+                        GamePageCoordinatorTestData.CurrentPlayerHomeCoord
+                    )
+                )
+            )
+            .Click();
+
+        cut.Find(TestIdSelector(NexusGameplayPanelTestIds.FleetStack(NexusUnitType.Carrier, 3)))
+            .Click();
+        cut.Find(
+                TestIdSelector(
+                    NexusGameplayPanelTestIds.System(GamePageCoordinatorTestData.MoveTargetCoord)
+                )
+            )
+            .Click();
+
+        var pendingOrder = cut.Find(
+            TestIdSelector(
+                NexusGameplayPanelTestIds.PendingMoveOrder(
+                    0,
+                    GamePageCoordinatorTestData.CurrentPlayerHomeCoord,
+                    GamePageCoordinatorTestData.MoveTargetCoord
+                )
+            )
+        );
+
+        Assert.Contains("3/4 hull", pendingOrder.TextContent);
+        Assert.DoesNotContain("4/4 hull", pendingOrder.TextContent);
     }
 
     [Fact]
@@ -219,7 +340,7 @@ public sealed class NexusGameplayPanelInteractionTests : TestContext
             .Click();
 
         var carrierButton = cut.Find(
-            TestIdSelector(NexusGameplayPanelTestIds.FleetUnit(NexusUnitType.Carrier))
+            TestIdSelector(NexusGameplayPanelTestIds.FleetStack(NexusUnitType.Carrier, 4))
         );
 
         carrierButton.Click();
@@ -283,7 +404,7 @@ public sealed class NexusGameplayPanelInteractionTests : TestContext
             )
             .Click();
 
-        cut.Find(TestIdSelector(NexusGameplayPanelTestIds.FleetUnit(NexusUnitType.Carrier)))
+        cut.Find(TestIdSelector(NexusGameplayPanelTestIds.FleetStack(NexusUnitType.Carrier, 4)))
             .Click();
         cut.Find(
                 TestIdSelector(
@@ -328,7 +449,7 @@ public sealed class NexusGameplayPanelInteractionTests : TestContext
                 )
             )
             .Click();
-        cut.Find(TestIdSelector(NexusGameplayPanelTestIds.FleetUnit(NexusUnitType.Carrier)))
+        cut.Find(TestIdSelector(NexusGameplayPanelTestIds.FleetStack(NexusUnitType.Carrier, 4)))
             .Click();
         cut.Find(
                 TestIdSelector(

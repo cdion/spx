@@ -134,24 +134,25 @@ internal static class NexusHexHelpers
         Guid playerId
     )
     {
-        if (!system.Units.TryGetValue(playerId, out var units))
+        var units = system.GetPlayerStacks(playerId);
+        if (units.Length == 0)
             return (0, 0, 0);
 
         var capital = 0;
         var strike = 0;
         var planetary = 0;
-        foreach (var (type, count) in units)
+        foreach (var stack in units)
         {
-            switch (type.Category())
+            switch (stack.UnitType.Category())
             {
                 case NexusUnitCategory.Capital:
-                    capital += count;
+                    capital += stack.Count;
                     break;
                 case NexusUnitCategory.Strike:
-                    strike += count;
+                    strike += stack.Count;
                     break;
                 case NexusUnitCategory.Planetary:
-                    planetary += count;
+                    planetary += stack.Count;
                     break;
             }
         }

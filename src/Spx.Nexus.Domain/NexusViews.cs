@@ -5,14 +5,40 @@ namespace Spx.Nexus.Domain;
 
 [GenerateSerializer]
 [Immutable]
+public sealed record NexusUnitStackGroup(
+    [property: Id(0)] NexusUnitType UnitType,
+    [property: Id(1)] int RemainingHull,
+    [property: Id(2)] int Count
+);
+
+[GenerateSerializer]
+[Immutable]
 public sealed record NexusSystemView(
     [property: Id(0)] HexCoord Coord,
     [property: Id(1)] bool IsNexus,
     [property: Id(2)] int IncomeValue,
     [property: Id(3)] Guid? HomePlayerId,
     [property: Id(4)] Guid? ControlOwner,
-    [property: Id(5)] ImmutableDictionary<Guid, ImmutableDictionary<NexusUnitType, int>> Units
-);
+    [property: Id(5)] ImmutableDictionary<Guid, ImmutableArray<NexusUnitStackGroup>> UnitStacks
+)
+{
+    public ImmutableArray<NexusUnitStackGroup> GetPlayerStacks(Guid playerId) =>
+        UnitStacks.TryGetValue(playerId, out var stacks)
+            ? stacks
+            : ImmutableArray<NexusUnitStackGroup>.Empty;
+
+    public ImmutableDictionary<NexusUnitType, int> GetPlayerUnitCounts(Guid playerId)
+    {
+        var builder = ImmutableDictionary.CreateBuilder<NexusUnitType, int>();
+        foreach (var stack in GetPlayerStacks(playerId))
+        {
+            builder.TryGetValue(stack.UnitType, out var current);
+            builder[stack.UnitType] = current + stack.Count;
+        }
+
+        return builder.ToImmutable();
+    }
+}
 
 [GenerateSerializer]
 [Immutable]

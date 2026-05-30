@@ -87,15 +87,16 @@ internal static class GamePageCoordinatorTestData
                     CurrentPlayerHomeCoord,
                     homePlayerId: CurrentPlayerId,
                     controlOwner: CurrentPlayerId,
-                    units: ImmutableDictionary<
+                    unitStacks: ImmutableDictionary<
                         Guid,
-                        ImmutableDictionary<NexusUnitType, int>
+                        ImmutableArray<NexusUnitStackGroup>
                     >.Empty.Add(
                         CurrentPlayerId,
-                        ImmutableDictionary<NexusUnitType, int>
-                            .Empty.Add(NexusUnitType.Carrier, 1)
-                            .Add(NexusUnitType.Fighter, 1)
-                            .Add(NexusUnitType.Infantry, 2)
+                        FullHullStacks(
+                            (NexusUnitType.Carrier, 1),
+                            (NexusUnitType.Fighter, 1),
+                            (NexusUnitType.Infantry, 2)
+                        )
                     )
                 ),
                 CreateSystem(MoveTargetCoord, incomeValue: 1),
@@ -104,13 +105,10 @@ internal static class GamePageCoordinatorTestData
                     NexusMapTopology.Player2HomeCoord,
                     homePlayerId: OpponentPlayerId,
                     controlOwner: OpponentPlayerId,
-                    units: ImmutableDictionary<
+                    unitStacks: ImmutableDictionary<
                         Guid,
-                        ImmutableDictionary<NexusUnitType, int>
-                    >.Empty.Add(
-                        OpponentPlayerId,
-                        ImmutableDictionary<NexusUnitType, int>.Empty.Add(NexusUnitType.Fighter, 1)
-                    )
+                        ImmutableArray<NexusUnitStackGroup>
+                    >.Empty.Add(OpponentPlayerId, FullHullStacks((NexusUnitType.Fighter, 1)))
                 ),
             ],
             CurrentPlayer = baseSession.CurrentPlayer with { Energy = currentPlayerEnergy },
@@ -124,7 +122,7 @@ internal static class GamePageCoordinatorTestData
                 CurrentPlayerId,
                 CurrentPlayerHomeCoord,
                 MoveTargetCoord,
-                ImmutableDictionary<NexusUnitType, int>.Empty.Add(NexusUnitType.Fighter, 1),
+                FullHullStacks((NexusUnitType.Fighter, 1)),
                 IsRetreat: false
             ),
             new NexusPlanetaryControlEvent(AlternateFocusCoord, CurrentPlayerId),
@@ -147,7 +145,7 @@ internal static class GamePageCoordinatorTestData
         int incomeValue = 0,
         Guid? homePlayerId = null,
         Guid? controlOwner = null,
-        ImmutableDictionary<Guid, ImmutableDictionary<NexusUnitType, int>>? units = null
+        ImmutableDictionary<Guid, ImmutableArray<NexusUnitStackGroup>>? unitStacks = null
     ) =>
         new(
             coord,
@@ -155,6 +153,13 @@ internal static class GamePageCoordinatorTestData
             incomeValue,
             homePlayerId,
             controlOwner,
-            units ?? ImmutableDictionary<Guid, ImmutableDictionary<NexusUnitType, int>>.Empty
+            unitStacks ?? ImmutableDictionary<Guid, ImmutableArray<NexusUnitStackGroup>>.Empty
         );
+
+    private static ImmutableArray<NexusUnitStackGroup> FullHullStacks(
+        params (NexusUnitType Type, int Count)[] units
+    ) =>
+        units
+            .Select(unit => new NexusUnitStackGroup(unit.Type, unit.Type.Hull(), unit.Count))
+            .ToImmutableArray();
 }

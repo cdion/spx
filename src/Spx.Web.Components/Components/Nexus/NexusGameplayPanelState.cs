@@ -49,7 +49,7 @@ public static class NexusGameplayPanelState
         state with
         {
             SelectedSystem = null,
-            StagedMoveUnits = ImmutableDictionary<NexusUnitType, int>.Empty,
+            StagedMoveStacks = ImmutableArray<NexusUnitStackGroup>.Empty,
             ValidMoveTargets = [],
             EventFocusOwnsSelection = false,
         };
@@ -61,26 +61,26 @@ public static class NexusGameplayPanelState
         state with
         {
             SelectedSystem = ApplySelectionRequest(state.SelectedSystem, request),
-            StagedMoveUnits = ImmutableDictionary<NexusUnitType, int>.Empty,
+            StagedMoveStacks = ImmutableArray<NexusUnitStackGroup>.Empty,
             ValidMoveTargets = [],
             EventFocusOwnsSelection = false,
         };
 
     public static SelectionState ApplyMoveDraft(
         SelectionState state,
-        ImmutableDictionary<NexusUnitType, int> units,
+        ImmutableArray<NexusUnitStackGroup> stacks,
         NexusGameView session,
         Guid playerId
     ) =>
-        state.SelectedSystem is null || units.Count == 0
+        state.SelectedSystem is null || stacks.IsDefaultOrEmpty
             ? state with
             {
-                StagedMoveUnits = units,
+                StagedMoveStacks = stacks,
                 ValidMoveTargets = [],
             }
             : state with
             {
-                StagedMoveUnits = units,
+                StagedMoveStacks = stacks,
                 ValidMoveTargets = NexusViewQueries.GetValidMoveDestinations(
                     session,
                     playerId,
@@ -116,11 +116,11 @@ public static class NexusGameplayPanelState
         OrderDraftState state,
         HexCoord from,
         HexCoord to,
-        ImmutableDictionary<NexusUnitType, int> units
+        ImmutableArray<NexusUnitStackGroup> stacks
     ) =>
         state with
         {
-            PendingMoveOrders = [.. state.PendingMoveOrders, new NexusMoveOrder(from, to, units)],
+            PendingMoveOrders = [.. state.PendingMoveOrders, new NexusMoveOrder(from, to, stacks)],
         };
 
     public static OrderDraftState ApplyBuildDraftAdjustment(
@@ -344,15 +344,14 @@ public sealed record SelectionRequest(SelectionRequestKind Kind, HexCoord? Syste
 
 public sealed record OrderDraftRequest(
     OrderDraftRequestKind Kind,
-    ImmutableDictionary<NexusUnitType, int>? MoveDraftUnits = null,
+    ImmutableArray<NexusUnitStackGroup> MoveDraftStacks = default,
     NexusUnitType? UnitType = null,
     BuildDraftAdjustmentKind? BuildAdjustment = null,
     bool? BeginNexusGate = null
 )
 {
-    public static OrderDraftRequest MoveDraftChanged(
-        ImmutableDictionary<NexusUnitType, int> units
-    ) => new(OrderDraftRequestKind.MoveDraftChanged, MoveDraftUnits: units);
+    public static OrderDraftRequest MoveDraftChanged(ImmutableArray<NexusUnitStackGroup> stacks) =>
+        new(OrderDraftRequestKind.MoveDraftChanged, MoveDraftStacks: stacks);
 
     public static OrderDraftRequest BuildDraftAdjusted(
         NexusUnitType unitType,
@@ -393,13 +392,13 @@ public sealed record EventFocusState(NexusEventFocus Preview)
 
 public sealed record SelectionState(
     HexCoord? SelectedSystem,
-    ImmutableDictionary<NexusUnitType, int> StagedMoveUnits,
+    ImmutableArray<NexusUnitStackGroup> StagedMoveStacks,
     IReadOnlyList<HexCoord> ValidMoveTargets,
     bool EventFocusOwnsSelection
 )
 {
     public static SelectionState Empty { get; } =
-        new(null, ImmutableDictionary<NexusUnitType, int>.Empty, [], false);
+        new(null, ImmutableArray<NexusUnitStackGroup>.Empty, [], false);
 }
 
 public sealed record OrderDraftState(

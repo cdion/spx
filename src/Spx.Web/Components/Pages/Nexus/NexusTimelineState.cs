@@ -19,9 +19,7 @@ public sealed class NexusTimelineState
 
     public bool IsSavingEdit { get; private set; }
 
-    public string ComposerText { get; set; } = string.Empty;
-
-    public string? SelectedRecipientPlayerIdString { get; set; }
+    public int ComposerResetVersion { get; private set; }
 
     public Guid? OldestMessageId { get; private set; }
 
@@ -50,8 +48,7 @@ public sealed class NexusTimelineState
         IsTimelineLoading = true;
         IsLoadingOlderMessages = false;
         MessageError = null;
-        ComposerText = string.Empty;
-        SelectedRecipientPlayerIdString = null;
+        ComposerResetVersion++;
         EditingMessageId = null;
         EditMessageText = string.Empty;
         RestoreScrollHeight = 0;
@@ -270,8 +267,7 @@ public sealed class NexusTimelineState
 
     public void ClearComposer()
     {
-        ComposerText = string.Empty;
-        SelectedRecipientPlayerIdString = null;
+        ComposerResetVersion++;
     }
 
     public void BeginSaveEdit() => IsSavingEdit = true;

@@ -13,7 +13,9 @@ public class NexusGameViewQueriesTests
             .GroupBy(u => u.PlayerId)
             .ToImmutableDictionary(
                 g => g.Key,
-                g => g.ToImmutableDictionary(u => u.Unit, u => u.Count)
+                g =>
+                    g.Select(u => new NexusUnitStackGroup(u.Unit, u.Unit.Hull(), u.Count))
+                        .ToImmutableArray()
             );
         return new NexusSystemView(coord, false, 2, null, null, dict);
     }

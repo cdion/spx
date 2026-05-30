@@ -109,14 +109,17 @@ public sealed class GameSessionGrainIntegrationTests(OrleansClusterFixture fixtu
 
         var currentPlayerId = view!.CurrentPlayer.PlayerId;
         var systemWithFleet = view.Systems.First(s =>
-            s.Units.TryGetValue(currentPlayerId, out var u) && u.Values.Sum() > 0
+            s.GetPlayerUnitCounts(currentPlayerId).Values.Sum() > 0
         );
         var destination = NexusViewQueries.GetValidMoveDestinations(
             view,
             currentPlayerId,
             systemWithFleet.Coord
         )[0];
-        var moveUnit = systemWithFleet.Units[currentPlayerId].First(kv => kv.Value > 0).Key;
+        var moveUnit = systemWithFleet
+            .GetPlayerUnitCounts(currentPlayerId)
+            .First(kv => kv.Value > 0)
+            .Key;
 
         var result = await grain.SubmitOrdersAsync(
             new NexusTurnOrdersCommand(
@@ -126,7 +129,7 @@ public sealed class GameSessionGrainIntegrationTests(OrleansClusterFixture fixtu
                     new NexusMoveOrder(
                         systemWithFleet.Coord,
                         destination,
-                        ImmutableDictionary<NexusUnitType, int>.Empty.Add(moveUnit, 1)
+                        ImmutableArray.Create(new NexusUnitStackGroup(moveUnit, moveUnit.Hull(), 1))
                     ),
                 ],
                 [],

@@ -70,7 +70,7 @@ public sealed class NexusGameplayPanelStateTests
             Guid.Parse("11111111-1111-1111-1111-111111111111"),
             new HexCoord(1, 2),
             new HexCoord(3, 4),
-            ImmutableDictionary<NexusUnitType, int>.Empty,
+            ImmutableArray<NexusUnitStackGroup>.Empty,
             IsRetreat: false
         );
 
@@ -164,7 +164,9 @@ public sealed class NexusGameplayPanelStateTests
             {
                 SelectedSystem = GamePageCoordinatorTestData.CurrentPlayerHomeCoord,
             },
-            ImmutableDictionary<NexusUnitType, int>.Empty.Add(NexusUnitType.Carrier, 1),
+            ImmutableArray.Create(
+                new NexusUnitStackGroup(NexusUnitType.Carrier, NexusUnitType.Carrier.Hull(), 1)
+            ),
             session,
             GamePageCoordinatorTestData.CurrentPlayerId
         );
@@ -212,7 +214,7 @@ public sealed class NexusGameplayPanelStateTests
         var moveOrder = new NexusMoveOrder(
             GamePageCoordinatorTestData.CurrentPlayerHomeCoord,
             GamePageCoordinatorTestData.MoveTargetCoord,
-            ImmutableDictionary<NexusUnitType, int>.Empty.Add(NexusUnitType.Carrier, 1)
+            ImmutableArray.Create(new NexusUnitStackGroup(NexusUnitType.Carrier, 4, 1))
         );
 
         var nextState = NexusGameplayPanelState.ApplyPendingOrderRequest(

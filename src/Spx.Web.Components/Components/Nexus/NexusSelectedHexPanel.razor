@@ -1,177 +1,235 @@
 @using System.Collections.Immutable
 
-<section class="ui-surface-section h-full min-h-0 space-y-4 overflow-y-auto p-4 lg:p-5">
-    <div class="flex items-center justify-between gap-2">
-        <div class="flex items-center gap-2">
-            <p class="@GetSystemLabelClass()">@GetSystemLabel()</p>
-            @if (System.IncomeValue > 0)
+<section class="ui-surface-section h-full min-h-0 space-y-4 overflow-y-auto p-3 lg:p-4">
+    <div class="flex flex-wrap items-start justify-between gap-3">
+        <div class="space-y-1">
+            <div class="flex items-center gap-2">
+                <p class="@GetSystemLabelClass()">@GetSystemLabel()</p>
+                @if (System.IncomeValue > 0)
+                {
+                    <span class="ui-type-meta text-yellow-400/80">+@System.IncomeValue⚡</span>
+                }
+                @if (System.HomePlayerId.HasValue)
+                {
+                    <span
+                        class="inline-flex h-6 w-6 items-center justify-center rounded-full border border-white/15 bg-white/5"
+                        aria-label="Home system">
+                        <svg viewBox="-5 -5 10 10" class="h-3.5 w-3.5 fill-white/85" aria-hidden="true" focusable="false">
+                            <polygon
+                            points="0,-4 1.1,-1.5 3.8,-1.2 1.8,0.8 2.4,3.6 0,2.2 -2.4,3.6 -1.8,0.8 -3.8,-1.2 -1.1,-1.5" />
+                        </svg>
+                    </span>
+                }
+            </div>
+            @if (IsEditable && _myStacks.Length > 0)
             {
-                <span class="ui-type-meta text-yellow-400/80">+@System.IncomeValue⚡</span>
-            }
-            @if (System.HomePlayerId.HasValue)
+                <p class="text-base text-slate-500">Click a stack row to take or clear the whole stack. Use +/- only when
+                    splitting a bucket.</p>
+                }
+            </div>
+
+            @if (IsEditable && _myStacks.Length > 0)
             {
-                <span class="inline-flex h-6 w-6 items-center justify-center rounded-full border border-white/15 bg-white/5"
-                      aria-label="Home system">
-                    <svg viewBox="-5 -5 10 10" class="h-3.5 w-3.5 fill-white/85" aria-hidden="true" focusable="false">
-                        <polygon
-                        points="0,-4 1.1,-1.5 3.8,-1.2 1.8,0.8 2.4,3.6 0,2.2 -2.4,3.6 -1.8,0.8 -3.8,-1.2 -1.1,-1.5" />
-                    </svg>
-                </span>
+                <div class="flex flex-wrap items-center gap-2">
+                    <button type="button"
+                            class="ui-button-control"
+                            @onclick="SelectWholeFleetAsync">
+                        Select Fleet
+                    </button>
+                    <button type="button"
+                            class="ui-button-control"
+                            @onclick="ClearSelectionAsync">
+                        Clear
+                    </button>
+                </div>
             }
         </div>
-    </div>
 
-    <div class="space-y-3">
-        @if (_myUnits.Count > 0)
-        {
-            <div>
-                <p class="mb-2 text-base font-semibold @MyForcesClass">Fleet</p>
-                <div class="grid gap-2 sm:grid-cols-3">
+        <div class="space-y-4">
+            @if (_myStacks.Length > 0)
+            {
+                <section class="space-y-3">
+                    <p class="text-base font-semibold @MyForcesClass">Fleet</p>
                     @foreach (var group in UnitGroups)
                     {
-                        var hasAny = group.UnitTypes.Any(unitType => _myUnits.GetValueOrDefault(unitType) > 0);
-                        <div class="rounded-lg border border-white/10 bg-slate-950/35 p-2">
-                            <p class="mb-1 text-base font-semibold uppercase tracking-wide text-slate-400">@group.Label</p>
-                            @if (!hasAny)
+                        var stacks = GetStacksForCategory(_myStacks, group.Category).ToList();
+                        if (stacks.Count == 0)
+                        {
+                            continue;
+                        }
+
+                        <div class="rounded-xl border border-white/10 bg-slate-950/35 p-2 sm:p-3">
+                            <p class="mb-2 text-base font-semibold uppercase tracking-wide text-slate-400">@group.Label</p>
+                            <div class="space-y-2">
+                                @foreach (var stack in stacks)
+                                {
+                                    var stackKey = GetStackKey(stack);
+                                    var selected = _selection.GetValueOrDefault(stackKey);
+
+                                    <div
+                                        class="rounded-xl border @GetFleetRowBorderClass(selected > 0) bg-slate-950/70 p-2 sm:p-3 transition-colors">
+                                        <div class="flex flex-wrap items-start justify-between gap-3">
+                                            <button type="button"
+                                                    class="flex min-w-0 flex-1 items-start justify-between gap-3 text-left disabled:cursor-default disabled:opacity-40"
+                                                    data-testid="@GetFleetButtonTestId(stack)" disabled="@(!IsEditable)"
+                                                    @onclick="() => ToggleWholeStackAsync(stackKey)">
+                                                <div class="min-w-0">
+                                                    <div class="flex flex-wrap items-center gap-2">
+                                                        <p class="text-base font-semibold text-slate-100">@stack.UnitType</p>
+                                                        <span
+                                                            class="rounded-full border px-2 py-0.5 text-xs font-medium @GetHullPillClass(stack)">@stack.RemainingHull/@stack.UnitType.Hull()
+                                                            hull</span>
+                                                        </div>
+                                                        <p class="mt-1 text-base text-slate-400">@stack.Count available in this stack</p>
+                                                    </div>
+
+                                                    <div class="shrink-0 text-right">
+                                                        <p class="text-xs uppercase tracking-[0.2em] text-slate-500">Selected</p>
+                                                        <p class="text-lg font-semibold @GetSelectedCountClass(selected)">@selected<span
+                                                            class="text-sm text-slate-500">/@stack.Count</span></p>
+                                                        </div>
+                                                    </button>
+
+                                                    @if (IsEditable)
+                                                    {
+                                                        <div class="flex items-center gap-2">
+                                                            <button type="button"
+                                                                    class="ui-button-icon"
+                                                                    disabled="@(selected <= 0)" @onclick="() => AdjustStackAsync(stackKey, -1)">
+                                                                -
+                                                            </button>
+                                                            <button type="button"
+                                                                    class="ui-button-control"
+                                                                    @onclick="() => ToggleWholeStackAsync(stackKey)">
+                                                                @(selected == stack.Count ? "Clear stack" : "Take stack")
+                                                            </button>
+                                                            <button type="button"
+                                                                    class="ui-button-icon"
+                                                                    disabled="@(selected >= stack.Count)"
+                                                                    @onclick="() => AdjustStackAsync(stackKey, 1)">
+                                                                +
+                                                            </button>
+                                                        </div>
+                                                    }
+                                                </div>
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+                            }
+                        </section>
+                    }
+        else
+                    {
+                        <div class="rounded-xl border border-white/10 bg-slate-950/35 p-3 text-base text-slate-500">No movable units in
+                            this system.</div>
+                        }
+
+                        @if (_enemyStacks.Length > 0)
+                        {
+                            <section class="space-y-3 border-t border-white/10 pt-4">
+                                <p class="text-base font-semibold @EnemyForcesClass">Enemy Fleet</p>
+                                @foreach (var group in UnitGroups)
+                                {
+                                    var stacks = GetStacksForCategory(_enemyStacks, group.Category).ToList();
+                                    if (stacks.Count == 0)
+                                    {
+                                        continue;
+                                    }
+
+                                    <div class="rounded-xl border border-white/10 bg-slate-950/35 p-2 sm:p-3">
+                                        <p class="mb-2 text-base font-semibold uppercase tracking-wide text-slate-400">@group.Label</p>
+                                        <div class="space-y-2">
+                                            @foreach (var stack in stacks)
+                                            {
+                                                <div
+                                                    class="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/10 bg-slate-950/70 px-3 py-2.5">
+                                                    <div>
+                                                        <p class="text-base font-semibold text-slate-200">@stack.UnitType</p>
+                                                        <p class="mt-1 text-base text-slate-400">@stack.RemainingHull/@stack.UnitType.Hull() hull
+                                                        </p>
+                                                    </div>
+                                                    <p class="text-base font-semibold text-slate-300">x@stack.Count</p>
+                                                </div>
+                                            }
+                                        </div>
+                                    </div>
+                                }
+                            </section>
+                        }
+                    </div>
+
+                    @if (IsEditable && HasSelection)
+                    {
+                        <div class="space-y-2 border-t border-white/10 pt-3">
+                            <div
+                                class="flex items-center justify-between gap-2 rounded-lg border border-white/10 bg-slate-950/40 px-3 py-1.5">
+                                <p class="text-base text-slate-300">Capacity: @SlotsNeeded / @CarryCapacity</p>
+                            </div>
+                            @if (SelectionIsValid)
                             {
-                                <p class="text-base text-slate-600">None</p>
+                                <p class="text-base text-sky-400/80">Click a highlighted sector on the map.</p>
                             }
                             else
                             {
-                                <div class="space-y-1">
-                                    @foreach (var unitType in group.UnitTypes.Where(unit => _myUnits.GetValueOrDefault(unit) > 0))
-                                    {
-                                        var available = AvailableUnits.GetValueOrDefault(unitType);
-                                        var selected = _selection.GetValueOrDefault(unitType);
-                                        var canInteract = IsEditable && available > 0;
-                                        <button type="button" class="@GetFleetRowClass(unitType, canInteract)"
-                                            data-testid="@GetFleetButtonTestId(unitType)"
-                                                disabled="@(!canInteract)" @onclick="e => OnFleetRowClickAsync(unitType, e)"
-                                                @ondblclick="() => SelectAllFleetAsync(unitType)" @oncontextmenu:preventDefault="true"
-                                                @oncontextmenu="() => RemoveOneFleetAsync(unitType)">
-                                            <span class="text-base text-slate-100">@unitType</span>
-                                            <span class="text-base text-slate-400">
-                                                @if (selected > 0)
-                                                {
-                                                    <span class="@SelectionCountClass">@selected</span><span class="text-slate-600"> /
-                                                </span>
-                                            }
-                                            @available
-                                        </span>
-                                    </button>
-                                }
-                            </div>
-                        }
-                    </div>
-                }
-            </div>
-        </div>
-    }
-
-    @if (_enemyUnits.Count > 0)
-    {
-        <div>
-            <p class="mb-2 text-base font-semibold @EnemyForcesClass">Fleet</p>
-            <div class="grid gap-2 sm:grid-cols-3">
-                @foreach (var group in UnitGroups)
-                {
-                    var hasAny = group.UnitTypes.Any(unitType => _enemyUnits.GetValueOrDefault(unitType) > 0);
-                    <div class="rounded-lg border border-white/10 bg-slate-950/35 p-2">
-                        <p class="mb-1 text-base font-semibold uppercase tracking-wide text-slate-400">@group.Label</p>
-                        @if (!hasAny)
-                        {
-                            <p class="text-base text-slate-600">None</p>
-                        }
-                        else
-                        {
-                            <div class="space-y-1">
-                                @foreach (var unitType in group.UnitTypes.Where(unit => _enemyUnits.GetValueOrDefault(unit) >
-                    0))
-                                {
-                                    var count = _enemyUnits.GetValueOrDefault(unitType);
-                                    <div class="flex items-center justify-between rounded-lg px-2 py-1.5">
-                                        <span class="text-base text-slate-300">@unitType</span>
-                                        <span class="text-base text-slate-500">@count</span>
-                                    </div>
-                                }
-                            </div>
-                        }
-                    </div>
-                }
-            </div>
-        </div>
-    }
-</div>
-
-@if (IsEditable && HasSelection)
-{
-    <div class="space-y-2 border-t border-white/10 pt-3">
-        <div
-            class="flex items-center justify-between gap-2 rounded-lg border border-white/10 bg-slate-950/40 px-3 py-1.5">
-            <p class="text-base text-slate-300">Capacity: @SlotsNeeded / @CarryCapacity</p>
-        </div>
-        @if (SelectionIsValid)
-        {
-            <p class="text-base text-sky-400/80">Click a highlighted sector on the map.</p>
-        }
-    </div>
-}
-
-@if (IsEditable && System.HomePlayerId == CurrentPlayerId)
-{
-    <div class="space-y-2 border-t border-white/10 pt-3">
-        <p class="text-base font-semibold text-slate-300">Build units</p>
-        <div class="grid gap-2 sm:grid-cols-3">
-            @foreach (var group in UnitGroups)
-            {
-                <div class="rounded-lg border border-white/10 bg-slate-950/35 p-2">
-                    <p class="mb-1 text-base font-semibold uppercase tracking-wide text-slate-400">@group.Label</p>
-                    <div class="space-y-1">
-                        @foreach (var unitType in group.UnitTypes)
-                        {
-                            var cost = unitType.Cost();
-                            var count = PendingBuildOrders.FirstOrDefault(o => o.UnitType == unitType)?.Count ?? 0;
-                            var canAdd = ProjectedEnergy >= cost;
-                            <button type="button" class="@GetBuildRowClass(unitType, count, canAdd)"
-                                    data-testid="@GetBuildButtonTestId(unitType)"
-                                    @onclick="e => OnBuildRowClickAsync(unitType, e)"
-                                    @ondblclick="() => OnOrderDraftRequested.InvokeAsync(OrderDraftRequest.BuildDraftAdjusted(unitType, BuildDraftAdjustmentKind.AddMax))"
-                                    @oncontextmenu:preventDefault="true"
-                                    @oncontextmenu="() => OnOrderDraftRequested.InvokeAsync(OrderDraftRequest.BuildDraftAdjusted(unitType, BuildDraftAdjustmentKind.RemoveOne))">
-                                <span class="text-base text-slate-100">@unitType <span
-                                    class="ml-1 text-yellow-400">@cost⚡</span></span>
-                                    <span class="text-base text-slate-400">@count</span>
-                                </button>
+                                <p class="text-base text-amber-300">Selection exceeds available transport capacity.</p>
                             }
                         </div>
-                    </div>
-                }
-            </div>
-        </div>
-    }
+                    }
 
-    @if (IsEditable && CanShowGateOption)
-    {
-        <div class="space-y-2 border-t border-white/10 pt-3">
-            <p class="text-base font-semibold text-slate-300">Nexus Gate</p>
-            <button class="@GateButtonClass" data-testid="@NexusGameplayPanelTestIds.NexusGateDraftToggle"
-                    @onclick="OnNexusGateDraftChangedAsync">
-                <span>Begin Nexus Gate</span>
-                <span class="text-yellow-400">12⚡</span>
-            </button>
-        </div>
-    }
-</section>
+                    @if (IsEditable && System.HomePlayerId == CurrentPlayerId)
+                    {
+                        <div class="space-y-2 border-t border-white/10 pt-3">
+                            <p class="text-base font-semibold text-slate-300">Build units</p>
+                            <div class="grid gap-2">
+                                @foreach (var group in UnitGroups)
+                                {
+                                    <div class="rounded-lg border border-white/10 bg-slate-950/35 p-2 sm:p-3">
+                                        <p class="mb-1 text-base font-semibold uppercase tracking-wide text-slate-400">@group.Label</p>
+                                        <div class="space-y-1">
+                                            @foreach (var unitType in Enum.GetValues<NexusUnitType>().Where(unit => unit.Category() ==
+                                    group.Category))
+                                            {
+                                                var cost = unitType.Cost();
+                                                var count = PendingBuildOrders.FirstOrDefault(o => o.UnitType == unitType)?.Count ?? 0;
+                                                var canAdd = ProjectedEnergy >= cost;
+
+                                                <button type="button" class="@GetBuildRowClass(unitType, count, canAdd)"
+                                                        data-testid="@GetBuildButtonTestId(unitType)" @onclick="e => OnBuildRowClickAsync(unitType, e)"
+                                                        @ondblclick="() => OnOrderDraftRequested.InvokeAsync(OrderDraftRequest.BuildDraftAdjusted(unitType, BuildDraftAdjustmentKind.AddMax))"
+                                                        @oncontextmenu:preventDefault="true"
+                                                        @oncontextmenu="() => OnOrderDraftRequested.InvokeAsync(OrderDraftRequest.BuildDraftAdjusted(unitType, BuildDraftAdjustmentKind.RemoveOne))">
+                                                    <span class="min-w-0 flex-1 whitespace-nowrap text-base text-slate-100">@unitType <span
+                                                        class="ml-1 text-yellow-400">@cost⚡</span></span>
+                                                        <span class="shrink-0 whitespace-nowrap pl-3 text-base text-slate-400">@count</span>
+                                                    </button>
+                                                }
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        }
+
+                        @if (IsEditable && CanShowGateOption)
+                        {
+                            <div class="space-y-2 border-t border-white/10 pt-3">
+                                <p class="text-base font-semibold text-slate-300">Nexus Gate</p>
+                                <button class="@GateButtonClass" data-testid="@NexusGameplayPanelTestIds.NexusGateDraftToggle"
+                                        @onclick="OnNexusGateDraftChangedAsync">
+                                    <span>Begin Nexus Gate</span>
+                                    <span class="text-yellow-400">12⚡</span>
+                                </button>
+                            </div>
+                        }
+                    </section>
 
 @code {
     private static readonly UnitGroup[] UnitGroups =
     [
-        new("Strike", Enum.GetValues<NexusUnitType>().Where(unitType => unitType.Category() ==
-NexusUnitCategory.Strike).ToArray()),
-        new("Capital", Enum.GetValues<NexusUnitType>().Where(unitType => unitType.Category() ==
-NexusUnitCategory.Capital).ToArray()),
-        new("Planetary", Enum.GetValues<NexusUnitType>().Where(unitType => unitType.Category() ==
-NexusUnitCategory.Planetary).ToArray()),
+        new("Strike", NexusUnitCategory.Strike),
+        new("Capital", NexusUnitCategory.Capital),
+        new("Planetary", NexusUnitCategory.Planetary),
     ];
 
     [Parameter, EditorRequired]
@@ -205,8 +263,7 @@ NexusUnitCategory.Planetary).ToArray()),
     public int ProjectedEnergy { get; set; }
 
     [Parameter]
-    public ImmutableDictionary<NexusUnitType, int> AvailableUnits { get; set; } =
-        ImmutableDictionary<NexusUnitType, int>.Empty;
+    public ImmutableArray<NexusUnitStackGroup> AvailableStacks { get; set; } = [];
 
     [Parameter]
     public IReadOnlyList<NexusBuildOrder> PendingBuildOrders { get; set; } = [];
@@ -214,23 +271,27 @@ NexusUnitCategory.Planetary).ToArray()),
     [Parameter]
     public EventCallback<OrderDraftRequest> OnOrderDraftRequested { get; set; }
 
-    private readonly Dictionary<NexusUnitType, int> _selection = [];
+    private readonly Dictionary<StackKey, int> _selection = [];
     private HexCoord _previousCoord;
-    private Dictionary<NexusUnitType, int> _myUnits = [];
-    private Dictionary<NexusUnitType, int> _enemyUnits = [];
+    private ImmutableArray<NexusUnitStackGroup> _myStacks = [];
+    private ImmutableArray<NexusUnitStackGroup> _enemyStacks = [];
 
-    private int CarryCapacity => _selection.Sum(kv => kv.Key.CarryCapacity() * kv.Value);
+    private int CarryCapacity => SelectedStacks.Sum(stack => stack.UnitType.CarryCapacity() * stack.Count);
 
-    private int SlotsNeeded => _selection.Where(kv => !kv.Key.IsCapital()).Sum(kv => kv.Value);
+    private int SlotsNeeded => SelectedStacks.Sum(stack => stack.UnitType.ConsumedCapacity() * stack.Count);
 
-    private bool HasSelection => _selection.Values.Any(v => v > 0);
+    private bool HasSelection => _selection.Values.Any(value => value > 0);
+
+    private IEnumerable<NexusUnitStackGroup> SelectedStacks => _myStacks
+        .Select(stack => stack with { Count = _selection.GetValueOrDefault(GetStackKey(stack)) })
+        .Where(stack => stack.Count > 0);
 
     private bool SelectionIsValid => HasSelection && SlotsNeeded <= CarryCapacity;
 
     private bool CanShowGateOption =>
         CurrentPlayerGateProgress != NexusGateProgress.Completed
         && System.IsNexus
-        && _myUnits.Any(kv => kv.Key.IsPlanetary() && kv.Value > 0);
+        && _myStacks.Any(stack => stack.UnitType.IsPlanetary() && stack.Count > 0);
 
     private string MyForcesClass =>
         CurrentPlayerFaction == NexusFactionColor.Red ? "text-red-400" : "text-sky-400";
@@ -243,8 +304,8 @@ NexusUnitCategory.Planetary).ToArray()),
 
     private string GateButtonClass =>
         PendingBeginNexusGate
-            ? "flex w-full items-center justify-between gap-2 rounded-lg border border-purple-500/50 bg-purple-600/20 px-3 py-2 text-sm text-purple-300 transition-colors"
-            : "flex w-full items-center justify-between gap-2 rounded-lg border border-white/10 bg-slate-950/60 px-3 py-2 text-sm text-slate-200 transition-colors hover:border-purple-500/30";
+            ? "ui-button-control-info flex w-full justify-between gap-2"
+            : "ui-button-control flex w-full justify-between gap-2";
 
     private NexusFactionColor OpponentFactionColor =>
         CurrentPlayerFaction == NexusFactionColor.Red ? NexusFactionColor.Blue : NexusFactionColor.Red;
@@ -280,15 +341,10 @@ NexusUnitCategory.Planetary).ToArray()),
 
     protected override async Task OnParametersSetAsync()
     {
-        _myUnits = System.Units.TryGetValue(CurrentPlayerId, out var myUnits)
-            ? myUnits.ToDictionary()
+        _myStacks = AvailableStacks;
+        _enemyStacks = OpponentPlayerId.HasValue
+            ? System.GetPlayerStacks(OpponentPlayerId.Value)
             : [];
-
-        _enemyUnits =
-            OpponentPlayerId.HasValue
-            && System.Units.TryGetValue(OpponentPlayerId.Value, out var enemyUnits)
-                ? enemyUnits.ToDictionary()
-                : [];
 
         if (_previousCoord != System.Coord)
         {
@@ -299,18 +355,19 @@ NexusUnitCategory.Planetary).ToArray()),
         }
 
         var changed = false;
-        foreach (var unitType in _selection.Keys.ToList())
+        foreach (var stackKey in _selection.Keys.ToList())
         {
-            var available = AvailableUnits.GetValueOrDefault(unitType);
-            var next = Math.Clamp(_selection[unitType], 0, available);
+            var available = GetAvailableCount(stackKey);
+            var next = Math.Clamp(_selection[stackKey], 0, available);
+
             if (next <= 0)
             {
-                _selection.Remove(unitType);
+                _selection.Remove(stackKey);
                 changed = true;
             }
-            else if (next != _selection[unitType])
+            else if (next != _selection[stackKey])
             {
-                _selection[unitType] = next;
+                _selection[stackKey] = next;
                 changed = true;
             }
         }
@@ -319,18 +376,95 @@ NexusUnitCategory.Planetary).ToArray()),
             await PublishSelectionAsync();
     }
 
-    private string GetFleetRowClass(NexusUnitType unitType, bool canInteract)
-    {
-        if (!canInteract)
-            return "flex w-full items-center justify-between rounded-lg border border-transparent bg-transparent px-2.5 py-1.5 text-left opacity-35";
+    private static IEnumerable<NexusUnitStackGroup> GetStacksForCategory(
+        ImmutableArray<NexusUnitStackGroup> stacks,
+        NexusUnitCategory category
+    ) =>
+        stacks
+            .Where(stack => stack.UnitType.Category() == category)
+            .OrderBy(stack => stack.UnitType)
+            .ThenByDescending(stack => stack.RemainingHull);
 
-        var isSelected = _selection.GetValueOrDefault(unitType) > 0;
+    private string GetFleetRowBorderClass(bool isSelected)
+    {
         if (!isSelected)
-            return "flex w-full items-center justify-between rounded-lg border border-transparent px-2.5 py-1.5 text-left transition-colors hover:border-white/10 hover:bg-white/5";
+            return "border-white/10";
 
         return CurrentPlayerFaction == NexusFactionColor.Red
-            ? "flex w-full items-center justify-between rounded-lg border border-red-400/30 bg-red-950/30 px-2.5 py-1.5 text-left transition-colors hover:bg-red-950/50"
-            : "flex w-full items-center justify-between rounded-lg border border-sky-400/30 bg-sky-950/30 px-2.5 py-1.5 text-left transition-colors hover:bg-sky-950/50";
+            ? "border-red-400/30 bg-red-950/15"
+            : "border-sky-400/30 bg-sky-950/15";
+    }
+
+    private static string GetHullPillClass(NexusUnitStackGroup stack)
+    {
+        if (stack.RemainingHull >= stack.UnitType.Hull())
+            return "border-emerald-400/30 bg-emerald-500/10 text-emerald-200";
+
+        if (stack.RemainingHull > 1)
+            return "border-amber-400/30 bg-amber-500/10 text-amber-200";
+
+        return "border-rose-400/30 bg-rose-500/10 text-rose-200";
+    }
+
+    private string GetSelectedCountClass(int selectedCount) =>
+        selectedCount <= 0 ? "text-slate-400" : SelectionCountClass;
+
+    private int GetAvailableCount(StackKey stackKey) =>
+        _myStacks
+            .Where(stack => stack.UnitType == stackKey.UnitType && stack.RemainingHull == stackKey.RemainingHull)
+            .Sum(stack => stack.Count);
+
+    private static StackKey GetStackKey(NexusUnitStackGroup stack) =>
+        new(stack.UnitType, stack.RemainingHull);
+
+    private Task ToggleWholeStackAsync(StackKey stackKey)
+    {
+        var available = GetAvailableCount(stackKey);
+        if (available <= 0)
+            return Task.CompletedTask;
+
+        var current = _selection.GetValueOrDefault(stackKey);
+        if (current >= available)
+            _selection.Remove(stackKey);
+        else
+            _selection[stackKey] = available;
+
+        return PublishSelectionAsync();
+    }
+
+    private Task AdjustStackAsync(StackKey stackKey, int delta)
+    {
+        var available = GetAvailableCount(stackKey);
+        if (available <= 0)
+            return Task.CompletedTask;
+
+        var next = Math.Clamp(_selection.GetValueOrDefault(stackKey) + delta, 0, available);
+        if (next <= 0)
+            _selection.Remove(stackKey);
+        else
+            _selection[stackKey] = next;
+
+        return PublishSelectionAsync();
+    }
+
+    private Task SelectWholeFleetAsync()
+    {
+        _selection.Clear();
+        foreach (var stack in _myStacks)
+        {
+            _selection[GetStackKey(stack)] = stack.Count;
+        }
+
+        return PublishSelectionAsync();
+    }
+
+    private Task ClearSelectionAsync()
+    {
+        if (_selection.Count == 0)
+            return Task.CompletedTask;
+
+        _selection.Clear();
+        return PublishSelectionAsync();
     }
 
     private string GetBuildRowClass(NexusUnitType unitType, int count, bool canAdd)
@@ -338,52 +472,14 @@ NexusUnitCategory.Planetary).ToArray()),
         if (count > 0)
         {
             return CurrentPlayerFaction == NexusFactionColor.Red
-                ? "flex w-full items-center justify-between rounded-lg border border-red-400/30 bg-red-950/30 px-2 py-1 text-left transition-colors hover:bg-red-950/50"
-                : "flex w-full items-center justify-between rounded-lg border border-sky-400/30 bg-sky-950/30 px-2 py-1 text-left transition-colors hover:bg-sky-950/50";
+                ? "ui-button-row-active-danger"
+                : "ui-button-row-active-info";
         }
 
         if (!canAdd)
-            return "flex w-full items-center justify-between rounded-lg border border-transparent bg-transparent px-2.5 py-1.5 text-left opacity-35";
+            return "ui-button-row-disabled";
 
-        return "flex w-full items-center justify-between rounded-lg border border-transparent px-2.5 py-1.5 text-left transition-colors hover:border-white/10 hover:bg-white/5";
-    }
-
-    private Task OnFleetRowClickAsync(NexusUnitType unitType, MouseEventArgs e)
-    {
-        if (e.ShiftKey)
-        {
-            _selection.Remove(unitType);
-            return PublishSelectionAsync();
-        }
-
-        var available = AvailableUnits.GetValueOrDefault(unitType);
-        if (available <= 0)
-            return Task.CompletedTask;
-
-        var current = _selection.GetValueOrDefault(unitType);
-        _selection[unitType] = Math.Min(current + 1, available);
-        return PublishSelectionAsync();
-    }
-
-    private Task RemoveOneFleetAsync(NexusUnitType unitType)
-    {
-        var current = _selection.GetValueOrDefault(unitType);
-        if (current <= 1)
-            _selection.Remove(unitType);
-        else
-            _selection[unitType] = current - 1;
-
-        return PublishSelectionAsync();
-    }
-
-    private Task SelectAllFleetAsync(NexusUnitType unitType)
-    {
-        var available = AvailableUnits.GetValueOrDefault(unitType);
-        if (available <= 0)
-            return Task.CompletedTask;
-
-        _selection[unitType] = available;
-        return PublishSelectionAsync();
+        return "ui-button-row-available";
     }
 
     private Task OnBuildRowClickAsync(NexusUnitType unitType, MouseEventArgs e)
@@ -405,12 +501,12 @@ NexusUnitCategory.Planetary).ToArray()),
         if (!SelectionIsValid)
         {
             return OnOrderDraftRequested.InvokeAsync(
-                OrderDraftRequest.MoveDraftChanged(ImmutableDictionary<NexusUnitType, int>.Empty)
+                OrderDraftRequest.MoveDraftChanged(ImmutableArray<NexusUnitStackGroup>.Empty)
             );
         }
 
         return OnOrderDraftRequested.InvokeAsync(
-            OrderDraftRequest.MoveDraftChanged(_selection.ToImmutableDictionary())
+            OrderDraftRequest.MoveDraftChanged(SelectedStacks.ToImmutableArray())
         );
     }
 
@@ -419,11 +515,13 @@ NexusUnitCategory.Planetary).ToArray()),
             OrderDraftRequest.NexusGateDraftChanged(!PendingBeginNexusGate)
         );
 
-    private static string GetFleetButtonTestId(NexusUnitType unitType) =>
-        NexusGameplayPanelTestIds.FleetUnit(unitType);
+    private static string GetFleetButtonTestId(NexusUnitStackGroup stack) =>
+        NexusGameplayPanelTestIds.FleetStack(stack.UnitType, stack.RemainingHull);
 
     private static string GetBuildButtonTestId(NexusUnitType unitType) =>
         NexusGameplayPanelTestIds.BuildUnit(unitType);
 
-    private sealed record UnitGroup(string Label, IReadOnlyList<NexusUnitType> UnitTypes);
+    private sealed record UnitGroup(string Label, NexusUnitCategory Category);
+
+    private sealed record StackKey(NexusUnitType UnitType, int RemainingHull);
 }

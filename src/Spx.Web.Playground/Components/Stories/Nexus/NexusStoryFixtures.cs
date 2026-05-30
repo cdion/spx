@@ -288,7 +288,7 @@ internal static class NexusStoryFixtures
                 Player1Id,
                 NexusMap.Player1HomeCoord,
                 new HexCoord(1, -2),
-                ImmutableDictionary<NexusUnitType, int>.Empty.Add(NexusUnitType.Carrier, 1),
+                FullHullStacks((NexusUnitType.Carrier, 1)),
                 IsRetreat: false
             ),
             new NexusCombatBeganEvent(new HexCoord(1, -2), Player1Id, Player2Id),
@@ -313,12 +313,13 @@ internal static class NexusStoryFixtures
                     3,
                     Player1Id,
                     Player1Id,
-                    ImmutableDictionary<Guid, ImmutableDictionary<NexusUnitType, int>>.Empty.Add(
+                    ImmutableDictionary<Guid, ImmutableArray<NexusUnitStackGroup>>.Empty.Add(
                         Player1Id,
-                        ImmutableDictionary<NexusUnitType, int>
-                            .Empty.Add(NexusUnitType.Carrier, 1)
-                            .Add(NexusUnitType.Fighter, 2)
-                            .Add(NexusUnitType.Infantry, 4)
+                        FullHullStacks(
+                            (NexusUnitType.Carrier, 1),
+                            (NexusUnitType.Fighter, 2),
+                            (NexusUnitType.Infantry, 4)
+                        )
                     )
                 ),
                 ImmutableDictionary<NexusUnitType, int>
@@ -335,18 +336,14 @@ internal static class NexusStoryFixtures
                     0,
                     null,
                     Player1Id,
-                    ImmutableDictionary<Guid, ImmutableDictionary<NexusUnitType, int>>
+                    ImmutableDictionary<Guid, ImmutableArray<NexusUnitStackGroup>>
                         .Empty.Add(
                             Player1Id,
-                            ImmutableDictionary<NexusUnitType, int>
-                                .Empty.Add(NexusUnitType.Carrier, 1)
-                                .Add(NexusUnitType.Infantry, 2)
+                            FullHullStacks((NexusUnitType.Carrier, 1), (NexusUnitType.Infantry, 2))
                         )
                         .Add(
                             Player2Id,
-                            ImmutableDictionary<NexusUnitType, int>
-                                .Empty.Add(NexusUnitType.Cruiser, 1)
-                                .Add(NexusUnitType.Infantry, 1)
+                            FullHullStacks((NexusUnitType.Cruiser, 1), (NexusUnitType.Infantry, 1))
                         )
                 ),
                 ImmutableDictionary<NexusUnitType, int>
@@ -362,11 +359,9 @@ internal static class NexusStoryFixtures
                     4,
                     null,
                     null,
-                    ImmutableDictionary<Guid, ImmutableDictionary<NexusUnitType, int>>.Empty.Add(
+                    ImmutableDictionary<Guid, ImmutableArray<NexusUnitStackGroup>>.Empty.Add(
                         Player1Id,
-                        ImmutableDictionary<NexusUnitType, int>
-                            .Empty.Add(NexusUnitType.Destroyer, 1)
-                            .Add(NexusUnitType.Fighter, 1)
+                        FullHullStacks((NexusUnitType.Destroyer, 1), (NexusUnitType.Fighter, 1))
                     )
                 ),
                 ImmutableDictionary<NexusUnitType, int>
@@ -375,6 +370,13 @@ internal static class NexusStoryFixtures
                 NexusGateProgress.None
             ),
         ];
+
+    private static ImmutableArray<NexusUnitStackGroup> FullHullStacks(
+        params (NexusUnitType Type, int Count)[] units
+    ) =>
+        units
+            .Select(unit => new NexusUnitStackGroup(unit.Type, unit.Type.Hull(), unit.Count))
+            .ToImmutableArray();
 
     public sealed record GameplayScenario(string Label, string Description, NexusGameView View);
 
