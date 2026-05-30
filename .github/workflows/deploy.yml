@@ -10,7 +10,6 @@ on:
 
 permissions:
   contents: read
-  packages: write
 
 concurrency:
   group: deploy-production
@@ -41,15 +40,6 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y just podman
 
-      - name: Log in to GHCR
-        env:
-          GHCR_USERNAME: ${{ secrets.GHCR_USERNAME }}
-          GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
-        run: |
-          test -n "$GHCR_USERNAME"
-          test -n "$GHCR_TOKEN"
-          printf '%s' "$GHCR_TOKEN" | podman login ghcr.io --username "$GHCR_USERNAME" --password-stdin
-
       - name: Configure SSH
         run: |
           install -d -m 700 ~/.ssh
@@ -57,9 +47,6 @@ jobs:
           chmod 600 ~/.ssh/id_ed25519
           printf '%s\n' '${{ secrets.VM_KNOWN_HOSTS }}' > ~/.ssh/known_hosts
           chmod 600 ~/.ssh/known_hosts
-
-      - name: Promote CI-built images
-        run: just promote-prod
 
       - name: Deploy production tags
         run: just deploy

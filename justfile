@@ -112,9 +112,11 @@ publish: image-build image-push
 # Promote the current build to the stable production tags
 promote-prod:
     @echo "==> Promoting {{web_image}} to {{deploy_web_image}}..."
+    {{container_cli}} pull {{web_image}}
     {{container_cli}} tag {{web_image}} {{deploy_web_image}}
     {{container_cli}} push {{deploy_web_image}}
     @echo "==> Promoting {{silo_image}} to {{deploy_silo_image}}..."
+    {{container_cli}} pull {{silo_image}}
     {{container_cli}} tag {{silo_image}} {{deploy_silo_image}}
     {{container_cli}} push {{deploy_silo_image}}
 

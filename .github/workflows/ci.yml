@@ -41,8 +41,8 @@ jobs:
           test -n "$GHCR_TOKEN"
           printf '%s' "$GHCR_TOKEN" | podman login ghcr.io --username "$GHCR_USERNAME" --password-stdin
 
-      - name: Publish versioned images
+      - name: Publish and promote images
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         env:
           IMAGE_NAMESPACE: ${{ github.repository_owner }}
-        run: just publish
+        run: just release-prod

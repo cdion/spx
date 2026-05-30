@@ -62,10 +62,10 @@ just deploy
 ```
 
 On `main`, the CI workflow is the producer of the deployable versioned images.
-It runs `just ci`, then publishes the immutable commit-derived tags to GHCR. The
-deploy workflow is gated on CI success and only promotes that already-published
-version to the stable `prod` tags before running `just deploy`. Deploy does not
-rebuild the images.
+It runs `just ci`, publishes the immutable commit-derived tags to GHCR, and then
+promotes the same build to the stable `prod` tags. The deploy workflow is gated
+on CI success and only runs `just deploy` against whatever `prod` already points
+to. Deploy does not rebuild images or move tags.
 
 The workflows authenticate to GHCR with repository secrets `GHCR_USERNAME` and
 `GHCR_TOKEN` rather than relying on the built-in `GITHUB_TOKEN`. That avoids
@@ -86,13 +86,16 @@ login for the VM's root Podman context when `GHCR_USERNAME` and `GHCR_TOKEN` are
 present in the shell environment. That keeps registry bootstrap and Quadlet file
 installation in the same path used for first-time environment setup.
 
+The CI workflow expects these GitHub secrets:
+
+- `GHCR_USERNAME`: the GHCR account name, for example `cdion`
+- `GHCR_TOKEN`: a classic personal access token with at least `write:packages` and `read:packages`
+
 The deploy workflow expects these GitHub secrets:
 
 - `VM`: SSH target in the form `user@host`
 - `VM_SSH_KEY`: private key for that host
 - `VM_KNOWN_HOSTS`: pinned known-host entry for the VM
-- `GHCR_USERNAME`: the GHCR account name, for example `cdion`
-- `GHCR_TOKEN`: a classic personal access token with at least `write:packages` and `read:packages`
 
 ## Local Development
 
