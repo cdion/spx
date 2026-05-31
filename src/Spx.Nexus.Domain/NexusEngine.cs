@@ -125,7 +125,9 @@ public static class NexusEngine
                 s.IncomeValue,
                 s.HomePlayerId,
                 s.ControlOwner,
-                s.Units.ToImmutableDictionary(
+                ProjectUnitStacks(state, s, visibleOnly: true),
+                ProjectUnitStacks(state, s, visibleOnly: false),
+                s.CommittedPlanetaryUnits.ToImmutableDictionary(
                     outer => outer.Key,
                     outer =>
                         outer
@@ -305,6 +307,12 @@ public static class NexusEngine
                 return new NexusTurnOrdersRejected(
                     "Cannot begin Nexus Gate: no planetary units on the Nexus."
                 );
+
+            var opponentId = state.Players.First(p => p.PlayerId != player.PlayerId).PlayerId;
+            if (nexusSystem.HasAnyUnits(opponentId))
+                return new NexusTurnOrdersRejected(
+                    "Cannot begin Nexus Gate: the Nexus is contested."
+                );
         }
 
         return null;
@@ -332,6 +340,9 @@ public static class NexusEngine
 
         // Step 3: Combat
         ResolveCombat(state, player1.PlayerId, player2.PlayerId, events, rng);
+
+        // Step 3b: Return committed planetary units once their system is no longer contested
+        ReleaseCommittedPlanetaryUnits(state, player1.PlayerId, player2.PlayerId, events);
 
         // Step 4: Income
         foreach (var player in players)
@@ -376,55 +387,7 @@ public static class NexusEngine
         ResolveSupplyCheck(state, players, events);
 
         // Step 6: Gate progress and win check
-        var completedIds = new List<Guid>();
-        foreach (var player in players)
-        {
-            var nexus = GetSystem(state, NexusMap.NexusCoord);
-            var hasPlanetaryOnNexus = nexus is not null && nexus.HasPlanetaryUnits(player.PlayerId);
-
-            if (player.PendingBeginNexusGate && !hasPlanetaryOnNexus)
-            {
-                // Committed this turn but planetary units lost or never arrived — cancel and refund
-                player.Energy += GateCost;
-                if (player.GateProgress == NexusGateProgress.Started)
-                    player.GateProgress = NexusGateProgress.None;
-                events.Add(new NexusGateCancelledEvent(player.PlayerId, NexusMap.NexusCoord));
-            }
-            else if (
-                player.GateProgress == NexusGateProgress.Started
-                && !player.PendingBeginNexusGate
-            )
-            {
-                // Was building but didn't commit this turn — cancel (no refund, energy spent)
-                player.GateProgress = NexusGateProgress.None;
-                events.Add(new NexusGateCancelledEvent(player.PlayerId, NexusMap.NexusCoord));
-            }
-            else if (player.PendingBeginNexusGate && hasPlanetaryOnNexus)
-            {
-                if (player.GateProgress == NexusGateProgress.None)
-                {
-                    player.GateProgress = NexusGateProgress.Started;
-                    events.Add(new NexusGateStartedEvent(player.PlayerId, NexusMap.NexusCoord));
-                }
-                else if (player.GateProgress == NexusGateProgress.Started)
-                {
-                    player.GateProgress = NexusGateProgress.Completed;
-                    events.Add(new NexusGateCompletedEvent(player.PlayerId, NexusMap.NexusCoord));
-                    completedIds.Add(player.PlayerId);
-                }
-            }
-        }
-
-        if (completedIds.Count == 2)
-        {
-            state.Completion = new NexusGameCompletion(NexusGameOutcome.Draw, null);
-            events.Add(new NexusDrawEvent("Both players completed the Nexus Gate simultaneously."));
-        }
-        else if (completedIds.Count == 1)
-        {
-            state.Completion = new NexusGameCompletion(NexusGameOutcome.Victory, completedIds[0]);
-            events.Add(new NexusVictoryEvent(completedIds[0]));
-        }
+        ResolveGateProgressAndWinCheck(state, players, player1.PlayerId, player2.PlayerId, events);
 
         state.LastResolveEvents = events;
 
@@ -535,6 +498,69 @@ public static class NexusEngine
             + s.GetUnitCount(playerId, NexusUnitType.Carrier)
         );
 
+    private static void ResolveGateProgressAndWinCheck(
+        NexusState state,
+        List<NexusPlayerState> players,
+        Guid player1Id,
+        Guid player2Id,
+        List<NexusResolveEvent> events
+    )
+    {
+        var completedIds = new List<Guid>();
+        foreach (var player in players)
+        {
+            var nexus = GetSystem(state, NexusMap.NexusCoord);
+            var hasPlanetaryOnNexus = nexus is not null && nexus.HasPlanetaryUnits(player.PlayerId);
+            var nexusIsContested =
+                nexus is not null && IsSystemContested(nexus, player1Id, player2Id);
+
+            if (player.PendingBeginNexusGate && (!hasPlanetaryOnNexus || nexusIsContested))
+            {
+                player.Energy += GateCost;
+                if (player.GateProgress == NexusGateProgress.Started)
+                    player.GateProgress = NexusGateProgress.None;
+
+                events.Add(new NexusGateCancelledEvent(player.PlayerId, NexusMap.NexusCoord));
+                continue;
+            }
+
+            if (player.GateProgress == NexusGateProgress.Started && !player.PendingBeginNexusGate)
+            {
+                player.GateProgress = NexusGateProgress.None;
+                events.Add(new NexusGateCancelledEvent(player.PlayerId, NexusMap.NexusCoord));
+                continue;
+            }
+
+            if (!player.PendingBeginNexusGate || !hasPlanetaryOnNexus || nexusIsContested)
+                continue;
+
+            if (player.GateProgress == NexusGateProgress.None)
+            {
+                player.GateProgress = NexusGateProgress.Started;
+                events.Add(new NexusGateStartedEvent(player.PlayerId, NexusMap.NexusCoord));
+                continue;
+            }
+
+            if (player.GateProgress != NexusGateProgress.Started)
+                continue;
+
+            player.GateProgress = NexusGateProgress.Completed;
+            events.Add(new NexusGateCompletedEvent(player.PlayerId, NexusMap.NexusCoord));
+            completedIds.Add(player.PlayerId);
+        }
+
+        if (completedIds.Count == 2)
+        {
+            state.Completion = new NexusGameCompletion(NexusGameOutcome.Draw, null);
+            events.Add(new NexusDrawEvent("Both players completed the Nexus Gate simultaneously."));
+        }
+        else if (completedIds.Count == 1)
+        {
+            state.Completion = new NexusGameCompletion(NexusGameOutcome.Victory, completedIds[0]);
+            events.Add(new NexusVictoryEvent(completedIds[0]));
+        }
+    }
+
     // ── Moves ─────────────────────────────────────────────────────────────────
 
     private static void ApplyMoves(
@@ -625,75 +651,75 @@ public static class NexusEngine
         Random rng
     )
     {
-        var units1 = ExpandUnits(system.GetPlayerStacks(player1Id));
-        var units2 = ExpandUnits(system.GetPlayerStacks(player2Id));
+        var fleetUnits1 = ExpandUnits(system.GetPlayerStacks(player1Id));
+        var fleetUnits2 = ExpandUnits(system.GetPlayerStacks(player2Id));
+        var committedUnits1 = ExpandUnits(system.GetPlayerCommittedPlanetaryStacks(player1Id));
+        var committedUnits2 = ExpandUnits(system.GetPlayerCommittedPlanetaryStacks(player2Id));
 
-        var hadPlanetary1 = units1.Any(u => u.Type.IsPlanetary());
-        var hadPlanetary2 = units2.Any(u => u.Type.IsPlanetary());
+        var hadPlanetary1 =
+            fleetUnits1.Any(u => u.Type.IsPlanetary())
+            || committedUnits1.Any(u => u.Type.IsPlanetary());
+        var hadPlanetary2 =
+            fleetUnits2.Any(u => u.Type.IsPlanetary())
+            || committedUnits2.Any(u => u.Type.IsPlanetary());
         var groundCombatOccurred = hadPlanetary1 && hadPlanetary2;
 
-        foreach (var phase in Enum.GetValues<CombatPhase>())
-        {
-            var canAttack1 = units1.Any(u =>
-                !u.IsDestroyed && NexusCombatSpec.CanAttack(u.Type, phase)
-            );
-            var canAttack2 = units2.Any(u =>
-                !u.IsDestroyed && NexusCombatSpec.CanAttack(u.Type, phase)
-            );
-            if (!canAttack1 && !canAttack2)
-                continue;
+        ResolveCombatPhase(
+            system.Coord,
+            CombatPhase.Screen,
+            fleetUnits1,
+            fleetUnits2,
+            player1Id,
+            player2Id,
+            events,
+            rng
+        );
+        ResolveCombatPhase(
+            system.Coord,
+            CombatPhase.Engage,
+            fleetUnits1,
+            fleetUnits2,
+            player1Id,
+            player2Id,
+            events,
+            rng
+        );
 
-            var pendingHits = new List<(CombatUnit Target, Guid TargetPlayerId)>();
-            var attackRolls = new List<NexusCombatAttackRoll>();
-            GatherAttacks(
-                units1,
-                units2,
-                player1Id,
-                player2Id,
-                phase,
-                rng,
-                pendingHits,
-                attackRolls
-            );
-            GatherAttacks(
-                units2,
-                units1,
-                player2Id,
-                player1Id,
-                phase,
-                rng,
-                pendingHits,
-                attackRolls
-            );
+        CommitPlanetaryUnits(fleetUnits1, committedUnits1);
+        CommitPlanetaryUnits(fleetUnits2, committedUnits2);
 
-            var losses = new Dictionary<(Guid, NexusUnitType), int>();
-            foreach (var (target, targetPlayerId) in pendingHits)
-            {
-                target.RemainingHull--;
-                if (target.IsDestroyed)
-                {
-                    var key = (targetPlayerId, target.Type);
-                    losses[key] = losses.GetValueOrDefault(key) + 1;
-                }
-            }
+        ResolveCombatPhase(
+            system.Coord,
+            CombatPhase.Bombard,
+            fleetUnits1,
+            committedUnits2,
+            fleetUnits2,
+            committedUnits1,
+            player1Id,
+            player2Id,
+            events,
+            rng
+        );
+        ResolveCombatPhase(
+            system.Coord,
+            CombatPhase.Assault,
+            committedUnits1,
+            committedUnits2,
+            player1Id,
+            player2Id,
+            events,
+            rng
+        );
 
-            events.Add(
-                new NexusPhaseResultEvent(
-                    system.Coord,
-                    phase,
-                    losses
-                        .Select(kv => new NexusCombatLoss(kv.Key.Item1, kv.Key.Item2, kv.Value))
-                        .ToImmutableArray(),
-                    attackRolls.ToImmutableArray()
-                )
-            );
-        }
+        var survivingFleet1 = CollapseAlive(fleetUnits1);
+        var survivingFleet2 = CollapseAlive(fleetUnits2);
+        var survivingCommitted1 = CollapseAlive(committedUnits1);
+        var survivingCommitted2 = CollapseAlive(committedUnits2);
 
-        var survivors1 = CollapseAlive(units1);
-        var survivors2 = CollapseAlive(units2);
-
-        var p1Cleared = units1.All(u => u.IsDestroyed);
-        var p2Cleared = units2.All(u => u.IsDestroyed);
+        var p1Cleared =
+            fleetUnits1.All(u => u.IsDestroyed) && committedUnits1.All(u => u.IsDestroyed);
+        var p2Cleared =
+            fleetUnits2.All(u => u.IsDestroyed) && committedUnits2.All(u => u.IsDestroyed);
 
         if (p2Cleared && !p1Cleared)
             events.Add(new NexusSystemClearedEvent(system.Coord, player1Id));
@@ -701,17 +727,151 @@ public static class NexusEngine
             events.Add(new NexusSystemClearedEvent(system.Coord, player2Id));
 
         // Write survivors back
-        if (survivors1.Count > 0)
-            system.Units[player1Id] = survivors1;
+        if (survivingFleet1.Count > 0)
+            system.Units[player1Id] = survivingFleet1;
         else
             system.Units.Remove(player1Id);
 
-        if (survivors2.Count > 0)
-            system.Units[player2Id] = survivors2;
+        if (survivingFleet2.Count > 0)
+            system.Units[player2Id] = survivingFleet2;
         else
             system.Units.Remove(player2Id);
 
+        system.SetCommittedPlanetaryStacks(player1Id, survivingCommitted1);
+        system.SetCommittedPlanetaryStacks(player2Id, survivingCommitted2);
+
         UpdateSystemControl(system, player1Id, player2Id, groundCombatOccurred, events);
+    }
+
+    private static void ResolveCombatPhase(
+        HexCoord systemCoord,
+        CombatPhase phase,
+        List<CombatUnit> attackers1,
+        List<CombatUnit> targets1,
+        List<CombatUnit> attackers2,
+        List<CombatUnit> targets2,
+        Guid player1Id,
+        Guid player2Id,
+        List<NexusResolveEvent> events,
+        Random rng
+    )
+    {
+        var canAttack1 = attackers1.Any(u =>
+            !u.IsDestroyed && NexusCombatSpec.CanAttack(u.Type, phase)
+        );
+        var canAttack2 = attackers2.Any(u =>
+            !u.IsDestroyed && NexusCombatSpec.CanAttack(u.Type, phase)
+        );
+        if (!canAttack1 && !canAttack2)
+            return;
+
+        var pendingHits = new List<(CombatUnit Target, Guid TargetPlayerId)>();
+        var attackRolls = new List<NexusCombatAttackRoll>();
+        GatherAttacks(
+            attackers1,
+            targets1,
+            player1Id,
+            player2Id,
+            phase,
+            rng,
+            pendingHits,
+            attackRolls
+        );
+        GatherAttacks(
+            attackers2,
+            targets2,
+            player2Id,
+            player1Id,
+            phase,
+            rng,
+            pendingHits,
+            attackRolls
+        );
+
+        var losses = new Dictionary<(Guid, NexusUnitType), int>();
+        foreach (var (target, targetPlayerId) in pendingHits)
+        {
+            target.RemainingHull--;
+            if (target.IsDestroyed)
+            {
+                var key = (targetPlayerId, target.Type);
+                losses[key] = losses.GetValueOrDefault(key) + 1;
+            }
+        }
+
+        events.Add(
+            new NexusPhaseResultEvent(
+                systemCoord,
+                phase,
+                losses
+                    .Select(kv => new NexusCombatLoss(kv.Key.Item1, kv.Key.Item2, kv.Value))
+                    .ToImmutableArray(),
+                attackRolls.ToImmutableArray()
+            )
+        );
+    }
+
+    private static void ResolveCombatPhase(
+        HexCoord systemCoord,
+        CombatPhase phase,
+        List<CombatUnit> units1,
+        List<CombatUnit> units2,
+        Guid player1Id,
+        Guid player2Id,
+        List<NexusResolveEvent> events,
+        Random rng
+    ) =>
+        ResolveCombatPhase(
+            systemCoord,
+            phase,
+            units1,
+            units2,
+            units2,
+            units1,
+            player1Id,
+            player2Id,
+            events,
+            rng
+        );
+
+    private static void CommitPlanetaryUnits(
+        List<CombatUnit> fleetUnits,
+        List<CombatUnit> committedUnits
+    )
+    {
+        for (var index = fleetUnits.Count - 1; index >= 0; index--)
+        {
+            var unit = fleetUnits[index];
+            if (unit.IsDestroyed || !unit.Type.IsPlanetary())
+                continue;
+
+            committedUnits.Add(unit);
+            fleetUnits.RemoveAt(index);
+        }
+    }
+
+    private static void ReleaseCommittedPlanetaryUnits(
+        NexusState state,
+        Guid player1Id,
+        Guid player2Id,
+        List<NexusResolveEvent> events
+    )
+    {
+        foreach (var system in state.Systems)
+        {
+            if (
+                system.GetPlayerCommittedPlanetaryStacks(player1Id).Count == 0
+                && system.GetPlayerCommittedPlanetaryStacks(player2Id).Count == 0
+            )
+                continue;
+
+            if (IsSystemContested(system, player1Id, player2Id))
+                continue;
+
+            system.ReturnCommittedPlanetaryToFleet(player1Id);
+            system.ReturnCommittedPlanetaryToFleet(player2Id);
+            UpdateSystemControl(system, player1Id, player2Id, groundCombatOccurred: false, events);
+        }
     }
 
     private static void GatherAttacks(
@@ -757,7 +917,10 @@ public static class NexusEngine
                         target.Type,
                         roll,
                         threshold,
-                        isHit
+                        isHit,
+                        attacker.RemainingHull,
+                        targetPlayerId,
+                        target.RemainingHull
                     )
                 );
 
@@ -777,10 +940,26 @@ public static class NexusEngine
         List<NexusResolveEvent> events
     )
     {
+        if (system.IsNexus)
+        {
+            system.ControlOwner = null;
+            return;
+        }
+
+        var p1HasPresence = system.HasAnyUnits(player1Id);
+        var p2HasPresence = system.HasAnyUnits(player2Id);
         var p1HasPlanetary = system.HasPlanetaryUnits(player1Id);
         var p2HasPlanetary = system.HasPlanetaryUnits(player2Id);
 
-        if (p1HasPlanetary && !p2HasPlanetary)
+        if (p1HasPresence && p2HasPresence)
+        {
+            if (system.ControlOwner is not null)
+            {
+                system.ControlOwner = null;
+                events.Add(new NexusSystemContestedEvent(system.Coord));
+            }
+        }
+        else if (p1HasPlanetary && !p2HasPresence)
         {
             if (system.ControlOwner != player1Id)
             {
@@ -788,20 +967,12 @@ public static class NexusEngine
                 events.Add(new NexusPlanetaryControlEvent(system.Coord, player1Id));
             }
         }
-        else if (p2HasPlanetary && !p1HasPlanetary)
+        else if (p2HasPlanetary && !p1HasPresence)
         {
             if (system.ControlOwner != player2Id)
             {
                 system.ControlOwner = player2Id;
                 events.Add(new NexusPlanetaryControlEvent(system.Coord, player2Id));
-            }
-        }
-        else if (p1HasPlanetary && p2HasPlanetary)
-        {
-            if (system.ControlOwner is not null)
-            {
-                system.ControlOwner = null;
-                events.Add(new NexusSystemContestedEvent(system.Coord));
             }
         }
         else if (groundCombatOccurred && system.ControlOwner is not null)
@@ -883,6 +1054,47 @@ public static class NexusEngine
             ComputeSupplyPool(state, player.PlayerId),
             ComputeCapitalCount(state, player.PlayerId)
         );
+
+    private static ImmutableDictionary<Guid, ImmutableArray<NexusUnitStackGroup>> ProjectUnitStacks(
+        NexusState state,
+        NexusSystemState system,
+        bool visibleOnly
+    )
+    {
+        var playerIds = state.Players.Select(player => player.PlayerId).Distinct();
+        var builder = ImmutableDictionary.CreateBuilder<
+            Guid,
+            ImmutableArray<NexusUnitStackGroup>
+        >();
+
+        foreach (var playerId in playerIds)
+        {
+            var stacks = visibleOnly
+                ? system.GetPlayerVisibleStacks(playerId)
+                : system.GetPlayerStacks(playerId);
+
+            if (stacks.Count == 0)
+                continue;
+
+            builder[playerId] = stacks
+                .Select(stack => new NexusUnitStackGroup(
+                    stack.UnitType,
+                    stack.RemainingHull,
+                    stack.Count
+                ))
+                .OrderBy(stack => stack.UnitType)
+                .ThenByDescending(stack => stack.RemainingHull)
+                .ToImmutableArray();
+        }
+
+        return builder.ToImmutable();
+    }
+
+    private static bool IsSystemContested(
+        NexusSystemState system,
+        Guid player1Id,
+        Guid player2Id
+    ) => system.HasAnyUnits(player1Id) && system.HasAnyUnits(player2Id);
 
     // ── Utilities ─────────────────────────────────────────────────────────────
 

@@ -112,4 +112,42 @@ public class NexusGameViewQueriesTests
 
         Assert.DoesNotContain(source, result);
     }
+
+    [Fact]
+    public void GetValidMoveDestinations_CommittedPlanetaryOnly_ReturnsEmpty()
+    {
+        var playerId = Guid.NewGuid();
+        var source = new HexCoord(0, 0);
+        var visibleStacks = ImmutableDictionary<
+            Guid,
+            ImmutableArray<NexusUnitStackGroup>
+        >.Empty.Add(
+            playerId,
+            [new NexusUnitStackGroup(NexusUnitType.Infantry, NexusUnitType.Infantry.Hull(), 1)]
+        );
+        var committedStacks = ImmutableDictionary<
+            Guid,
+            ImmutableArray<NexusUnitStackGroup>
+        >.Empty.Add(
+            playerId,
+            [new NexusUnitStackGroup(NexusUnitType.Infantry, NexusUnitType.Infantry.Hull(), 1)]
+        );
+        var view = MakeView(
+            playerId,
+            new NexusSystemView(
+                source,
+                false,
+                2,
+                null,
+                null,
+                visibleStacks,
+                ImmutableDictionary<Guid, ImmutableArray<NexusUnitStackGroup>>.Empty,
+                committedStacks
+            )
+        );
+
+        var result = NexusViewQueries.GetValidMoveDestinations(view, playerId, source);
+
+        Assert.Empty(result);
+    }
 }

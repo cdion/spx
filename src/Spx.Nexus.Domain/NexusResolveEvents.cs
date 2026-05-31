@@ -28,7 +28,10 @@ public sealed record NexusCombatAttackRoll(
     [property: Id(2)] NexusUnitType TargetType,
     [property: Id(3)] int Roll,
     [property: Id(4)] int Threshold,
-    [property: Id(5)] bool IsHit
+    [property: Id(5)] bool IsHit,
+    [property: Id(6)] int AttackerRemainingHull = 0,
+    [property: Id(7)] Guid? TargetPlayerId = null,
+    [property: Id(8)] int TargetRemainingHull = 0
 );
 
 // ── Movement ──────────────────────────────────────────────────────────────────
@@ -57,7 +60,7 @@ public sealed record NexusPlanetaryControlEvent(
     [property: Id(1)] Guid PlayerId
 ) : NexusResolveEvent;
 
-/// <summary>Both players have planetary units in the system — control is contested.</summary>
+/// <summary>Both players have units in the system — control is contested.</summary>
 [GenerateSerializer]
 [Immutable]
 public sealed record NexusSystemContestedEvent([property: Id(0)] HexCoord System)

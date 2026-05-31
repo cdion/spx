@@ -23,7 +23,7 @@ public static class NexusSessionViewQueries
         if (system is null)
             return [];
 
-        if (system.GetPlayerStacks(playerId).Length == 0)
+        if (system.GetPlayerMovableStacks(playerId).Length == 0)
             return [];
 
         return fromSystem.GetNeighbours().Where(NexusMapTopology.IsValidCoord).ToList();

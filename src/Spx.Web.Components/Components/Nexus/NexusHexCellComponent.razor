@@ -42,6 +42,9 @@
     public NexusGateProgress CurrentPlayerGateProgress { get; set; }
 
     [Parameter]
+    public NexusGateProgress OpponentGateProgress { get; set; }
+
+    [Parameter]
     public NexusFactionColor CurrentPlayerFaction { get; set; }
 
     [Parameter]
@@ -138,23 +141,51 @@
     {
         get
         {
-            if (!System.IsNexus || CurrentPlayerGateProgress == NexusGateProgress.None)
+            if (
+                !System.IsNexus
+                || (
+                    CurrentPlayerGateProgress == NexusGateProgress.None
+                    && OpponentGateProgress == NexusGateProgress.None
+                )
+            )
                 return string.Empty;
 
-            var (activeFill, dimFill) = CurrentPlayerFaction == NexusFactionColor.Red
+            var currentColorPair = CurrentPlayerFaction == NexusFactionColor.Red
                 ? ("#f87171", "rgba(248,113,113,0.18)")
                 : ("#60a5fa", "rgba(96,165,250,0.18)");
+            var opponentColorPair = CurrentPlayerFaction == NexusFactionColor.Red
+                ? ("#60a5fa", "rgba(96,165,250,0.18)")
+                : ("#f87171", "rgba(248,113,113,0.18)");
 
-            var cx1 = NexusHexHelpers.Fmt(Center.X - 5);
-            var cx2 = NexusHexHelpers.Fmt(Center.X + 5);
-            var cy = NexusHexHelpers.Fmt(Center.Y - 2);
+            var showCurrent = CurrentPlayerGateProgress != NexusGateProgress.None;
+            var showOpponent = OpponentGateProgress != NexusGateProgress.None;
 
-            var pip2Fill =
-                CurrentPlayerGateProgress >= NexusGateProgress.Completed ? activeFill : dimFill;
+            if (showCurrent && showOpponent)
+            {
+                return RenderGatePips(CurrentPlayerGateProgress, currentColorPair, Center.Y - 6)
+                    + RenderGatePips(OpponentGateProgress, opponentColorPair, Center.Y + 2);
+            }
 
-            return $"<circle cx=\"{cx1}\" cy=\"{cy}\" r=\"3.5\" fill=\"{activeFill}\"/>"
-                + $"<circle cx=\"{cx2}\" cy=\"{cy}\" r=\"3.5\" fill=\"{pip2Fill}\"/>";
+            if (showCurrent)
+                return RenderGatePips(CurrentPlayerGateProgress, currentColorPair, Center.Y - 2);
+
+            return RenderGatePips(OpponentGateProgress, opponentColorPair, Center.Y - 2);
         }
+    }
+
+    private string RenderGatePips(
+        NexusGateProgress progress,
+        (string ActiveFill, string DimFill) colors,
+        double y
+    )
+    {
+        var cx1 = NexusHexHelpers.Fmt(Center.X - 5);
+        var cx2 = NexusHexHelpers.Fmt(Center.X + 5);
+        var cy = NexusHexHelpers.Fmt(y);
+        var pip2Fill = progress >= NexusGateProgress.Completed ? colors.ActiveFill : colors.DimFill;
+
+        return $"<circle cx=\"{cx1}\" cy=\"{cy}\" r=\"3.5\" fill=\"{colors.ActiveFill}\"/>"
+            + $"<circle cx=\"{cx2}\" cy=\"{cy}\" r=\"3.5\" fill=\"{pip2Fill}\"/>";
     }
 
     private Task HandleClick() =>

@@ -925,14 +925,18 @@ public class NexusPersistentDamageTests
     }
 
     [Fact]
-    public void Move_FromContested_TakesMostDamagedFirst()
+    public void Move_ExactStackOrder_PreservesSelectedDamageState()
     {
         var s = MakeState();
         var p1Home = s.Systems.First(sys => sys.HomePlayerId == P1Id);
+        var fallbackSupply = s.Systems.First(sys => sys.Coord == new HexCoord(1, -1));
+        fallbackSupply.ControlOwner = P1Id;
+        fallbackSupply.IncomeValue = 2;
 
         // Replace P1 home units: Infantry + Fighters + 2 Frigates (no Carrier).
-        // Keeping capitals to exactly 2 ensures supply pool (2) is never exceeded,
-        // so the supply check cannot disband the retreating Frigate.
+        // Keeping capitals to exactly 2 and granting one uncontested controlled income system
+        // ensures the new contested-home rule does not cause the supply check to disband the
+        // retreating Frigate before the assertion.
         p1Home.Units[P1Id] =
         [
             new NexusUnitStack
@@ -980,7 +984,7 @@ public class NexusPersistentDamageTests
             p1Moves: [MoveExact(NexusMap.Player1HomeCoord, adjacent, (NexusUnitType.Frigate, 1, 1))]
         );
 
-        // The most-damaged Frigate (RemainingHull=1) should have moved to the destination
+        // Stack-based move orders preserve the selected damaged stack.
         var dst = s.Systems.First(sys => sys.Coord == adjacent);
         var movedStack = dst.GetPlayerStacks(P1Id)
             .Single(st => st.UnitType == NexusUnitType.Frigate);
@@ -1168,6 +1172,199 @@ public class NexusGateTests
 
         Assert.Equal(NexusGateProgress.None, s.Players[0].GateProgress);
         Assert.Contains(s.LastResolveEvents, e => e is NexusGateCancelledEvent);
+    }
+
+    [Fact]
+    public void Gate_RejectedWhenNexusIsContested()
+    {
+        var s = MakeState();
+        s.Players[0].Energy = 50;
+        var nexus = s.Systems.Single(sys => sys.IsNexus);
+        nexus.AddUnits(P1Id, NexusUnitType.Infantry, 1);
+        nexus.AddUnits(P2Id, NexusUnitType.Fighter, 1);
+
+        var result = NexusEngine.SubmitOrders(
+            s,
+            new NexusTurnOrdersCommand(P1Id, 1, [], [], BeginNexusGate: true),
+            new Random(42)
+        );
+
+        Assert.IsType<NexusTurnOrdersRejected>(result);
+    }
+
+    [Fact]
+    public void Gate_CancelledWhenNexusBecomesContested()
+    {
+        var s = MakeState();
+        s.Players[0].Energy = 200;
+        var nexus = s.Systems.Single(sys => sys.IsNexus);
+        nexus.AddUnits(P1Id, NexusUnitType.Infantry, 1);
+        var staging = s.Systems.Single(sys => sys.Coord == new HexCoord(0, -1));
+        staging.AddUnits(P2Id, NexusUnitType.Carrier, 1);
+        staging.AddUnits(P2Id, NexusUnitType.Fighter, 1);
+
+        NexusEngine.SubmitOrders(
+            s,
+            new NexusTurnOrdersCommand(P1Id, 1, [], [], BeginNexusGate: true),
+            new Random(42)
+        );
+        NexusEngine.SubmitOrders(
+            s,
+            new NexusTurnOrdersCommand(P2Id, 1, [], [], false),
+            new Random(42)
+        );
+
+        Assert.Equal(NexusGateProgress.Started, s.Players[0].GateProgress);
+
+        NexusEngine.SubmitOrders(
+            s,
+            new NexusTurnOrdersCommand(P1Id, 2, [], [], BeginNexusGate: true),
+            new Random(42)
+        );
+        NexusEngine.SubmitOrders(
+            s,
+            new NexusTurnOrdersCommand(
+                P2Id,
+                2,
+                [
+                    new NexusMoveOrder(
+                        staging.Coord,
+                        NexusMap.NexusCoord,
+                        [
+                            new NexusUnitStackGroup(
+                                NexusUnitType.Carrier,
+                                NexusUnitType.Carrier.Hull(),
+                                1
+                            ),
+                            new NexusUnitStackGroup(
+                                NexusUnitType.Fighter,
+                                NexusUnitType.Fighter.Hull(),
+                                1
+                            ),
+                        ]
+                    ),
+                ],
+                [],
+                false
+            ),
+            new Random(42)
+        );
+
+        Assert.Equal(NexusGateProgress.None, s.Players[0].GateProgress);
+        Assert.Contains(s.LastResolveEvents, e => e is NexusGateCancelledEvent);
+    }
+}
+
+public class NexusCommittedPlanetaryTests
+{
+    private static readonly Guid P1Id = Guid.Parse("aaaaaaaa-0000-0000-0000-000000000001");
+    private static readonly Guid P2Id = Guid.Parse("bbbbbbbb-0000-0000-0000-000000000002");
+
+    private static NexusState MakeState()
+    {
+        var state = new NexusState();
+        NexusEngine.Initialize(
+            state,
+            new InitializeNexusGameCommand(
+                ImmutableArray.Create(new NexusSessionPlayer(P1Id), new NexusSessionPlayer(P2Id))
+            ),
+            new Random(42)
+        );
+        return state;
+    }
+
+    private static void SubmitBoth(NexusState state)
+    {
+        NexusEngine.SubmitOrders(
+            state,
+            new NexusTurnOrdersCommand(P1Id, state.RoundNumber, [], [], false),
+            new Random(42)
+        );
+        NexusEngine.SubmitOrders(
+            state,
+            new NexusTurnOrdersCommand(P2Id, state.RoundNumber, [], [], false),
+            new Random(42)
+        );
+    }
+
+    [Fact]
+    public void Combat_CommitsPlanetary_WhenSystemRemainsContested()
+    {
+        var s = MakeState();
+        var alpha = s.Systems.First(sys => sys.Coord == new HexCoord(1, -1));
+        alpha.AddUnits(P1Id, NexusUnitType.Infantry, 1);
+        alpha.AddUnits(P2Id, NexusUnitType.Fighter, 1);
+
+        SubmitBoth(s);
+
+        Assert.Single(alpha.GetPlayerCommittedPlanetaryStacks(P1Id));
+        Assert.Equal(
+            NexusUnitType.Infantry,
+            alpha.GetPlayerCommittedPlanetaryStacks(P1Id).Single().UnitType
+        );
+        Assert.DoesNotContain(
+            alpha.GetPlayerStacks(P1Id),
+            stack => stack.UnitType == NexusUnitType.Infantry
+        );
+    }
+
+    [Fact]
+    public void Move_CannotMoveCommittedPlanetaryFromContestedSystem()
+    {
+        var s = MakeState();
+        var alpha = s.Systems.First(sys => sys.Coord == new HexCoord(1, -1));
+        alpha.AddUnits(P1Id, NexusUnitType.Infantry, 1);
+        alpha.AddUnits(P2Id, NexusUnitType.Fighter, 1);
+
+        SubmitBoth(s);
+
+        var result = NexusEngine.SubmitOrders(
+            s,
+            new NexusTurnOrdersCommand(
+                P1Id,
+                s.RoundNumber,
+                [
+                    new NexusMoveOrder(
+                        alpha.Coord,
+                        new HexCoord(1, 0),
+                        [
+                            new NexusUnitStackGroup(
+                                NexusUnitType.Infantry,
+                                NexusUnitType.Infantry.Hull(),
+                                1
+                            ),
+                        ]
+                    ),
+                ],
+                [],
+                false
+            ),
+            new Random(42)
+        );
+
+        Assert.IsType<NexusTurnOrdersRejected>(result);
+    }
+
+    [Fact]
+    public void CommittedPlanetary_ReturnsToFleetWhenSystemBecomesUncontested()
+    {
+        var s = MakeState();
+        var alpha = s.Systems.First(sys => sys.Coord == new HexCoord(1, -1));
+        alpha.AddUnits(P1Id, NexusUnitType.Infantry, 1);
+        alpha.AddUnits(P2Id, NexusUnitType.Fighter, 1);
+
+        SubmitBoth(s);
+
+        alpha.RemoveUnits(P2Id, NexusUnitType.Fighter, 1);
+
+        SubmitBoth(s);
+
+        Assert.Empty(alpha.GetPlayerCommittedPlanetaryStacks(P1Id));
+        Assert.Single(
+            alpha.GetPlayerStacks(P1Id),
+            stack => stack.UnitType == NexusUnitType.Infantry
+        );
+        Assert.Equal(P1Id, alpha.ControlOwner);
     }
 }
 

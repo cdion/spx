@@ -36,18 +36,88 @@ public sealed class SubmitOrdersHandlerTests
     }
 
     [Fact]
-    public void Format_WhenCombatPhaseResolves_IncludesPhaseName()
+    public void Format_WhenCombatPhaseResolves_IncludesPerRollUnitHullAndLossSummary()
     {
         var playerNames = new Dictionary<Guid, string>
         {
             [RedPlayerId] = "Alice",
             [BluePlayerId] = "Bob",
         };
-        var evt = new NexusPhaseResultEvent(new HexCoord(0, 0), CombatPhase.Engage, [], []);
+        var evt = new NexusPhaseResultEvent(
+            new HexCoord(0, 0),
+            CombatPhase.Engage,
+            [
+                new NexusCombatLoss(BluePlayerId, NexusUnitType.Destroyer, 1),
+                new NexusCombatLoss(RedPlayerId, NexusUnitType.Fighter, 2),
+            ],
+            [
+                new NexusCombatAttackRoll(
+                    RedPlayerId,
+                    NexusUnitType.Cruiser,
+                    NexusUnitType.Destroyer,
+                    5,
+                    3,
+                    true,
+                    2,
+                    BluePlayerId,
+                    1
+                ),
+                new NexusCombatAttackRoll(
+                    RedPlayerId,
+                    NexusUnitType.Cruiser,
+                    NexusUnitType.Destroyer,
+                    2,
+                    3,
+                    false,
+                    2,
+                    BluePlayerId,
+                    1
+                ),
+                new NexusCombatAttackRoll(
+                    BluePlayerId,
+                    NexusUnitType.Destroyer,
+                    NexusUnitType.Fighter,
+                    5,
+                    5,
+                    true,
+                    1,
+                    RedPlayerId,
+                    1
+                ),
+            ]
+        );
 
         var message = NexusSessionEventFormatter.Format(evt, playerNames, RedPlayerId);
 
-        Assert.Contains("Engage phase resolved", message);
+        Assert.Contains("Engage at Nexus", message);
+        Assert.Contains(
+            "Alice Cruiser (2/2 hull) -> Bob Destroyer (1/2 hull): rolled 5 vs 3 hit",
+            message
+        );
+        Assert.Contains(
+            "Alice Cruiser (2/2 hull) -> Bob Destroyer (1/2 hull): rolled 2 vs 3 miss",
+            message
+        );
+        Assert.Contains(
+            "Bob Destroyer (1/2 hull) -> Alice Fighter (1/1 hull): rolled 5 vs 5 hit",
+            message
+        );
+        Assert.Contains("Losses: Alice loses 2× Fighter; Bob loses 1× Destroyer", message);
+    }
+
+    [Fact]
+    public void Format_WhenSystemIsContested_DoesNotAppendUnitsOnBothSides()
+    {
+        var playerNames = new Dictionary<Guid, string>
+        {
+            [RedPlayerId] = "Alice",
+            [BluePlayerId] = "Bob",
+        };
+        var evt = new NexusSystemContestedEvent(new HexCoord(-1, 1));
+
+        var message = NexusSessionEventFormatter.Format(evt, playerNames, RedPlayerId);
+
+        Assert.Equal("Delta is contested", message);
     }
 
     [Fact]

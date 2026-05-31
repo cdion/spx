@@ -19,11 +19,32 @@ public sealed record NexusSystemView(
     [property: Id(2)] int IncomeValue,
     [property: Id(3)] Guid? HomePlayerId,
     [property: Id(4)] Guid? ControlOwner,
-    [property: Id(5)] ImmutableDictionary<Guid, ImmutableArray<NexusUnitStackGroup>> UnitStacks
+    [property: Id(5)] ImmutableDictionary<Guid, ImmutableArray<NexusUnitStackGroup>> UnitStacks,
+    [property: Id(6)]
+        ImmutableDictionary<Guid, ImmutableArray<NexusUnitStackGroup>>? MovableUnitStacks = null,
+    [property: Id(7)]
+        ImmutableDictionary<Guid, ImmutableArray<NexusUnitStackGroup>>? CommittedPlanetaryStacks =
+        null
 )
 {
     public ImmutableArray<NexusUnitStackGroup> GetPlayerStacks(Guid playerId) =>
         UnitStacks.TryGetValue(playerId, out var stacks)
+            ? stacks
+            : ImmutableArray<NexusUnitStackGroup>.Empty;
+
+    public ImmutableArray<NexusUnitStackGroup> GetPlayerMovableStacks(Guid playerId)
+    {
+        if (MovableUnitStacks is null)
+            return GetPlayerStacks(playerId);
+
+        return MovableUnitStacks.TryGetValue(playerId, out var stacks)
+            ? stacks
+            : ImmutableArray<NexusUnitStackGroup>.Empty;
+    }
+
+    public ImmutableArray<NexusUnitStackGroup> GetPlayerCommittedPlanetaryStacks(Guid playerId) =>
+        CommittedPlanetaryStacks is not null
+        && CommittedPlanetaryStacks.TryGetValue(playerId, out var stacks)
             ? stacks
             : ImmutableArray<NexusUnitStackGroup>.Empty;
 

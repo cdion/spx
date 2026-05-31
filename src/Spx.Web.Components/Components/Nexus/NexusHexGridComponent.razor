@@ -9,8 +9,8 @@
             var center = NexusHexHelpers.HexCenter(system.Coord);
             <NexusHexCellComponent System="system" Center="center" CurrentPlayerId="CurrentPlayerId"
                                    OpponentPlayerId="@OpponentPlayerId" CurrentPlayerFaction="CurrentPlayerFaction"
-                                   CurrentPlayerGateProgress="CurrentPlayerGateProgress" IsClickable="IsEditable"
-                                   OnClicked="HandleSystemSelected" />
+                                   CurrentPlayerGateProgress="CurrentPlayerGateProgress" OpponentGateProgress="OpponentGateProgress"
+                                   IsClickable="IsEditable" OnClicked="HandleSystemSelected" />
         }
 
         @* Pass 2a: Valid-target rings *@
@@ -136,6 +136,9 @@
 
     [Parameter]
     public NexusGateProgress CurrentPlayerGateProgress { get; set; }
+
+    [Parameter]
+    public NexusGateProgress OpponentGateProgress { get; set; }
 
     [Parameter]
     public bool IsEditable { get; set; }

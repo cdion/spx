@@ -72,6 +72,7 @@ Three categories of units: **Capital**, **Strike**, and **Planetary**.
 - A Move order selects any subset of units on a system and an adjacent destination system; all selected units move together
 - Ships can always be included in a move; they provide carry capacity (Carrier: 8, Cruiser: 2; Frigates and Destroyers: 0)
 - Strike craft and planetary units may only move if included alongside capital ships whose combined capacity covers them; each strike or planetary unit consumes 1 capacity slot
+- Planetary units that have committed to a contested system are locked in place until that system is no longer contested
 - A system may contain any number of units from either player; units not included in a move order stay in place
 - Multiple separate Move orders may originate from the same system in the same turn (e.g. one set of units moves, another stays)
 
@@ -114,8 +115,8 @@ Each round follows this sequence:
 1. **Plan phase** — both players simultaneously and secretly commit orders
 2. **Resolve phase:**
    1. Build cost deducted · Nexus Gate payment deducted
-   2. Moves — all units move simultaneously. Units whose paths cross in opposite directions (A moves to B's system while B moves to A's system) simply swap — no combat at either system. If units arrive at a system occupied by enemy units, they stop and combat resolves in step 3. Planetary units arriving at an opponent-controlled or uncontrolled system with no opponent planetary units present take control of it immediately.
-   3. Combat — all contested systems resolve in spiral order (Nexus → Ring 1 → Ring 2, homes last); each system runs four exchange phases independently before the next system resolves
+  2. Moves — all units move simultaneously. Units whose paths cross in opposite directions (A moves to B's system while B moves to A's system) simply swap — no combat at either system. If units arrive at a system occupied by enemy units, they stop and combat resolves in step 3. Planetary units arriving at an opponent-controlled or uncontrolled system with no enemy units present can establish control immediately.
+  3. Combat — all contested systems resolve in spiral order (Nexus → Ring 1 → Ring 2, homes last); each system runs Screen, Engage, commitment, Bombard, and Assault before the next system resolves
    4. Income — all income calculated and applied simultaneously; a player earns income from every system they control
    5. Newly built units appear at home system
    6. Supply check — if a player's Capital count exceeds their supply pool, excess Capitals are automatically disbanded in spiral order (see Supply section)
@@ -129,7 +130,7 @@ Each unit may be given one order per turn. A unit with no order stays in place.
 
 | Order | Effect |
 |---|---|
-| **Move** | Select any units on this system and an adjacent destination system; move them together. Capital ships in the selection provide capacity; each strike craft or planetary unit in the selection consumes 1 capacity slot. A selection with strike craft or planetary units but insufficient capital ship capacity is invalid. Combat resolves at the destination if the opponent has units there. |
+| **Move** | Select any movable units on this system and an adjacent destination system; move them together. Capital ships in the selection provide capacity; each strike craft or planetary unit in the selection consumes 1 capacity slot. A selection with strike craft or planetary units but insufficient capital ship capacity is invalid. Planetary units already committed to a contested system are locked and cannot be selected. Combat resolves at the destination if the opponent has units there. |
 
 Multiple units on the same system may each be assigned different orders independently.
 
@@ -138,21 +139,21 @@ Player-level orders (not unit-specific):
 | Order | Effect |
 |---|---|
 | **Build [unit]** | At home system only; costs vary by unit type (see Units section); any number of units may be built per turn; units appear at end of Resolve and can receive orders the following turn |
-| **Begin Nexus Gate** | At least one planetary unit must be present on the Nexus; commits resources toward construction |
+| **Begin Nexus Gate** | At least one planetary unit must be present on an uncontested Nexus; commits resources toward construction |
 
 ---
 
 ## System Control
 
-A player **controls** a system when they have at least one planetary unit on it and the opponent does not. Control is the mechanism for earning income from a system.
+A player **controls** a system when they have at least one planetary unit in it and the opponent has no units there. Control is the mechanism for earning income from a system.
 
-**Establishing control:** Planetary units arriving at an uncontrolled system or an opponent-controlled system with no opponent planetary units present take control of it immediately during the Moves step. No order is required — presence is sufficient.
+**Establishing control:** Planetary units arriving at an uncontrolled system or an opponent-controlled system with no enemy units present take control of it immediately during the Moves step. No order is required — presence is sufficient.
 
-**Retaining control:** A player retains control of a system after voluntarily moving their planetary units away. The system stays controlled until the opponent's planetary units arrive.
+**Retaining control:** A player retains control of a system after voluntarily moving their planetary units away. The system stays controlled until enemy units arrive and contest it.
 
-**Contested system:** A system with both players' planetary units present is contested — neither player controls it and it produces no income for either player. After combat resolves, the side whose planetary units survive gains control. If all planetary units on both sides are eliminated in combat, the system becomes uncontrolled.
+**Contested system:** A system with units from both players present is contested — neither player controls it and it produces no income for either player. After Engage, all surviving planetary units in that system commit to the fight. Committed planetary units stay locked in the system while it remains contested, can be bombarded, and participate in Assault. Once the system is no longer contested, surviving committed planetary units return to the fleet. If all planetary units on both sides are eliminated in combat, the system becomes uncontrolled.
 
-**Capital ships and strike craft** cannot establish or change control. Moving capital ships into an opponent-controlled system does not affect control.
+**Capital ships and strike craft** cannot establish control on their own. They can, however, contest an existing controller while they remain in the system.
 
 **Uncontrolled system:** A system that has never been captured, or where combat eliminated all planetary units from both sides. Produces no income until one player's planetary units arrive.
 
@@ -164,7 +165,7 @@ A player **controls** a system when they have at least one planetary unit on it 
 
 ## Combat
 
-When units from both players occupy the same system after moves resolve, combat resolves in four sequential **exchange phases**. If multiple systems are contested, they resolve in **spiral order** (Nexus first, then Ring 1 clockwise from NE, then Ring 2 clockwise from NE, with home systems last). Each system's four phases complete fully before the next contested system begins. Each phase is an attrition exchange — both sides roll simultaneously, casualties are applied after all dice resolve, and survivors carry forward. Neither side retreats; both may remain on a contested system after all phases complete.
+When units from both players occupy the same system after moves resolve, combat resolves in four sequential **exchange phases** with a planetary commitment step after Engage. If multiple systems are contested, they resolve in **spiral order** (Nexus first, then Ring 1 clockwise from NE, then Ring 2 clockwise from NE, with home systems last). Each system's combat completes fully before the next contested system begins. Each phase is an attrition exchange — both sides roll simultaneously, casualties are applied after all dice resolve, and survivors carry forward. Neither side retreats; both may remain on a contested system after all phases complete.
 
 ### Dice System
 
@@ -215,20 +216,24 @@ Interceptors, fighters, and bombers attack other strike craft. Destroyers attack
 
 All capital ships participate. Surviving strike craft remain present and are targetable, and fighters, interceptors, bombers, and destroyers can attack strike craft. Interceptors still cannot attack capital ships in Engage. Skipped if neither side has any capital ships.
 
+### Commitment Step — After Engage
+
+After Engage resolves, all surviving planetary units in that contested system commit to the fight. Committed planetary units remain visible in the system but are locked and cannot move while the system stays contested.
+
 ### Phase 3 — Bombard
 
-Surviving bombers (4+) and cruisers (6+) each roll against enemy planetary units. Planetary units cannot return fire. Hits applied before Assault. Skipped if the attacker has no surviving bombers or cruisers, or the defender has no planetary units.
+Surviving bombers (4+) and cruisers (6+) each roll against enemy committed planetary units. Planetary units cannot return fire. Hits applied before Assault. Skipped if the attacker has no surviving bombers or cruisers, or the defender has no committed planetary units.
 
 ### Phase 4 — Assault
 
-Participants: infantry and armor. Capital ships are not present and cannot be targeted in Assault. Skipped if neither side has eligible ground units.
+Participants: committed infantry and committed armor. Capital ships are not present and cannot be targeted in Assault. Skipped if neither side has eligible committed ground units.
 
 ### System Outcome
 
 After all four phases, both players plan orders for their surviving units the following turn.
 
 - **Both sides have surviving units:** system is contested — neither controls it, no income for either
-- **One side eliminated:** surviving player holds the system; if they have planetary units present they control it; if only capital ships or strike craft remain, control is unchanged from before combat
+- **One side eliminated:** surviving player holds the system; if they have planetary units present they control it; any committed planetary units then return to the fleet because the system is no longer contested; if only capital ships or strike craft remain, control is unchanged from before combat
 - **All planetary units on both sides eliminated:** system becomes uncontrolled regardless of prior state
 
 ---
@@ -237,12 +242,12 @@ After all four phases, both players plan orders for their surviving units the fo
 
 **Build a Nexus Gate** at the center system:
 
-- At least one of your planetary units must occupy the Nexus; declare **Begin Nexus Gate**
+- At least one of your planetary units must occupy an uncontested Nexus; declare **Begin Nexus Gate**
 - Total cost: **24 Energy**, committed over **2 consecutive turns** (12 Energy per turn)
 - **Turn N:** declare construction, commit 12 Energy; construction status is visible to both players
 - **Turn N+1:** commit 12 Energy; gate completes — you win
 - Construction is cancelled and all committed resources are lost if: all planetary units on the Nexus are eliminated in combat; the planetary units move away voluntarily; or the player cannot commit the remaining resources on turn N+1
-- The construction check happens after combat resolves — at least one planetary unit must survive combat on the Nexus for construction to proceed that turn
+- The construction check happens after combat resolves — at least one planetary unit must survive combat on the Nexus and the Nexus must still be uncontested for construction to proceed that turn
 - If both players complete the Nexus Gate in the same turn: **draw**
 
 ---

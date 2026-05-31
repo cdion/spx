@@ -352,6 +352,53 @@ internal static class NexusStoryFixtures
                 NexusGateProgress.Started
             ),
             new(
+                "Committed",
+                new NexusSystemView(
+                    new HexCoord(0, 1),
+                    false,
+                    2,
+                    null,
+                    null,
+                    ImmutableDictionary<Guid, ImmutableArray<NexusUnitStackGroup>>
+                        .Empty.Add(
+                            Player1Id,
+                            FullHullStacks(
+                                (NexusUnitType.Carrier, 1),
+                                (NexusUnitType.Fighter, 1),
+                                (NexusUnitType.Infantry, 2),
+                                (NexusUnitType.Armor, 1)
+                            )
+                        )
+                        .Add(
+                            Player2Id,
+                            FullHullStacks(
+                                (NexusUnitType.Destroyer, 1),
+                                (NexusUnitType.Bomber, 1),
+                                (NexusUnitType.Infantry, 1)
+                            )
+                        ),
+                    ImmutableDictionary<Guid, ImmutableArray<NexusUnitStackGroup>>
+                        .Empty.Add(
+                            Player1Id,
+                            FullHullStacks((NexusUnitType.Carrier, 1), (NexusUnitType.Fighter, 1))
+                        )
+                        .Add(
+                            Player2Id,
+                            FullHullStacks((NexusUnitType.Destroyer, 1), (NexusUnitType.Bomber, 1))
+                        ),
+                    ImmutableDictionary<Guid, ImmutableArray<NexusUnitStackGroup>>
+                        .Empty.Add(
+                            Player1Id,
+                            FullHullStacks((NexusUnitType.Infantry, 2), (NexusUnitType.Armor, 1))
+                        )
+                        .Add(Player2Id, FullHullStacks((NexusUnitType.Infantry, 1)))
+                ),
+                ImmutableDictionary<NexusUnitType, int>
+                    .Empty.Add(NexusUnitType.Carrier, 1)
+                    .Add(NexusUnitType.Fighter, 1),
+                NexusGateProgress.None
+            ),
+            new(
                 "Income",
                 new NexusSystemView(
                     new HexCoord(1, -1),
