@@ -1,29 +1,25 @@
+using Microsoft.AspNetCore.Components;
 using Spx.Game.Application;
 
 namespace Spx.Web.Components.Lobby;
 
 public sealed class LobbyMessagesCallbacks
 {
-    public Func<Task> LoadOlderMessagesAsync { get; init; } = static () => Task.CompletedTask;
+    public EventCallback LoadOlderMessagesAsync { get; init; }
 
-    public Func<GameTimelineEntryView, Task> BeginEditAsync { get; init; } =
-        static _ => Task.CompletedTask;
+    public EventCallback<GameTimelineEntryView> BeginEditAsync { get; init; }
 
-    public Func<string, Task> SetEditMessageTextAsync { get; init; } =
-        static _ => Task.CompletedTask;
+    public EventCallback<string> SetEditMessageTextAsync { get; init; }
 
-    public Func<Task> CancelEditAsync { get; init; } = static () => Task.CompletedTask;
+    public EventCallback CancelEditAsync { get; init; }
 
-    public Func<Task> SaveEditAsync { get; init; } = static () => Task.CompletedTask;
+    public EventCallback SaveEditAsync { get; init; }
 
-    public Func<Guid, Task> DeleteMessageAsync { get; init; } = static _ => Task.CompletedTask;
+    public EventCallback<Guid> DeleteMessageAsync { get; init; }
 
-    public Func<Guid, Task> RetryPendingMessageAsync { get; init; } =
-        static _ => Task.CompletedTask;
+    public EventCallback<Guid> RetryPendingMessageAsync { get; init; }
 
-    public Func<Guid, Task> DismissPendingMessageAsync { get; init; } =
-        static _ => Task.CompletedTask;
+    public EventCallback<Guid> DismissPendingMessageAsync { get; init; }
 
-    public Func<LobbyMessageComposerSubmitRequest, Task> SendMessageAsync { get; init; } =
-        static _ => Task.CompletedTask;
+    public EventCallback<LobbyMessageComposerSubmitRequest> SendMessageAsync { get; init; }
 }

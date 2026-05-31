@@ -9,7 +9,9 @@ public sealed class NexusTimelineState
 
     public IReadOnlyList<TimelineEntryState> Items => items;
 
-    public string? MessageError { get; set; }
+    public string? TimelineError { get; private set; }
+
+    public string? ComposerError { get; private set; }
 
     public bool IsTimelineLoading { get; private set; } = true;
 
@@ -47,7 +49,8 @@ public sealed class NexusTimelineState
         HasOlderMessages = false;
         IsTimelineLoading = true;
         IsLoadingOlderMessages = false;
-        MessageError = null;
+        TimelineError = null;
+        ComposerError = null;
         ComposerResetVersion++;
         EditingMessageId = null;
         EditMessageText = string.Empty;
@@ -59,11 +62,15 @@ public sealed class NexusTimelineState
         IsSavingEdit = false;
     }
 
-    public void BeginInitialLoad()
-    {
-        IsTimelineLoading = true;
-        MessageError = null;
-    }
+    public void SetTimelineError(string message) => TimelineError = message;
+
+    public void ClearTimelineError() => TimelineError = null;
+
+    public void SetComposerError(string message) => ComposerError = message;
+
+    public void ClearComposerError() => ComposerError = null;
+
+    public void BeginInitialLoad() => IsTimelineLoading = true;
 
     public void CompleteInitialLoad() => IsTimelineLoading = false;
 

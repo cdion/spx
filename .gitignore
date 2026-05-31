@@ -8,5 +8,3 @@ artifacts/
 .vs/
 .idea/
 .vscode/*.log
-
-src/Spx.Web/wwwroot/app.css

@@ -8,7 +8,9 @@ public sealed class LobbyMessagesState
 
     public IReadOnlyList<TimelineEntryState> Items { get; init; } = [];
 
-    public string? MessageError { get; init; }
+    public string? TimelineError { get; init; }
+
+    public string? ComposerError { get; init; }
 
     public bool IsTimelineLoading { get; init; }
 

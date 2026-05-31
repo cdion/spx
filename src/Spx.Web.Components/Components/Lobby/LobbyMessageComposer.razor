@@ -1,13 +1,13 @@
 <div class="ui-panel-card flex h-full min-h-0 flex-col space-y-4">
 
-    @if (IsCurrentUserActive)
+    @if (State.IsCurrentUserActive)
     {
         <div class="flex min-h-0 flex-1 flex-col space-y-4">
             <div class="space-y-2">
                 <label class="ui-panel-label" for="message-recipient">Recipient</label>
                 <select id="message-recipient" class="ui-select" @bind="draftRecipientPlayerIdString">
                     <option value="">All active players</option>
-                    @foreach (var player in Players.Where(player => player.PlayerId != CurrentPlayerId))
+                    @foreach (var player in State.Players.Where(player => player.PlayerId != State.CurrentPlayerId))
                     {
                         <option value="@player.PlayerId">@player.Name</option>
                     }
@@ -17,15 +17,21 @@
             <div class="flex min-h-0 flex-1 flex-col space-y-2">
                 <label class="ui-panel-label" for="message-composer">Message</label>
                 <textarea id="message-composer" class="ui-textarea min-h-32 flex-1"
-                          placeholder="Write something for the game timeline..." @bind="draftText" @bind:event="oninput"></textarea>
+                          placeholder="Write something for the game timeline..." @bind="draftText"
+                          @bind:event="oninput"></textarea>
             </div>
+
+            @if (!string.IsNullOrWhiteSpace(State.ComposerError))
+            {
+                <AlertBanner>@State.ComposerError</AlertBanner>
+            }
 
             <div class="ui-lobby-row">
                 <p class="ui-type-overline text-slate-500">
                     @draftText.Length / 1024 characters
                 </p>
-                <button class="ui-button-primary" @onclick="SubmitAsync" disabled="@IsSendingMessage">
-                    @(IsSendingMessage ? "Sending..." : "Send message")
+                <button class="ui-button-primary" @onclick="SubmitAsync" disabled="@State.IsSendingMessage">
+                    @(State.IsSendingMessage ? "Sending..." : "Send message")
                 </button>
             </div>
         </div>
@@ -39,20 +45,8 @@
 </div>
 
 @code {
-    [Parameter]
-    public bool IsCurrentUserActive { get; set; }
-
     [Parameter, EditorRequired]
-    public Guid CurrentPlayerId { get; set; }
-
-    [Parameter, EditorRequired]
-    public IReadOnlyList<GamePlayerView> Players { get; set; } = [];
-
-    [Parameter]
-    public int ComposerResetVersion { get; set; }
-
-    [Parameter]
-    public bool IsSendingMessage { get; set; }
+    public LobbyMessagesState State { get; set; } = null!;
 
     [Parameter]
     public EventCallback<LobbyMessageComposerSubmitRequest> OnSend { get; set; }
@@ -63,18 +57,18 @@
 
     protected override void OnParametersSet()
     {
-        if (ComposerResetVersion == lastComposerResetVersion)
+        if (State.ComposerResetVersion == lastComposerResetVersion)
         {
             return;
         }
 
         draftText = string.Empty;
         draftRecipientPlayerIdString = string.Empty;
-        lastComposerResetVersion = ComposerResetVersion;
+        lastComposerResetVersion = State.ComposerResetVersion;
     }
 
     private Task SubmitAsync() =>
-        IsSendingMessage
+        State.IsSendingMessage
             ? Task.CompletedTask
             : OnSend.InvokeAsync(
                 new LobbyMessageComposerSubmitRequest(

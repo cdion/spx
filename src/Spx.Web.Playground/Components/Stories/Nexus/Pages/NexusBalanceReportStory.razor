@@ -44,55 +44,57 @@ else
             <section class="ui-panel-card flex flex-col gap-4">
                 <div>
                     <h2 class="ui-section-title">Matchup Heatmap</h2>
-                    <p class="ui-type-meta mt-1">Profile-vs-profile tactical performance for the selected scenario and metric.</p>
-                </div>
-                <div class="overflow-x-auto">
-                    <div id="heatmap"></div>
-                </div>
-            </section>
-
-            <div id="matchup-stats" class="ui-panel-card"></div>
-
-            <div class="grid gap-6 lg:grid-cols-[1.3fr_0.9fr]">
-                <section class="ui-panel-card flex flex-col gap-6">
-                    <div class="flex flex-col gap-2">
-                        <h2 class="ui-section-title">Selected Matchup</h2>
-                        <div id="matchup-meta" class="flex flex-col gap-1.5 text-sm text-slate-300"></div>
-                    </div>
-                    <div class="flex flex-col gap-2">
-                        <h2 class="ui-section-title">Phase Breakdown</h2>
-                        <div id="phase-chart"></div>
-                    </div>
-                    <div class="flex flex-col gap-2">
-                        <h2 class="ui-section-title">Expected Survivors</h2>
-                        <div id="survivor-chart"></div>
-                    </div>
-                </section>
-
-                <section class="ui-panel-card flex flex-col gap-4">
-                    <div>
-                        <h2 class="ui-section-title">Counter Table</h2>
-                        <p class="ui-type-meta mt-1">All defender outcomes against the selected attacker, sorted by the active metric.</p>
+                    <p class="ui-type-meta mt-1">Profile-vs-profile tactical performance for the selected scenario and
+                        metric.</p>
                     </div>
                     <div class="overflow-x-auto">
-                        <table class="w-full text-sm text-slate-300">
-                            <thead>
-                                <tr class="border-b border-white/10 text-left">
-                                    <th class="pb-2 pr-4 text-xs font-semibold text-slate-400">Defender</th>
-                                    <th class="pb-2 pr-4 text-xs font-semibold text-slate-400">Attacker Win</th>
-                                    <th class="pb-2 pr-4 text-xs font-semibold text-slate-400">Control</th>
-                                    <th class="pb-2 pr-4 text-xs font-semibold text-slate-400">Cost Delta</th>
-                                    <th class="pb-2 text-xs font-semibold text-slate-400">Dominant Phase</th>
-                                </tr>
-                            </thead>
-                            <tbody id="counter-table-body"></tbody>
-                        </table>
+                        <div id="heatmap"></div>
                     </div>
                 </section>
-            </div>
-        </div>
-    </section>
-}
+
+                <div id="matchup-stats" class="ui-panel-card"></div>
+
+                <div class="grid gap-6 lg:grid-cols-[1.3fr_0.9fr]">
+                    <section class="ui-panel-card flex flex-col gap-6">
+                        <div class="flex flex-col gap-2">
+                            <h2 class="ui-section-title">Selected Matchup</h2>
+                            <div id="matchup-meta" class="flex flex-col gap-1.5 text-sm text-slate-300"></div>
+                        </div>
+                        <div class="flex flex-col gap-2">
+                            <h2 class="ui-section-title">Phase Breakdown</h2>
+                            <div id="phase-chart"></div>
+                        </div>
+                        <div class="flex flex-col gap-2">
+                            <h2 class="ui-section-title">Expected Survivors</h2>
+                            <div id="survivor-chart"></div>
+                        </div>
+                    </section>
+
+                    <section class="ui-panel-card flex flex-col gap-4">
+                        <div>
+                            <h2 class="ui-section-title">Counter Table</h2>
+                            <p class="ui-type-meta mt-1">All defender outcomes against the selected attacker, sorted by the
+                                active metric.</p>
+                            </div>
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-sm text-slate-300">
+                                    <thead>
+                                        <tr class="border-b border-white/10 text-left">
+                                            <th class="pb-2 pr-4 text-xs font-semibold text-slate-400">Defender</th>
+                                            <th class="pb-2 pr-4 text-xs font-semibold text-slate-400">Attacker Win</th>
+                                            <th class="pb-2 pr-4 text-xs font-semibold text-slate-400">Control</th>
+                                            <th class="pb-2 pr-4 text-xs font-semibold text-slate-400">Cost Delta</th>
+                                            <th class="pb-2 text-xs font-semibold text-slate-400">Dominant Phase</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="counter-table-body"></tbody>
+                                </table>
+                            </div>
+                        </section>
+                    </div>
+                </div>
+            </section>
+        }
 
 @code {
     private static readonly JsonSerializerOptions JsonOptions = new()

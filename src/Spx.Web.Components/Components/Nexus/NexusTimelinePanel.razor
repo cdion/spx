@@ -4,30 +4,30 @@
 @inject ILogger<NexusTimelinePanel> Logger
 
 <div class="ui-panel-card-tight">
-    @if (IsLoadingOlderMessages)
+    @if (State.IsLoadingOlderMessages)
     {
         <div class="mb-3 flex justify-end px-2 ui-type-overline">
             <span>Loading older...</span>
         </div>
     }
 
-    @if (!string.IsNullOrWhiteSpace(MessageError))
+    @if (!string.IsNullOrWhiteSpace(State.TimelineError))
     {
         <div class="mb-3 px-2">
-            <AlertBanner>@MessageError</AlertBanner>
+            <AlertBanner>@State.TimelineError</AlertBanner>
         </div>
     }
 
     <div class="ui-scroll-panel" @ref="timelineContainer">
         <div @ref="timelineTopSentinel" class="h-px w-full"></div>
 
-        @if (IsTimelineLoading)
+        @if (State.IsTimelineLoading)
         {
             <div class="ui-panel-card text-sm text-slate-400">
                 Loading timeline...
             </div>
         }
-        else if (TimelineItems.Count == 0)
+        else if (State.Items.Count == 0)
         {
             <div class="ui-empty-state">
                 No messages or events have appeared in this game yet.
@@ -36,14 +36,14 @@
         else
         {
             <div class="space-y-3">
-                @if (HasOlderMessages)
+                @if (State.HasOlderMessages)
                 {
                     <div class="px-2 py-1 text-center ui-type-overline text-slate-500">
                         Scroll up to load older history
                     </div>
                 }
 
-                @foreach (var item in TimelineItems)
+                @foreach (var item in State.Items)
                 {
                     <article class="rounded-2xl border @(GetTimelineCardBorderClass(item)) bg-slate-950/60 px-4 py-4">
                         <div class="flex items-start justify-between gap-4">
@@ -85,7 +85,7 @@
                                 </div>
                             </div>
 
-                            @if (item.Message is not null && EditingMessageId != item.Message.Id && (item.Message.CanEdit ||
+                            @if (item.Message is not null && State.EditingMessageId != item.Message.Id && (item.Message.CanEdit ||
                     item.Message.CanDelete))
                             {
                                 <div class="flex flex-wrap gap-2">
@@ -93,7 +93,7 @@
                                     {
                                         <button
                                             class="ui-button-secondary-sm"
-                                            @onclick="() => OnBeginEdit.InvokeAsync(item.Message)">
+                                            @onclick="() => Callbacks.BeginEditAsync.InvokeAsync(item.Message)">
                                             Edit
                                         </button>
                                     }
@@ -101,7 +101,7 @@
                                     {
                                         <button
                                             class="ui-button-danger-sm"
-                                            @onclick="() => OnDeleteMessage.InvokeAsync(item.Message.Id)">
+                                            @onclick="() => Callbacks.DeleteMessageAsync.InvokeAsync(item.Message.Id)">
                                             Delete
                                         </button>
                                     }
@@ -112,33 +112,33 @@
                                 <div class="flex flex-wrap gap-2">
                                     <button
                                         class="ui-button-primary-sm"
-                                        @onclick="() => OnRetryPendingMessage.InvokeAsync(item.Key)">
+                                        @onclick="() => Callbacks.RetryPendingMessageAsync.InvokeAsync(item.Key)">
                                         Retry
                                     </button>
                                     <button
                                         class="ui-button-secondary-sm"
-                                        @onclick="() => OnDismissPendingMessage.InvokeAsync(item.Key)">
+                                        @onclick="() => Callbacks.DismissPendingMessageAsync.InvokeAsync(item.Key)">
                                         Dismiss
                                     </button>
                                 </div>
                             }
                         </div>
 
-                        @if (item.Message is not null && EditingMessageId == item.Message.Id)
+                        @if (item.Message is not null && State.EditingMessageId == item.Message.Id)
                         {
                             <div class="mt-4 space-y-3 rounded-2xl border border-sky-400/30 bg-sky-400/10 p-4">
-                                <textarea class="ui-textarea min-h-24" value="@EditMessageText"
+                                <textarea class="ui-textarea min-h-24" value="@State.EditMessageText"
                                           @oninput="HandleEditMessageInput"></textarea>
                                 <div class="flex flex-wrap justify-end gap-3">
                                     <button
                                         class="ui-button-secondary-sm"
-                                        @onclick="() => OnCancelEdit.InvokeAsync()">
+                                        @onclick="() => Callbacks.CancelEditAsync.InvokeAsync()">
                                         Cancel
                                     </button>
                                     <button
                                         class="ui-button-primary-sm"
-                                        @onclick="() => OnSaveEdit.InvokeAsync()" disabled="@IsSavingEdit">
-                                        @(IsSavingEdit ? "Saving..." : "Save")
+                                        @onclick="() => Callbacks.SaveEditAsync.InvokeAsync()" disabled="@State.IsSavingEdit">
+                                        @(State.IsSavingEdit ? "Saving..." : "Save")
                                     </button>
                                 </div>
                             </div>
@@ -152,55 +152,10 @@
 
 @code {
     [Parameter, EditorRequired]
-    public string CurrentUserName { get; set; } = string.Empty;
+    public LobbyMessagesState State { get; set; } = null!;
 
     [Parameter, EditorRequired]
-    public IReadOnlyList<TimelineEntryState> TimelineItems { get; set; } = [];
-
-    [Parameter]
-    public string? MessageError { get; set; }
-
-    [Parameter]
-    public bool IsTimelineLoading { get; set; }
-
-    [Parameter]
-    public bool IsLoadingOlderMessages { get; set; }
-
-    [Parameter]
-    public bool HasOlderMessages { get; set; }
-
-    [Parameter]
-    public Guid? EditingMessageId { get; set; }
-
-    [Parameter]
-    public string EditMessageText { get; set; } = string.Empty;
-
-    [Parameter]
-    public EventCallback<string> EditMessageTextChanged { get; set; }
-
-    [Parameter]
-    public bool IsSavingEdit { get; set; }
-
-    [Parameter]
-    public EventCallback OnLoadOlderMessages { get; set; }
-
-    [Parameter]
-    public EventCallback<GameTimelineEntryView> OnBeginEdit { get; set; }
-
-    [Parameter]
-    public EventCallback OnCancelEdit { get; set; }
-
-    [Parameter]
-    public EventCallback OnSaveEdit { get; set; }
-
-    [Parameter]
-    public EventCallback<Guid> OnDeleteMessage { get; set; }
-
-    [Parameter]
-    public EventCallback<Guid> OnRetryPendingMessage { get; set; }
-
-    [Parameter]
-    public EventCallback<Guid> OnDismissPendingMessage { get; set; }
+    public LobbyMessagesCallbacks Callbacks { get; set; } = null!;
 
     private ElementReference timelineContainer;
     private ElementReference timelineTopSentinel;
@@ -250,7 +205,7 @@
 
     [JSInvokable]
     public Task HandleTimelineNearTopAsync()
-        => OnLoadOlderMessages.InvokeAsync();
+        => Callbacks.LoadOlderMessagesAsync.InvokeAsync();
 
     public async Task<TimelineScrollMetrics> GetScrollMetricsAsync()
     {
@@ -371,7 +326,7 @@
         => Logger.LogDebug(exception, "Ignoring expected JS interop interruption while {Operation}.", operation);
 
     private Task HandleEditMessageInput(ChangeEventArgs args)
-        => EditMessageTextChanged.InvokeAsync(args.Value?.ToString() ?? string.Empty);
+        => Callbacks.SetEditMessageTextAsync.InvokeAsync(args.Value?.ToString() ?? string.Empty);
 
     private string GetTimelineTitle(TimelineEntryState item)
     {
@@ -382,7 +337,7 @@
                 return item.Local.Title;
             }
 
-            return CurrentUserName;
+            return State.CurrentUserName;
         }
 
         return item.Message.Kind switch

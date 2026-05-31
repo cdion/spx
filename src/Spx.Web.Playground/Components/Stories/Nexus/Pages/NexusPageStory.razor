@@ -181,7 +181,7 @@
             {
                 CurrentUserName = _lobby.CurrentPlayerName,
                 Items = _timelineItems,
-                MessageError = TimelineError,
+                TimelineError = TimelineError,
                 IsTimelineLoading = false,
                 IsLoadingOlderMessages = false,
                 HasOlderMessages = true,
@@ -197,15 +197,15 @@
 
     private LobbyMessagesCallbacks MessagesCallbacks => new()
     {
-        LoadOlderMessagesAsync = NoOp,
-        BeginEditAsync = BeginEdit,
-        SetEditMessageTextAsync = SetEditText,
-        CancelEditAsync = CancelEdit,
-        SaveEditAsync = SaveEdit,
-        DeleteMessageAsync = DeleteMessage,
-        RetryPendingMessageAsync = RetryPending,
-        DismissPendingMessageAsync = DismissPending,
-        SendMessageAsync = SendMessage,
+        LoadOlderMessagesAsync = EventCallback.Factory.Create(this, NoOp),
+        BeginEditAsync = EventCallback.Factory.Create<GameTimelineEntryView>(this, BeginEdit),
+        SetEditMessageTextAsync = EventCallback.Factory.Create<string>(this, SetEditText),
+        CancelEditAsync = EventCallback.Factory.Create(this, CancelEdit),
+        SaveEditAsync = EventCallback.Factory.Create(this, SaveEdit),
+        DeleteMessageAsync = EventCallback.Factory.Create<Guid>(this, DeleteMessage),
+        RetryPendingMessageAsync = EventCallback.Factory.Create<Guid>(this, RetryPending),
+        DismissPendingMessageAsync = EventCallback.Factory.Create<Guid>(this, DismissPending),
+        SendMessageAsync = EventCallback.Factory.Create<LobbyMessageComposerSubmitRequest>(this, SendMessage),
     };
 
     private IReadOnlyList<LobbySessionTab> VisibleSessionTabs =>

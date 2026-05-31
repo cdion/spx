@@ -31,12 +31,7 @@ public sealed class LobbyMessageComposerTests : TestContext
         cut.Find("#message-composer").Input("hello from the timeline");
 
         cut.SetParametersAndRender(parameters =>
-            parameters
-                .Add(x => x.IsCurrentUserActive, true)
-                .Add(x => x.CurrentPlayerId, currentPlayerId)
-                .Add(x => x.Players, CreatePlayers(currentPlayerId))
-                .Add(x => x.ComposerResetVersion, 0)
-                .Add(x => x.IsSendingMessage, false)
+            parameters.Add(x => x.State, MakeState(currentPlayerId, resetVersion: 0))
         );
 
         Assert.Contains("23 / 1024 characters", cut.Markup);
@@ -124,11 +119,7 @@ public sealed class LobbyMessageComposerTests : TestContext
 
         var cut = RenderComponent<LobbyMessageComposer>(parameters =>
             parameters
-                .Add(x => x.IsCurrentUserActive, false)
-                .Add(x => x.CurrentPlayerId, currentPlayerId)
-                .Add(x => x.Players, CreatePlayers(currentPlayerId))
-                .Add(x => x.ComposerResetVersion, 0)
-                .Add(x => x.IsSendingMessage, false)
+                .Add(x => x.State, MakeState(currentPlayerId, isCurrentUserActive: false))
                 .Add(
                     x => x.OnSend,
                     EventCallback.Factory.Create<LobbyMessageComposerSubmitRequest>(this, NoOpSend)
@@ -151,12 +142,7 @@ public sealed class LobbyMessageComposerTests : TestContext
         cut.Find("#message-recipient").Change(otherPlayerId.ToString());
 
         cut.SetParametersAndRender(parameters =>
-            parameters
-                .Add(x => x.IsCurrentUserActive, true)
-                .Add(x => x.CurrentPlayerId, currentPlayerId)
-                .Add(x => x.Players, CreatePlayers(currentPlayerId))
-                .Add(x => x.ComposerResetVersion, 1)
-                .Add(x => x.IsSendingMessage, false)
+            parameters.Add(x => x.State, MakeState(currentPlayerId, resetVersion: 1))
         );
 
         var composer = (IHtmlTextAreaElement)cut.Find("#message-composer");
@@ -176,17 +162,29 @@ public sealed class LobbyMessageComposerTests : TestContext
         Func<LobbyMessageComposerSubmitRequest, Task> handler = onSend ?? NoOpSend;
         return RenderComponent<LobbyMessageComposer>(parameters =>
             parameters
-                .Add(x => x.IsCurrentUserActive, true)
-                .Add(x => x.CurrentPlayerId, currentPlayerId)
-                .Add(x => x.Players, CreatePlayers(currentPlayerId))
-                .Add(x => x.ComposerResetVersion, 0)
-                .Add(x => x.IsSendingMessage, isSendingMessage)
+                .Add(x => x.State, MakeState(currentPlayerId, isSendingMessage: isSendingMessage))
                 .Add(
                     x => x.OnSend,
                     EventCallback.Factory.Create<LobbyMessageComposerSubmitRequest>(this, handler)
                 )
         );
     }
+
+    private static LobbyMessagesState MakeState(
+        Guid currentPlayerId,
+        bool isCurrentUserActive = true,
+        bool isSendingMessage = false,
+        int resetVersion = 0
+    ) =>
+        new()
+        {
+            CurrentUserName = "Captain Red",
+            IsCurrentUserActive = isCurrentUserActive,
+            CurrentPlayerId = currentPlayerId,
+            Players = CreatePlayers(currentPlayerId),
+            ComposerResetVersion = resetVersion,
+            IsSendingMessage = isSendingMessage,
+        };
 
     private static Task NoOpSend(LobbyMessageComposerSubmitRequest _) => Task.CompletedTask;
 

@@ -58,13 +58,7 @@
             }
 
             <div class="mt-4">
-                <NexusTimelinePanel CurrentUserName="Captain Red" TimelineItems="_items" MessageError="@CurrentError"
-                                   IsTimelineLoading="@IsLoading" IsLoadingOlderMessages="@_isLoadingOlderMessages"
-                                   HasOlderMessages="@_hasOlderMessages" EditingMessageId="@_editingMessageId"
-                                   @bind-EditMessageText="_editText" IsSavingEdit="false" OnLoadOlderMessages="HandleLoadOlderMessages"
-                                   OnBeginEdit="BeginEdit" OnCancelEdit="CancelEdit" OnSaveEdit="SaveEdit"
-                                   OnDeleteMessage="HandleDeleteMessage" OnRetryPendingMessage="HandleRetryPending"
-                                   OnDismissPendingMessage="HandleDismissPending" />
+                <NexusTimelinePanel State="TimelineState" Callbacks="TimelineCallbacks" />
             </div>
         </section>
 
@@ -176,6 +170,43 @@
     {
         _items.RemoveAll(item => item.Key == key);
         _lastAction = $"Dismissed pending item {key}.";
+        return Task.CompletedTask;
+    }
+
+    private LobbyMessagesState TimelineState => new()
+    {
+        CurrentUserName = "Captain Red",
+        Items = _items,
+        TimelineError = CurrentError,
+        IsTimelineLoading = IsLoading,
+        IsLoadingOlderMessages = _isLoadingOlderMessages,
+        HasOlderMessages = _hasOlderMessages,
+        EditingMessageId = _editingMessageId,
+        EditMessageText = _editText,
+        IsSavingEdit = false,
+        ComposerResetVersion = 0,
+        IsSendingMessage = false,
+        IsCurrentUserActive = false,
+        CurrentPlayerId = Guid.Empty,
+        Players = [],
+    };
+
+    private LobbyMessagesCallbacks TimelineCallbacks => new()
+    {
+        LoadOlderMessagesAsync = EventCallback.Factory.Create(this, HandleLoadOlderMessages),
+        BeginEditAsync = EventCallback.Factory.Create<GameTimelineEntryView>(this, BeginEdit),
+        SetEditMessageTextAsync = EventCallback.Factory.Create<string>(this, SetEditText),
+        CancelEditAsync = EventCallback.Factory.Create(this, CancelEdit),
+        SaveEditAsync = EventCallback.Factory.Create(this, SaveEdit),
+        DeleteMessageAsync = EventCallback.Factory.Create<Guid>(this, HandleDeleteMessage),
+        RetryPendingMessageAsync = EventCallback.Factory.Create<Guid>(this, HandleRetryPending),
+        DismissPendingMessageAsync = EventCallback.Factory.Create<Guid>(this, HandleDismissPending),
+        SendMessageAsync = EventCallback.Factory.Create<LobbyMessageComposerSubmitRequest>(this, _ => { }),
+    };
+
+    private Task SetEditText(string text)
+    {
+        _editText = text;
         return Task.CompletedTask;
     }
 

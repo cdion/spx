@@ -27,24 +27,11 @@
 
                     <div class="grid gap-4 lg:grid-cols-[1.35fr_0.85fr] lg:gap-5">
                         <NexusTimelinePanel @key="GetTimelinePanelKey()" @ref="timelinePanel"
-                                            CurrentUserName="@ResolvedMessagesState.CurrentUserName" TimelineItems="ResolvedMessagesState.Items"
-                                            MessageError="@ResolvedMessagesState.MessageError"
-                                            IsTimelineLoading="@ResolvedMessagesState.IsTimelineLoading"
-                                            IsLoadingOlderMessages="@ResolvedMessagesState.IsLoadingOlderMessages"
-                                            HasOlderMessages="@ResolvedMessagesState.HasOlderMessages"
-                                            EditingMessageId="@ResolvedMessagesState.EditingMessageId"
-                                            EditMessageText="@ResolvedMessagesState.EditMessageText"
-                                            EditMessageTextChanged="HandleEditMessageTextChanged"
-                                            IsSavingEdit="@ResolvedMessagesState.IsSavingEdit" OnLoadOlderMessages="HandleLoadOlderMessages"
-                                            OnBeginEdit="HandleBeginEdit" OnCancelEdit="HandleCancelEdit" OnSaveEdit="HandleSaveEdit"
-                                            OnDeleteMessage="HandleDeleteMessage" OnRetryPendingMessage="HandleRetryPendingMessage"
-                                            OnDismissPendingMessage="HandleDismissPendingMessage" />
+                                            State="@ResolvedMessagesState" Callbacks="@ResolvedMessagesCallbacks" />
 
                         <LobbyMessageComposer @key="GetMessageComposerKey()"
-                                              IsCurrentUserActive="@ResolvedMessagesState.IsCurrentUserActive"
-                                              CurrentPlayerId="@ResolvedMessagesState.CurrentPlayerId" Players="@ResolvedMessagesState.Players"
-                                              ComposerResetVersion="@ResolvedMessagesState.ComposerResetVersion"
-                                              IsSendingMessage="@ResolvedMessagesState.IsSendingMessage" OnSend="HandleSendMessage" />
+                                              State="@ResolvedMessagesState"
+                                              OnSend="@ResolvedMessagesCallbacks.SendMessageAsync" />
                     </div>
                 }
                 else if (ResolvedSessionState.Session is not null)
@@ -131,6 +118,8 @@ else
         };
 
     private LobbyMessagesState ResolvedMessagesState => MessagesState!;
+
+    private LobbyMessagesCallbacks ResolvedMessagesCallbacks => MessagesCallbacks!;
 
     private IReadOnlyList<LobbySessionTab> VisibleTabs => GetVisibleTabs().ToArray();
 
@@ -236,23 +225,4 @@ else
 
     private object GetMessageComposerKey() =>
         (nameof(LobbyMessageComposer), ResolvedSessionState.Lobby.GameId);
-
-    private Task HandleLoadOlderMessages() => MessagesCallbacks!.LoadOlderMessagesAsync();
-
-    private Task HandleBeginEdit(GameTimelineEntryView message) => MessagesCallbacks!.BeginEditAsync(message);
-
-    private Task HandleEditMessageTextChanged(string value) => MessagesCallbacks!.SetEditMessageTextAsync(value);
-
-    private Task HandleCancelEdit() => MessagesCallbacks!.CancelEditAsync();
-
-    private Task HandleSaveEdit() => MessagesCallbacks!.SaveEditAsync();
-
-    private Task HandleDeleteMessage(Guid messageId) => MessagesCallbacks!.DeleteMessageAsync(messageId);
-
-    private Task HandleRetryPendingMessage(Guid key) => MessagesCallbacks!.RetryPendingMessageAsync(key);
-
-    private Task HandleDismissPendingMessage(Guid key) => MessagesCallbacks!.DismissPendingMessageAsync(key);
-
-    private Task HandleSendMessage(LobbyMessageComposerSubmitRequest request) =>
-        MessagesCallbacks!.SendMessageAsync(request);
 }

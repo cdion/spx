@@ -24,6 +24,7 @@
 @inject ILogger<NexusPage> Logger
 @inject ILogger<NexusPageActionCoordinator> ActionCoordinatorLogger
 @inject ILogger<NexusPageDataCoordinator> DataCoordinatorLogger
+@inject ILogger<NexusPageMessageCoordinator> MessageCoordinatorLogger
 @inject ILogger<NexusPagePresenceCoordinator> PresenceCoordinatorLogger
 @inject NavigationManager Navigation
 
@@ -91,6 +92,7 @@ else
     private Guid currentPlayerId;
     private NexusPageActionCoordinator? actionCoordinator;
     private NexusPageDataCoordinator? dataCoordinator;
+    private NexusPageMessageCoordinator? messageCoordinator;
     private NexusPagePresenceCoordinator? presenceCoordinator;
     private LobbySessionPanel? sessionPanel;
 
@@ -122,7 +124,8 @@ else
     {
         CurrentUserName = lobby!.CurrentPlayerName,
         Items = timeline.Items,
-        MessageError = timeline.MessageError,
+        TimelineError = timeline.TimelineError,
+        ComposerError = timeline.ComposerError,
         IsTimelineLoading = timeline.IsTimelineLoading,
         IsLoadingOlderMessages = timeline.IsLoadingOlderMessages,
         HasOlderMessages = timeline.HasOlderMessages,
@@ -138,15 +141,15 @@ else
 
     private LobbyMessagesCallbacks LobbyMessagesCallbacks => new()
     {
-        LoadOlderMessagesAsync = LoadOlderMessagesAsync,
-        BeginEditAsync = BeginEditAsync,
-        SetEditMessageTextAsync = SetEditMessageTextAsync,
-        CancelEditAsync = CancelEditAsync,
-        SaveEditAsync = SaveEditAsync,
-        DeleteMessageAsync = DeleteMessageAsync,
-        RetryPendingMessageAsync = RetryPendingMessageAsync,
-        DismissPendingMessageAsync = DismissPendingMessageAsync,
-        SendMessageAsync = SendMessageAsync,
+        LoadOlderMessagesAsync = EventCallback.Factory.Create(this, LoadOlderMessagesAsync),
+        BeginEditAsync = EventCallback.Factory.Create<GameTimelineEntryView>(this, BeginEditAsync),
+        SetEditMessageTextAsync = EventCallback.Factory.Create<string>(this, SetEditMessageTextAsync),
+        CancelEditAsync = EventCallback.Factory.Create(this, CancelEditAsync),
+        SaveEditAsync = EventCallback.Factory.Create(this, SaveEditAsync),
+        DeleteMessageAsync = EventCallback.Factory.Create<Guid>(this, DeleteMessageAsync),
+        RetryPendingMessageAsync = EventCallback.Factory.Create<Guid>(this, RetryPendingMessageAsync),
+        DismissPendingMessageAsync = EventCallback.Factory.Create<Guid>(this, DismissPendingMessageAsync),
+        SendMessageAsync = EventCallback.Factory.Create<LobbyMessageComposerSubmitRequest>(this, SendMessageAsync),
     };
 
     protected override void OnInitialized()
@@ -162,6 +165,16 @@ else
             GetGamePresenceHandler,
             DataCoordinatorLogger,
             data);
+        messageCoordinator = new NexusPageMessageCoordinator(
+            GetMessagesHandler,
+            GetMessageUpdatesHandler,
+            SendPublicMessageHandler,
+            SendPrivateMessageHandler,
+            EditMessageHandler,
+            DeleteMessageHandler,
+            MessageCoordinatorLogger,
+            data,
+            timeline);
         presenceCoordinator = new NexusPagePresenceCoordinator(
             GetGamePresenceHandler,
             InvalidationNotifier,
@@ -230,6 +243,51 @@ else
     private Task LoadPageAsync()
         => dataCoordinator!.LoadPageAsync(GameId, currentUserId);
 
+    private Task LoadInitialMessagesAsync()
+        => messageCoordinator!.LoadInitialMessagesAsync(GameId, currentPlayerId);
+
+    private Task LoadMessageUpdatesAsync()
+        => messageCoordinator!.LoadMessageUpdatesAsync(GameId, currentPlayerId, sessionPanel);
+
+    private Task LoadOlderMessagesAsync()
+        => messageCoordinator!.LoadOlderMessagesAsync(GameId, currentPlayerId, sessionPanel);
+
+    private Task SendMessageAsync(LobbyMessageComposerSubmitRequest request)
+        => messageCoordinator!.SendMessageAsync(GameId, currentPlayerId, request);
+
+    private Task RetryPendingMessageAsync(Guid itemKey)
+        => messageCoordinator!.RetryPendingMessageAsync(GameId, currentPlayerId, itemKey);
+
+    private Task DismissPendingMessageAsync(Guid itemKey)
+    {
+        messageCoordinator!.DismissPendingMessage(itemKey);
+        return Task.CompletedTask;
+    }
+
+    private Task BeginEditAsync(GameTimelineEntryView message)
+    {
+        messageCoordinator!.BeginEdit(message);
+        return Task.CompletedTask;
+    }
+
+    private Task CancelEditAsync()
+    {
+        messageCoordinator!.CancelEdit();
+        return Task.CompletedTask;
+    }
+
+    private Task SetEditMessageTextAsync(string text)
+    {
+        messageCoordinator!.SetEditMessageText(text);
+        return Task.CompletedTask;
+    }
+
+    private Task SaveEditAsync()
+        => messageCoordinator!.SaveEditAsync(GameId, currentPlayerId);
+
+    private Task DeleteMessageAsync(Guid messageId)
+        => messageCoordinator!.DeleteMessageAsync(GameId, currentPlayerId, messageId);
+
     public Task OnGameStateChangedAsync(Guid gameId)
         => InvokeAsync(async () =>
         {
@@ -297,305 +355,6 @@ else
     private Task SubmitOrdersAsync(NexusTurnOrdersCommand command)
         => actionCoordinator!.SubmitOrdersAsync(GameId, command);
 
-    private async Task LoadInitialMessagesAsync()
-    {
-        if (lobby is null)
-        {
-            return;
-        }
-
-        timeline.BeginInitialLoad();
-
-        try
-        {
-            var page = await GetMessagesHandler.HandleAsync(lobby.GameId, currentPlayerId);
-            timeline.ApplyInitialPage(page);
-        }
-        catch (Exception exception)
-        {
-            Logger.LogError(exception, "Failed to load initial messages for game {GameId} player {PlayerId}.", GameId,
-currentPlayerId);
-            timeline.MessageError = "We couldn't load messages right now. Please try again.";
-        }
-        finally
-        {
-            timeline.CompleteInitialLoad();
-        }
-    }
-
-    private async Task LoadMessageUpdatesAsync()
-    {
-        if (lobby is null)
-        {
-            return;
-        }
-
-        if (timeline.NewestMessageId is null)
-        {
-            await LoadInitialMessagesAsync();
-            timeline.RequestScrollToBottom();
-            return;
-        }
-
-        try
-        {
-            var shouldStickToBottom = sessionPanel is null || await sessionPanel.IsNearBottomAsync();
-            var updates = await GetMessageUpdatesHandler.HandleAsync(lobby.GameId, currentPlayerId, timeline.NewestMessageId);
-            if (updates is null || updates.Count == 0)
-            {
-                return;
-            }
-
-            timeline.UpsertPersistedMessages(updates);
-            if (shouldStickToBottom)
-            {
-                timeline.RequestScrollToBottom();
-            }
-        }
-        catch (Exception exception)
-        {
-            Logger.LogError(exception, "Failed to load message updates for game {GameId} player {PlayerId}.", GameId,
-currentPlayerId);
-            timeline.MessageError = "We couldn't refresh messages right now. Please try again.";
-        }
-    }
-
-    private async Task LoadOlderMessagesAsync()
-    {
-        if (lobby is null || !timeline.HasOlderMessages || timeline.IsLoadingOlderMessages || timeline.OldestMessageId is null)
-        {
-            return;
-        }
-
-        timeline.BeginOlderLoad();
-
-        try
-        {
-            var metrics = sessionPanel is null
-                ? new TimelineScrollMetrics()
-                : await sessionPanel.GetScrollMetricsAsync();
-            var page = await GetMessagesHandler.HandleAsync(lobby.GameId, currentPlayerId, timeline.OldestMessageId);
-            timeline.ApplyOlderPage(page, metrics);
-        }
-        catch (Exception exception)
-        {
-            Logger.LogError(exception, "Failed to load older messages for game {GameId} player {PlayerId}.", GameId,
-currentPlayerId);
-            timeline.MessageError = "We couldn't load older messages right now. Please try again.";
-        }
-        finally
-        {
-            timeline.CompleteOlderLoad();
-        }
-    }
-
-    private async Task SendMessageAsync(LobbyMessageComposerSubmitRequest request)
-    {
-        if (lobby is null || !lobby.IsCurrentUserActive || timeline.IsSendingMessage)
-        {
-            return;
-        }
-
-        timeline.MessageError = null;
-        var body = request.Text.Trim();
-        if (string.IsNullOrWhiteSpace(body))
-        {
-            timeline.MessageError = "Messages cannot be empty.";
-            return;
-        }
-
-        var recipient = GetSelectedRecipient(request.SelectedRecipientPlayerIdString);
-        var pendingItem = timeline.AddPendingMessage(body, recipient?.PlayerId, recipient?.Name ?? string.Empty, recipient is
-not null);
-        timeline.ClearComposer();
-        timeline.BeginSend();
-
-        try
-        {
-            GameMessageCommandOutcome result;
-            if (recipient is null)
-            {
-                result = await SendPublicMessageHandler.HandleAsync(lobby.GameId, currentPlayerId, new SendGameMessageRequest(body));
-            }
-            else
-            {
-                result = await SendPrivateMessageHandler.HandleAsync(lobby.GameId, currentPlayerId, recipient.PlayerId, new
-SendGameMessageRequest(body));
-            }
-
-            if (result is not GameMessageCommandSucceeded succeeded)
-            {
-                timeline.SetPendingMessageFailed(pendingItem.Key, true);
-                timeline.MessageError = ((GameMessageCommandFailed)result).ErrorMessage;
-                return;
-            }
-
-            timeline.ReplacePendingWithPersistedMessage(pendingItem.Key, succeeded.Message);
-        }
-        catch (Exception exception)
-        {
-            timeline.SetPendingMessageFailed(pendingItem.Key, true);
-            Logger.LogError(exception, "Failed to send a message for game {GameId} player {PlayerId}.", GameId, currentPlayerId);
-            timeline.MessageError = "We couldn't send that message right now. Please try again.";
-        }
-        finally
-        {
-            timeline.CompleteSend();
-        }
-    }
-
-    private async Task RetryPendingMessageAsync(Guid itemKey)
-    {
-        var item = timeline.FindPendingMessage(itemKey);
-        if (item?.Pending is null || timeline.IsSendingMessage || lobby is null)
-        {
-            return;
-        }
-
-        timeline.SetPendingMessageFailed(itemKey, false);
-        timeline.BeginSend();
-        timeline.MessageError = null;
-
-        try
-        {
-            GameMessageCommandOutcome result;
-            if (item.Pending.RecipientPlayerId is null)
-            {
-                result = await SendPublicMessageHandler.HandleAsync(lobby.GameId, currentPlayerId, new
-SendGameMessageRequest(item.Pending.Body));
-            }
-            else
-            {
-                result = await SendPrivateMessageHandler.HandleAsync(lobby.GameId, currentPlayerId,
-item.Pending.RecipientPlayerId.Value, new SendGameMessageRequest(item.Pending.Body));
-            }
-
-            if (result is not GameMessageCommandSucceeded succeeded)
-            {
-                timeline.SetPendingMessageFailed(itemKey, true);
-                timeline.MessageError = ((GameMessageCommandFailed)result).ErrorMessage;
-                return;
-            }
-
-            timeline.ReplacePendingWithPersistedMessage(itemKey, succeeded.Message);
-        }
-        catch (Exception exception)
-        {
-            timeline.SetPendingMessageFailed(itemKey, true);
-            Logger.LogError(exception, "Failed to retry a message for game {GameId} player {PlayerId}.", GameId, currentPlayerId);
-            timeline.MessageError = "We couldn't resend that message right now. Please try again.";
-        }
-        finally
-        {
-            timeline.CompleteSend();
-        }
-    }
-
-    private void DismissPendingMessage(Guid itemKey)
-    {
-        timeline.DismissPendingMessage(itemKey);
-    }
-
-    private Task DismissPendingMessageAsync(Guid itemKey)
-    {
-        DismissPendingMessage(itemKey);
-        return Task.CompletedTask;
-    }
-
-    private void BeginEdit(GameTimelineEntryView message)
-    {
-        timeline.BeginEdit(message);
-    }
-
-    private Task BeginEditAsync(GameTimelineEntryView message)
-    {
-        BeginEdit(message);
-        return Task.CompletedTask;
-    }
-
-    private void CancelEdit()
-    {
-        timeline.CancelEdit();
-    }
-
-    private Task CancelEditAsync()
-    {
-        CancelEdit();
-        return Task.CompletedTask;
-    }
-
-    private Task SetEditMessageTextAsync(string text)
-    {
-        timeline.EditMessageText = text;
-        return Task.CompletedTask;
-    }
-
-    private async Task SaveEditAsync()
-    {
-        if (lobby is null || timeline.EditingMessageId is null || timeline.IsSavingEdit)
-        {
-            return;
-        }
-
-        timeline.BeginSaveEdit();
-        timeline.MessageError = null;
-
-        try
-        {
-            var result = await EditMessageHandler.HandleAsync(lobby.GameId, currentPlayerId, timeline.EditingMessageId.Value, new
-UpdateGameMessageRequest(timeline.EditMessageText));
-            if (result is not GameMessageCommandSucceeded succeeded)
-            {
-                timeline.MessageError = ((GameMessageCommandFailed)result).ErrorMessage;
-                return;
-            }
-
-            timeline.UpsertPersistedMessages([succeeded.Message]);
-            CancelEdit();
-        }
-        catch (Exception exception)
-        {
-            Logger.LogError(exception, "Failed to save a message edit for game {GameId} player {PlayerId}.", GameId,
-currentPlayerId);
-            timeline.MessageError = "We couldn't save that message right now. Please try again.";
-        }
-        finally
-        {
-            timeline.CompleteSaveEdit();
-        }
-    }
-
-    private async Task DeleteMessageAsync(Guid messageId)
-    {
-        if (lobby is null)
-        {
-            return;
-        }
-
-        timeline.MessageError = null;
-
-        try
-        {
-            var result = await DeleteMessageHandler.HandleAsync(lobby.GameId, currentPlayerId, messageId);
-            if (result is not GameMessageCommandSucceeded succeeded)
-            {
-                timeline.MessageError = ((GameMessageCommandFailed)result).ErrorMessage;
-                return;
-            }
-
-            timeline.UpsertPersistedMessages([succeeded.Message]);
-            if (timeline.EditingMessageId == messageId)
-            {
-                CancelEdit();
-            }
-        }
-        catch (Exception exception)
-        {
-            Logger.LogError(exception, "Failed to delete a message for game {GameId} player {PlayerId}.", GameId, currentPlayerId);
-            timeline.MessageError = "We couldn't delete that message right now. Please try again.";
-        }
-    }
-
     public async ValueTask DisposeAsync()
     {
         await presenceCoordinator!.DisposeAsync(this);
@@ -606,17 +365,4 @@ currentPlayerId);
         timeline.Reset();
         data.ClearGameplayError();
     }
-
-    private PendingRecipient? GetSelectedRecipient(string? selectedRecipientPlayerIdString)
-    {
-        if (!Guid.TryParse(selectedRecipientPlayerIdString, out var recipientPlayerId) || lobby is null)
-        {
-            return null;
-        }
-
-        var player = lobby.Players.SingleOrDefault(entry => entry.PlayerId == recipientPlayerId);
-        return player is null ? null : new PendingRecipient(player.PlayerId, player.Name);
-    }
-
-    private sealed record PendingRecipient(Guid PlayerId, string Name);
 }
