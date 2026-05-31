@@ -20,6 +20,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="../../src/Spx.Nexus.Simulator/Spx.Nexus.Simulator.csproj" />
+    <ProjectReference Include="../../src/Spx.Nexus.Simulation/Spx.Nexus.Simulation.csproj" />
   </ItemGroup>
 </Project>

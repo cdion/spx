@@ -1,7 +1,3 @@
-@implements IAsyncDisposable
-@inject IJSRuntime JS
-@inject ILogger<LobbyMessageComposer> Logger
-
 <div class="ui-panel-card flex h-full min-h-0 flex-col space-y-4">
 
     @if (IsCurrentUserActive)
@@ -21,11 +17,7 @@
             <div class="flex min-h-0 flex-1 flex-col space-y-2">
                 <label class="ui-panel-label" for="message-composer">Message</label>
                 <textarea id="message-composer" class="ui-textarea min-h-32 flex-1"
-                          placeholder="Write something for the game timeline..." @bind="draftText" @bind:event="oninput"
-                          @ref="composerTextArea"></textarea>
-                <p class="text-sm leading-6 text-slate-300">
-                    <span>Enter sends. Shift+Enter adds a new line. Choose a player to send privately.</span>
-                </p>
+                          placeholder="Write something for the game timeline..." @bind="draftText" @bind:event="oninput"></textarea>
             </div>
 
             <div class="ui-lobby-row">
@@ -65,10 +57,6 @@
     [Parameter]
     public EventCallback<LobbyMessageComposerSubmitRequest> OnSend { get; set; }
 
-    private ElementReference composerTextArea;
-    private IJSObjectReference? module;
-    private DotNetObjectReference<LobbyMessageComposer>? dotNetReference;
-    private bool isSubmitAttached;
     private int lastComposerResetVersion;
     private string draftText = string.Empty;
     private string draftRecipientPlayerIdString = string.Empty;
@@ -84,96 +72,6 @@
         draftRecipientPlayerIdString = string.Empty;
         lastComposerResetVersion = ComposerResetVersion;
     }
-
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (firstRender)
-        {
-            try
-            {
-                module = await JS.InvokeAsync<IJSObjectReference>(
-                    "import",
-                    "./_content/Spx.Web.Components/Components/Lobby/LobbyMessageComposer.razor.js"
-                );
-                dotNetReference = DotNetObjectReference.Create(this);
-            }
-            catch (TaskCanceledException exception)
-            {
-                LogIgnoredInteropException(exception, "importing the message composer module");
-            }
-            catch (JSDisconnectedException exception)
-            {
-                LogIgnoredInteropException(exception, "importing the message composer module");
-            }
-        }
-
-        if (module is null || dotNetReference is null)
-        {
-            return;
-        }
-
-        if (IsCurrentUserActive && !isSubmitAttached)
-        {
-            try
-            {
-                await module.InvokeVoidAsync("setComposerSubmit", composerTextArea, dotNetReference);
-                isSubmitAttached = true;
-            }
-            catch (TaskCanceledException exception)
-            {
-                LogIgnoredInteropException(exception, "attaching the composer submit handler");
-            }
-            catch (JSDisconnectedException exception)
-            {
-                LogIgnoredInteropException(exception, "attaching the composer submit handler");
-            }
-        }
-        else if (!IsCurrentUserActive && isSubmitAttached)
-        {
-            try
-            {
-                await module.InvokeVoidAsync("clearComposerSubmit", composerTextArea);
-            }
-            catch (TaskCanceledException exception)
-            {
-                LogIgnoredInteropException(exception, "clearing the composer submit handler");
-            }
-            catch (JSDisconnectedException exception)
-            {
-                LogIgnoredInteropException(exception, "clearing the composer submit handler");
-            }
-
-            isSubmitAttached = false;
-        }
-    }
-
-    [JSInvokable]
-    public Task HandleComposerEnterAsync() => SubmitAsync();
-
-    public async ValueTask DisposeAsync()
-    {
-        if (module is not null)
-        {
-            try
-            {
-                await module.InvokeVoidAsync("clearComposerSubmit", composerTextArea);
-                await module.DisposeAsync();
-            }
-            catch (TaskCanceledException exception)
-            {
-                LogIgnoredInteropException(exception, "disposing the message composer module");
-            }
-            catch (JSDisconnectedException exception)
-            {
-                LogIgnoredInteropException(exception, "disposing the message composer module");
-            }
-        }
-
-        dotNetReference?.Dispose();
-    }
-
-    private void LogIgnoredInteropException(Exception exception, string operation)
-        => Logger.LogDebug(exception, "Ignoring expected JS interop interruption while {Operation}.", operation);
 
     private Task SubmitAsync() =>
         IsSendingMessage

@@ -5,7 +5,7 @@
     <Project Path="src/Spx.Contracts/Spx.Game.Contract.csproj" />
     <Project Path="src/Spx.Data/Spx.Data.csproj" />
     <Project Path="src/Spx.Nexus.Domain/Spx.Nexus.Domain.csproj" />
-    <Project Path="src/Spx.Nexus.Simulator/Spx.Nexus.Simulator.csproj" />
+    <Project Path="src/Spx.Nexus.Simulation/Spx.Nexus.Simulation.csproj" />
     <Project Path="src/Spx.Game.Application/Spx.Game.Application.csproj" />
     <Project Path="src/Spx.Grains/Spx.Game.Grain.csproj" />
     <Project Path="src/Spx.Silo/Spx.Silo.csproj" />
@@ -18,7 +18,7 @@
     <Project Path="tests/Spx.Account.Application.Tests/Spx.Account.Application.Tests.csproj" />
     <Project Path="tests/Spx.Game.Application.Tests/Spx.Game.Application.Tests.csproj" />
     <Project Path="tests/Spx.Nexus.Domain.Tests/Spx.Nexus.Domain.Tests.csproj" />
-    <Project Path="tests/Spx.Nexus.Simulator.Tests/Spx.Nexus.Simulator.Tests.csproj" />
+    <Project Path="tests/Spx.Nexus.Simulation.Tests/Spx.Nexus.Simulation.Tests.csproj" />
     <Project Path="tests/Spx.Game.Application.IntegrationTests/Spx.Game.Application.IntegrationTests.csproj" />
     <Project Path="tests/Spx.Grains.IntegrationTests/Spx.Grains.IntegrationTests.csproj" />
     <Project Path="tests/Spx.Grains.Tests/Spx.Grains.Tests.csproj" />

@@ -1,6 +1,6 @@
 using Spx.Nexus.Domain;
 
-namespace Spx.Nexus.Simulator;
+namespace Spx.Nexus.Simulation;
 
 public enum TacticalControlOwner
 {
