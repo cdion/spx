@@ -549,10 +549,10 @@
     }
 
     .ui-balance-bar-fill-attacker {
-        @apply absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-orange-600 to-orange-500;
+        @apply absolute inset-y-0 left-0 rounded-full bg-linear-to-r from-orange-600 to-orange-500;
     }
 
     .ui-balance-bar-fill-defender {
-        @apply absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-sky-700 to-sky-600;
+        @apply absolute inset-y-0 left-0 rounded-full bg-linear-to-r from-sky-700 to-sky-600;
     }
 }
