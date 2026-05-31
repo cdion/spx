@@ -64,8 +64,9 @@ just deploy
 On `main`, the CI workflow is the producer of the deployable versioned images.
 It runs `just ci`, publishes the immutable commit-derived tags to GHCR, and then
 promotes the same build to the stable `prod` tags. The deploy workflow is gated
-on CI success and only runs `just deploy` against whatever `prod` already points
-to. Deploy does not rebuild images or move tags.
+on CI success, refreshes the VM's GHCR login explicitly, and then runs
+`just deploy` against whatever `prod` already points to. Deploy does not
+rebuild images or move tags.
 
 The workflows authenticate to GHCR with repository secrets `GHCR_USERNAME` and
 `GHCR_TOKEN` rather than relying on the built-in `GITHUB_TOKEN`. That avoids
@@ -93,6 +94,8 @@ The CI workflow expects these GitHub secrets:
 
 The deploy workflow expects these GitHub secrets:
 
+- `GHCR_USERNAME`: the GHCR account name used for the VM's remote `podman login`
+- `GHCR_TOKEN`: a personal access token with at least `read:packages`
 - `VM`: SSH target in the form `user@host`
 - `VM_SSH_KEY`: private key for that host
 - `VM_KNOWN_HOSTS`: pinned known-host entry for the VM

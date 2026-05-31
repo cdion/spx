@@ -43,5 +43,14 @@ jobs:
           printf '%s\n' '${{ secrets.VM_KNOWN_HOSTS }}' > ~/.ssh/known_hosts
           chmod 600 ~/.ssh/known_hosts
 
+      - name: Log VM into GHCR
+        env:
+          GHCR_USERNAME: ${{ secrets.GHCR_USERNAME }}
+          GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
+        run: |
+          test -n "$GHCR_USERNAME"
+          test -n "$GHCR_TOKEN"
+          just login-registry
+
       - name: Deploy production tags
         run: just deploy
