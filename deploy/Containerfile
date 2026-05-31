@@ -13,7 +13,7 @@
 # because Spx.Web.Components invokes it as a BeforeTargets=Build;Publish MSBuild target.
 # ==============================================================================
 
-ARG SDK_IMAGE=mcr.microsoft.com/dotnet/sdk:10.0
+ARG SDK_IMAGE=mcr.microsoft.com/dotnet/sdk:10.0.300
 ARG ASPNET_IMAGE=mcr.microsoft.com/dotnet/aspnet:10.0
 ARG SPX_VERSION=0.0.0-dev
 ARG SPX_SOURCE=https://github.com/cdion/spx
@@ -52,13 +52,20 @@ RUN ./tools/tailwind/install.sh
 
 # Publish web — Tailwind CLI runs as part of BeforeTargets=Publish inside
 # Spx.Web.Components; the binary must be executable and at the expected path.
+#
+# NOTE: --no-restore is intentionally absent. SDK 10.0.300 changed how restore
+# resolves Microsoft.AspNetCore.App.Internal.Assets (which provides blazor.web.js
+# and related _framework assets): the package is only included in project.assets.json
+# when .razor source files are present during restore. The layer-caching restore above
+# runs before COPY . . (no source files), so its project.assets.json is incomplete.
+# Restore must run again here, with full source present, to produce a correct graph.
+# Packages are already cached from the restore above, so this is fast.
 RUN dotnet publish src/Spx.Web/Spx.Web.csproj \
         -c Release \
         -o /out/web \
     -p:Version=${SPX_VERSION} \
     -p:InformationalVersion=${SPX_VERSION} \
-    -p:SourceRevisionId=${SPX_REVISION} \
-        --no-restore
+    -p:SourceRevisionId=${SPX_REVISION}
 
 # Build a self-contained EF migrations bundle so the operator can run migrations
 # without spinning up the full web host (which needs Orleans/Redis at startup).
@@ -75,8 +82,7 @@ RUN dotnet publish src/Spx.Silo/Spx.Silo.csproj \
         -o /out/silo \
     -p:Version=${SPX_VERSION} \
     -p:InformationalVersion=${SPX_VERSION} \
-    -p:SourceRevisionId=${SPX_REVISION} \
-        --no-restore
+    -p:SourceRevisionId=${SPX_REVISION}
 
 # ------------------------------------------------------------------------------
 # runtime base image
