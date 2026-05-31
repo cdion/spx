@@ -16,7 +16,8 @@ public sealed class LobbyMessageComposerTests : TestContext
 
         var cut = RenderComposer(currentPlayerId);
 
-        cut.Find("#message-composer").Input("hello from the timeline");
+        cut.Find(TestIdSelector(LobbyMessageComposerTestIds.Composer))
+            .Input("hello from the timeline");
 
         Assert.Contains("23 / 1024 characters", cut.Markup);
     }
@@ -28,7 +29,8 @@ public sealed class LobbyMessageComposerTests : TestContext
 
         var cut = RenderComposer(currentPlayerId);
 
-        cut.Find("#message-composer").Input("hello from the timeline");
+        cut.Find(TestIdSelector(LobbyMessageComposerTestIds.Composer))
+            .Input("hello from the timeline");
 
         cut.SetParametersAndRender(parameters =>
             parameters.Add(x => x.State, MakeState(currentPlayerId, resetVersion: 0))
@@ -53,10 +55,12 @@ public sealed class LobbyMessageComposerTests : TestContext
             }
         );
 
-        cut.Find("#message-composer").Input("hello from the timeline");
-        cut.Find("#message-recipient").Change(otherPlayerId.ToString());
+        cut.Find(TestIdSelector(LobbyMessageComposerTestIds.Composer))
+            .Input("hello from the timeline");
+        cut.Find(TestIdSelector(LobbyMessageComposerTestIds.Recipient))
+            .Change(otherPlayerId.ToString());
 
-        cut.Find("button.ui-button-primary").Click();
+        cut.Find(TestIdSelector(LobbyMessageComposerTestIds.SendButton)).Click();
 
         Assert.Equal(
             new LobbyMessageComposerSubmitRequest(
@@ -82,9 +86,9 @@ public sealed class LobbyMessageComposerTests : TestContext
             }
         );
 
-        cut.Find("#message-composer").Input("broadcast message");
+        cut.Find(TestIdSelector(LobbyMessageComposerTestIds.Composer)).Input("broadcast message");
 
-        cut.Find("button.ui-button-primary").Click();
+        cut.Find(TestIdSelector(LobbyMessageComposerTestIds.SendButton)).Click();
 
         Assert.Equal(new LobbyMessageComposerSubmitRequest("broadcast message", null), submitted);
     }
@@ -105,8 +109,8 @@ public sealed class LobbyMessageComposerTests : TestContext
             isSendingMessage: true
         );
 
-        cut.Find("#message-composer").Input("hello");
-        cut.Find("button.ui-button-primary").Click();
+        cut.Find(TestIdSelector(LobbyMessageComposerTestIds.Composer)).Input("hello");
+        cut.Find(TestIdSelector(LobbyMessageComposerTestIds.SendButton)).Click();
 
         Assert.Equal(0, sendCount);
         Assert.Contains("Sending...", cut.Markup);
@@ -127,7 +131,7 @@ public sealed class LobbyMessageComposerTests : TestContext
         );
 
         Assert.Contains("no longer an active player", cut.Markup);
-        Assert.Empty(cut.FindAll("#message-composer"));
+        Assert.Empty(cut.FindAll(TestIdSelector(LobbyMessageComposerTestIds.Composer)));
     }
 
     [Fact]
@@ -138,15 +142,19 @@ public sealed class LobbyMessageComposerTests : TestContext
 
         var cut = RenderComposer(currentPlayerId);
 
-        cut.Find("#message-composer").Input("hello from the timeline");
-        cut.Find("#message-recipient").Change(otherPlayerId.ToString());
+        cut.Find(TestIdSelector(LobbyMessageComposerTestIds.Composer))
+            .Input("hello from the timeline");
+        cut.Find(TestIdSelector(LobbyMessageComposerTestIds.Recipient))
+            .Change(otherPlayerId.ToString());
 
         cut.SetParametersAndRender(parameters =>
             parameters.Add(x => x.State, MakeState(currentPlayerId, resetVersion: 1))
         );
 
-        var composer = (IHtmlTextAreaElement)cut.Find("#message-composer");
-        var recipient = (IHtmlSelectElement)cut.Find("#message-recipient");
+        var composer = (IHtmlTextAreaElement)
+            cut.Find(TestIdSelector(LobbyMessageComposerTestIds.Composer));
+        var recipient = (IHtmlSelectElement)
+            cut.Find(TestIdSelector(LobbyMessageComposerTestIds.Recipient));
 
         Assert.Equal(string.Empty, composer.Value);
         Assert.Equal(string.Empty, recipient.Value);
@@ -169,6 +177,8 @@ public sealed class LobbyMessageComposerTests : TestContext
                 )
         );
     }
+
+    private static string TestIdSelector(string testId) => $"[data-testid='{testId}']";
 
     private static LobbyMessagesState MakeState(
         Guid currentPlayerId,

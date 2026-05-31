@@ -123,6 +123,47 @@ internal sealed partial class NexusPageDataCoordinator(
 
 ---
 
+## Testability: `data-testid` attributes
+
+Any element that a bUnit test (or browser-level test) needs to locate **must** have a `data-testid` attribute. Do not rely on CSS class names or element types — they change with Tailwind refactors and carry no semantic contract.
+
+### Companion TestIds class
+
+For every component in `Spx.Web.Components` that has testable elements, create a companion static class in the same folder and namespace:
+
+```csharp
+// NexusGameplayPanelTestIds.cs  (same folder as NexusGameplayPanel.razor)
+namespace Spx.Web.Components.Nexus;
+
+public static class NexusGameplayPanelTestIds
+{
+    // Fixed IDs: use const string
+    public const string SubmitOrdersButton = "nexus-submit-orders";
+    public const string MapBackground = "nexus-map-background";
+
+    // Parameterized IDs: use static string methods
+    public static string ResolveEventRow(int index) => $"nexus-resolve-event-{index}";
+    public static string System(HexCoord coord) => $"nexus-map-system-q{coord.Q}-r{coord.R}";
+}
+```
+
+Apply the ID in the Razor file via the class:
+
+```razor
+<button data-testid="@NexusGameplayPanelTestIds.SubmitOrdersButton" ...>
+<div data-testid="@NexusGameplayPanelTestIds.ResolveEventRow(index)" ...>
+```
+
+### Rules
+
+- Create the `*TestIds.cs` file when you first add `data-testid` attributes to a component — not inside the test project.
+- `const string` for stable, non-parameterized IDs. `static string` methods for IDs that depend on index, type, or coordinates.
+- Name IDs using kebab-case with a component prefix to avoid collisions (e.g. `nexus-submit-orders`, not just `submit-orders`).
+- Never hard-code raw ID strings in test files; always reference the TestIds class.
+- If a test targets an element that lacks a `data-testid`, add the attribute (and update the TestIds class) before writing the test.
+
+---
+
 ## What does NOT warrant extraction
 
 - A large component with a single concern (e.g. complex JS interop): keep inline.

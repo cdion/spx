@@ -5,7 +5,8 @@
         <div class="flex min-h-0 flex-1 flex-col space-y-4">
             <div class="space-y-2">
                 <label class="ui-panel-label" for="message-recipient">Recipient</label>
-                <select id="message-recipient" class="ui-select" @bind="draftRecipientPlayerIdString">
+                <select id="message-recipient" data-testid="@LobbyMessageComposerTestIds.Recipient" class="ui-select"
+                        @bind="draftRecipientPlayerIdString">
                     <option value="">All active players</option>
                     @foreach (var player in State.Players.Where(player => player.PlayerId != State.CurrentPlayerId))
                     {
@@ -16,9 +17,9 @@
 
             <div class="flex min-h-0 flex-1 flex-col space-y-2">
                 <label class="ui-panel-label" for="message-composer">Message</label>
-                <textarea id="message-composer" class="ui-textarea min-h-32 flex-1"
-                          placeholder="Write something for the game timeline..." @bind="draftText"
-                          @bind:event="oninput"></textarea>
+                <textarea id="message-composer" data-testid="@LobbyMessageComposerTestIds.Composer"
+                          class="ui-textarea min-h-32 flex-1" placeholder="Write something for the game timeline..."
+                          @bind="draftText" @bind:event="oninput"></textarea>
             </div>
 
             @if (!string.IsNullOrWhiteSpace(State.ComposerError))
@@ -30,7 +31,8 @@
                 <p class="ui-type-overline text-slate-500">
                     @draftText.Length / 1024 characters
                 </p>
-                <button class="ui-button-primary" @onclick="SubmitAsync" disabled="@State.IsSendingMessage">
+                <button class="ui-button-primary" data-testid="@LobbyMessageComposerTestIds.SendButton"
+                        @onclick="SubmitAsync" disabled="@State.IsSendingMessage">
                     @(State.IsSendingMessage ? "Sending..." : "Send message")
                 </button>
             </div>
