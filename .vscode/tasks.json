@@ -353,7 +353,7 @@
     {
       "label": "dev: watch apphost",
       "type": "shell",
-      "command": "systemctl --user stop spx-apphost.scope 2>/dev/null; env DOTNET_USE_POLLING_FILE_WATCHER=1 systemd-run --user --scope --unit=spx-apphost dotnet watch --project ${workspaceFolder}/src/Spx.AppHost/Spx.AppHost.csproj run",
+      "command": "systemctl --user stop spx-apphost.scope 2>/dev/null; env DOTNET_USE_POLLING_FILE_WATCHER=1 DOTNET_WATCH_RESTART_ON_RUDE_EDIT=1 systemd-run --user --scope --unit=spx-apphost dotnet watch --project ${workspaceFolder}/src/Spx.AppHost/Spx.AppHost.csproj run",
       "isBackground": true,
       "problemMatcher": {
         "owner": "apphost-watch",
@@ -383,7 +383,7 @@
     {
       "label": "dev: watch playground",
       "type": "shell",
-      "command": "env DOTNET_USE_POLLING_FILE_WATCHER=1 dotnet watch --project ${workspaceFolder}/src/Spx.Web.Playground/Spx.Web.Playground.csproj",
+      "command": "env DOTNET_USE_POLLING_FILE_WATCHER=1 DOTNET_WATCH_RESTART_ON_RUDE_EDIT=1 dotnet watch --project ${workspaceFolder}/src/Spx.Web.Playground/Spx.Web.Playground.csproj",
       "isBackground": true,
       "problemMatcher": {
         "owner": "playground-watch",

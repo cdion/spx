@@ -198,7 +198,7 @@ public sealed class NexusGameplayPanelInteractionTests : TestContext
             .Click();
 
         cut.FindAll("button")
-            .Single(button => button.TextContent.Contains("Select Fleet", StringComparison.Ordinal))
+            .Single(button => button.TextContent.Contains("Select All", StringComparison.Ordinal))
             .Click();
         cut.Find(
                 TestIdSelector(
