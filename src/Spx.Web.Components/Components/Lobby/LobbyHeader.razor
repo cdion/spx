@@ -10,8 +10,9 @@
             <StatusBadge>
                 @Lobby.Status
             </StatusBadge>
-            <p>
+            <p class="flex items-center gap-2">
                 Invite code <span class="ui-code-token text-sky-300">@Lobby.InviteCode</span>
+                <InviteCopyButton InviteCode="@Lobby.InviteCode" />
             </p>
         </div>
     </div>

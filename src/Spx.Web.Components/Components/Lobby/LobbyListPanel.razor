@@ -48,7 +48,7 @@ else if (Games is not null)
                         <div class="mt-6 space-y-4">
                             @foreach (var game in Games.OpenGames)
                             {
-                                <LobbyGameSummaryCard Title="@game.Name" InviteCode="@game.InviteCode"
+                                <LobbyGameSummaryCard Title="@game.Name" InviteCode="@game.InviteCode" ShowInvite
                                                       PlayerSummary="@($"You are playing as {game.CurrentPlayerName}.")">
                                     <TrailingContent>
                                         <div class="flex flex-wrap gap-3">
@@ -84,8 +84,7 @@ else if (Games is not null)
                             @foreach (var game in Games.EndedGames)
                             {
                                 <LobbyGameSummaryCard Title="@game.Name" InviteCode="@game.InviteCode"
-                                                      PlayerSummary="@($"Your last player name was {game.CurrentPlayerName}.")"
-                                                      InviteCodeCssClass="ui-code-token text-slate-100">
+                                                      PlayerSummary="@($"Your last player name was {game.CurrentPlayerName}.")">
                                     <TrailingContent>
                                         <div class="space-y-2 text-sm text-slate-400 sm:text-right">
                                             <p>Ended @UiFormatHelpers.FormatDateTime(game.EndedAtUtc ?? game.CreatedAtUtc)</p>
