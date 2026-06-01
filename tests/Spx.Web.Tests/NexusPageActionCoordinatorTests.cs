@@ -8,7 +8,7 @@ using Xunit;
 
 namespace Spx.Web.Tests;
 
-public sealed class GamePageActionCoordinatorTests
+public sealed class NexusPageActionCoordinatorTests
 {
     [Fact]
     public async Task LeaveGameAsync_returns_true_when_leave_succeeds()

@@ -51,7 +51,7 @@
       "command": "dotnet",
       "args": [
         "test",
-        "${workspaceFolder}/tests/Spx.Account.Tests/Spx.Account.Tests.csproj"
+        "${workspaceFolder}/tests/Spx.Account.Application.Tests/Spx.Account.Application.Tests.csproj"
       ],
       "problemMatcher": [],
       "group": "test"
@@ -68,12 +68,23 @@
       "group": "test"
     },
     {
-      "label": "tests: run game domain unit",
+      "label": "tests: run nexus domain unit",
       "type": "shell",
       "command": "dotnet",
       "args": [
         "test",
-        "${workspaceFolder}/tests/Spx.Game.Domain.Tests/Spx.Game.Domain.Tests.csproj"
+        "${workspaceFolder}/tests/Spx.Nexus.Domain.Tests/Spx.Nexus.Domain.Tests.csproj"
+      ],
+      "problemMatcher": [],
+      "group": "test"
+    },
+    {
+      "label": "tests: run nexus simulation unit",
+      "type": "shell",
+      "command": "dotnet",
+      "args": [
+        "test",
+        "${workspaceFolder}/tests/Spx.Nexus.Simulation.Tests/Spx.Nexus.Simulation.Tests.csproj"
       ],
       "problemMatcher": [],
       "group": "test"
@@ -126,7 +137,8 @@
       "label": "tests: run all",
       "dependsOn": [
         "tests: run account unit",
-        "tests: run game domain unit",
+        "tests: run nexus domain unit",
+        "tests: run nexus simulation unit",
         "tests: run game application unit",
         "tests: run game application integration",
         "tests: run grains unit",
@@ -152,7 +164,7 @@
       "command": "dotnet",
       "args": [
         "test",
-        "${workspaceFolder}/tests/Spx.Account.Tests/Spx.Account.Tests.csproj",
+        "${workspaceFolder}/tests/Spx.Account.Application.Tests/Spx.Account.Application.Tests.csproj",
         "--collect:XPlat Code Coverage",
         "--results-directory",
         "${workspaceFolder}/coverage/testresults"
@@ -175,12 +187,26 @@
       "group": "test"
     },
     {
-      "label": "tests: collect coverage game domain unit",
+      "label": "tests: collect coverage nexus domain unit",
       "type": "shell",
       "command": "dotnet",
       "args": [
         "test",
-        "${workspaceFolder}/tests/Spx.Game.Domain.Tests/Spx.Game.Domain.Tests.csproj",
+        "${workspaceFolder}/tests/Spx.Nexus.Domain.Tests/Spx.Nexus.Domain.Tests.csproj",
+        "--collect:XPlat Code Coverage",
+        "--results-directory",
+        "${workspaceFolder}/coverage/testresults"
+      ],
+      "problemMatcher": [],
+      "group": "test"
+    },
+    {
+      "label": "tests: collect coverage nexus simulation unit",
+      "type": "shell",
+      "command": "dotnet",
+      "args": [
+        "test",
+        "${workspaceFolder}/tests/Spx.Nexus.Simulation.Tests/Spx.Nexus.Simulation.Tests.csproj",
         "--collect:XPlat Code Coverage",
         "--results-directory",
         "${workspaceFolder}/coverage/testresults"
@@ -248,7 +274,8 @@
       "label": "tests: collect coverage all",
       "dependsOn": [
         "tests: collect coverage account unit",
-        "tests: collect coverage game domain unit",
+        "tests: collect coverage nexus domain unit",
+        "tests: collect coverage nexus simulation unit",
         "tests: collect coverage game application unit",
         "tests: collect coverage game application integration",
         "tests: collect coverage grains unit",

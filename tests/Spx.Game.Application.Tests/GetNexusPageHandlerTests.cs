@@ -9,11 +9,8 @@ using Xunit;
 
 namespace Spx.Game.Application.Tests;
 
-public sealed class GetGamePageHandlerTests
+public sealed class GetNexusPageHandlerTests
 {
-    private static readonly Guid CurrentPlayerId = Guid.NewGuid();
-    private static readonly Guid OpponentPlayerId = Guid.NewGuid();
-
     [Fact]
     public async Task HandleAsync_returns_null_when_lobby_not_found()
     {
@@ -31,23 +28,8 @@ public sealed class GetGamePageHandlerTests
     public async Task HandleAsync_returns_lobby_and_session_when_available()
     {
         var gameId = Guid.NewGuid();
-        var presence = new GamePresenceView([CurrentPlayerId]);
-        var lobby = new GameLobbyView(
-            gameId,
-            "Arena",
-            "ABC123",
-            GameStatus.Open,
-            2,
-            DateTime.UtcNow,
-            null,
-            "Captain Red",
-            CurrentPlayerId,
-            [
-                new GamePlayerView(CurrentPlayerId, "Captain Red", DateTime.UtcNow),
-                new GamePlayerView(OpponentPlayerId, "Captain Blue", DateTime.UtcNow),
-            ],
-            true
-        );
+        var presence = new GamePresenceView([GameApplicationTestData.CurrentPlayerId]);
+        var lobby = GameApplicationTestData.CreateLobby(gameId);
 
         var session = CreateSession(gameId, 3);
 
@@ -69,30 +51,18 @@ public sealed class GetGamePageHandlerTests
     public async Task HandleAsync_repairs_missing_session_when_active_roster_has_two_players()
     {
         var gameId = Guid.NewGuid();
-        var lobby = new GameLobbyView(
-            gameId,
-            "Arena",
-            "ABC123",
-            GameStatus.Open,
-            2,
-            DateTime.UtcNow,
-            null,
-            "Captain Red",
-            CurrentPlayerId,
-            [
-                new GamePlayerView(CurrentPlayerId, "Captain Red", DateTime.UtcNow),
-                new GamePlayerView(OpponentPlayerId, "Captain Blue", DateTime.UtcNow),
-            ],
-            true
-        );
-
-        var presence = new GamePresenceView([OpponentPlayerId]);
+        var lobby = GameApplicationTestData.CreateLobby(gameId);
+        var presence = new GamePresenceView([GameApplicationTestData.OpponentPlayerId]);
         var repairedSession = CreateSession(gameId, 1);
 
         var persistence = new FakeGamePersistence
         {
             Lobby = lobby,
-            ActiveSessionPlayers = [CurrentPlayerId, OpponentPlayerId],
+            ActiveSessionPlayers =
+            [
+                GameApplicationTestData.CurrentPlayerId,
+                GameApplicationTestData.OpponentPlayerId,
+            ],
         };
         var sessionService = new FakeGameSessionService
         {
@@ -115,27 +85,16 @@ public sealed class GetGamePageHandlerTests
     public async Task HandleAsync_returns_null_session_when_missing_session_repair_fails()
     {
         var gameId = Guid.NewGuid();
-        var lobby = new GameLobbyView(
-            gameId,
-            "Arena",
-            "ABC123",
-            GameStatus.Open,
-            2,
-            DateTime.UtcNow,
-            null,
-            "Captain Red",
-            CurrentPlayerId,
-            [
-                new GamePlayerView(CurrentPlayerId, "Captain Red", DateTime.UtcNow),
-                new GamePlayerView(OpponentPlayerId, "Captain Blue", DateTime.UtcNow),
-            ],
-            true
-        );
+        var lobby = GameApplicationTestData.CreateLobby(gameId);
 
         var persistence = new FakeGamePersistence
         {
             Lobby = lobby,
-            ActiveSessionPlayers = [CurrentPlayerId, OpponentPlayerId],
+            ActiveSessionPlayers =
+            [
+                GameApplicationTestData.CurrentPlayerId,
+                GameApplicationTestData.OpponentPlayerId,
+            ],
         };
         var sessionService = new FakeGameSessionService
         {
@@ -154,25 +113,20 @@ public sealed class GetGamePageHandlerTests
         Assert.Equal(1, sessionService.GetSessionCalls);
         var warning = Assert.Single(logger.Entries, entry => entry.LogLevel == LogLevel.Warning);
         Assert.Contains(gameId.ToString(), warning.Message, StringComparison.Ordinal);
-        Assert.Contains(CurrentPlayerId.ToString(), warning.Message, StringComparison.Ordinal);
+        Assert.Contains(
+            GameApplicationTestData.CurrentPlayerId.ToString(),
+            warning.Message,
+            StringComparison.Ordinal
+        );
     }
 
     [Fact]
     public async Task HandleAsync_reconciles_stale_opponent_when_database_roster_has_one_active_player()
     {
         var gameId = Guid.NewGuid();
-        var lobby = new GameLobbyView(
+        var lobby = GameApplicationTestData.CreateLobby(
             gameId,
-            "Arena",
-            "ABC123",
-            GameStatus.Open,
-            2,
-            DateTime.UtcNow,
-            null,
-            "Captain Red",
-            CurrentPlayerId,
-            [new GamePlayerView(CurrentPlayerId, "Captain Red", DateTime.UtcNow)],
-            true
+            players: [GameApplicationTestData.CurrentPlayer()]
         );
         var staleSession = CreateSession(gameId, 3, opponentIsActive: true);
         var reconciledSession = CreateSession(gameId, 3, opponentIsActive: false);
@@ -180,7 +134,7 @@ public sealed class GetGamePageHandlerTests
         var persistence = new FakeGamePersistence
         {
             Lobby = lobby,
-            ActiveSessionPlayers = [CurrentPlayerId],
+            ActiveSessionPlayers = [GameApplicationTestData.CurrentPlayerId],
         };
         var sessionService = new FakeGameSessionService
         {
@@ -197,7 +151,10 @@ public sealed class GetGamePageHandlerTests
 
         Assert.NotNull(result);
         Assert.Equal(reconciledSession, result!.Session);
-        Assert.Equal([(gameId, OpponentPlayerId)], sessionService.AbandonCalls);
+        Assert.Equal(
+            [(gameId, GameApplicationTestData.OpponentPlayerId)],
+            sessionService.AbandonCalls
+        );
         Assert.Equal(2, sessionService.GetSessionCalls);
         Assert.Equal(0, sessionService.InitializeCalls);
     }
@@ -206,24 +163,16 @@ public sealed class GetGamePageHandlerTests
     public async Task HandleAsync_does_not_repair_session_for_former_player()
     {
         var gameId = Guid.NewGuid();
-        var lobby = new GameLobbyView(
+        var lobby = GameApplicationTestData.CreateLobby(
             gameId,
-            "Arena",
-            "ABC123",
-            GameStatus.Open,
-            2,
-            DateTime.UtcNow,
-            null,
-            "Captain Red",
-            CurrentPlayerId,
-            [new GamePlayerView(OpponentPlayerId, "Captain Blue", DateTime.UtcNow)],
-            false
+            isCurrentUserActive: false,
+            players: [GameApplicationTestData.OpponentPlayer()]
         );
 
         var persistence = new FakeGamePersistence
         {
             Lobby = lobby,
-            ActiveSessionPlayers = [OpponentPlayerId],
+            ActiveSessionPlayers = [GameApplicationTestData.OpponentPlayerId],
         };
         var sessionService = new FakeGameSessionService
         {
@@ -270,7 +219,7 @@ public sealed class GetGamePageHandlerTests
     )
     {
         var currentPlayer = new NexusPlayerView(
-            CurrentPlayerId,
+            GameApplicationTestData.CurrentPlayerId,
             NexusFactionColor.Red,
             0,
             NexusGateProgress.None,
@@ -283,7 +232,7 @@ public sealed class GetGamePageHandlerTests
             0
         );
         var opponentPlayer = new NexusPlayerView(
-            OpponentPlayerId,
+            GameApplicationTestData.OpponentPlayerId,
             NexusFactionColor.Blue,
             0,
             NexusGateProgress.None,

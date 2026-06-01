@@ -13,7 +13,8 @@ applyTo: 'tests/**'
 ## Test Project Map
 
 - `tests/Spx.Account.Application.Tests`: pure account handlers.
-- `tests/Spx.Game.Domain.Tests`: pure game rule helpers.
+- `tests/Spx.Nexus.Domain.Tests`: pure domain model, map, and engine helpers.
+- `tests/Spx.Nexus.Simulation.Tests`: tactical simulation and balance tests.
 - `tests/Spx.Game.Application.Tests`: pure game application handlers and helpers.
 - `tests/Spx.Game.Application.IntegrationTests`: EF-backed game persistence and query behavior.
 - `tests/Spx.Web.Tests`: endpoint mapping, redirect/query behavior, Identity-backed adapters, and other web-owned seams.
@@ -99,7 +100,8 @@ If the element you need lacks a `data-testid`, add one to the component and its 
 ## Common Commands
 
 - `dotnet test tests/Spx.Account.Application.Tests/Spx.Account.Application.Tests.csproj`
-- `dotnet test tests/Spx.Game.Domain.Tests/Spx.Game.Domain.Tests.csproj`
+- `dotnet test tests/Spx.Nexus.Domain.Tests/Spx.Nexus.Domain.Tests.csproj`
+- `dotnet test tests/Spx.Nexus.Simulation.Tests/Spx.Nexus.Simulation.Tests.csproj`
 - `dotnet test tests/Spx.Game.Application.Tests/Spx.Game.Application.Tests.csproj`
 - `dotnet test tests/Spx.Game.Application.IntegrationTests/Spx.Game.Application.IntegrationTests.csproj`
 - `dotnet test tests/Spx.Web.Tests/Spx.Web.Tests.csproj`
