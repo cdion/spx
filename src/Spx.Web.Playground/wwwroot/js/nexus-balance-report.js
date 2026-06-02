@@ -1,16 +1,22 @@
 export function initNexusBalanceReport(reportJson) {
     const reportData = JSON.parse(reportJson);
+    // Heatmap-selectable metrics only. Raw / absolute / derived-redundant variants are kept in
+    // the detail panel but excluded here to avoid noise in the selector.
     const metricLabels = {
-        firstContactActivityRate: 'First-contact activity',
         attackerWinRate: 'Attacker win rate',
-        attackerDamagePerTrial: 'Attacker damage per trial',
-        defenderDamagePerTrial: 'Defender damage per trial',
-        netDamageSwing: 'Net damage swing',
-        attackerControlRate: 'Attacker control rate',
         contestedRate: 'Contested rate',
-        attackerExpectedSurvivorCost: 'Attacker expected survivor cost',
-        survivorCostDelta: 'Survivor cost delta'
+        attackerControlRate: 'Attacker control rate',
+        firstContactActivityRate: 'First-contact activity',
+        attackerCostRetention: 'Attacker cost retention',
+        netCostAdvantage: 'Net cost advantage',
+        attackerDamageEfficiency: 'Attacker damage efficiency',
     };
+    // Metrics where a mirror matchup (attacker === defender) is structurally uninformative.
+    const costMetrics = new Set(['attackerDamageEfficiency', 'attackerCostRetention', 'netCostAdvantage']);
+
+    function isMirrorMatchup(matchup) {
+        return matchup.attackerProfileId === matchup.defenderProfileId;
+    }
 
     const scenarioSelect = document.getElementById('scenario-select');
     const metricSelect = document.getElementById('metric-select');
@@ -83,10 +89,24 @@ export function initNexusBalanceReport(reportJson) {
                     defenderKillsPerTrial: 0
                 };
 
+                const attackerCost = profileMap.get(matchup.attackerProfileId).totalCost;
+                const defenderCost = profileMap.get(matchup.defenderProfileId).totalCost;
+                const attackerCostRetention = attackerCost > 0
+                    ? matchup.attackerExpectedSurvivorCost / attackerCost
+                    : 0;
+                const defenderCostRetention = defenderCost > 0
+                    ? matchup.defenderExpectedSurvivorCost / defenderCost
+                    : 0;
                 return {
                     ...matchup,
+                    // defenderWinRate removed from model; derive it for the detail panel.
+                    defenderWinRate: 1 - matchup.attackerWinRate - matchup.contestedRate - matchup.mutualDestructionRate,
                     attackerLabel: profileMap.get(matchup.attackerProfileId).label,
                     defenderLabel: profileMap.get(matchup.defenderProfileId).label,
+                    attackerCostRetention,
+                    defenderCostRetention,
+                    netCostAdvantage: attackerCostRetention - defenderCostRetention,
+                    netDamageEfficiency: matchup.attackerDamageEfficiency - matchup.defenderDamageEfficiency,
                     survivorCostDelta: matchup.attackerExpectedSurvivorCost - matchup.defenderExpectedSurvivorCost,
                     attackerDamagePerTrial: phaseSummary.attackerDamagePerTrial,
                     defenderDamagePerTrial: phaseSummary.defenderDamagePerTrial,
@@ -173,11 +193,12 @@ export function initNexusBalanceReport(reportJson) {
                         : '';
                 const formattedMetric = formatMetric(selectedMetric, metricValue);
                 const subvalue = `Control ${formatPercent(matchup.attackerControlRate)} | ${phaseLabel(matchup.dominantKillPhase)}`;
+                const mirrorClass = isMirrorMatchup(matchup) ? 'is-mirror' : '';
 
                 rows.push(`
                     <button
                       type="button"
-                      class="ui-balance-heatmap-cell ${selectedClass}"
+                      class="ui-balance-heatmap-cell ${selectedClass} ${mirrorClass}"
                       data-attacker-id="${matchup.attackerProfileId}"
                       data-defender-id="${matchup.defenderProfileId}"
                       title="${escapeHtml(matchup.attackerLabel)} vs ${escapeHtml(matchup.defenderLabel)}"
@@ -232,6 +253,12 @@ export function initNexusBalanceReport(reportJson) {
             ['Defender control rate', formatPercent(matchup.defenderControlRate)],
             ['Attacker survivor cost', matchup.attackerExpectedSurvivorCost.toFixed(2)],
             ['Defender survivor cost', matchup.defenderExpectedSurvivorCost.toFixed(2)],
+            ['Attacker cost retention', formatPercent(matchup.attackerCostRetention)],
+            ['Defender cost retention', formatPercent(matchup.defenderCostRetention)],
+            ['Net cost advantage', formatSigned(matchup.netCostAdvantage)],
+            ['Attacker damage efficiency', matchup.attackerDamageEfficiency.toFixed(2) + '×'],
+            ['Defender damage efficiency', matchup.defenderDamageEfficiency.toFixed(2) + '×'],
+            ['Net damage efficiency', formatSigned(matchup.netDamageEfficiency)],
             ['Mutual destruction', formatPercent(matchup.mutualDestructionRate)]
         ];
         document.getElementById('matchup-stats').innerHTML = statRows
@@ -298,11 +325,14 @@ export function initNexusBalanceReport(reportJson) {
     function renderCounterTable() {
         const rows = getScenarioMatchups()
             .filter(matchup => matchup.attackerProfileId === selectedAttackerId)
+            .filter(matchup => !costMetrics.has(selectedMetric) || !isMirrorMatchup(matchup))
             .sort((left, right) => (right[selectedMetric] ?? 0) - (left[selectedMetric] ?? 0))
             .map(matchup => `
-                <tr class="border-b border-white/5 last:border-0">
+                <tr class="border-b border-white/5 last:border-0${isMirrorMatchup(matchup) ? ' opacity-40' : ''}">
                   <td class="py-2 pr-4">${profileMap.get(matchup.defenderProfileId).label}</td>
                   <td class="py-2 pr-4">${formatPercent(matchup.attackerWinRate)}</td>
+                  <td class="py-2 pr-4">${matchup.attackerDamageEfficiency.toFixed(2)}×</td>
+                  <td class="py-2 pr-4">${formatPercent(matchup.attackerCostRetention)}</td>
                   <td class="py-2 pr-4">${formatPercent(matchup.attackerControlRate)}</td>
                   <td class="py-2 pr-4">${(matchup.attackerExpectedSurvivorCost - matchup.defenderExpectedSurvivorCost).toFixed(2)}</td>
                   <td class="py-2">${phaseLabel(matchup.dominantKillPhase)}</td>
@@ -330,10 +360,13 @@ export function initNexusBalanceReport(reportJson) {
     }
 
     function formatMetric(metric, value) {
-        if (metric.endsWith('Rate'))
+        if (metric.endsWith('Rate') || metric.endsWith('Retention'))
             return formatPercent(value);
 
-        if (metric === 'netDamageSwing' || metric === 'survivorCostDelta')
+        if (metric === 'attackerDamageEfficiency' || metric === 'defenderDamageEfficiency')
+            return Number(value).toFixed(2) + '×';
+
+        if (metric === 'netCostAdvantage')
             return formatSigned(value);
 
         return Number(value).toFixed(2);

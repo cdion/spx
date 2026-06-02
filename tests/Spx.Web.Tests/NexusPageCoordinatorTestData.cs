@@ -160,6 +160,10 @@ internal static class GamePageCoordinatorTestData
         params (NexusUnitType Type, int Count)[] units
     ) =>
         units
-            .Select(unit => new NexusUnitStackGroup(unit.Type, unit.Type.Hull(), unit.Count))
+            .Select(unit => new NexusUnitStackGroup(
+                unit.Type,
+                unit.Type.Profile().Hull,
+                unit.Count
+            ))
             .ToImmutableArray();
 }

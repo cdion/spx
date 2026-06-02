@@ -72,7 +72,7 @@ public static class NexusSessionEventFormatter
         string.Join(
             ", ",
             stacks.Select(stack =>
-                $"{stack.Count}× {stack.UnitType} ({stack.RemainingHull}/{stack.UnitType.Hull()} hull)"
+                $"{stack.Count}× {stack.UnitType} ({stack.RemainingHull}/{stack.UnitType.Profile().Hull} hull)"
             )
         );
 
@@ -124,9 +124,10 @@ public static class NexusSessionEventFormatter
             ? PlayerName(targetPlayerId, playerNames)
             : "Unknown";
 
-        return $"{attackerName} {FormatUnitWithHull(roll.AttackerType, roll.AttackerRemainingHull)} -> {targetName} {FormatUnitWithHull(roll.TargetType, roll.TargetRemainingHull)}: rolled {roll.Roll} vs {roll.Threshold} {(roll.IsHit ? "hit" : "miss")}";
+        var hitResult = roll.WasShielded ? "absorbed" : (roll.IsHit ? "hit" : "miss");
+        return $"{attackerName} {FormatUnitWithHull(roll.AttackerType, roll.AttackerRemainingHull)} -> {targetName} {FormatUnitWithHull(roll.TargetType, roll.TargetRemainingHull)}: rolled {roll.Roll} vs {roll.Threshold} {hitResult}";
     }
 
     private static string FormatUnitWithHull(NexusUnitType unitType, int remainingHull) =>
-        $"{unitType} ({remainingHull}/{unitType.Hull()} hull)";
+        $"{unitType} ({remainingHull}/{unitType.Profile().Hull} hull)";
 }

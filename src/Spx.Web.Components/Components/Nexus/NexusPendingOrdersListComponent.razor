@@ -26,7 +26,7 @@ else
             <li class="flex items-center justify-between gap-2 rounded-xl border border-white/10 bg-slate-950/60 px-3 py-2"
                 data-testid="@NexusGameplayPanelTestIds.PendingBuildOrder(order.UnitType)">
                 <span class="text-base text-slate-300">Build @order.Count× @order.UnitType (@(order.UnitType.Cost() *
-                                                                                                                                                                                                order.Count)⚡)</span>
+                                                                                                                                                                                                                    order.Count)⚡)</span>
                     @if (IsEditable)
                     {
                         <button class="ui-button-icon-danger" title="Remove order"
@@ -88,7 +88,7 @@ else
         var unitSummary = string.Join(
             ", ",
             order.Stacks.Select(stack =>
-                $"{stack.Count}× {stack.UnitType} ({stack.RemainingHull}/{stack.UnitType.Hull()} hull)"
+                $"{stack.Count}× {stack.UnitType} ({stack.RemainingHull}/{stack.UnitType.Profile().Hull} hull)"
             )
         );
         return $"{GetSystemDisplayName(order.From)} → {GetSystemDisplayName(order.To)}: {unitSummary}";

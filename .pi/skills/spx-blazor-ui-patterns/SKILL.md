@@ -1,0 +1,81 @@
+---
+name: spx-blazor-ui-patterns
+description: 'Choose the right Blazor component or page state pattern. Use when deciding inline @code vs static reducer vs coordinator, or when a component or page is growing complex. Trigger words: component state, page state, static reducer, coordinator, parameter bag, inline @code, state extraction, @code block too large.'
+argument-hint: 'Describe the component or page, its concerns, and what feels unwieldy.'
+---
+
+# Spx Blazor UI Patterns
+
+## Layer 1 — Spx.Web.Components (no DI, no I/O)
+
+| Situation | Pattern |
+|---|---|
+| ≤1 state concern | Inline `@code` |
+| 2+ orthogonal state machines | Static reducer in companion `{Name}State.cs` — pure functions, component owns mutable fields |
+| 6+ related parameters travelling together | `init`-only parameter bag class |
+
+### Static reducer example
+
+```csharp
+// NexusGameplayPanelState.cs
+public static class NexusGameplayPanelState
+{
+    public static SelectionState ApplySelectionRequest(SelectionState state, SelectionRequest request) => ...
+    public static EventFocusState ApplyEventFocusRequest(EventFocusState state, EventFocusRequest request) => ...
+}
+```
+
+### Parameter bag example
+
+```csharp
+// LobbyMessagesState.cs
+public sealed class LobbyMessagesState
+{
+    public required string CurrentUserName { get; init; }
+    public IReadOnlyList<TimelineEntryState> Items { get; init; } = [];
+}
+```
+
+## Layer 2 — Spx.Web pages (DI, async I/O)
+
+| Situation | Pattern |
+|---|---|
+| 1–2 handlers, fits comfortably | Inline `@code` |
+| 3+ orthogonal async concerns (data load, user actions, background polling) | Coordinator + state objects |
+
+### Coordinator pattern
+
+State objects: mutable bags with `Begin*/Apply*/Fail*` mutation methods. One per concern.
+Coordinators: classes that call handlers, catch exceptions, log, and mutate state. Constructed inline in `@code` (not DI-registered).
+
+```csharp
+// NexusPageDataCoordinator.cs
+internal sealed partial class NexusPageDataCoordinator(
+    IGetNexusPageHandler handler,
+    ILogger<NexusPageDataCoordinator> logger,
+    NexusPageDataState state
+)
+{
+    public async Task LoadPageAsync(Guid gameId, string userId, CancellationToken ct = default)
+    {
+        state.BeginPageLoad();
+        try { state.ApplyPage(await handler.HandleAsync(gameId, userId, ct)); }
+        catch (Exception ex) { LogLoadFailed(logger, ex, gameId); state.FailPageLoad("..."); }
+    }
+}
+```
+
+```razor
+@code {
+    private readonly NexusPageDataState _data = new();
+    private NexusPageDataCoordinator DataCoordinator => new(Handler, Logger, _data);
+}
+```
+
+## What does NOT warrant extraction
+
+- Large component with a single concern (complex JS interop): keep inline.
+- Page calling 1–2 handlers: keep inline `@code`.
+- Component with only computed properties: keep inline.
+
+Test: if you removed the extracted file and inlined it, would the result be confusing? If no, don't extract.

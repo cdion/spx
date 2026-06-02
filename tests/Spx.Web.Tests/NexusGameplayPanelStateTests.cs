@@ -165,7 +165,11 @@ public sealed class NexusGameplayPanelStateTests
                 SelectedSystem = GamePageCoordinatorTestData.CurrentPlayerHomeCoord,
             },
             ImmutableArray.Create(
-                new NexusUnitStackGroup(NexusUnitType.Carrier, NexusUnitType.Carrier.Hull(), 1)
+                new NexusUnitStackGroup(
+                    NexusUnitType.Carrier,
+                    NexusUnitType.Carrier.Profile().Hull,
+                    1
+                )
             ),
             session,
             GamePageCoordinatorTestData.CurrentPlayerId

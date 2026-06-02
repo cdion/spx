@@ -2,33 +2,14 @@ namespace Spx.Nexus.Domain;
 
 /// <summary>
 /// Combat rules for Nexus Protocol.
-/// <para>Hit thresholds are computed from each unit's <see cref="NexusUnitProfile"/> plus a small
-/// per-matchup exception table. Phase participation and targetability are derived from
-/// <see cref="NexusPhaseParticipation"/> flags and <see cref="NexusUnitCategory"/> respectively.</para>
+/// <para>Hit thresholds are resolved from each unit's <see cref="NexusUnitProfile"/> threshold
+/// dictionaries using a four-step priority chain: phase+unit, phase+category, any+unit,
+/// any+category. A <c>null</c> dictionary value explicitly forbids the matchup.
+/// Phase participation and targetability are derived from <see cref="NexusPhaseParticipation"/> flags.</para>
 /// </summary>
 public static class NexusCombatSpec
 {
     private const int MinimumHitThreshold = 2;
-
-    /// <summary>
-    /// Per-matchup threshold overrides applied on top of the profile's base category threshold.
-    /// Entries may be phase-specific or phase-agnostic when the same override should apply in
-    /// every phase where the attacker can target that unit.
-    /// </summary>
-    private static readonly Dictionary<
-        (NexusUnitType Attacker, CombatPhase? Phase, NexusUnitType Target),
-        int
-    > Exceptions = new()
-    {
-        [(NexusUnitType.Interceptor, null, NexusUnitType.Bomber)] = 2, // specialist anti-bomber
-        [(NexusUnitType.Interceptor, null, NexusUnitType.Fighter)] = 5, // softer anti-fighter edge
-        [(NexusUnitType.Bomber, null, NexusUnitType.Interceptor)] = 6, // poor anti-interceptor
-        [(NexusUnitType.Destroyer, CombatPhase.Engage, NexusUnitType.Interceptor)] = 6,
-        [(NexusUnitType.Destroyer, CombatPhase.Engage, NexusUnitType.Fighter)] = 6,
-        [(NexusUnitType.Destroyer, CombatPhase.Engage, NexusUnitType.Bomber)] = 6,
-        [(NexusUnitType.Infantry, null, NexusUnitType.Armor)] = 5, // infantry struggles vs armor
-        [(NexusUnitType.Armor, null, NexusUnitType.Armor)] = 4, // armor vs armor is harder
-    };
 
     /// <summary>
     /// Returns the minimum d6 roll needed for <paramref name="attacker"/> to score a hit on
@@ -45,25 +26,22 @@ public static class NexusCombatSpec
             return null;
 
         var profile = attacker.Profile();
-        var baseThreshold = target.Category() switch
-        {
-            NexusUnitCategory.Strike => profile.StrikeThreshold,
-            NexusUnitCategory.Capital => profile.CapitalThreshold,
-            NexusUnitCategory.Planetary => profile.PlanetaryThreshold,
-            _ => null,
-        };
+        var targetCategory = target.Profile().Category;
 
-        if (baseThreshold is null)
-            return null;
+        // Priority: specific phase beats any-phase; unit beats category at the same specificity.
+        if (profile.UnitThresholds.TryGetValue((phase, target), out var ut1))
+            return ut1.HasValue ? Math.Max(MinimumHitThreshold, ut1.Value) : null;
 
-        var effectiveThreshold = baseThreshold.Value;
+        if (profile.CategoryThresholds.TryGetValue((phase, targetCategory), out var ct1))
+            return ct1.HasValue ? Math.Max(MinimumHitThreshold, ct1.Value) : null;
 
-        if (Exceptions.TryGetValue((attacker, phase, target), out var phaseOverride))
-            effectiveThreshold = phaseOverride;
-        else if (Exceptions.TryGetValue((attacker, null, target), out var genericOverride))
-            effectiveThreshold = genericOverride;
+        if (profile.UnitThresholds.TryGetValue((null, target), out var ut2))
+            return ut2.HasValue ? Math.Max(MinimumHitThreshold, ut2.Value) : null;
 
-        return Math.Max(MinimumHitThreshold, effectiveThreshold - 1);
+        if (profile.CategoryThresholds.TryGetValue((null, targetCategory), out var ct2))
+            return ct2.HasValue ? Math.Max(MinimumHitThreshold, ct2.Value) : null;
+
+        return null;
     }
 
     /// <summary>Returns <c>true</c> if <paramref name="unit"/> rolls dice as an attacker in <paramref name="phase"/>.</summary>
@@ -72,27 +50,18 @@ public static class NexusCombatSpec
 
     /// <summary>
     /// Returns <c>true</c> if <paramref name="unit"/> can be selected as a combat target in <paramref name="phase"/>.
-    /// Derived from unit category — Capital units are only targetable in Engage; Strike units in Screen and Engage;
-    /// Planetary units in Bombard and Assault.
+    /// Derived from the unit's <see cref="NexusUnitProfile.DefendsIn"/> bitmask.
     /// </summary>
     public static bool IsTargetable(NexusUnitType unit, CombatPhase phase) =>
-        (unit.Category(), phase) switch
-        {
-            (NexusUnitCategory.Strike, CombatPhase.Screen) => true,
-            (NexusUnitCategory.Strike, CombatPhase.Engage) => true,
-            (NexusUnitCategory.Capital, CombatPhase.Engage) => true,
-            (NexusUnitCategory.Planetary, CombatPhase.Bombard) => true,
-            (NexusUnitCategory.Planetary, CombatPhase.Assault) => true,
-            _ => false,
-        };
+        unit.Profile().DefendsIn.HasFlag(ToPhaseFlag(phase));
 
     private static NexusPhaseParticipation ToPhaseFlag(CombatPhase phase) =>
         phase switch
         {
-            CombatPhase.Screen => NexusPhaseParticipation.Screen,
-            CombatPhase.Engage => NexusPhaseParticipation.Engage,
-            CombatPhase.Bombard => NexusPhaseParticipation.Bombard,
-            CombatPhase.Assault => NexusPhaseParticipation.Assault,
+            CombatPhase.Intercept => NexusPhaseParticipation.Intercept,
+            CombatPhase.Line => NexusPhaseParticipation.Line,
+            CombatPhase.Orbit => NexusPhaseParticipation.Orbit,
+            CombatPhase.Surface => NexusPhaseParticipation.Surface,
             _ => NexusPhaseParticipation.None,
         };
 }

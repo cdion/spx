@@ -56,20 +56,7 @@ build:
 
 # Run the full test suite without rebuilding
 test:
-    @echo "==> Running account application tests..."
-    {{dotnet}} test tests/Spx.Account.Application.Tests/Spx.Account.Application.Tests.csproj --no-build
-    @echo "==> Running game application tests..."
-    {{dotnet}} test tests/Spx.Game.Application.Tests/Spx.Game.Application.Tests.csproj --no-build
-    @echo "==> Running game application integration tests..."
-    {{dotnet}} test tests/Spx.Game.Application.IntegrationTests/Spx.Game.Application.IntegrationTests.csproj --no-build
-    @echo "==> Running grains tests..."
-    {{dotnet}} test tests/Spx.Grains.Tests/Spx.Grains.Tests.csproj --no-build
-    @echo "==> Running grains integration tests..."
-    {{dotnet}} test tests/Spx.Grains.IntegrationTests/Spx.Grains.IntegrationTests.csproj --no-build
-    @echo "==> Running nexus domain tests..."
-    {{dotnet}} test tests/Spx.Nexus.Domain.Tests/Spx.Nexus.Domain.Tests.csproj --no-build
-    @echo "==> Running web tests..."
-    {{dotnet}} test tests/Spx.Web.Tests/Spx.Web.Tests.csproj --no-build
+    {{dotnet}} test Spx.slnx --no-build
 
 # Canonical local CI entry point
 ci: restore build test

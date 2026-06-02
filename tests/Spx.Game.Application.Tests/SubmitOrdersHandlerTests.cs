@@ -45,7 +45,7 @@ public sealed class SubmitOrdersHandlerTests
         };
         var evt = new NexusPhaseResultEvent(
             new HexCoord(0, 0),
-            CombatPhase.Engage,
+            CombatPhase.Line,
             [
                 new NexusCombatLoss(BluePlayerId, NexusUnitType.Destroyer, 1),
                 new NexusCombatLoss(RedPlayerId, NexusUnitType.Fighter, 2),
@@ -89,7 +89,7 @@ public sealed class SubmitOrdersHandlerTests
 
         var message = NexusSessionEventFormatter.Format(evt, playerNames, RedPlayerId);
 
-        Assert.Contains("Engage at Nexus", message);
+        Assert.Contains("Line at Nexus", message);
         Assert.Contains(
             "Alice Cruiser (2/2 hull) -> Bob Destroyer (1/2 hull): rolled 5 vs 3 hit",
             message

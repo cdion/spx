@@ -129,7 +129,9 @@ public sealed class GameSessionGrainIntegrationTests(OrleansClusterFixture fixtu
                     new NexusMoveOrder(
                         systemWithFleet.Coord,
                         destination,
-                        ImmutableArray.Create(new NexusUnitStackGroup(moveUnit, moveUnit.Hull(), 1))
+                        ImmutableArray.Create(
+                            new NexusUnitStackGroup(moveUnit, moveUnit.Profile().Hull, 1)
+                        )
                     ),
                 ],
                 [],

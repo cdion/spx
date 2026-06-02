@@ -14,7 +14,7 @@ public class NexusGameViewQueriesTests
             .ToImmutableDictionary(
                 g => g.Key,
                 g =>
-                    g.Select(u => new NexusUnitStackGroup(u.Unit, u.Unit.Hull(), u.Count))
+                    g.Select(u => new NexusUnitStackGroup(u.Unit, u.Unit.Profile().Hull, u.Count))
                         .ToImmutableArray()
             );
         return new NexusSystemView(coord, false, 2, null, null, dict);
@@ -114,36 +114,25 @@ public class NexusGameViewQueriesTests
     }
 
     [Fact]
-    public void GetValidMoveDestinations_CommittedPlanetaryOnly_ReturnsEmpty()
+    public void GetValidMoveDestinations_PlanetaryOnlyInContestedSystem_ReturnsEmpty()
     {
         var playerId = Guid.NewGuid();
         var source = new HexCoord(0, 0);
-        var visibleStacks = ImmutableDictionary<
-            Guid,
-            ImmutableArray<NexusUnitStackGroup>
-        >.Empty.Add(
+        var unitStacks = ImmutableDictionary<Guid, ImmutableArray<NexusUnitStackGroup>>.Empty.Add(
             playerId,
-            [new NexusUnitStackGroup(NexusUnitType.Infantry, NexusUnitType.Infantry.Hull(), 1)]
+            [
+                new NexusUnitStackGroup(
+                    NexusUnitType.Infantry,
+                    NexusUnitType.Infantry.Profile().Hull,
+                    1
+                ),
+            ]
         );
-        var committedStacks = ImmutableDictionary<
-            Guid,
-            ImmutableArray<NexusUnitStackGroup>
-        >.Empty.Add(
-            playerId,
-            [new NexusUnitStackGroup(NexusUnitType.Infantry, NexusUnitType.Infantry.Hull(), 1)]
-        );
+        // MovableUnitStacks is empty — planetary units are pinned in a contested system
+        var movableStacks = ImmutableDictionary<Guid, ImmutableArray<NexusUnitStackGroup>>.Empty;
         var view = MakeView(
             playerId,
-            new NexusSystemView(
-                source,
-                false,
-                2,
-                null,
-                null,
-                visibleStacks,
-                ImmutableDictionary<Guid, ImmutableArray<NexusUnitStackGroup>>.Empty,
-                committedStacks
-            )
+            new NexusSystemView(source, false, 2, null, null, unitStacks, movableStacks)
         );
 
         var result = NexusViewQueries.GetValidMoveDestinations(view, playerId, source);

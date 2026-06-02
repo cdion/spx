@@ -24,4 +24,6 @@
     <Project Path="tests/Spx.Grains.Tests/Spx.Grains.Tests.csproj" />
     <Project Path="tests/Spx.Web.Tests/Spx.Web.Tests.csproj" />
   </Folder>
+  <Folder Name="/tools/" />
+  <Folder Name="/tools/dev/" />
 </Solution>

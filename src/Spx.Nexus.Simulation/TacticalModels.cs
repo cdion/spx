@@ -13,6 +13,12 @@ public enum TacticalProfileFamily
 {
     SpaceDuel = 0,
     InvasionControl = 1,
+
+    /// <summary>Equal-budget space profiles used in cost-calibration scenarios.</summary>
+    SpaceBudget = 2,
+
+    /// <summary>Mixed space+ground profiles that exercise Orbit-phase capabilities.</summary>
+    SpaceBudgetMixed = 3,
 }
 
 public sealed record TacticalSimulationSettings(int IterationsPerMatchup, int BaseSeed)
@@ -70,13 +76,18 @@ public sealed record TacticalMatchupSummary(
     int Iterations,
     double FirstContactActivityRate,
     double AttackerWinRate,
-    double DefenderWinRate,
     double ContestedRate,
     double MutualDestructionRate,
     double AttackerControlRate,
     double DefenderControlRate,
     double AttackerExpectedSurvivorCost,
     double DefenderExpectedSurvivorCost,
+    /// <summary>
+    /// Expected enemy cost destroyed divided by own starting cost. &gt;1 means you destroyed more
+    /// value than you cost; &lt;1 means you were cost-inefficient. Mirror matchups yield ~1.0.
+    /// </summary>
+    double AttackerDamageEfficiency,
+    double DefenderDamageEfficiency,
     string DominantKillPhase
 );
 

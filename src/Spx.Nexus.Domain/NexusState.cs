@@ -32,6 +32,9 @@ public sealed class NexusUnitStack
 
     [Id(2)]
     public int Count { get; set; }
+
+    [Id(3)]
+    public bool ShieldActive { get; set; }
 }
 
 [GenerateSerializer]
@@ -59,13 +62,6 @@ public sealed class NexusSystemState
     [Id(5)]
     public Dictionary<Guid, List<NexusUnitStack>> Units { get; set; } = [];
 
-    /// <summary>
-    /// Planetary units committed to a contested system. They are visible in the system but cannot
-    /// move until the system is no longer contested.
-    /// </summary>
-    [Id(6)]
-    public Dictionary<Guid, List<NexusUnitStack>> CommittedPlanetaryUnits { get; set; } = [];
-
     public int GetUnitCount(Guid playerId, NexusUnitType unitType)
     {
         if (!Units.TryGetValue(playerId, out var stacks))
@@ -90,33 +86,8 @@ public sealed class NexusSystemState
     public IReadOnlyList<NexusUnitStack> GetPlayerStacks(Guid playerId) =>
         Units.TryGetValue(playerId, out var stacks) ? stacks : [];
 
-    public IReadOnlyList<NexusUnitStack> GetPlayerCommittedPlanetaryStacks(Guid playerId) =>
-        CommittedPlanetaryUnits.TryGetValue(playerId, out var stacks) ? stacks : [];
-
-    public IReadOnlyList<NexusUnitStack> GetPlayerVisibleStacks(Guid playerId)
-    {
-        var fleetStacks = GetPlayerStacks(playerId);
-        var committedStacks = GetPlayerCommittedPlanetaryStacks(playerId);
-
-        if (fleetStacks.Count == 0 && committedStacks.Count == 0)
-            return [];
-
-        var grouped = new Dictionary<(NexusUnitType UnitType, int RemainingHull), int>();
-        foreach (var stack in fleetStacks.Concat(committedStacks))
-        {
-            var key = (stack.UnitType, stack.RemainingHull);
-            grouped[key] = grouped.GetValueOrDefault(key) + stack.Count;
-        }
-
-        return grouped
-            .Select(kv => new NexusUnitStack
-            {
-                UnitType = kv.Key.UnitType,
-                RemainingHull = kv.Key.RemainingHull,
-                Count = kv.Value,
-            })
-            .ToList();
-    }
+    public IReadOnlyList<NexusUnitStack> GetPlayerVisibleStacks(Guid playerId) =>
+        GetPlayerStacks(playerId);
 
     public void AddUnits(
         Guid playerId,
@@ -133,7 +104,7 @@ public sealed class NexusSystemState
             Units[playerId] = stacks;
         }
 
-        var hullToStore = remainingHull ?? unitType.Hull();
+        var hullToStore = remainingHull ?? unitType.Profile().Hull;
         var existing = stacks.Find(s => s.UnitType == unitType && s.RemainingHull == hullToStore);
         if (existing is not null)
             existing.Count += count;
@@ -144,23 +115,9 @@ public sealed class NexusSystemState
                     UnitType = unitType,
                     RemainingHull = hullToStore,
                     Count = count,
+                    ShieldActive = unitType.Profile().HasShield,
                 }
             );
-    }
-
-    public void AddCommittedPlanetaryUnits(
-        Guid playerId,
-        NexusUnitType unitType,
-        int count,
-        int? remainingHull = null
-    )
-    {
-        if (!unitType.IsPlanetary())
-            throw new InvalidOperationException(
-                $"Only planetary units can be committed: {unitType}."
-            );
-
-        AddStacks(CommittedPlanetaryUnits, playerId, unitType, count, remainingHull);
     }
 
     public void RemoveUnits(Guid playerId, NexusUnitType unitType, int count) =>
@@ -239,81 +196,11 @@ public sealed class NexusSystemState
         return taken.ToImmutable();
     }
 
-    public void SetCommittedPlanetaryStacks(Guid playerId, List<NexusUnitStack> stacks)
-    {
-        if (stacks.Any(stack => !stack.UnitType.IsPlanetary()))
-            throw new InvalidOperationException("Only planetary units can be stored as committed.");
-
-        if (stacks.Count == 0)
-        {
-            CommittedPlanetaryUnits.Remove(playerId);
-            return;
-        }
-
-        CommittedPlanetaryUnits[playerId] = stacks;
-    }
-
-    public void ReturnCommittedPlanetaryToFleet(Guid playerId)
-    {
-        if (!CommittedPlanetaryUnits.TryGetValue(playerId, out var stacks))
-            return;
-
-        foreach (var stack in stacks)
-            AddUnits(playerId, stack.UnitType, stack.Count, stack.RemainingHull);
-
-        CommittedPlanetaryUnits.Remove(playerId);
-    }
-
-    public bool HasPlanetaryUnits(Guid playerId)
-    {
-        var hasFleetPlanetary =
-            Units.TryGetValue(playerId, out var stacks)
-            && stacks.Any(s => s.UnitType.IsPlanetary());
-        if (hasFleetPlanetary)
-            return true;
-
-        return CommittedPlanetaryUnits.TryGetValue(playerId, out var committedStacks)
-            && committedStacks.Count > 0;
-    }
+    public bool HasPlanetaryUnits(Guid playerId) =>
+        Units.TryGetValue(playerId, out var stacks) && stacks.Any(s => s.UnitType.IsPlanetary());
 
     public bool HasAnyUnits(Guid playerId) =>
-        (Units.TryGetValue(playerId, out var stacks) && stacks.Count > 0)
-        || (
-            CommittedPlanetaryUnits.TryGetValue(playerId, out var committedStacks)
-            && committedStacks.Count > 0
-        );
-
-    private static void AddStacks(
-        Dictionary<Guid, List<NexusUnitStack>> source,
-        Guid playerId,
-        NexusUnitType unitType,
-        int count,
-        int? remainingHull
-    )
-    {
-        if (count <= 0)
-            return;
-
-        if (!source.TryGetValue(playerId, out var stacks))
-        {
-            stacks = [];
-            source[playerId] = stacks;
-        }
-
-        var hullToStore = remainingHull ?? unitType.Hull();
-        var existing = stacks.Find(s => s.UnitType == unitType && s.RemainingHull == hullToStore);
-        if (existing is not null)
-            existing.Count += count;
-        else
-            stacks.Add(
-                new NexusUnitStack
-                {
-                    UnitType = unitType,
-                    RemainingHull = hullToStore,
-                    Count = count,
-                }
-            );
-    }
+        Units.TryGetValue(playerId, out var stacks) && stacks.Count > 0;
 }
 
 [GenerateSerializer]

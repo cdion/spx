@@ -127,6 +127,162 @@ public static class TacticalProfileLibrary
                     new TacticalProfileUnit(NexusUnitType.Infantry, 2),
                 ]
             ),
+            // ── Budget tier 4 (equal-cost space comparisons) ─────────────────
+            new(
+                "frigate",
+                "Frigate",
+                TacticalProfileFamily.SpaceBudget,
+                ["space", "anti-capital"],
+                [new TacticalProfileUnit(NexusUnitType.Frigate, 1)]
+            ),
+            new(
+                "bomber",
+                "Bomber",
+                TacticalProfileFamily.SpaceBudget,
+                ["space", "bombard", "anti-capital"],
+                [new TacticalProfileUnit(NexusUnitType.Bomber, 1)]
+            ),
+            // ── Budget tier 6 ────────────────────────────────────────────────
+            new(
+                "interceptors-3",
+                "3 Interceptors",
+                TacticalProfileFamily.SpaceBudget,
+                ["space", "anti-strike"],
+                [new TacticalProfileUnit(NexusUnitType.Interceptor, 3)]
+            ),
+            new(
+                "fighters-3",
+                "3 Fighters",
+                TacticalProfileFamily.SpaceBudget,
+                ["space", "anti-strike", "anti-capital"],
+                [new TacticalProfileUnit(NexusUnitType.Fighter, 3)]
+            ),
+            new(
+                "frigate-interceptor",
+                "Frigate + Interceptor",
+                TacticalProfileFamily.SpaceBudget,
+                ["space", "anti-capital"],
+                [
+                    new TacticalProfileUnit(NexusUnitType.Frigate, 1),
+                    new TacticalProfileUnit(NexusUnitType.Interceptor, 1),
+                ]
+            ),
+            new(
+                "bomber-interceptor",
+                "Bomber + Interceptor",
+                TacticalProfileFamily.SpaceBudget,
+                ["space", "bombard", "anti-capital"],
+                [
+                    new TacticalProfileUnit(NexusUnitType.Bomber, 1),
+                    new TacticalProfileUnit(NexusUnitType.Interceptor, 1),
+                ]
+            ),
+            // ── Budget tier 8 ────────────────────────────────────────────────
+            new(
+                "interceptors-4",
+                "4 Interceptors",
+                TacticalProfileFamily.SpaceBudget,
+                ["space", "anti-strike"],
+                [new TacticalProfileUnit(NexusUnitType.Interceptor, 4)]
+            ),
+            new(
+                "fighters-4",
+                "4 Fighters",
+                TacticalProfileFamily.SpaceBudget,
+                ["space", "anti-strike", "anti-capital"],
+                [new TacticalProfileUnit(NexusUnitType.Fighter, 4)]
+            ),
+            new(
+                "frigates-2",
+                "2 Frigates",
+                TacticalProfileFamily.SpaceBudget,
+                ["space", "anti-capital"],
+                [new TacticalProfileUnit(NexusUnitType.Frigate, 2)]
+            ),
+            new(
+                "cruiser-interceptor",
+                "Cruiser + Interceptor",
+                TacticalProfileFamily.SpaceBudget,
+                ["space", "anti-capital"],
+                [
+                    new TacticalProfileUnit(NexusUnitType.Cruiser, 1),
+                    new TacticalProfileUnit(NexusUnitType.Interceptor, 1),
+                ]
+            ),
+            new(
+                "cruiser-fighter",
+                "Cruiser + Fighter",
+                TacticalProfileFamily.SpaceBudget,
+                ["space", "anti-capital"],
+                [
+                    new TacticalProfileUnit(NexusUnitType.Cruiser, 1),
+                    new TacticalProfileUnit(NexusUnitType.Fighter, 1),
+                ]
+            ),
+            // ── Mixed space+ground profiles (exercise Orbit-phase bombing) ───
+            // Budget 8
+            new(
+                "cruiser-infantry",
+                "Cruiser + Infantry",
+                TacticalProfileFamily.SpaceBudgetMixed,
+                ["space", "ground", "bombard", "control"],
+                [
+                    new TacticalProfileUnit(NexusUnitType.Cruiser, 1),
+                    new TacticalProfileUnit(NexusUnitType.Infantry, 1),
+                ]
+            ),
+            new(
+                "bomber-2infantry",
+                "Bomber + 2 Infantry",
+                TacticalProfileFamily.SpaceBudgetMixed,
+                ["space", "ground", "bombard", "control"],
+                [
+                    new TacticalProfileUnit(NexusUnitType.Bomber, 1),
+                    new TacticalProfileUnit(NexusUnitType.Infantry, 2),
+                ]
+            ),
+            new(
+                "frigate-armor",
+                "Frigate + Armor",
+                TacticalProfileFamily.SpaceBudgetMixed,
+                ["space", "ground", "control"],
+                [
+                    new TacticalProfileUnit(NexusUnitType.Frigate, 1),
+                    new TacticalProfileUnit(NexusUnitType.Armor, 1),
+                ]
+            ),
+            // Budget 10
+            new(
+                "cruiser-2infantry",
+                "Cruiser + 2 Infantry",
+                TacticalProfileFamily.SpaceBudgetMixed,
+                ["space", "ground", "bombard", "control"],
+                [
+                    new TacticalProfileUnit(NexusUnitType.Cruiser, 1),
+                    new TacticalProfileUnit(NexusUnitType.Infantry, 2),
+                ]
+            ),
+            new(
+                "bomber-frigate-infantry",
+                "Bomber + Frigate + Infantry",
+                TacticalProfileFamily.SpaceBudgetMixed,
+                ["space", "ground", "bombard", "control"],
+                [
+                    new TacticalProfileUnit(NexusUnitType.Bomber, 1),
+                    new TacticalProfileUnit(NexusUnitType.Frigate, 1),
+                    new TacticalProfileUnit(NexusUnitType.Infantry, 1),
+                ]
+            ),
+            new(
+                "carrier-infantry",
+                "Carrier + Infantry",
+                TacticalProfileFamily.SpaceBudgetMixed,
+                ["space", "ground", "control"],
+                [
+                    new TacticalProfileUnit(NexusUnitType.Carrier, 1),
+                    new TacticalProfileUnit(NexusUnitType.Infantry, 1),
+                ]
+            ),
         ];
 
     public static IReadOnlyList<TacticalScenario> CreateScenarios(
@@ -141,6 +297,37 @@ public static class TacticalProfileLibrary
             .Where(profile => profile.Family == TacticalProfileFamily.InvasionControl)
             .Select(profile => profile.Id)
             .ToArray();
+
+        // Equal-budget tiers — profiles at exactly the same cost competing directly.
+        // Includes SpaceDuel profiles of the matching cost alongside the dedicated SpaceBudget profiles.
+        static string[] BudgetTier(
+            IReadOnlyList<TacticalProfile> all,
+            int cost,
+            params string[] additionalIds
+        )
+        {
+            var budgetIds = all.Where(p =>
+                    p.Family == TacticalProfileFamily.SpaceBudget && p.TotalCost == cost
+                )
+                .Select(p => p.Id);
+            return additionalIds.Concat(budgetIds).ToArray();
+        }
+
+        var budget4Ids = BudgetTier(profiles, 4, "interceptors-2", "fighters-2");
+        var budget6Ids = BudgetTier(profiles, 6, "fighter-bomber", "frigate-fighter", "cruiser");
+        var budget8Ids = BudgetTier(profiles, 8, "bombers-2");
+
+        // Mixed scenarios: equal-budget compositions that include both space and ground units,
+        // so Orbit-phase bombing (Cruiser, Bomber vs Planetary) is exercised.
+        static string[] MixedBudgetTier(IReadOnlyList<TacticalProfile> all, int cost) =>
+            all.Where(p =>
+                    p.Family == TacticalProfileFamily.SpaceBudgetMixed && p.TotalCost == cost
+                )
+                .Select(p => p.Id)
+                .ToArray();
+
+        var mixed8Ids = MixedBudgetTier(profiles, 8);
+        var mixed10Ids = MixedBudgetTier(profiles, 10);
 
         return
         [
@@ -161,6 +348,48 @@ public static class TacticalProfileLibrary
                 "Invasion / Control",
                 TacticalControlOwner.Defender,
                 invasionProfileIds
+            ),
+            .. CreateRoundScenarios(
+                "budget-4",
+                "Budget 4 · Space",
+                TacticalControlOwner.None,
+                budget4Ids
+            ),
+            .. CreateRoundScenarios(
+                "budget-6",
+                "Budget 6 · Space",
+                TacticalControlOwner.None,
+                budget6Ids
+            ),
+            .. CreateRoundScenarios(
+                "budget-8",
+                "Budget 8 · Space",
+                TacticalControlOwner.None,
+                budget8Ids
+            ),
+            .. CreateRoundScenarios(
+                "mixed-8-neutral",
+                "Budget 8 · Mixed",
+                TacticalControlOwner.None,
+                mixed8Ids
+            ),
+            .. CreateRoundScenarios(
+                "mixed-8-defender",
+                "Budget 8 · Mixed",
+                TacticalControlOwner.Defender,
+                mixed8Ids
+            ),
+            .. CreateRoundScenarios(
+                "mixed-10-neutral",
+                "Budget 10 · Mixed",
+                TacticalControlOwner.None,
+                mixed10Ids
+            ),
+            .. CreateRoundScenarios(
+                "mixed-10-defender",
+                "Budget 10 · Mixed",
+                TacticalControlOwner.Defender,
+                mixed10Ids
             ),
         ];
     }

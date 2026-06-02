@@ -1,0 +1,18 @@
+{
+  "compaction": {
+    "enabled": true,
+    "keepRecentTokens": 15000,
+    "reserveTokens": 16384
+  },
+  "skills": [
+    "../.github/skills/spx-aspire-orleans-devloop",
+    "../.github/skills/spx-change-routing",
+    "../.github/skills/spx-outcome-handler-patterns",
+    "../.github/skills/spx-test-placement-validation",
+    "skills/spx-orleans-conventions",
+    "skills/spx-type-placement",
+    "skills/spx-component-testing",
+    "skills/spx-blazor-ui-patterns",
+    "skills/spx-css-tailwind"
+  ]
+}

@@ -101,19 +101,19 @@ public static class NexusMap
                     new NexusUnitStack
                     {
                         UnitType = NexusUnitType.Carrier,
-                        RemainingHull = NexusUnitType.Carrier.Hull(),
+                        RemainingHull = NexusUnitType.Carrier.Profile().Hull,
                         Count = 1,
                     },
                     new NexusUnitStack
                     {
                         UnitType = NexusUnitType.Infantry,
-                        RemainingHull = NexusUnitType.Infantry.Hull(),
+                        RemainingHull = NexusUnitType.Infantry.Profile().Hull,
                         Count = 4,
                     },
                     new NexusUnitStack
                     {
                         UnitType = NexusUnitType.Fighter,
-                        RemainingHull = NexusUnitType.Fighter.Hull(),
+                        RemainingHull = NexusUnitType.Fighter.Profile().Hull,
                         Count = 2,
                     },
                 ];

@@ -31,7 +31,8 @@ public sealed record NexusCombatAttackRoll(
     [property: Id(5)] bool IsHit,
     [property: Id(6)] int AttackerRemainingHull = 0,
     [property: Id(7)] Guid? TargetPlayerId = null,
-    [property: Id(8)] int TargetRemainingHull = 0
+    [property: Id(8)] int TargetRemainingHull = 0,
+    [property: Id(9)] bool WasShielded = false
 );
 
 // ── Movement ──────────────────────────────────────────────────────────────────

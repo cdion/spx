@@ -1,10 +1,27 @@
+# Build artifacts
 bin/
 obj/
 .tools/
 coverage/
 artifacts/
+
+# Environment
 .env.prod
 
+# IDE
 .vs/
 .idea/
 .vscode/*.log
+
+# AI tools
+.aider*
+
+# Deployment config (not relevant to source)
+deploy/Caddyfile
+deploy/Containerfile
+deploy/quadlet/
+deploy/initdb/
+deploy/prod.env.example
+
+# CI
+.github/

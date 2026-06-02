@@ -81,7 +81,6 @@ public sealed class TacticalSimulator
     )
     {
         var attackerWins = 0;
-        var defenderWins = 0;
         var contested = 0;
         var mutualDestruction = 0;
         var attackerControl = 0;
@@ -104,7 +103,6 @@ public sealed class TacticalSimulator
                 totalTrials++;
 
                 attackerWins += outcome.AttackerWon ? 1 : 0;
-                defenderWins += outcome.DefenderWon ? 1 : 0;
                 contested += outcome.Contested ? 1 : 0;
                 mutualDestruction += outcome.MutualDestruction ? 1 : 0;
                 attackerControl += outcome.AttackerControlled ? 1 : 0;
@@ -134,6 +132,15 @@ public sealed class TacticalSimulator
             .First()
             .Key;
 
+        // Damage efficiency: expected cost of enemy units destroyed per own credit spent.
+        // Destroyed value = starting cost − expected survivor cost over all trials.
+        var attackerDamageValuePerTrial = defender.TotalCost - defenderSurvivorCost / totalTrials;
+        var defenderDamageValuePerTrial = attacker.TotalCost - attackerSurvivorCost / totalTrials;
+        var attackerDamageEfficiency =
+            attacker.TotalCost > 0 ? attackerDamageValuePerTrial / attacker.TotalCost : 0;
+        var defenderDamageEfficiency =
+            defender.TotalCost > 0 ? defenderDamageValuePerTrial / defender.TotalCost : 0;
+
         var matchup = new TacticalMatchupSummary(
             scenario.Id,
             attacker.Id,
@@ -141,13 +148,14 @@ public sealed class TacticalSimulator
             totalTrials,
             (double)firstContactActivity / totalTrials,
             (double)attackerWins / totalTrials,
-            (double)defenderWins / totalTrials,
             (double)contested / totalTrials,
             (double)mutualDestruction / totalTrials,
             (double)attackerControl / totalTrials,
             (double)defenderControl / totalTrials,
             attackerSurvivorCost / totalTrials,
             defenderSurvivorCost / totalTrials,
+            attackerDamageEfficiency,
+            defenderDamageEfficiency,
             dominantKillPhase.ToString()
         );
 

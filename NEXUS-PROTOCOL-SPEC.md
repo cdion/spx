@@ -82,8 +82,8 @@ Three categories of units: **Capital**, **Strike**, and **Planetary**.
 
 | Unit | Category | Cost | Hull | Silhouette | Base hit | Combat role |
 |---|---|---|---|---|---|---|
-| **Frigate** | Capital | 4 | 2 | 2 | 4+ | Anti-ship; weak against strike craft |
-| **Destroyer** | Capital | 5 | 2 | 2 | 4+ | Anti-strike and anti-ship; participates in Screen and Engage |
+| **Frigate** | Capital | 4 | 1 | 1 | 4+ | Anti-ship; weak against strike craft; has **shield** (absorbs first hit per turn) |
+| **Destroyer** | Capital | 5 | 2 | 2 | 4+ | Anti-strike and anti-ship; participates in Intercept and Line |
 | **Cruiser** | Capital | 6 | 2 | 3 | 3+ | Heavy anti-capital with bombard support; needs escort against strike craft; capacity 2 (any mix of strike craft and planetary units) |
 | **Carrier** | Capital | 8 | 4 | 4 | 6+ | Transport; capacity 8 (any mix of strike craft and planetary units) |
 
@@ -91,16 +91,16 @@ Three categories of units: **Capital**, **Strike**, and **Planetary**.
 
 | Unit | Category | Cost | Hull | Silhouette | Base hit | Combat role |
 |---|---|---|---|---|---|---|
-| **Interceptor** | Strike | 2 | 1 | 1 | 4+ | Counters fighters and bombers across Screen and Engage; cannot attack ships |
+| **Interceptor** | Strike | 2 | 1 | 1 | 4+ | Counters fighters and bombers across Intercept and Line; cannot attack ships |
 | **Fighter** | Strike | 2 | 1 | 1 | 4+ | General-purpose; engages all enemy strike craft |
-| **Bomber** | Strike | 4 | 1 | 2 | 5+ | Attacks capital ships in Engage; bombards planetary units in Bombard |
+| **Bomber** | Strike | 4 | 1 | 2 | 5+ | Attacks capital ships in Line; bombards planetary units in Orbit |
 
 ### Planetary
 
 | Unit | Category | Cost | Hull | Silhouette | Base hit | Combat role |
 |---|---|---|---|---|---|---|
 | **Infantry** | Planetary | 2 | 1 | 1 | 4+ | General ground combat |
-| **Armor** | Planetary | 4 | 2 | 2 | 3+ | Armored assault; advantage over infantry |
+| **Armor** | Planetary | 4 | 1 | 2 | 3+ | Armored ground assault; advantage over infantry; fires at reduced accuracy in Orbit (5+); has **shield** (absorbs first hit per turn) |
 
 Only planetary units may begin **Nexus Gate** construction.
 
@@ -116,7 +116,7 @@ Each round follows this sequence:
 2. **Resolve phase:**
    1. Build cost deducted · Nexus Gate payment deducted
   2. Moves — all units move simultaneously. Units whose paths cross in opposite directions (A moves to B's system while B moves to A's system) simply swap — no combat at either system. If units arrive at a system occupied by enemy units, they stop and combat resolves in step 3. Planetary units arriving at an opponent-controlled or uncontrolled system with no enemy units present can establish control immediately.
-  3. Combat — all contested systems resolve in spiral order (Nexus → Ring 1 → Ring 2, homes last); each system runs Screen, Engage, commitment, Bombard, and Assault before the next system resolves
+  3. Combat — all contested systems resolve in spiral order (Nexus → Ring 1 → Ring 2, homes last); each system runs Intercept, Line, commitment, Orbit, and Surface before the next system resolves
    4. Income — all income calculated and applied simultaneously; a player earns income from every system they control
    5. Newly built units appear at home system
    6. Supply check — if a player's Capital count exceeds their supply pool, excess Capitals are automatically disbanded in spiral order (see Supply section)
@@ -151,7 +151,7 @@ A player **controls** a system when they have at least one planetary unit in it 
 
 **Retaining control:** A player retains control of a system after voluntarily moving their planetary units away. The system stays controlled until enemy units arrive and contest it.
 
-**Contested system:** A system with units from both players present is contested — neither player controls it and it produces no income for either player. After Engage, all surviving planetary units in that system commit to the fight. Committed planetary units stay locked in the system while it remains contested, can be bombarded, and participate in Assault. Once the system is no longer contested, surviving committed planetary units return to the fleet. If all planetary units on both sides are eliminated in combat, the system becomes uncontrolled.
+**Contested system:** A system with units from both players present is contested — neither player controls it and it produces no income for either player. After Line, all surviving planetary units in that system commit to the fight. Committed planetary units stay locked in the system while it remains contested, can be orbitally bombarded, and participate in Surface. Once the system is no longer contested, surviving committed planetary units return to the fleet. If all planetary units on both sides are eliminated in combat, the system becomes uncontrolled.
 
 **Capital ships and strike craft** cannot establish control on their own. They can, however, contest an existing controller while they remain in the system.
 
@@ -165,15 +165,19 @@ A player **controls** a system when they have at least one planetary unit in it 
 
 ## Combat
 
-When units from both players occupy the same system after moves resolve, combat resolves in four sequential **exchange phases** with a planetary commitment step after Engage. If multiple systems are contested, they resolve in **spiral order** (Nexus first, then Ring 1 clockwise from NE, then Ring 2 clockwise from NE, with home systems last). Each system's combat completes fully before the next contested system begins. Each phase is an attrition exchange — both sides roll simultaneously, casualties are applied after all dice resolve, and survivors carry forward. Neither side retreats; both may remain on a contested system after all phases complete.
+When units from both players occupy the same system after moves resolve, combat resolves in four sequential **exchange phases** with a planetary commitment step after Line. If multiple systems are contested, they resolve in **spiral order** (Nexus first, then Ring 1 clockwise from NE, then Ring 2 clockwise from NE, with home systems last). Each system's combat completes fully before the next contested system begins. Each phase is an attrition exchange — both sides roll simultaneously, casualties are applied after all dice resolve, and survivors carry forward. Neither side retreats; both may remain on a contested system after all phases complete.
 
 ### Dice System
 
-Each unit rolls 1d6 in each phase it participates in. A result at or above the unit's **effective hit threshold** scores 1 hit on an enemy unit. Each hit randomly targets one enemy unit; the probability of a unit being selected is proportional to its **silhouette** (targeting weight). A unit is destroyed when it has absorbed hits equal to its **hull** (HP). Silhouette and hull are currently equal for all units and will diverge in a future balance pass. Units fight at full strength until destroyed. A threshold below 2 always hits; a threshold above 6 never hits.
+Each unit rolls 1d6 in each phase it participates in. A result at or above the unit's **effective hit threshold** scores 1 hit on an enemy unit. Each hit randomly targets one enemy unit; the probability of a unit being selected is proportional to its **silhouette** (targeting weight). A unit is destroyed when it has absorbed hits equal to its **hull** (HP). Units fight at full strength until destroyed. A threshold below 2 always hits; a threshold above 6 never hits.
+
+### Shields
+
+Some units have a **shield** that may absorb incoming hits. When a shielded unit would take a hit, roll 1d6: on a **4+** the shield absorbs the hit — the hit is negated and the shield is consumed for the rest of that turn. On a **1–3** the hit passes through to hull and the shield remains active (it may still attempt to absorb a later hit this turn). The shield regenerates at the end of each turn's combat (after Surface resolves). A shield-absorbed hit is recorded in the combat log as "absorbed" rather than "hit". The Frigate and Armor are currently the only shielded units.
 
 ### Full Interaction Matrix
 
-**P1** = Screen · **P2** = Engage · **P3** = Bombard · **P4** = Assault · **—** = cannot target this category
+**P1** = Intercept · **P2** = Line · **P3** = Orbit · **P4** = Surface · **—** = cannot target this category
 
 | Attacker | vs Strike | vs Capital | vs Planetary |
 |---|---|---|---|
@@ -185,48 +189,51 @@ Each unit rolls 1d6 in each phase it participates in. A result at or above the u
 | **Cruiser** | 6+ (P2) | 3+ (P2) | 4+ (P3) |
 | **Carrier** | 6+ (P2) | 6+ (P2) | — |
 | **Infantry** | — | — | 4+ vs inf · 5+ vs armor (P4) |
-| **Armor** | — | — | 3+ vs inf · 4+ vs armor (P4) |
+| **Armor** | — | — | 5+ (P3) · 3+ vs inf · 4+ vs armor (P4) |
 
 † Fighter vs Ship (P2): 6+ — fighters can technically harass ships but are nearly ineffective against them.  
-§ Infantry: 4+ vs infantry, 5+ vs armor. Armor: 3+ vs infantry, 4+ vs armor.
+§ Infantry: 4+ vs infantry, 5+ vs armor. Armor in Orbit: 5+ vs both. Armor in Surface: 3+ vs infantry, 4+ vs armor.
+
 
 ### Phase Participation
 
 **A** = attacks (rolls dice) · **T** = targetable (can receive hits) · **—** = not present this phase
 
-| Unit | P1 Screen | P2 Engage | P3 Bombard | P4 Assault |
+| Unit | P1 Intercept | P2 Line | P3 Orbit | P4 Surface |
 |---|---|---|---|---|
 | **Interceptor** | A · T | A · T | — | — |
 | **Fighter** | A · T | A · T | — | — |
 | **Bomber** | A · T | A · T | A | — |
 | **Destroyer** | A only (not targetable) | A · T | — | — |
-| **Frigate** | — | A · T | — | — |
+| **Frigate** | — | A · T ★ | — | — |
 | **Cruiser** | — | A · T | A | — |
 | **Carrier** | — | A · T | — | — |
 | **Infantry** | — | — | T only | A · T |
-| **Armor** | — | — | T only | A · T |
+| **Armor** | — | — | A · T ★ | A · T ★ |
 
 Silhouette-weighted random targeting applies only within the eligible target pool for the attacking unit's current phase. A unit cannot be targeted in a phase where it is marked **—**.
 
-### Phase 1 — Screen
+★ Frigate and Armor have a shield: absorbs the first hit per turn before taking hull damage.
 
-Interceptors, fighters, and bombers attack other strike craft. Destroyers attack strike craft but **cannot be targeted** in Screen. Capital ships (Frigate, Cruiser, Carrier) are absent. Skipped if neither side has any eligible units.
+### Phase 1 — Intercept
 
-### Phase 2 — Engage
+Interceptors, fighters, and bombers attack other strike craft. Destroyers attack strike craft but **cannot be targeted** in Intercept. Capital ships (Frigate, Cruiser, Carrier) are absent. Skipped if neither side has any eligible units.
 
-All capital ships participate. Surviving strike craft remain present and are targetable, and fighters, interceptors, bombers, and destroyers can attack strike craft. Interceptors still cannot attack capital ships in Engage. Skipped if neither side has any capital ships.
+### Phase 2 — Line
 
-### Commitment Step — After Engage
+All capital ships participate. Surviving strike craft remain present and are targetable, and fighters, interceptors, bombers, and destroyers can attack strike craft. Interceptors still cannot attack capital ships in Line. Skipped if neither side has any capital ships.
 
-After Engage resolves, all surviving planetary units in that contested system commit to the fight. Committed planetary units remain visible in the system but are locked and cannot move while the system stays contested.
+### Commitment Step — After Line
 
-### Phase 3 — Bombard
+After Line resolves, all surviving planetary units in that contested system commit to the fight. Committed planetary units remain visible in the system but are locked and cannot move while the system stays contested.
 
-Surviving bombers (4+) and cruisers (6+) each roll against enemy committed planetary units. Planetary units cannot return fire. Hits applied before Assault. Skipped if the attacker has no surviving bombers or cruisers, or the defender has no committed planetary units.
+### Phase 3 — Orbit
 
-### Phase 4 — Assault
+Surviving bombers (4+) and cruisers (6+) each roll against enemy committed planetary units. Armor rolls at reduced accuracy (5+) against enemy committed planetary units. Planetary units cannot return fire in Orbit. Hits applied before Surface. Skipped if the attacker has no surviving bombers, cruisers, or armor, or the defender has no committed planetary units.
 
-Participants: committed infantry and committed armor. Capital ships are not present and cannot be targeted in Assault. Skipped if neither side has eligible committed ground units.
+### Phase 4 — Surface
+
+Participants: committed infantry and committed armor. Capital ships are not present and cannot be targeted in Surface. Skipped if neither side has eligible committed ground units.
 
 ### System Outcome
 
@@ -277,7 +284,7 @@ The resolve phase emits a typed sequence of events. The front end consumes these
 | Event | Fired when | Key data |
 |---|---|---|
 | `NexusCombatBeganEvent` | Combat is about to resolve at a system | `System`, `Player1Id`, `Player2Id` |
-| `NexusPhaseResultEvent` | One combat phase (Screen/Engage/Bombard/Assault) completes | `System`, `Phase` (1–4), `Losses` (per player/type/count), `AttackRolls` (individual dice) |
+| `NexusPhaseResultEvent` | One combat phase (Intercept/Line/Orbit/Surface) completes | `System`, `Phase` (1–4), `Losses` (per player/type/count), `AttackRolls` (individual dice) |
 | `NexusSystemClearedEvent` | All units of one player are eliminated from a system | `System`, `VictorId` |
 
 Only phases where at least one side has eligible units produce a `NexusPhaseResultEvent`. `AttackRolls` carries every individual die roll (attacker type, target type, roll, threshold, hit/miss) to support detailed log rendering.
@@ -335,10 +342,10 @@ One message is appended to the game log for each significant event during resolu
 | Event | Message |
 |---|---|
 | Combat begins | `Combat at [System] — [A]: [summary] vs [B]: [summary]` |
-| Phase 1 result | `Screen at [System] — [A] loses [N] strike craft, [B] loses [N] strike craft` |
-| Phase 2 result | `Engage at [System] — [A] loses [N] ship(s), [B] loses [N] ship(s)` |
-| Bombard | `[A]'s bomber(s) strike [System] — [B] loses [N] ground unit(s) to bombard` |
-| Phase 4 result | `Assault at [System] — [A] loses [N] ground unit(s), [B] loses [N] ground unit(s)` |
+| Phase 1 result | `Intercept at [System] — [A] loses [N] strike craft, [B] loses [N] strike craft` |
+| Phase 2 result | `Line at [System] — [A] loses [N] ship(s), [B] loses [N] ship(s)` |
+| Orbit | `[A]'s bomber(s) strike [System] — [B] loses [N] ground unit(s) to orbital bombardment` |
+| Phase 4 result | `Surface at [System] — [A] loses [N] ground unit(s), [B] loses [N] ground unit(s)` |
 | System cleared (one side eliminated) | `[A] holds [System] — [B] has no surviving units` |
 | System contested (both survive) | `[System] remains contested — both players have surviving units` |
 | System becomes uncontrolled | `[System] is now uncontrolled` |
