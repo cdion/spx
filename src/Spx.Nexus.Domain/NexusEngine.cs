@@ -155,7 +155,7 @@ public static class NexusEngine
         var committed =
             new Dictionary<
                 HexCoord,
-                Dictionary<(NexusUnitType UnitType, int RemainingHull), int>
+                Dictionary<(NexusUnitType UnitType, int RemainingHits), int>
             >();
 
         foreach (var order in orders)
@@ -202,17 +202,17 @@ public static class NexusEngine
                         $"Unit count for {stack.UnitType} must be positive."
                     );
 
-                if (stack.RemainingHull <= 0 || stack.RemainingHull > stack.UnitType.Profile().Hull)
+                if (stack.RemainingHits <= 0 || stack.RemainingHits > stack.UnitType.Profile().Hits)
                     return new NexusTurnOrdersRejected(
-                        $"Remaining hull for {stack.UnitType} must be between 1 and {stack.UnitType.Profile().Hull}."
+                        $"Remaining hits for {stack.UnitType} must be between 1 and {stack.UnitType.Profile().Hits}."
                     );
 
-                var key = (stack.UnitType, stack.RemainingHull);
+                var key = (stack.UnitType, stack.RemainingHits);
                 var alreadyCommitted = fromCommitted.GetValueOrDefault(key);
                 var available = system
                     .GetPlayerStacks(playerId)
                     .Where(s =>
-                        s.UnitType == stack.UnitType && s.RemainingHull == stack.RemainingHull
+                        s.UnitType == stack.UnitType && s.RemainingHits == stack.RemainingHits
                     )
                     .Sum(s => s.Count);
 
@@ -256,7 +256,7 @@ public static class NexusEngine
         system.GetPlayerUnits(playerId).Sum(kv => kv.Key.CarryCapacity() * kv.Value);
 
     private static int GetCommittedCarryCapacity(
-        Dictionary<(NexusUnitType UnitType, int RemainingHull), int> committedUnits
+        Dictionary<(NexusUnitType UnitType, int RemainingHits), int> committedUnits
     ) => committedUnits.Sum(kv => kv.Key.UnitType.CarryCapacity() * kv.Value);
 
     private static int GetRequestedCarryCapacity(
@@ -264,9 +264,9 @@ public static class NexusEngine
     ) => requestedStacks.Sum(stack => stack.UnitType.CarryCapacity() * stack.Count);
 
     private static string FormatStack(NexusUnitStackGroup stack) =>
-        stack.RemainingHull == stack.UnitType.Profile().Hull
+        stack.RemainingHits == stack.UnitType.Profile().Hits
             ? stack.UnitType.ToString()
-            : $"{stack.UnitType} ({stack.RemainingHull}/{stack.UnitType.Profile().Hull} hull)";
+            : $"{stack.UnitType} ({stack.RemainingHits}/{stack.UnitType.Profile().Hits} hits)";
 
     private static string FormatSystem(NexusState state, Guid playerId, HexCoord coord)
     {
@@ -426,12 +426,12 @@ public static class NexusEngine
 
                 // Collect Capital stacks for this player, cheapest type first.
                 // All Capital costs are unique (4/5/6/8) so ordering by cost is deterministic.
-                // Within a type, lowest remaining hull is taken first.
+                // Within a type, lowest remaining hits is taken first.
                 var capitalStacks = system
                     .GetPlayerStacks(player.PlayerId)
                     .Where(s => s.UnitType.IsCapital())
                     .OrderBy(s => s.UnitType.Cost())
-                    .ThenBy(s => s.RemainingHull)
+                    .ThenBy(s => s.RemainingHits)
                     .ToList();
 
                 if (capitalStacks.Count == 0)
@@ -582,7 +582,7 @@ public static class NexusEngine
                         player.PlayerId,
                         movedStack.UnitType,
                         movedStack.Count,
-                        movedStack.RemainingHull
+                        movedStack.RemainingHits
                     );
 
                 events.Add(
@@ -652,45 +652,28 @@ public static class NexusEngine
         var hadPlanetary2 = units2.Any(u => u.Type.IsPlanetary());
         var groundCombatOccurred = hadPlanetary1 && hadPlanetary2;
 
-        ResolveCombatPhase(
+        // First strike step — units with FirstStrike tag fire first
+        ResolveOneStep(
             system.Coord,
-            CombatPhase.Intercept,
             units1,
             units2,
             player1Id,
             player2Id,
             events,
-            rng
+            rng,
+            isFirstStrike: true
         );
-        ResolveCombatPhase(
+
+        // Normal step — surviving units without FirstStrike fire
+        ResolveOneStep(
             system.Coord,
-            CombatPhase.Line,
             units1,
             units2,
             player1Id,
             player2Id,
             events,
-            rng
-        );
-        ResolveCombatPhase(
-            system.Coord,
-            CombatPhase.Orbit,
-            units1,
-            units2,
-            player1Id,
-            player2Id,
-            events,
-            rng
-        );
-        ResolveCombatPhase(
-            system.Coord,
-            CombatPhase.Surface,
-            units1,
-            units2,
-            player1Id,
-            player2Id,
-            events,
-            rng
+            rng,
+            isFirstStrike: false
         );
 
         var surviving1 = CollapseAlive(units1);
@@ -718,56 +701,44 @@ public static class NexusEngine
         UpdateSystemControl(system, player1Id, player2Id, groundCombatOccurred, events);
     }
 
-    private static void ResolveCombatPhase(
+    private static void ResolveOneStep(
         HexCoord systemCoord,
-        CombatPhase phase,
-        List<CombatUnit> attackers1,
-        List<CombatUnit> targets1,
-        List<CombatUnit> attackers2,
-        List<CombatUnit> targets2,
+        List<CombatUnit> units1,
+        List<CombatUnit> units2,
         Guid player1Id,
         Guid player2Id,
         List<NexusResolveEvent> events,
-        Random rng
+        Random rng,
+        bool isFirstStrike
     )
     {
-        var canAttack1 = attackers1.Any(u =>
-            !u.IsDestroyed && NexusCombatSpec.CanAttack(u.Type, phase)
-        );
-        var canAttack2 = attackers2.Any(u =>
-            !u.IsDestroyed && NexusCombatSpec.CanAttack(u.Type, phase)
-        );
-        if (!canAttack1 && !canAttack2)
+        // Filter to attackers eligible for this step
+        var eligible1 = units1
+            .Where(u =>
+                !u.IsDestroyed
+                && u.Type.Profile().Tags.HasFlag(NexusUnitTag.FirstStrike) == isFirstStrike
+            )
+            .ToList();
+        var eligible2 = units2
+            .Where(u =>
+                !u.IsDestroyed
+                && u.Type.Profile().Tags.HasFlag(NexusUnitTag.FirstStrike) == isFirstStrike
+            )
+            .ToList();
+
+        if (eligible1.Count == 0 && eligible2.Count == 0)
             return;
 
         var pendingHits = new List<(CombatUnit Target, Guid TargetPlayerId, bool WasShielded)>();
         var attackRolls = new List<NexusCombatAttackRoll>();
-        GatherAttacks(
-            attackers1,
-            targets1,
-            player1Id,
-            player2Id,
-            phase,
-            rng,
-            pendingHits,
-            attackRolls
-        );
-        GatherAttacks(
-            attackers2,
-            targets2,
-            player2Id,
-            player1Id,
-            phase,
-            rng,
-            pendingHits,
-            attackRolls
-        );
+        GatherAttacks(eligible1, units2, player1Id, player2Id, rng, pendingHits, attackRolls);
+        GatherAttacks(eligible2, units1, player2Id, player1Id, rng, pendingHits, attackRolls);
 
         var losses = new Dictionary<(Guid, NexusUnitType), int>();
         foreach (var (target, targetPlayerId, wasShielded) in pendingHits)
         {
             if (!wasShielded)
-                target.RemainingHull--;
+                target.RemainingHits--;
             if (target.IsDestroyed)
             {
                 var key = (targetPlayerId, target.Type);
@@ -775,47 +746,37 @@ public static class NexusEngine
             }
         }
 
-        events.Add(
-            new NexusPhaseResultEvent(
-                systemCoord,
-                phase,
-                losses
-                    .Select(kv => new NexusCombatLoss(kv.Key.Item1, kv.Key.Item2, kv.Value))
-                    .ToImmutableArray(),
-                attackRolls.ToImmutableArray()
-            )
-        );
+        if (isFirstStrike)
+        {
+            events.Add(
+                new NexusFirstStrikeEvent(
+                    systemCoord,
+                    losses
+                        .Select(kv => new NexusCombatLoss(kv.Key.Item1, kv.Key.Item2, kv.Value))
+                        .ToImmutableArray(),
+                    attackRolls.ToImmutableArray()
+                )
+            );
+        }
+        else
+        {
+            events.Add(
+                new NexusCombatResultEvent(
+                    systemCoord,
+                    losses
+                        .Select(kv => new NexusCombatLoss(kv.Key.Item1, kv.Key.Item2, kv.Value))
+                        .ToImmutableArray(),
+                    attackRolls.ToImmutableArray()
+                )
+            );
+        }
     }
-
-    private static void ResolveCombatPhase(
-        HexCoord systemCoord,
-        CombatPhase phase,
-        List<CombatUnit> units1,
-        List<CombatUnit> units2,
-        Guid player1Id,
-        Guid player2Id,
-        List<NexusResolveEvent> events,
-        Random rng
-    ) =>
-        ResolveCombatPhase(
-            systemCoord,
-            phase,
-            units1,
-            units2,
-            units2,
-            units1,
-            player1Id,
-            player2Id,
-            events,
-            rng
-        );
 
     private static void GatherAttacks(
         List<CombatUnit> attackers,
         List<CombatUnit> targets,
         Guid attackerPlayerId,
         Guid targetPlayerId,
-        CombatPhase phase,
         Random rng,
         List<(CombatUnit Target, Guid TargetPlayerId, bool WasShielded)> pendingHits,
         List<NexusCombatAttackRoll> attackRolls
@@ -823,34 +784,34 @@ public static class NexusEngine
     {
         foreach (var attacker in attackers)
         {
-            if (attacker.IsDestroyed || !NexusCombatSpec.CanAttack(attacker.Type, phase))
+            if (attacker.IsDestroyed)
                 continue;
 
             var eligible = targets
                 .Where(t =>
                     !t.IsDestroyed
-                    && NexusCombatSpec.IsTargetable(t.Type, phase)
-                    && NexusCombatSpec.GetHitThreshold(attacker.Type, phase, t.Type) is not null
+                    && NexusCombatSpec.GetHitThreshold(attacker.Type, t.Type) is not null
                 )
                 .ToList();
 
             if (eligible.Count == 0)
                 continue;
 
-            for (
-                var attackIndex = 0;
-                attackIndex < attacker.Type.Profile().AttacksPerRound;
-                attackIndex++
-            )
+            var profile = attacker.Type.Profile();
+            var tags = profile.Tags;
+
+            // Local function to perform one attack roll against a given pool of eligible targets
+            void PerformAttack(List<CombatUnit> pool)
             {
-                var target = PickTargetByWeight(eligible, rng);
-                var threshold = NexusCombatSpec
-                    .GetHitThreshold(attacker.Type, phase, target.Type)!
-                    .Value;
+                if (pool.Count == 0)
+                    return;
+
+                var target = PickTargetByWeight(pool, rng);
+                var threshold = NexusCombatSpec.GetHitThreshold(attacker.Type, target.Type)!.Value;
                 var roll = rng.Next(1, 7); // 1–6 inclusive
                 var isHit = roll >= threshold;
                 var wasShielded = false;
-                if (isHit && target.ShieldActive)
+                if (isHit && target.ShieldActive && !tags.HasFlag(NexusUnitTag.IgnoreShield))
                 {
                     // Shield absorbs on 4+; if it fails the hit passes through and the shield is NOT consumed.
                     var shieldRoll = rng.Next(1, 7);
@@ -869,9 +830,9 @@ public static class NexusEngine
                         roll,
                         threshold,
                         isHit,
-                        attacker.RemainingHull,
+                        attacker.RemainingHits,
                         targetPlayerId,
-                        target.RemainingHull,
+                        target.RemainingHits,
                         wasShielded
                     )
                 );
@@ -879,6 +840,18 @@ public static class NexusEngine
                 if (isHit)
                     pendingHits.Add((target, targetPlayerId, wasShielded));
             }
+
+            // Normal attacks
+            for (var i = 0; i < profile.Attacks; i++)
+                PerformAttack(eligible);
+
+            // Free extra attacks restricted to a specific category
+            if (tags.HasFlag(NexusUnitTag.FreeAttackVsStrike))
+                PerformAttack(eligible.Where(t => t.Type.IsStrike()).ToList());
+            if (tags.HasFlag(NexusUnitTag.FreeAttackVsCapital))
+                PerformAttack(eligible.Where(t => t.Type.IsCapital()).ToList());
+            if (tags.HasFlag(NexusUnitTag.FreeAttackVsPlanetary))
+                PerformAttack(eligible.Where(t => t.Type.IsPlanetary()).ToList());
         }
     }
 
@@ -941,9 +914,9 @@ public static class NexusEngine
     private sealed class CombatUnit(NexusUnitType type)
     {
         public NexusUnitType Type { get; } = type;
-        public int RemainingHull { get; set; } = type.Profile().Hull;
-        public bool ShieldActive { get; set; } = type.Profile().HasShield;
-        public bool IsDestroyed => RemainingHull <= 0;
+        public int RemainingHits { get; set; } = type.Profile().Hits;
+        public bool ShieldActive { get; set; } = type.Profile().Tags.HasFlag(NexusUnitTag.Shield);
+        public bool IsDestroyed => RemainingHits <= 0;
     }
 
     private static List<CombatUnit> ExpandUnits(IReadOnlyList<NexusUnitStack> stacks)
@@ -951,13 +924,7 @@ public static class NexusEngine
         var result = new List<CombatUnit>();
         foreach (var stack in stacks)
             for (var i = 0; i < stack.Count; i++)
-                result.Add(
-                    new CombatUnit(stack.UnitType)
-                    {
-                        RemainingHull = stack.RemainingHull,
-                        ShieldActive = stack.ShieldActive,
-                    }
-                );
+                result.Add(new CombatUnit(stack.UnitType) { RemainingHits = stack.RemainingHits });
         return result;
     }
 
@@ -966,30 +933,49 @@ public static class NexusEngine
         var grouped = new Dictionary<(NexusUnitType, int), int>();
         foreach (var unit in units.Where(u => !u.IsDestroyed))
         {
-            var key = (unit.Type, unit.RemainingHull);
+            var key = (unit.Type, unit.RemainingHits);
             grouped[key] = grouped.GetValueOrDefault(key) + 1;
         }
         return grouped
             .Select(kv => new NexusUnitStack
             {
                 UnitType = kv.Key.Item1,
-                RemainingHull = kv.Key.Item2,
+                RemainingHits = kv.Key.Item2,
                 Count = kv.Value,
-                ShieldActive = kv.Key.Item1.Profile().HasShield,
             })
             .ToList();
     }
 
     private static CombatUnit PickTargetByWeight(List<CombatUnit> targets, Random rng)
     {
-        var totalWeight = targets.Sum(t => t.Type.Profile().Silhouette);
+        // Check if the defender (targets side) has any Escort units
+        var defenderHasEscort = targets.Any(t =>
+            t.Type.Profile().Tags.HasFlag(NexusUnitTag.Escort)
+        );
+
+        var weights = new int[targets.Count];
+        var totalWeight = 0;
+        for (var i = 0; i < targets.Count; i++)
+        {
+            var sil = targets[i].Type.Profile().Silhouette;
+            // Escort: reduce effective silhouette of non-Escort Capital units on the defender's side
+            if (
+                defenderHasEscort
+                && targets[i].Type.IsCapital()
+                && !targets[i].Type.Profile().Tags.HasFlag(NexusUnitTag.Escort)
+            )
+                sil = Math.Max(1, sil - 1);
+            weights[i] = sil;
+            totalWeight += sil;
+        }
+
         var pick = rng.Next(totalWeight);
         var cumulative = 0;
-        foreach (var target in targets)
+        for (var i = 0; i < targets.Count; i++)
         {
-            cumulative += target.Type.Profile().Silhouette;
+            cumulative += weights[i];
             if (pick < cumulative)
-                return target;
+                return targets[i];
         }
         return targets[^1];
     }
@@ -1038,11 +1024,11 @@ public static class NexusEngine
             var projected = filtered
                 .Select(stack => new NexusUnitStackGroup(
                     stack.UnitType,
-                    stack.RemainingHull,
+                    stack.RemainingHits,
                     stack.Count
                 ))
                 .OrderBy(stack => stack.UnitType)
-                .ThenByDescending(stack => stack.RemainingHull)
+                .ThenByDescending(stack => stack.RemainingHits)
                 .ToImmutableArray();
 
             if (projected.Length > 0)

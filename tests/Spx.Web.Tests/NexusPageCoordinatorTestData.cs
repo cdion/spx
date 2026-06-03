@@ -92,7 +92,7 @@ internal static class GamePageCoordinatorTestData
                         ImmutableArray<NexusUnitStackGroup>
                     >.Empty.Add(
                         CurrentPlayerId,
-                        FullHullStacks(
+                        FullHitsStacks(
                             (NexusUnitType.Carrier, 1),
                             (NexusUnitType.Fighter, 1),
                             (NexusUnitType.Infantry, 2)
@@ -108,7 +108,7 @@ internal static class GamePageCoordinatorTestData
                     unitStacks: ImmutableDictionary<
                         Guid,
                         ImmutableArray<NexusUnitStackGroup>
-                    >.Empty.Add(OpponentPlayerId, FullHullStacks((NexusUnitType.Fighter, 1)))
+                    >.Empty.Add(OpponentPlayerId, FullHitsStacks((NexusUnitType.Fighter, 1)))
                 ),
             ],
             CurrentPlayer = baseSession.CurrentPlayer with { Energy = currentPlayerEnergy },
@@ -122,7 +122,7 @@ internal static class GamePageCoordinatorTestData
                 CurrentPlayerId,
                 CurrentPlayerHomeCoord,
                 MoveTargetCoord,
-                FullHullStacks((NexusUnitType.Fighter, 1)),
+                FullHitsStacks((NexusUnitType.Fighter, 1)),
                 IsRetreat: false
             ),
             new NexusPlanetaryControlEvent(AlternateFocusCoord, CurrentPlayerId),
@@ -156,13 +156,13 @@ internal static class GamePageCoordinatorTestData
             unitStacks ?? ImmutableDictionary<Guid, ImmutableArray<NexusUnitStackGroup>>.Empty
         );
 
-    private static ImmutableArray<NexusUnitStackGroup> FullHullStacks(
+    private static ImmutableArray<NexusUnitStackGroup> FullHitsStacks(
         params (NexusUnitType Type, int Count)[] units
     ) =>
         units
             .Select(unit => new NexusUnitStackGroup(
                 unit.Type,
-                unit.Type.Profile().Hull,
+                unit.Type.Profile().Hits,
                 unit.Count
             ))
             .ToImmutableArray();

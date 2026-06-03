@@ -330,7 +330,7 @@
         {
             for (var index = 0; index < builder.Count; index++)
             {
-                if (builder[index].UnitType != pendingStack.UnitType || builder[index].RemainingHull != pendingStack.RemainingHull)
+                if (builder[index].UnitType != pendingStack.UnitType || builder[index].RemainingHits != pendingStack.RemainingHits)
                     continue;
 
                 var nextCount = builder[index].Count - pendingStack.Count;

@@ -29,9 +29,9 @@ public sealed record NexusCombatAttackRoll(
     [property: Id(3)] int Roll,
     [property: Id(4)] int Threshold,
     [property: Id(5)] bool IsHit,
-    [property: Id(6)] int AttackerRemainingHull = 0,
+    [property: Id(6)] int AttackerRemainingHits = 0,
     [property: Id(7)] Guid? TargetPlayerId = null,
-    [property: Id(8)] int TargetRemainingHull = 0,
+    [property: Id(8)] int TargetRemainingHits = 0,
     [property: Id(9)] bool WasShielded = false
 );
 
@@ -84,14 +84,22 @@ public sealed record NexusCombatBeganEvent(
     [property: Id(2)] Guid Player2Id
 ) : NexusResolveEvent;
 
-/// <summary>Results of one combat phase — individual rolls and units destroyed.</summary>
+/// <summary>Results of the first strike combat step — units with FirstStrike tag fire before normal units.</summary>
 [GenerateSerializer]
 [Immutable]
-public sealed record NexusPhaseResultEvent(
+public sealed record NexusFirstStrikeEvent(
     [property: Id(0)] HexCoord System,
-    [property: Id(1)] CombatPhase Phase,
-    [property: Id(2)] ImmutableArray<NexusCombatLoss> Losses,
-    [property: Id(3)] ImmutableArray<NexusCombatAttackRoll> AttackRolls
+    [property: Id(1)] ImmutableArray<NexusCombatLoss> Losses,
+    [property: Id(2)] ImmutableArray<NexusCombatAttackRoll> AttackRolls
+) : NexusResolveEvent;
+
+/// <summary>Results of the normal combat step — surviving non-first-strike units fire.</summary>
+[GenerateSerializer]
+[Immutable]
+public sealed record NexusCombatResultEvent(
+    [property: Id(0)] HexCoord System,
+    [property: Id(1)] ImmutableArray<NexusCombatLoss> Losses,
+    [property: Id(2)] ImmutableArray<NexusCombatAttackRoll> AttackRolls
 ) : NexusResolveEvent;
 
 /// <summary>All of one player's units have been eliminated from the system.</summary>

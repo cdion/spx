@@ -88,7 +88,7 @@ else
         var unitSummary = string.Join(
             ", ",
             order.Stacks.Select(stack =>
-                $"{stack.Count}× {stack.UnitType} ({stack.RemainingHull}/{stack.UnitType.Profile().Hull} hull)"
+                $"{stack.Count}× {stack.UnitType} ({stack.RemainingHits}/{stack.UnitType.Profile().Hits} hits)"
             )
         );
         return $"{GetSystemDisplayName(order.From)} → {GetSystemDisplayName(order.To)}: {unitSummary}";

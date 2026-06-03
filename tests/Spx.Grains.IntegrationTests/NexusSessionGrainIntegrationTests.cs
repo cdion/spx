@@ -130,7 +130,7 @@ public sealed class GameSessionGrainIntegrationTests(OrleansClusterFixture fixtu
                         systemWithFleet.Coord,
                         destination,
                         ImmutableArray.Create(
-                            new NexusUnitStackGroup(moveUnit, moveUnit.Profile().Hull, 1)
+                            new NexusUnitStackGroup(moveUnit, moveUnit.Profile().Hits, 1)
                         )
                     ),
                 ],

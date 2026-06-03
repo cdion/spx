@@ -46,12 +46,11 @@ public sealed class SimulationTests
         var report = TacticalSimulator.Run(settings, new[] { scenario }, new[] { profile });
         var matchup = Assert.Single(report.Matchups);
         var assaultPhases = report
-            .PhaseSummaries.Where(summary => summary.Phase == CombatPhase.Surface.ToString())
+            .PhaseSummaries.Where(summary => summary.Phase == "FirstStrike")
             .OrderBy(summary => summary.Side)
             .ToArray();
 
-        // Mirror matchup: attacker win rate ≈ 1 − contested − mutual − attacker win rate
-        // i.e. both sides are symmetric. Defender win rate is no longer stored; derive it.
+        // Mirror matchup
         var derivedDefenderWinRate =
             1 - matchup.AttackerWinRate - matchup.ContestedRate - matchup.MutualDestructionRate;
         Assert.Equal(matchup.AttackerWinRate, derivedDefenderWinRate, precision: 5);

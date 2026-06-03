@@ -167,7 +167,7 @@ public sealed class NexusGameplayPanelStateTests
             ImmutableArray.Create(
                 new NexusUnitStackGroup(
                     NexusUnitType.Carrier,
-                    NexusUnitType.Carrier.Profile().Hull,
+                    NexusUnitType.Carrier.Profile().Hits,
                     1
                 )
             ),

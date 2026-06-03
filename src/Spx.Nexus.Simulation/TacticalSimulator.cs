@@ -89,8 +89,11 @@ public sealed class TacticalSimulator
         var defenderSurvivorCost = 0.0;
         var firstContactActivity = 0;
         var totalTrials = 0;
-        var phaseBuckets = Enum.GetValues<CombatPhase>()
-            .ToDictionary(phase => phase, _ => new PhaseAccumulator());
+        var phaseBuckets = new Dictionary<bool, PhaseAccumulator>
+        {
+            [true] = new(),
+            [false] = new(),
+        };
         var attackerSurvivors = new Dictionary<NexusUnitType, double>();
         var defenderSurvivors = new Dictionary<NexusUnitType, double>();
 
@@ -113,7 +116,7 @@ public sealed class TacticalSimulator
 
                 foreach (var phase in outcome.Phases)
                 {
-                    var bucket = phaseBuckets[phase.Phase];
+                    var bucket = phaseBuckets[phase.IsFirstStrike];
                     bucket.AttackerAttacks += phase.AttackerAttacks;
                     bucket.AttackerHits += phase.AttackerHits;
                     bucket.AttackerKills += phase.AttackerKills;
@@ -162,13 +165,15 @@ public sealed class TacticalSimulator
         var phases = phaseBuckets
             .OrderBy(pair => pair.Key)
             .SelectMany(pair =>
-                new[]
+            {
+                var phaseName = pair.Key ? "FirstStrike" : "Normal";
+                return new[]
                 {
                     new TacticalPhaseSummary(
                         scenario.Id,
                         attacker.Id,
                         defender.Id,
-                        pair.Key.ToString(),
+                        phaseName,
                         "attacker",
                         pair.Value.AttackerAttacks / totalTrials,
                         pair.Value.AttackerHits / totalTrials,
@@ -178,14 +183,14 @@ public sealed class TacticalSimulator
                         scenario.Id,
                         attacker.Id,
                         defender.Id,
-                        pair.Key.ToString(),
+                        phaseName,
                         "defender",
                         pair.Value.DefenderAttacks / totalTrials,
                         pair.Value.DefenderHits / totalTrials,
                         pair.Value.DefenderKills / totalTrials
                     ),
-                }
-            )
+                };
+            })
             .ToArray();
 
         var survivors = attackerSurvivors
@@ -334,34 +339,64 @@ public sealed class TacticalSimulator
         Guid defenderPlayerId
     )
     {
-        var phases = Enum.GetValues<CombatPhase>()
-            .ToDictionary(phase => phase, _ => new PhaseAccumulator());
+        var phases = new Dictionary<bool, PhaseAccumulator> { [true] = new(), [false] = new() };
 
-        foreach (var phaseResult in events.OfType<NexusPhaseResultEvent>())
+        foreach (var result in events.OfType<NexusResolveEvent>())
         {
-            var bucket = phases[phaseResult.Phase];
-            bucket.AttackerAttacks += phaseResult.AttackRolls.Count(roll =>
-                roll.AttackingPlayerId == attackerPlayerId
-            );
-            bucket.AttackerHits += phaseResult.AttackRolls.Count(roll =>
-                roll.AttackingPlayerId == attackerPlayerId && roll.IsHit
-            );
-            bucket.AttackerKills += phaseResult
-                .Losses.Where(loss => loss.PlayerId == defenderPlayerId)
-                .Sum(loss => loss.Count);
-            bucket.DefenderAttacks += phaseResult.AttackRolls.Count(roll =>
-                roll.AttackingPlayerId == defenderPlayerId
-            );
-            bucket.DefenderHits += phaseResult.AttackRolls.Count(roll =>
-                roll.AttackingPlayerId == defenderPlayerId && roll.IsHit
-            );
-            bucket.DefenderKills += phaseResult
-                .Losses.Where(loss => loss.PlayerId == attackerPlayerId)
-                .Sum(loss => loss.Count);
+            PhaseAccumulator bucket;
+
+            if (result is NexusFirstStrikeEvent fs)
+            {
+                bucket = phases[true];
+                bucket.AttackerAttacks += fs.AttackRolls.Count(roll =>
+                    roll.AttackingPlayerId == attackerPlayerId
+                );
+                bucket.AttackerHits += fs.AttackRolls.Count(roll =>
+                    roll.AttackingPlayerId == attackerPlayerId && roll.IsHit
+                );
+                bucket.AttackerKills += fs
+                    .Losses.Where(loss => loss.PlayerId == defenderPlayerId)
+                    .Sum(loss => loss.Count);
+                bucket.DefenderAttacks += fs.AttackRolls.Count(roll =>
+                    roll.AttackingPlayerId == defenderPlayerId
+                );
+                bucket.DefenderHits += fs.AttackRolls.Count(roll =>
+                    roll.AttackingPlayerId == defenderPlayerId && roll.IsHit
+                );
+                bucket.DefenderKills += fs
+                    .Losses.Where(loss => loss.PlayerId == attackerPlayerId)
+                    .Sum(loss => loss.Count);
+            }
+            else if (result is NexusCombatResultEvent cr)
+            {
+                bucket = phases[false];
+                bucket.AttackerAttacks += cr.AttackRolls.Count(roll =>
+                    roll.AttackingPlayerId == attackerPlayerId
+                );
+                bucket.AttackerHits += cr.AttackRolls.Count(roll =>
+                    roll.AttackingPlayerId == attackerPlayerId && roll.IsHit
+                );
+                bucket.AttackerKills += cr
+                    .Losses.Where(loss => loss.PlayerId == defenderPlayerId)
+                    .Sum(loss => loss.Count);
+                bucket.DefenderAttacks += cr.AttackRolls.Count(roll =>
+                    roll.AttackingPlayerId == defenderPlayerId
+                );
+                bucket.DefenderHits += cr.AttackRolls.Count(roll =>
+                    roll.AttackingPlayerId == defenderPlayerId && roll.IsHit
+                );
+                bucket.DefenderKills += cr
+                    .Losses.Where(loss => loss.PlayerId == attackerPlayerId)
+                    .Sum(loss => loss.Count);
+            }
+            else
+            {
+                continue;
+            }
         }
 
         return phases
-            .OrderBy(pair => pair.Key)
+            .OrderByDescending(pair => pair.Key)
             .Select(pair => new TrialPhaseOutcome(
                 pair.Key,
                 pair.Value.AttackerAttacks,
@@ -381,7 +416,7 @@ public sealed class TacticalSimulator
     )
     {
         foreach (var unit in profile.Units)
-            battleSystem.AddUnits(playerId, unit.UnitType, unit.Count, unit.RemainingHull);
+            battleSystem.AddUnits(playerId, unit.UnitType, unit.Count, unit.RemainingHits);
     }
 
     private static double ComputeSurvivorCost(IReadOnlyDictionary<NexusUnitType, int> survivors) =>
@@ -415,7 +450,7 @@ public sealed class TacticalSimulator
     }
 
     private sealed record TrialPhaseOutcome(
-        CombatPhase Phase,
+        bool IsFirstStrike,
         double AttackerAttacks,
         double AttackerHits,
         double AttackerKills,

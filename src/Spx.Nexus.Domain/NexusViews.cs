@@ -7,7 +7,7 @@ namespace Spx.Nexus.Domain;
 [Immutable]
 public sealed record NexusUnitStackGroup(
     [property: Id(0)] NexusUnitType UnitType,
-    [property: Id(1)] int RemainingHull,
+    [property: Id(1)] int RemainingHits,
     [property: Id(2)] int Count
 );
 

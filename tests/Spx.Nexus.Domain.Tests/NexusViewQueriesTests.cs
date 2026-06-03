@@ -14,7 +14,7 @@ public class NexusGameViewQueriesTests
             .ToImmutableDictionary(
                 g => g.Key,
                 g =>
-                    g.Select(u => new NexusUnitStackGroup(u.Unit, u.Unit.Profile().Hull, u.Count))
+                    g.Select(u => new NexusUnitStackGroup(u.Unit, u.Unit.Profile().Hits, u.Count))
                         .ToImmutableArray()
             );
         return new NexusSystemView(coord, false, 2, null, null, dict);
@@ -123,7 +123,7 @@ public class NexusGameViewQueriesTests
             [
                 new NexusUnitStackGroup(
                     NexusUnitType.Infantry,
-                    NexusUnitType.Infantry.Profile().Hull,
+                    NexusUnitType.Infantry.Profile().Hits,
                     1
                 ),
             ]

@@ -150,7 +150,7 @@ public sealed class NexusGameplayPanelInteractionTests : TestContext
             .Click();
 
         var carrierButton = cut.Find(
-            TestIdSelector(NexusGameplayPanelTestIds.FleetStack(NexusUnitType.Carrier, 4))
+            TestIdSelector(NexusGameplayPanelTestIds.FleetStack(NexusUnitType.Carrier, 2))
         );
 
         carrierButton.Click();
@@ -217,13 +217,13 @@ public sealed class NexusGameplayPanelInteractionTests : TestContext
             )
         );
 
-        Assert.Contains("Carrier (4/4 hull)", pendingOrder.TextContent);
-        Assert.Contains("Fighter (1/1 hull)", pendingOrder.TextContent);
-        Assert.Contains("Infantry (1/1 hull)", pendingOrder.TextContent);
+        Assert.Contains("Carrier (2/2 hits)", pendingOrder.TextContent);
+        Assert.Contains("Fighter (1/1 hits)", pendingOrder.TextContent);
+        Assert.Contains("Infantry (1/1 hits)", pendingOrder.TextContent);
     }
 
     [Fact]
-    public void SelectingDamagedStack_QueuesPendingMoveOrderWithExactHullBucket()
+    public void SelectingDamagedStack_QueuesPendingMoveOrderWithExactHitsBucket()
     {
         var gameId = Guid.Parse("56565656-5656-5656-5656-565656565656");
         var session = GamePageCoordinatorTestData.CreateGameplayPanelSession(gameId);
@@ -245,8 +245,8 @@ public sealed class NexusGameplayPanelInteractionTests : TestContext
                             >.Empty.Add(
                                 GamePageCoordinatorTestData.CurrentPlayerId,
                                 ImmutableArray.Create(
-                                    new NexusUnitStackGroup(NexusUnitType.Carrier, 4, 1),
-                                    new NexusUnitStackGroup(NexusUnitType.Carrier, 3, 1),
+                                    new NexusUnitStackGroup(NexusUnitType.Carrier, 1, 1),
+                                    new NexusUnitStackGroup(NexusUnitType.Carrier, 1, 1),
                                     new NexusUnitStackGroup(NexusUnitType.Fighter, 1, 1)
                                 )
                             ),
@@ -272,7 +272,7 @@ public sealed class NexusGameplayPanelInteractionTests : TestContext
             )
             .Click();
 
-        cut.Find(TestIdSelector(NexusGameplayPanelTestIds.FleetStack(NexusUnitType.Carrier, 3)))
+        cut.Find(TestIdSelector(NexusGameplayPanelTestIds.FleetStack(NexusUnitType.Carrier, 1)))
             .Click();
         cut.Find(
                 TestIdSelector(
@@ -291,8 +291,8 @@ public sealed class NexusGameplayPanelInteractionTests : TestContext
             )
         );
 
-        Assert.Contains("3/4 hull", pendingOrder.TextContent);
-        Assert.DoesNotContain("4/4 hull", pendingOrder.TextContent);
+        Assert.Contains("1/2 hits", pendingOrder.TextContent);
+        Assert.DoesNotContain("2/2 hits", pendingOrder.TextContent);
     }
 
     [Fact]
@@ -340,7 +340,7 @@ public sealed class NexusGameplayPanelInteractionTests : TestContext
             .Click();
 
         var carrierButton = cut.Find(
-            TestIdSelector(NexusGameplayPanelTestIds.FleetStack(NexusUnitType.Carrier, 4))
+            TestIdSelector(NexusGameplayPanelTestIds.FleetStack(NexusUnitType.Carrier, 2))
         );
 
         carrierButton.Click();
@@ -404,7 +404,7 @@ public sealed class NexusGameplayPanelInteractionTests : TestContext
             )
             .Click();
 
-        cut.Find(TestIdSelector(NexusGameplayPanelTestIds.FleetStack(NexusUnitType.Carrier, 4)))
+        cut.Find(TestIdSelector(NexusGameplayPanelTestIds.FleetStack(NexusUnitType.Carrier, 2)))
             .Click();
         cut.Find(
                 TestIdSelector(
@@ -449,7 +449,7 @@ public sealed class NexusGameplayPanelInteractionTests : TestContext
                 )
             )
             .Click();
-        cut.Find(TestIdSelector(NexusGameplayPanelTestIds.FleetStack(NexusUnitType.Carrier, 4)))
+        cut.Find(TestIdSelector(NexusGameplayPanelTestIds.FleetStack(NexusUnitType.Carrier, 2)))
             .Click();
         cut.Find(
                 TestIdSelector(

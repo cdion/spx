@@ -28,13 +28,10 @@ public sealed class NexusUnitStack
     public NexusUnitType UnitType { get; set; }
 
     [Id(1)]
-    public int RemainingHull { get; set; }
+    public int RemainingHits { get; set; }
 
     [Id(2)]
     public int Count { get; set; }
-
-    [Id(3)]
-    public bool ShieldActive { get; set; }
 }
 
 [GenerateSerializer]
@@ -58,7 +55,7 @@ public sealed class NexusSystemState
     [Id(4)]
     public Guid? ControlOwner { get; set; }
 
-    /// <summary>Units present: player ID → list of stacks (unit type + remaining hull + count).</summary>
+    /// <summary>Units present: player ID → list of stacks (unit type + remaining hits + count).</summary>
     [Id(5)]
     public Dictionary<Guid, List<NexusUnitStack>> Units { get; set; } = [];
 
@@ -93,7 +90,7 @@ public sealed class NexusSystemState
         Guid playerId,
         NexusUnitType unitType,
         int count,
-        int? remainingHull = null
+        int? remainingHits = null
     )
     {
         if (count <= 0)
@@ -104,8 +101,8 @@ public sealed class NexusSystemState
             Units[playerId] = stacks;
         }
 
-        var hullToStore = remainingHull ?? unitType.Profile().Hull;
-        var existing = stacks.Find(s => s.UnitType == unitType && s.RemainingHull == hullToStore);
+        var hitsToStore = remainingHits ?? unitType.Profile().Hits;
+        var existing = stacks.Find(s => s.UnitType == unitType && s.RemainingHits == hitsToStore);
         if (existing is not null)
             existing.Count += count;
         else
@@ -113,9 +110,8 @@ public sealed class NexusSystemState
                 new NexusUnitStack
                 {
                     UnitType = unitType,
-                    RemainingHull = hullToStore,
+                    RemainingHits = hitsToStore,
                     Count = count,
-                    ShieldActive = unitType.Profile().HasShield,
                 }
             );
     }
@@ -125,21 +121,21 @@ public sealed class NexusSystemState
 
     /// <summary>
     /// Removes <paramref name="count"/> units of <paramref name="unitType"/> and returns
-    /// the (RemainingHull, Count) pairs actually taken.
+    /// the (RemainingHits, Count) pairs actually taken.
     /// </summary>
-    public List<(int RemainingHull, int Count)> TakeUnits(
+    public List<(int RemainingHits, int Count)> TakeUnits(
         Guid playerId,
         NexusUnitType unitType,
         int count
     )
     {
-        var taken = new List<(int RemainingHull, int Count)>();
+        var taken = new List<(int RemainingHits, int Count)>();
         if (!Units.TryGetValue(playerId, out var stacks))
             return taken;
 
         var ordered = stacks
             .Where(s => s.UnitType == unitType)
-            .OrderByDescending(s => s.RemainingHull)
+            .OrderByDescending(s => s.RemainingHits)
             .ToList();
 
         var remaining = count;
@@ -150,7 +146,7 @@ public sealed class NexusSystemState
             var take = Math.Min(stack.Count, remaining);
             stack.Count -= take;
             remaining -= take;
-            taken.Add((stack.RemainingHull, take));
+            taken.Add((stack.RemainingHits, take));
         }
 
         stacks.RemoveAll(s => s.Count <= 0);
@@ -173,7 +169,7 @@ public sealed class NexusSystemState
         {
             var stack = stacks.FirstOrDefault(s =>
                 s.UnitType == requestedStack.UnitType
-                && s.RemainingHull == requestedStack.RemainingHull
+                && s.RemainingHits == requestedStack.RemainingHits
             );
 
             if (stack is null)
@@ -185,7 +181,7 @@ public sealed class NexusSystemState
 
             stack.Count -= take;
             taken.Add(
-                new NexusUnitStackGroup(requestedStack.UnitType, requestedStack.RemainingHull, take)
+                new NexusUnitStackGroup(requestedStack.UnitType, requestedStack.RemainingHits, take)
             );
         }
 

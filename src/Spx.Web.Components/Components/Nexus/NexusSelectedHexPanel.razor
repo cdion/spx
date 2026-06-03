@@ -66,8 +66,8 @@
                                                 @onclick="() => ToggleWholeStackAsync(stackKey)">
                                             <span class="text-sm font-semibold @GetStackNameClass(selected)">@stack.UnitType</span>
                                             <span
-                                                class="rounded-full border px-1.5 py-0.5 text-xs font-medium @GetHullPillClass(stack)">@stack.RemainingHull/@stack.UnitType.Profile().Hull
-                                                hull</span>
+                                                class="rounded-full border px-1.5 py-0.5 text-xs font-medium @GetHitsPillClass(stack)">@stack.RemainingHits/@stack.UnitType.Profile().Hits
+                                                hits</span>
                                             </button>
                                             @if (IsEditable)
                                             {
@@ -119,8 +119,8 @@
                                                     <div class="flex min-w-0 flex-1 items-center gap-2">
                                                         <span class="text-sm font-semibold text-slate-300">@stack.UnitType</span>
                                                         <span
-                                                            class="rounded-full border px-1.5 py-0.5 text-xs font-medium @GetHullPillClass(stack)">@stack.RemainingHull/@stack.UnitType.Profile().Hull
-                                                            hull</span>
+                                                            class="rounded-full border px-1.5 py-0.5 text-xs font-medium @GetHitsPillClass(stack)">@stack.RemainingHits/@stack.UnitType.Profile().Hits
+                                                            hits</span>
                                                         </div>
                                                         <span class="shrink-0 text-sm font-semibold text-slate-400">×@stack.Count</span>
                                                     </div>
@@ -152,8 +152,8 @@
                                                         <div class="flex min-w-0 flex-1 items-center gap-2">
                                                             <span class="text-sm font-semibold text-slate-200">@stack.UnitType</span>
                                                             <span
-                                                                class="rounded-full border px-1.5 py-0.5 text-xs font-medium @GetHullPillClass(stack)">@stack.RemainingHull/@stack.UnitType.Profile().Hull
-                                                                hull</span>
+                                                                class="rounded-full border px-1.5 py-0.5 text-xs font-medium @GetHitsPillClass(stack)">@stack.RemainingHits/@stack.UnitType.Profile().Hits
+                                                                hits</span>
                                                             </div>
                                                             <span class="shrink-0 text-sm font-semibold text-slate-400">×@stack.Count</span>
                                                         </div>
@@ -185,8 +185,8 @@
                                                                 <div class="flex min-w-0 flex-1 items-center gap-2">
                                                                     <span class="text-sm font-semibold text-slate-300">@stack.UnitType</span>
                                                                     <span
-                                                                        class="rounded-full border px-1.5 py-0.5 text-xs font-medium @GetHullPillClass(stack)">@stack.RemainingHull/@stack.UnitType.Profile().Hull
-                                                                        hull</span>
+                                                                        class="rounded-full border px-1.5 py-0.5 text-xs font-medium @GetHitsPillClass(stack)">@stack.RemainingHits/@stack.UnitType.Profile().Hits
+                                                                        hits</span>
                                                                     </div>
                                                                     <span class="shrink-0 text-sm font-semibold text-slate-400">×@stack.Count</span>
                                                                 </div>
@@ -430,7 +430,7 @@
         stacks
             .Where(stack => stack.UnitType.Profile().Category == category)
             .OrderBy(stack => stack.UnitType)
-            .ThenByDescending(stack => stack.RemainingHull);
+            .ThenByDescending(stack => stack.RemainingHits);
 
     private string GetFleetRowClass(int selected)
     {
@@ -449,12 +449,12 @@
             ? (CurrentPlayerFaction == NexusFactionColor.Red ? "text-red-200" : "text-sky-200")
             : "text-slate-200";
 
-    private static string GetHullPillClass(NexusUnitStackGroup stack)
+    private static string GetHitsPillClass(NexusUnitStackGroup stack)
     {
-        if (stack.RemainingHull >= stack.UnitType.Profile().Hull)
+        if (stack.RemainingHits >= stack.UnitType.Profile().Hits)
             return "border-emerald-400/30 bg-emerald-500/10 text-emerald-200";
 
-        if (stack.RemainingHull > 1)
+        if (stack.RemainingHits > 1)
             return "border-amber-400/30 bg-amber-500/10 text-amber-200";
 
         return "border-rose-400/30 bg-rose-500/10 text-rose-200";
@@ -465,11 +465,11 @@
 
     private int GetAvailableCount(StackKey stackKey) =>
         _myStacks
-            .Where(stack => stack.UnitType == stackKey.UnitType && stack.RemainingHull == stackKey.RemainingHull)
+            .Where(stack => stack.UnitType == stackKey.UnitType && stack.RemainingHits == stackKey.RemainingHits)
             .Sum(stack => stack.Count);
 
     private static StackKey GetStackKey(NexusUnitStackGroup stack) =>
-        new(stack.UnitType, stack.RemainingHull);
+        new(stack.UnitType, stack.RemainingHits);
 
     private Task ToggleWholeStackAsync(StackKey stackKey)
     {
@@ -570,12 +570,12 @@
         );
 
     private static string GetFleetButtonTestId(NexusUnitStackGroup stack) =>
-        NexusGameplayPanelTestIds.FleetStack(stack.UnitType, stack.RemainingHull);
+        NexusGameplayPanelTestIds.FleetStack(stack.UnitType, stack.RemainingHits);
 
     private static string GetBuildButtonTestId(NexusUnitType unitType) =>
         NexusGameplayPanelTestIds.BuildUnit(unitType);
 
     private sealed record UnitGroup(string Label, NexusUnitCategory Category);
 
-    private sealed record StackKey(NexusUnitType UnitType, int RemainingHull);
+    private sealed record StackKey(NexusUnitType UnitType, int RemainingHits);
 }

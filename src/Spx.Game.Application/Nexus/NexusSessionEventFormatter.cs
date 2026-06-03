@@ -27,7 +27,22 @@ public static class NexusSessionEventFormatter
                 $"{SectorName(e.System, ownerPlayerId: null, viewingPlayerId)} is now uncontrolled — no planetary units present",
             NexusCombatBeganEvent e =>
                 $"Combat erupted at {SectorName(e.System, ownerPlayerId: null, viewingPlayerId)} between {PlayerName(e.Player1Id, playerNames)} and {PlayerName(e.Player2Id, playerNames)}",
-            NexusPhaseResultEvent e => FormatPhaseResult(e, playerNames, viewingPlayerId),
+            NexusFirstStrikeEvent e => FormatCombatResult(
+                e.System,
+                e.Losses,
+                e.AttackRolls,
+                playerNames,
+                viewingPlayerId,
+                isFirstStrike: true
+            ),
+            NexusCombatResultEvent e => FormatCombatResult(
+                e.System,
+                e.Losses,
+                e.AttackRolls,
+                playerNames,
+                viewingPlayerId,
+                isFirstStrike: false
+            ),
             NexusSystemClearedEvent e =>
                 $"{PlayerName(e.VictorId, playerNames)} cleared {SectorName(e.System, ownerPlayerId: null, viewingPlayerId)}",
             NexusIncomeEvent e =>
@@ -72,39 +87,43 @@ public static class NexusSessionEventFormatter
         string.Join(
             ", ",
             stacks.Select(stack =>
-                $"{stack.Count}× {stack.UnitType} ({stack.RemainingHull}/{stack.UnitType.Profile().Hull} hull)"
+                $"{stack.Count}× {stack.UnitType} ({stack.RemainingHits}/{stack.UnitType.Profile().Hits} hits)"
             )
         );
 
-    private static string FormatPhaseResult(
-        NexusPhaseResultEvent evt,
+    private static string FormatCombatResult(
+        HexCoord system,
+        ImmutableArray<NexusCombatLoss> losses,
+        ImmutableArray<NexusCombatAttackRoll> attackRolls,
         IReadOnlyDictionary<Guid, string> playerNames,
-        Guid? viewingPlayerId
+        Guid? viewingPlayerId,
+        bool isFirstStrike
     )
     {
-        var systemName = SectorName(evt.System, ownerPlayerId: null, viewingPlayerId);
-        var lossSummaries = evt
-            .Losses.GroupBy(loss => loss.PlayerId)
+        var systemName = SectorName(system, ownerPlayerId: null, viewingPlayerId);
+        var lossSummaries = losses
+            .GroupBy(loss => loss.PlayerId)
             .Select(group =>
             {
                 var playerName = PlayerName(group.Key, playerNames);
-                var losses = string.Join(
+                var lossList = string.Join(
                     ", ",
                     group.Select(loss => $"{loss.Count}× {loss.UnitType}").OrderBy(text => text)
                 );
-                return $"{playerName} loses {losses}";
+                return $"{playerName} loses {lossList}";
             })
             .OrderBy(summary => summary)
             .ToList();
 
-        var lines = new List<string> { $"{evt.Phase} at {systemName}" };
-        if (evt.AttackRolls.Length == 0)
+        var stepName = isFirstStrike ? "First Strike" : "Normal";
+        var lines = new List<string> { $"{stepName} at {systemName}" };
+        if (attackRolls.Length == 0)
         {
             lines.Add("No attacks resolved");
         }
         else
         {
-            lines.AddRange(evt.AttackRolls.Select(roll => FormatAttackRoll(roll, playerNames)));
+            lines.AddRange(attackRolls.Select(roll => FormatAttackRoll(roll, playerNames)));
         }
 
         lines.Add(
@@ -125,9 +144,9 @@ public static class NexusSessionEventFormatter
             : "Unknown";
 
         var hitResult = roll.WasShielded ? "absorbed" : (roll.IsHit ? "hit" : "miss");
-        return $"{attackerName} {FormatUnitWithHull(roll.AttackerType, roll.AttackerRemainingHull)} -> {targetName} {FormatUnitWithHull(roll.TargetType, roll.TargetRemainingHull)}: rolled {roll.Roll} vs {roll.Threshold} {hitResult}";
+        return $"{attackerName} {FormatUnitWithHits(roll.AttackerType, roll.AttackerRemainingHits)} -> {targetName} {FormatUnitWithHits(roll.TargetType, roll.TargetRemainingHits)}: rolled {roll.Roll} vs {roll.Threshold} {hitResult}";
     }
 
-    private static string FormatUnitWithHull(NexusUnitType unitType, int remainingHull) =>
-        $"{unitType} ({remainingHull}/{unitType.Profile().Hull} hull)";
+    private static string FormatUnitWithHits(NexusUnitType unitType, int remainingHits) =>
+        $"{unitType} ({remainingHits}/{unitType.Profile().Hits} hits)";
 }

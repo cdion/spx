@@ -38,7 +38,7 @@
             builder.Add(
                 player,
                 units
-                    .Select(unit => new NexusUnitStackGroup(unit.Type, unit.Type.Profile().Hull, unit.Count))
+                    .Select(unit => new NexusUnitStackGroup(unit.Type, unit.Type.Profile().Hits, unit.Count))
                     .ToImmutableArray()
             );
         }

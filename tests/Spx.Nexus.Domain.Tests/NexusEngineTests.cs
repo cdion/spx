@@ -129,87 +129,46 @@ public class NexusMapTests
 public class NexusCombatSpecTests
 {
     [Theory]
-    // Category threshold — base cases
-    [InlineData(NexusUnitType.Fighter, CombatPhase.Intercept, NexusUnitType.Interceptor, 3)]
-    [InlineData(NexusUnitType.Fighter, CombatPhase.Intercept, NexusUnitType.Fighter, 3)]
-    [InlineData(NexusUnitType.Fighter, CombatPhase.Intercept, NexusUnitType.Bomber, 3)]
-    [InlineData(NexusUnitType.Fighter, CombatPhase.Line, NexusUnitType.Frigate, 6)]
-    [InlineData(NexusUnitType.Cruiser, CombatPhase.Line, NexusUnitType.Frigate, 3)]
-    [InlineData(NexusUnitType.Cruiser, CombatPhase.Orbit, NexusUnitType.Infantry, 4)]
-    // Phase-specific category override — Destroyer worse vs Strike in Line than Intercept
-    [InlineData(NexusUnitType.Destroyer, CombatPhase.Intercept, NexusUnitType.Interceptor, 4)]
-    [InlineData(NexusUnitType.Destroyer, CombatPhase.Line, NexusUnitType.Interceptor, 5)]
-    [InlineData(NexusUnitType.Destroyer, CombatPhase.Line, NexusUnitType.Fighter, 5)]
-    [InlineData(NexusUnitType.Destroyer, CombatPhase.Line, NexusUnitType.Bomber, 5)]
-    [InlineData(NexusUnitType.Destroyer, CombatPhase.Line, NexusUnitType.Frigate, 4)]
-    // Unit threshold overrides category — Interceptor specialist matchups
-    [InlineData(NexusUnitType.Interceptor, CombatPhase.Intercept, NexusUnitType.Interceptor, 4)]
-    [InlineData(NexusUnitType.Interceptor, CombatPhase.Intercept, NexusUnitType.Fighter, 4)]
-    [InlineData(NexusUnitType.Interceptor, CombatPhase.Intercept, NexusUnitType.Bomber, 2)]
-    [InlineData(NexusUnitType.Bomber, CombatPhase.Intercept, NexusUnitType.Interceptor, 5)]
-    [InlineData(NexusUnitType.Bomber, CombatPhase.Line, NexusUnitType.Interceptor, 5)]
-    // Planetary — Infantry and Armor in Surface; Armor fires Strike from Orbit
-    [InlineData(NexusUnitType.Infantry, CombatPhase.Surface, NexusUnitType.Infantry, 4)]
-    [InlineData(NexusUnitType.Infantry, CombatPhase.Surface, NexusUnitType.Armor, 5)]
-    [InlineData(NexusUnitType.Armor, CombatPhase.Surface, NexusUnitType.Infantry, 3)]
-    [InlineData(NexusUnitType.Armor, CombatPhase.Surface, NexusUnitType.Armor, 4)]
-    [InlineData(NexusUnitType.Armor, CombatPhase.Orbit, NexusUnitType.Bomber, 5)]
+    // Each attacker: one hit per targetable category, one null per untargetable category
+    // Interceptor — BonusVsStrike, Can't target Capital or Planetary
+    [InlineData(NexusUnitType.Interceptor, NexusUnitType.Fighter, 4)]
+    [InlineData(NexusUnitType.Interceptor, NexusUnitType.Frigate, null)]
+    [InlineData(NexusUnitType.Interceptor, NexusUnitType.Infantry, null)]
+    // Fighter — PenaltyVsCapital
+    [InlineData(NexusUnitType.Fighter, NexusUnitType.Interceptor, 4)]
+    [InlineData(NexusUnitType.Fighter, NexusUnitType.Frigate, 5)]
+    [InlineData(NexusUnitType.Fighter, NexusUnitType.Infantry, null)]
+    // Bomber — PenaltyVsStrike, can target all categories
+    [InlineData(NexusUnitType.Bomber, NexusUnitType.Interceptor, 5)]
+    [InlineData(NexusUnitType.Bomber, NexusUnitType.Frigate, 4)]
+    [InlineData(NexusUnitType.Bomber, NexusUnitType.Infantry, 4)]
+    // Frigate — Shield, flat threshold
+    [InlineData(NexusUnitType.Frigate, NexusUnitType.Interceptor, 4)]
+    [InlineData(NexusUnitType.Frigate, NexusUnitType.Frigate, 4)]
+    [InlineData(NexusUnitType.Frigate, NexusUnitType.Infantry, null)]
+    // Destroyer — PenaltyVsStrike
+    [InlineData(NexusUnitType.Destroyer, NexusUnitType.Interceptor, 5)]
+    [InlineData(NexusUnitType.Destroyer, NexusUnitType.Frigate, 4)]
+    // Cruiser — BonusVsCapital
+    [InlineData(NexusUnitType.Cruiser, NexusUnitType.Interceptor, 4)]
+    [InlineData(NexusUnitType.Cruiser, NexusUnitType.Frigate, 3)]
+    [InlineData(NexusUnitType.Cruiser, NexusUnitType.Infantry, 4)]
+    // Carrier — high base threshold
+    [InlineData(NexusUnitType.Carrier, NexusUnitType.Interceptor, 5)]
+    [InlineData(NexusUnitType.Carrier, NexusUnitType.Frigate, 5)]
+    [InlineData(NexusUnitType.Carrier, NexusUnitType.Infantry, null)]
+    // Infantry — flat, Planetary only
+    [InlineData(NexusUnitType.Infantry, NexusUnitType.Infantry, 4)]
+    [InlineData(NexusUnitType.Infantry, NexusUnitType.Interceptor, null)]
+    // Armor — Shield, Planetary only
+    [InlineData(NexusUnitType.Armor, NexusUnitType.Infantry, 4)]
+    [InlineData(NexusUnitType.Armor, NexusUnitType.Frigate, null)]
+    [InlineData(NexusUnitType.Armor, NexusUnitType.Interceptor, null)]
     public void GetHitThreshold_ReturnsExpected(
         NexusUnitType attacker,
-        CombatPhase phase,
         NexusUnitType target,
-        int expected
-    ) => Assert.Equal(expected, NexusCombatSpec.GetHitThreshold(attacker, phase, target));
-
-    [Theory]
-    // Phase-specific null explicitly blocks — Armor cannot fire at ground units in Orbit
-    [InlineData(NexusUnitType.Armor, CombatPhase.Orbit, NexusUnitType.Infantry)]
-    [InlineData(NexusUnitType.Armor, CombatPhase.Orbit, NexusUnitType.Armor)]
-    // No threshold defined for target category — Infantry has no Strike/Capital threshold
-    [InlineData(NexusUnitType.Infantry, CombatPhase.Surface, NexusUnitType.Bomber)]
-    // Attacker cannot attack in this phase
-    [InlineData(NexusUnitType.Interceptor, CombatPhase.Orbit, NexusUnitType.Bomber)]
-    // Target not targetable in this phase — Frigate does not defend in Intercept
-    [InlineData(NexusUnitType.Destroyer, CombatPhase.Intercept, NexusUnitType.Frigate)]
-    public void GetHitThreshold_ReturnsNull(
-        NexusUnitType attacker,
-        CombatPhase phase,
-        NexusUnitType target
-    ) => Assert.Null(NexusCombatSpec.GetHitThreshold(attacker, phase, target));
-
-    [Fact]
-    public void Planetary_NotTargetableInP1() =>
-        Assert.False(NexusCombatSpec.IsTargetable(NexusUnitType.Infantry, CombatPhase.Intercept));
-
-    [Fact]
-    public void Destroyer_NotTargetableInP1() =>
-        Assert.False(NexusCombatSpec.IsTargetable(NexusUnitType.Destroyer, CombatPhase.Intercept));
-
-    [Fact]
-    public void Ships_NotTargetableInP4() =>
-        Assert.False(NexusCombatSpec.IsTargetable(NexusUnitType.Cruiser, CombatPhase.Surface));
-
-    [Fact]
-    public void Infantry_CanAttackInP4() =>
-        Assert.True(NexusCombatSpec.CanAttack(NexusUnitType.Infantry, CombatPhase.Surface));
-
-    [Fact]
-    public void Interceptor_CanAttackInP2() =>
-        Assert.True(NexusCombatSpec.CanAttack(NexusUnitType.Interceptor, CombatPhase.Line));
-
-    [Fact]
-    public void Interceptor_CannotHitShipsInP2() =>
-        Assert.Null(
-            NexusCombatSpec.GetHitThreshold(
-                NexusUnitType.Interceptor,
-                CombatPhase.Line,
-                NexusUnitType.Frigate
-            )
-        );
-
-    [Fact]
-    public void Carrier_CannotAttackInP1() =>
-        Assert.False(NexusCombatSpec.CanAttack(NexusUnitType.Carrier, CombatPhase.Intercept));
+        int? expected
+    ) => Assert.Equal(expected, NexusCombatSpec.GetHitThreshold(attacker, target));
 }
 
 // ── Engine — Initialize ───────────────────────────────────────────────────────
@@ -352,7 +311,7 @@ public class NexusMoveValidationTests
             units
                 .Select(unit => new NexusUnitStackGroup(
                     unit.Item1,
-                    unit.Item1.Profile().Hull,
+                    unit.Item1.Profile().Hits,
                     unit.Item2
                 ))
                 .ToImmutableArray()
@@ -569,7 +528,7 @@ public class NexusRoundResolutionTests
             units
                 .Select(unit => new NexusUnitStackGroup(
                     unit.UnitType,
-                    unit.UnitType.Profile().Hull,
+                    unit.UnitType.Profile().Hits,
                     unit.Count
                 ))
                 .ToImmutableArray()
@@ -578,7 +537,7 @@ public class NexusRoundResolutionTests
     private static NexusMoveOrder MoveExact(
         HexCoord from,
         HexCoord to,
-        params (NexusUnitType UnitType, int RemainingHull, int Count)[] stacks
+        params (NexusUnitType UnitType, int RemainingHits, int Count)[] stacks
     ) =>
         new(
             from,
@@ -586,7 +545,7 @@ public class NexusRoundResolutionTests
             stacks
                 .Select(stack => new NexusUnitStackGroup(
                     stack.UnitType,
-                    stack.RemainingHull,
+                    stack.RemainingHits,
                     stack.Count
                 ))
                 .ToImmutableArray()
@@ -838,7 +797,7 @@ public class NexusPersistentDamageTests
             units
                 .Select(unit => new NexusUnitStackGroup(
                     unit.UnitType,
-                    unit.UnitType.Profile().Hull,
+                    unit.UnitType.Profile().Hits,
                     unit.Count
                 ))
                 .ToImmutableArray()
@@ -847,7 +806,7 @@ public class NexusPersistentDamageTests
     private static NexusMoveOrder MoveExact(
         HexCoord from,
         HexCoord to,
-        params (NexusUnitType UnitType, int RemainingHull, int Count)[] stacks
+        params (NexusUnitType UnitType, int RemainingHits, int Count)[] stacks
     ) =>
         new(
             from,
@@ -855,7 +814,7 @@ public class NexusPersistentDamageTests
             stacks
                 .Select(stack => new NexusUnitStackGroup(
                     stack.UnitType,
-                    stack.RemainingHull,
+                    stack.RemainingHits,
                     stack.Count
                 ))
                 .ToImmutableArray()
@@ -867,13 +826,13 @@ public class NexusPersistentDamageTests
         var s = MakeState();
         var p1Home = s.Systems.First(sys => sys.HomePlayerId == P1Id);
 
-        // Replace P1's home units with a single Carrier that already has 3 remaining hull
+        // Replace P1's home units with a single Carrier that already has 3 remaining hits
         p1Home.Units[P1Id] =
         [
             new NexusUnitStack
             {
                 UnitType = NexusUnitType.Carrier,
-                RemainingHull = 3,
+                RemainingHits = 3,
                 Count = 1,
             },
         ];
@@ -883,7 +842,7 @@ public class NexusPersistentDamageTests
 
         // Damage must survive the round unchanged
         var stack = p1Home.GetPlayerStacks(P1Id).Single(st => st.UnitType == NexusUnitType.Carrier);
-        Assert.Equal(3, stack.RemainingHull);
+        Assert.Equal(3, stack.RemainingHits);
         Assert.Equal(1, stack.Count);
     }
 
@@ -905,25 +864,25 @@ public class NexusPersistentDamageTests
             new NexusUnitStack
             {
                 UnitType = NexusUnitType.Infantry,
-                RemainingHull = NexusUnitType.Infantry.Profile().Hull,
+                RemainingHits = NexusUnitType.Infantry.Profile().Hits,
                 Count = 4,
             },
             new NexusUnitStack
             {
                 UnitType = NexusUnitType.Fighter,
-                RemainingHull = NexusUnitType.Fighter.Profile().Hull,
+                RemainingHits = NexusUnitType.Fighter.Profile().Hits,
                 Count = 2,
             },
             new NexusUnitStack
             {
                 UnitType = NexusUnitType.Frigate,
-                RemainingHull = 1,
+                RemainingHits = 1,
                 Count = 1,
             },
             new NexusUnitStack
             {
                 UnitType = NexusUnitType.Frigate,
-                RemainingHull = NexusUnitType.Frigate.Profile().Hull,
+                RemainingHits = NexusUnitType.Frigate.Profile().Hits,
                 Count = 1,
             },
         ];
@@ -934,7 +893,7 @@ public class NexusPersistentDamageTests
             new NexusUnitStack
             {
                 UnitType = NexusUnitType.Frigate,
-                RemainingHull = NexusUnitType.Frigate.Profile().Hull,
+                RemainingHits = NexusUnitType.Frigate.Profile().Hits,
                 Count = 1,
             },
         ];
@@ -951,7 +910,7 @@ public class NexusPersistentDamageTests
         var dst = s.Systems.First(sys => sys.Coord == adjacent);
         var movedStack = dst.GetPlayerStacks(P1Id)
             .Single(st => st.UnitType == NexusUnitType.Frigate);
-        Assert.Equal(1, movedStack.RemainingHull);
+        Assert.Equal(1, movedStack.RemainingHits);
     }
 
     [Fact]
@@ -967,7 +926,7 @@ public class NexusPersistentDamageTests
             new NexusUnitStack
             {
                 UnitType = NexusUnitType.Frigate,
-                RemainingHull = NexusUnitType.Frigate.Profile().Hull,
+                RemainingHits = NexusUnitType.Frigate.Profile().Hits,
                 Count = 1,
             },
         ];
@@ -1196,12 +1155,12 @@ public class NexusGateTests
                         [
                             new NexusUnitStackGroup(
                                 NexusUnitType.Carrier,
-                                NexusUnitType.Carrier.Profile().Hull,
+                                NexusUnitType.Carrier.Profile().Hits,
                                 1
                             ),
                             new NexusUnitStackGroup(
                                 NexusUnitType.Fighter,
-                                NexusUnitType.Fighter.Profile().Hull,
+                                NexusUnitType.Fighter.Profile().Hits,
                                 1
                             ),
                         ]
@@ -1289,7 +1248,7 @@ public class NexusCommittedPlanetaryTests
                         [
                             new NexusUnitStackGroup(
                                 NexusUnitType.Infantry,
-                                NexusUnitType.Infantry.Profile().Hull,
+                                NexusUnitType.Infantry.Profile().Hits,
                                 1
                             ),
                         ]
@@ -1328,12 +1287,12 @@ public class NexusCommittedPlanetaryTests
                         [
                             new NexusUnitStackGroup(
                                 NexusUnitType.Carrier,
-                                NexusUnitType.Carrier.Profile().Hull,
+                                NexusUnitType.Carrier.Profile().Hits,
                                 1
                             ),
                             new NexusUnitStackGroup(
                                 NexusUnitType.Infantry,
-                                NexusUnitType.Infantry.Profile().Hull,
+                                NexusUnitType.Infantry.Profile().Hits,
                                 1
                             ),
                         ]

@@ -29,7 +29,7 @@ public sealed record TacticalSimulationSettings(int IterationsPerMatchup, int Ba
 public sealed record TacticalProfileUnit(
     NexusUnitType UnitType,
     int Count,
-    int? RemainingHull = null
+    int? RemainingHits = null
 );
 
 public sealed record TacticalProfile(

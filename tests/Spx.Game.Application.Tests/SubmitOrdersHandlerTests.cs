@@ -36,16 +36,15 @@ public sealed class SubmitOrdersHandlerTests
     }
 
     [Fact]
-    public void Format_WhenCombatPhaseResolves_IncludesPerRollUnitHullAndLossSummary()
+    public void Format_WhenCombatPhaseResolves_IncludesPerRollUnitHitsAndLossSummary()
     {
         var playerNames = new Dictionary<Guid, string>
         {
             [RedPlayerId] = "Alice",
             [BluePlayerId] = "Bob",
         };
-        var evt = new NexusPhaseResultEvent(
+        var evt = new NexusCombatResultEvent(
             new HexCoord(0, 0),
-            CombatPhase.Line,
             [
                 new NexusCombatLoss(BluePlayerId, NexusUnitType.Destroyer, 1),
                 new NexusCombatLoss(RedPlayerId, NexusUnitType.Fighter, 2),
@@ -89,17 +88,17 @@ public sealed class SubmitOrdersHandlerTests
 
         var message = NexusSessionEventFormatter.Format(evt, playerNames, RedPlayerId);
 
-        Assert.Contains("Line at Nexus", message);
+        Assert.Contains("Normal at Nexus", message);
         Assert.Contains(
-            "Alice Cruiser (2/2 hull) -> Bob Destroyer (1/2 hull): rolled 5 vs 3 hit",
+            "Alice Cruiser (2/2 hits) -> Bob Destroyer (1/2 hits): rolled 5 vs 3 hit",
             message
         );
         Assert.Contains(
-            "Alice Cruiser (2/2 hull) -> Bob Destroyer (1/2 hull): rolled 2 vs 3 miss",
+            "Alice Cruiser (2/2 hits) -> Bob Destroyer (1/2 hits): rolled 2 vs 3 miss",
             message
         );
         Assert.Contains(
-            "Bob Destroyer (1/2 hull) -> Alice Fighter (1/1 hull): rolled 5 vs 5 hit",
+            "Bob Destroyer (1/2 hits) -> Alice Fighter (1/1 hits): rolled 5 vs 5 hit",
             message
         );
         Assert.Contains("Losses: Alice loses 2× Fighter; Bob loses 1× Destroyer", message);
