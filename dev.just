@@ -66,6 +66,22 @@ dev-watch-playground:
         DOTNET_WATCH_RESTART_ON_RUDE_EDIT=1 \
         dotnet watch --project src/Spx.Web.Playground/Spx.Web.Playground.csproj
 
+# Run both Playground and Tailwind watch in parallel
+dev-playground:
+    shopt -s huponexit; \
+    trap 'kill 0 2>/dev/null; exit' INT TERM HUP; \
+    just dev-tailwind-watch & \
+    env DOTNET_USE_POLLING_FILE_WATCHER=1 \
+        DOTNET_WATCH_RESTART_ON_RUDE_EDIT=1 \
+        dotnet watch --project src/Spx.Web.Playground/Spx.Web.Playground.csproj & \
+    wait
+
 # Run both AppHost and Tailwind watch in parallel
-dev: dev-tailwind-watch
-    just dev-watch
+dev:
+    shopt -s huponexit; \
+    trap 'kill 0 2>/dev/null; exit' INT TERM HUP; \
+    just dev-tailwind-watch & \
+    env DOTNET_USE_POLLING_FILE_WATCHER=1 \
+        DOTNET_WATCH_RESTART_ON_RUDE_EDIT=1 \
+        dotnet watch --project src/Spx.AppHost/Spx.AppHost.csproj run & \
+    wait
