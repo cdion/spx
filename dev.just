@@ -54,10 +54,8 @@ dev-run:
 
 # Watch the AppHost with hot reload (background, restarts on edit)
 dev-watch:
-    @systemctl --user stop spx-apphost.scope 2>/dev/null; true
     env DOTNET_USE_POLLING_FILE_WATCHER=1 \
         DOTNET_WATCH_RESTART_ON_RUDE_EDIT=1 \
-        systemd-run --user --scope --unit=spx-apphost \
         dotnet watch --project src/Spx.AppHost/Spx.AppHost.csproj run
 
 # Watch the Playground with hot reload (background)
