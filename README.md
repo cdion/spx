@@ -48,17 +48,26 @@ dotnet tool restore
 
 ## CI And Deployment
 
-The repo now treats `justfile` as the source of truth for CI/CD orchestration.
+The repo uses `just` (https://github.com/casey/just) for all task orchestration.
+Recipes are organized into topic files that `justfile` imports:
+
+| File | Concern |
+|---|---|
+| `ci.just` | `ci-*` — restore, build, test, CI pipeline |
+| `deploy.just` | `deploy-*` — container images, push, promote, migrate, restart |
+| `infra.just` | `infra-*` — VM bootstrap, db reset, diagnostics |
+| `dev.just` | `dev-*` — local build, test, coverage, tailwind, run, watch |
+
 GitHub Actions should stay thin and call the same Just recipes you can run locally.
 
-Common local entry points from the repo root:
+Common entry points from the repo root:
 
 ```bash
-just ci
-just image-build
-just publish
-just promote-prod
-just deploy
+just ci                    # ci-restore → ci-build → ci-test
+just deploy-build-images   # build container images
+just deploy-publish        # build + push images
+just deploy-promote-prod   # tag current build as prod
+just deploy                # deploy-pull-images → deploy-migrate → deploy-restart-app
 ```
 
 On `main`, the CI workflow is the producer of the deployable versioned images.
@@ -78,11 +87,11 @@ format, and you can override it when needed:
 
 ```bash
 SPX_VERSION=1.2.3-rc.1 just ci
-SPX_VERSION=1.2.3-rc.1 IMAGE_TAG=1.2.3-rc.1 just publish
-IMAGE_TAG=1.2.3-rc.1 just promote-prod
+SPX_VERSION=1.2.3-rc.1 IMAGE_TAG=1.2.3-rc.1 just deploy-publish
+IMAGE_TAG=1.2.3-rc.1 just deploy-promote-prod
 ```
 
-`just bootstrap` remains the one-time VM setup path. It now also handles GHCR
+`just infra-bootstrap` remains the one-time VM setup path. It now also handles GHCR
 login for the VM's root Podman context when `GHCR_USERNAME` and `GHCR_TOKEN` are
 present in the shell environment. That keeps registry bootstrap and Quadlet file
 installation in the same path used for first-time environment setup.
@@ -102,10 +111,19 @@ The deploy workflow expects these GitHub secrets:
 
 ## Local Development
 
-The intended local entry point is the Aspire AppHost:
+The intended local entry point is:
 
 ```bash
-dotnet run --project src/Spx.AppHost/Spx.AppHost.csproj
+just dev
+```
+
+This starts the Tailwind watcher and the AppHost under `dotnet watch` together.
+
+Alternatively, run just the AppHost to inspect logs, health, and endpoints
+via the Aspire dashboard:
+
+```bash
+just run
 ```
 
 That starts:
@@ -116,29 +134,19 @@ That starts:
 - PostgreSQL with `appdb` and `orleansdb`
 - the Aspire dashboard
 
-Use the URLs printed by the AppHost or shown in the Aspire dashboard. The dashboard is the easiest place to inspect logs, health, and resolved endpoints.
+Single-purpose recipes:
 
-In VS Code, the main development task is:
-
-- `dev: watch apphost + tailwind`
-
-That runs the Tailwind watcher and the AppHost under `dotnet watch` together.
-
-For normal UI and Razor iteration, prefer that task over the debug launch configuration. Keep the debug launch for cases where you actually need breakpoints or debugger state.
-
-Useful single-purpose tasks are also checked in:
-
-- `just reset-appdb`
-- `web: build`
-- `silo: build`
-- `apphost: build`
-- `just reset-orleansdb`
-- `tailwind: build css`
-- `dev: watch tailwind`
-- `dev: watch apphost`
-- `apphost: run`
-- `dev: watch playground`
-- `dev: watch playground + tailwind`
+| Command | What it does |
+|---|---|
+| `just dev-run` | Start the AppHost |
+| `just dev-watch` | AppHost under `dotnet watch` (background) |
+| `just dev-watch-playground` | Playground under `dotnet watch` (background) |
+| `just dev-tailwind` | Build Tailwind CSS once |
+| `just dev-tailwind-watch` | Watch Tailwind source files |
+| `just dev` | AppHost + Tailwind in parallel |
+| `just dev-build-project src/Spx.Web` | Build one project |
+| `just infra-reset-appdb` | Clear local app database |
+| `just infra-reset-orleansdb` | Clear local Orleans storage |
 
 ## Application Behavior
 
@@ -207,12 +215,12 @@ Current migrations live under `src/Spx.Data/Migrations`.
 - Source CSS: `src/Spx.Web.Components/Styles/app.css`
 - Generated CSS: `src/Spx.Web.Components/wwwroot/app.css`
 - The component library runs a one-shot Tailwind build before `Build` and `Publish`
-- The checked-in VS Code task can run the watcher alongside the AppHost during development
+- `just tailwind-watch` runs the watcher alongside the AppHost via `just dev`
 
-You can also build the CSS manually:
+Build the CSS manually:
 
 ```bash
-./tools/tailwind/bin/tailwindcss-linux-x64 -i src/Spx.Web.Components/Styles/app.css -o src/Spx.Web.Components/wwwroot/app.css --minify
+just dev-tailwind
 ```
 
 ## Testing
@@ -222,18 +230,18 @@ The repo testing strategy is documented in `TESTING.md`.
 Common commands from the repo root:
 
 ```bash
-just ci
-dotnet test tests/Spx.Account.Application.Tests/Spx.Account.Application.Tests.csproj
-dotnet test tests/Spx.Game.Application.Tests/Spx.Game.Application.Tests.csproj
-dotnet test tests/Spx.Game.Application.IntegrationTests/Spx.Game.Application.IntegrationTests.csproj
-dotnet test tests/Spx.Grains.Tests/Spx.Grains.Tests.csproj
-dotnet test tests/Spx.Grains.IntegrationTests/Spx.Grains.IntegrationTests.csproj
-dotnet test tests/Spx.Web.Tests/Spx.Web.Tests.csproj
+just dev-test-project tests/Spx.Nexus.Domain.Tests
+just dev-test-project tests/Spx.Web.Tests
+just dev-test-all
 ```
 
-The VS Code task file also includes:
+Coverage:
 
-- `tests: run all`
-- `tests: generate coverage html`
+```bash
+just dev-coverage tests/Spx.Nexus.Domain.Tests
+just dev-coverage-all
+just dev-coverage-html
+just dev-coverage-full       # clean → collect all → HTML report
+```
 
-The coverage task writes HTML output under `coverage/html`.
+The coverage report is written to `coverage/html/`.
