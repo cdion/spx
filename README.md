@@ -239,8 +239,6 @@ Coverage:
 
 ```bash
 just dev-coverage tests/Spx.Nexus.Domain.Tests
-just dev-coverage-all
-just dev-coverage-html
 just dev-coverage-full       # clean → collect all → HTML report
 ```
 

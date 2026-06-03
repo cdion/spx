@@ -1,11 +1,8 @@
 # CI pipeline — build, restore, test
 
 # Ensure the repo-local Tailwind standalone binary exists for web builds
-ci-ensure-tailwind:
+ci-restore:
     @./tools/tailwind/install.sh
-
-# Restore .NET workloads and local tools
-ci-restore: ci-ensure-tailwind
     @echo "==> Restoring tools and packages..."
     {{dotnet}} tool restore
     {{dotnet}} restore Spx.slnx

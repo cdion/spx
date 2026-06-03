@@ -16,8 +16,9 @@ dev-test-all:
 dev-coverage project:
     dotnet test {{project}} --collect:"XPlat Code Coverage" --results-directory coverage/testresults
 
-# Collect coverage for all test projects
-dev-coverage-all:
+# Clean coverage data, collect for all projects, and generate HTML report
+dev-coverage-full:
+    rm -rf coverage
     dotnet test tests/Spx.Account.Application.Tests --collect:"XPlat Code Coverage" --results-directory coverage/testresults
     dotnet test tests/Spx.Nexus.Domain.Tests --collect:"XPlat Code Coverage" --results-directory coverage/testresults
     dotnet test tests/Spx.Nexus.Simulation.Tests --collect:"XPlat Code Coverage" --results-directory coverage/testresults
@@ -26,21 +27,11 @@ dev-coverage-all:
     dotnet test tests/Spx.Grains.Tests --collect:"XPlat Code Coverage" --results-directory coverage/testresults
     dotnet test tests/Spx.Grains.IntegrationTests --collect:"XPlat Code Coverage" --results-directory coverage/testresults
     dotnet test tests/Spx.Web.Tests --collect:"XPlat Code Coverage" --results-directory coverage/testresults
-
-# Clean all coverage data
-dev-clean-coverage:
-    rm -rf coverage
-
-# Generate HTML coverage report from collected data
-dev-coverage-html:
     mkdir -p coverage/html
     dotnet tool run reportgenerator \
         -reports:coverage/testresults/**/coverage.cobertura.xml \
         -targetdir:coverage/html \
         -reporttypes:Html
-
-# Full coverage run: clean → collect all → HTML report
-dev-coverage-full: dev-clean-coverage dev-coverage-all dev-coverage-html
     @echo "==> Coverage report at coverage/html/index.html"
 
 # Build the Tailwind CSS bundle once
