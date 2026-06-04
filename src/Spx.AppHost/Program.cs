@@ -9,8 +9,7 @@ const int PostgresPort = 15432;
 
 var redis = builder
     .AddRedis("orleans-redis")
-    .WithEndpoint("tcp", endpoint => endpoint.Port = RedisPort)
-    .WithLifetime(Aspire.Hosting.ApplicationModel.ContainerLifetime.Session);
+    .WithEndpoint("tcp", endpoint => endpoint.Port = RedisPort);
 var postgresPassword = builder.AddParameter(
     "postgres-password",
     () => builder.Configuration["Parameters:postgres-password"] ?? "spx-local-postgres-password",
@@ -20,7 +19,6 @@ var postgresPassword = builder.AddParameter(
 var postgres = builder
     .AddPostgres("postgres", password: postgresPassword)
     .WithEndpoint("tcp", endpoint => endpoint.Port = PostgresPort)
-    .WithLifetime(Aspire.Hosting.ApplicationModel.ContainerLifetime.Persistent)
     .WithDataVolume("spx-postgres-data");
 var appDb = postgres.AddDatabase("appdb");
 var orleansDb = postgres.AddDatabase("orleansdb");

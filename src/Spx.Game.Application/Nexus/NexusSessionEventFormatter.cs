@@ -115,7 +115,8 @@ public static class NexusSessionEventFormatter
             .OrderBy(summary => summary)
             .ToList();
 
-        var stepName = isFirstStrike ? "First Strike" : "Normal";
+        var phase = isFirstStrike ? NexusCombatPhase.FirstStrike : NexusCombatPhase.Battle;
+        var stepName = phase.DisplayName();
         var lines = new List<string> { $"{stepName} at {systemName}" };
         if (attackRolls.Length == 0)
         {

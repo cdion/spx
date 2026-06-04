@@ -121,6 +121,7 @@ else
     );
 }
 
+builder.Services.AddHostedService<DatabaseSeeder>();
 builder.Services.AddAccountApplication();
 builder.Services.AddAccountWebAdapters();
 builder.Services.AddWebAdapters();

@@ -734,6 +734,44 @@ public class NexusRoundResolutionTests
         Assert.Equal(NexusGameOutcome.Victory, s.Completion!.Outcome);
         Assert.Equal(P2Id, s.Completion.WinnerId);
     }
+
+    [Fact]
+    public void Combat_Overkill_DoesNotInflateLossCount()
+    {
+        // Regression test: when multiple attackers destroy the same unit with overkill,
+        // only the actual destroyed unit(s) should be counted as losses — not every hit.
+        // Arrange: 3 Fighters vs 1 Fighter in Alpha. Each Fighter has 1 hit.
+        // If all 3 hit, the first destroys the defender; the other two are overkill.
+        var s = MakeState();
+        var alpha = s.Systems.First(sys => sys.Coord == new HexCoord(1, -1));
+        alpha.AddUnits(P1Id, NexusUnitType.Fighter, 3);
+        alpha.AddUnits(P2Id, NexusUnitType.Fighter, 1);
+
+        // Act
+        SubmitBoth(s);
+
+        // Assert
+        var firstStrike = s.LastResolveEvents.OfType<NexusFirstStrikeEvent>().FirstOrDefault();
+        var normal = s.LastResolveEvents.OfType<NexusCombatResultEvent>().FirstOrDefault();
+
+        // Count losses for the defender (P2) across both combat steps
+        var defenderLosses = 0;
+        if (firstStrike is not null)
+            defenderLosses += firstStrike.Losses.Where(l => l.PlayerId == P2Id).Sum(l => l.Count);
+        if (normal is not null)
+            defenderLosses += normal.Losses.Where(l => l.PlayerId == P2Id).Sum(l => l.Count);
+
+        // The defender started with 1 Fighter — loss count must not exceed 1.
+        Assert.True(
+            defenderLosses <= 1,
+            $"Overkill inflated losses: expected ≤ 1, got {defenderLosses}"
+        );
+
+        // If the defender was destroyed, exactly 1 loss should be reported.
+        var p2Survives = alpha.GetPlayerStacks(P2Id).Any(s => s.UnitType == NexusUnitType.Fighter);
+        if (!p2Survives)
+            Assert.Equal(1, defenderLosses);
+    }
 }
 
 // ── Engine — Persistent Damage ────────────────────────────────────────────────

@@ -17,7 +17,7 @@
                 {
                     @if (ResolvedSessionState.Session is null)
                     {
-                        <p class="text-sm leading-6 text-slate-300">@GetTimelineDescription()</p>
+                        <p class="ui-type-body">@GetTimelineDescription()</p>
                     }
 
                     @if (ResolvedSessionState.Session is null && !string.IsNullOrWhiteSpace(ResolvedSessionState.GameplayError))
@@ -48,7 +48,7 @@ else if (Session is null)
 {
     <SurfacePanelShell SurfaceClass="ui-surface-form-tight space-y-5" BodyClass="space-y-4">
         <ChildContent>
-            <p class="text-sm leading-6 text-slate-300">@GetDescription()</p>
+            <p class="ui-type-body">@GetDescription()</p>
 
             @if (!string.IsNullOrWhiteSpace(GameplayError))
             {

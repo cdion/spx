@@ -664,7 +664,7 @@ public static class NexusEngine
             isFirstStrike: true
         );
 
-        // Normal step — surviving units without FirstStrike fire
+        // Battle step — surviving units without FirstStrike fire
         ResolveOneStep(
             system.Coord,
             units1,
@@ -737,6 +737,10 @@ public static class NexusEngine
         var losses = new Dictionary<(Guid, NexusUnitType), int>();
         foreach (var (target, targetPlayerId, wasShielded) in pendingHits)
         {
+            // Skip already-destroyed targets: overkill hits must not count as extra losses.
+            if (target.IsDestroyed)
+                continue;
+
             if (!wasShielded)
                 target.RemainingHits--;
             if (target.IsDestroyed)
@@ -841,7 +845,7 @@ public static class NexusEngine
                     pendingHits.Add((target, targetPlayerId, wasShielded));
             }
 
-            // Normal attacks
+            // Battle attacks
             for (var i = 0; i < profile.Attacks; i++)
                 PerformAttack(eligible);
 

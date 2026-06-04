@@ -166,7 +166,8 @@ public sealed class TacticalSimulator
             .OrderBy(pair => pair.Key)
             .SelectMany(pair =>
             {
-                var phaseName = pair.Key ? "FirstStrike" : "Normal";
+                var phase = pair.Key ? NexusCombatPhase.FirstStrike : NexusCombatPhase.Battle;
+                var phaseName = phase.ToString();
                 return new[]
                 {
                     new TacticalPhaseSummary(

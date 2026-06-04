@@ -88,7 +88,7 @@ public sealed class SubmitOrdersHandlerTests
 
         var message = NexusSessionEventFormatter.Format(evt, playerNames, RedPlayerId);
 
-        Assert.Contains("Normal at Nexus", message);
+        Assert.Contains("Battle at Nexus", message);
         Assert.Contains(
             "Alice Cruiser (2/2 hits) -> Bob Destroyer (1/2 hits): rolled 5 vs 3 hit",
             message

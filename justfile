@@ -12,7 +12,10 @@ import './dev.just'
 #   - ssh access to the VM as core@<VM>
 #
 # Development (no VM needed):
-#   just dev          # AppHost + Tailwind watch
+#   just dev-run                # AppHost (Aspire dashboard)
+#   just dev-watch              # AppHost with dotnet watch
+#   just dev-tailwind-watch     # Tailwind CSS watch
+#   just dev-watch-playground   # Playground with dotnet watch
 #   just test-project tests/Spx.Nexus.Domain.Tests
 #   just build-project src/Spx.Web
 #

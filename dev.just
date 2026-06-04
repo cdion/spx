@@ -52,34 +52,36 @@ dev-tailwind-watch:
 dev-run:
     dotnet run --project src/Spx.AppHost/Spx.AppHost.csproj
 
-# Watch the AppHost with hot reload (background, restarts on edit)
+# Watch the AppHost with dotnet watch (run in a separate terminal)
 dev-watch:
-    env DOTNET_USE_POLLING_FILE_WATCHER=1 \
-        DOTNET_WATCH_RESTART_ON_RUDE_EDIT=1 \
-        dotnet watch --project src/Spx.AppHost/Spx.AppHost.csproj run
+    # Kill previous scope so systemd cleans up the entire cgroup
+    systemctl --user stop spx-apphost 2>/dev/null || true
+    systemd-run --user --unit=spx-apphost --scope \
+        -p Delegate=yes \
+        -- \
+        env DOTNET_USE_POLLING_FILE_WATCHER=1 \
+            dotnet watch --project src/Spx.AppHost/Spx.AppHost.csproj run
 
-# Watch the Playground with hot reload (background)
+# Watch the Playground with dotnet watch (run in a separate terminal)
 dev-watch-playground:
-    env DOTNET_USE_POLLING_FILE_WATCHER=1 \
-        DOTNET_WATCH_RESTART_ON_RUDE_EDIT=1 \
-        dotnet watch --project src/Spx.Web.Playground/Spx.Web.Playground.csproj
+    # Kill previous scope so systemd cleans up the entire cgroup
+    systemctl --user stop spx-playground 2>/dev/null || true
+    systemd-run --user --unit=spx-playground --scope \
+        -p Delegate=yes \
+        -- \
+        env DOTNET_USE_POLLING_FILE_WATCHER=1 \
+            dotnet watch --project src/Spx.Web.Playground/Spx.Web.Playground.csproj
 
-# Run both Playground and Tailwind watch in parallel
-dev-playground:
-    shopt -s huponexit; \
-    trap 'kill 0 2>/dev/null; exit' INT TERM HUP; \
-    just dev-tailwind-watch & \
-    env DOTNET_USE_POLLING_FILE_WATCHER=1 \
-        DOTNET_WATCH_RESTART_ON_RUDE_EDIT=1 \
-        dotnet watch --project src/Spx.Web.Playground/Spx.Web.Playground.csproj & \
-    wait
-
-# Run both AppHost and Tailwind watch in parallel
-dev:
-    shopt -s huponexit; \
-    trap 'kill 0 2>/dev/null; exit' INT TERM HUP; \
-    just dev-tailwind-watch & \
-    env DOTNET_USE_POLLING_FILE_WATCHER=1 \
-        DOTNET_WATCH_RESTART_ON_RUDE_EDIT=1 \
-        dotnet watch --project src/Spx.AppHost/Spx.AppHost.csproj run & \
-    wait
+# Run EF Core migrations against the local database
+# Requires a Postgres container to be running (from `just dev-watch` or `just dev-run`)
+dev-db-migrate:
+    container=$(podman ps --filter name=postgres --noheading 2>/dev/null | head -1 | awk '{print $NF}'); \
+    if [ -z "$container" ]; then \
+        echo "No Postgres container found. Start the AppHost first: just dev-watch" >&2; \
+        exit 1; \
+    fi; \
+    host_port=$(podman port "$container" 5432 2>/dev/null | head -1 | sed 's/.*://'); \
+    password=$(podman exec "$container" env 2>/dev/null | sed -n 's/^POSTGRES_PASSWORD=//p'); \
+    export APPDB_URI="Host=localhost;Port=$host_port;Database=appdb;Username=postgres;Password=$password"; \
+    echo "Migrating appdb on localhost:$host_port..."; \
+    dotnet ef database update --project src/Spx.Data

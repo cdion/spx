@@ -34,7 +34,7 @@
 <section class="mb-6 grid gap-3 lg:grid-cols-[1.45fr_1fr]">
     <div class="ui-panel-card space-y-4">
         <SectionHeader Eyebrow="Story controls" Title="Page state">
-            <p class="text-sm leading-6 text-slate-300">Use these toggles to preview the same branches that the real
+            <p class="ui-type-body">Use these toggles to preview the same branches that the real
                 lobby page renders.</p>
             </SectionHeader>
 
@@ -53,11 +53,11 @@
                 </label>
             </div>
 
-            <div class="flex flex-wrap gap-2 text-xs uppercase tracking-[0.2em] text-slate-500">
-                <span class="rounded-full border border-white/10 px-3 py-1">Current state: @_states[_stateIndex]</span>
+            <div class="flex flex-wrap gap-2 ui-type-overline text-slate-500">
+                <span class="ui-badge-pill">Current state: @_states[_stateIndex]</span>
                 @if (_lobby is not null)
                 {
-                    <span class="rounded-full border border-white/10 px-3 py-1">Players: @_lobby.Players.Count /
+                    <span class="ui-badge-pill">Players: @_lobby.Players.Count /
                         @_lobby.MaxPlayers</span>
                     }
                     @if (_session is not null)
@@ -68,7 +68,7 @@
                     </div>
                 </div>
 
-                <div class="ui-panel-card space-y-3 text-sm leading-6 text-slate-300">
+                <div class="ui-panel-card space-y-3 ui-type-body">
                     <SectionHeader Eyebrow="Coverage" Title="What this story proves" />
                     <p>It exercises the extracted header, gameplay shell, timeline, composer, roster, and current-user panels in one
                         production-like frame.</p>

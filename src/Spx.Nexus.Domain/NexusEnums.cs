@@ -1,5 +1,25 @@
 namespace Spx.Nexus.Domain;
 
+/// <summary>The two combat phases: first strike fires first, then battle resolves remaining units.</summary>
+public enum NexusCombatPhase
+{
+    FirstStrike = 0,
+    Battle = 1,
+}
+
+/// <summary>Extensions for <see cref="NexusCombatPhase"/>.</summary>
+public static class NexusCombatPhaseExtensions
+{
+    /// <summary>Returns the human-readable display name for this phase.</summary>
+    public static string DisplayName(this NexusCombatPhase phase) =>
+        phase switch
+        {
+            NexusCombatPhase.FirstStrike => "First Strike",
+            NexusCombatPhase.Battle => "Battle",
+            _ => throw new ArgumentOutOfRangeException(nameof(phase), phase, null),
+        };
+}
+
 public enum NexusFactionColor
 {
     Red = 0,

@@ -30,13 +30,13 @@
             </label>
         </div>
 
-        <div class="flex flex-wrap gap-2 text-xs uppercase tracking-[0.2em] text-slate-500">
-            <span class="rounded-full border border-white/10 px-3 py-1">State: @_states[_stateIndex]</span>
-            <span class="rounded-full border border-white/10 px-3 py-1">Entries: @_items.Count</span>
+        <div class="flex flex-wrap gap-2 ui-type-overline text-slate-500">
+            <span class="ui-badge-pill">State: @_states[_stateIndex]</span>
+            <span class="ui-badge-pill">Entries: @_items.Count</span>
         </div>
     </div>
 
-    <div class="ui-panel-card space-y-3 text-sm leading-6 text-slate-300">
+    <div class="ui-panel-card space-y-3 ui-type-body">
         <SectionHeader Eyebrow="Coverage" Title="What to review" />
         <p>This story covers the production timeline header, outer alert wrapper, empty state, in-panel editing UI, and
             pending-message recovery actions.</p>

@@ -28,15 +28,15 @@
             }
         </div>
 
-        <div class="flex flex-wrap gap-2 text-xs uppercase tracking-[0.2em] text-slate-500">
-            <span class="rounded-full border border-white/10 px-3 py-1">Route: @(IsCreatePage ? "/games/create" :
+        <div class="flex flex-wrap gap-2 ui-type-overline text-slate-500">
+            <span class="ui-badge-pill">Route: @(IsCreatePage ? "/games/create" :
                                                                     "/games/join")</span>
                 <span class="rounded-full border border-sky-400/20 bg-sky-500/10 px-3 py-1 text-sky-200">State:
                     @_states[_stateIndex]</span>
                 </div>
             </div>
 
-            <div class="ui-panel-card space-y-3 text-sm leading-6 text-slate-300">
+            <div class="ui-panel-card space-y-3 ui-type-body">
                 <SectionHeader Eyebrow="Coverage" Title="What to review" />
                 <p>This story mirrors the individual create and join pages rather than showing both as a side-by-side catalog.
                 </p>

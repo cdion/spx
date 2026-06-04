@@ -22,7 +22,7 @@
                         <div class="space-y-2">
                             <p class="ui-section-eyebrow">@(section.Title)</p>
                             <h2 class="ui-section-title">@GetStoryCount(section) story views</h2>
-                            <p class="text-sm leading-6 text-slate-300">@GetGroupSummary(section)</p>
+                            <p class="ui-type-body">@GetGroupSummary(section)</p>
                         </div>
 
                         <a class="ui-inline-link" href="@GetFirstHref(section)">Open first story</a>
@@ -35,7 +35,7 @@
             <SectionHeader Eyebrow="Start Here" Title="Suggested review order"
                            Description="Walk the highest-value UX surfaces first, then drill into component stories when a page needs deeper inspection." />
 
-            <ol class="space-y-3 pl-5 text-sm leading-6 text-slate-300 list-decimal">
+            <ol class="space-y-3 pl-5 ui-type-body list-decimal">
                 <li>Lobby page state coverage</li>
                 <li>Account form and gated-access states</li>
                 <li>Gameplay panel and selected-system panels</li>

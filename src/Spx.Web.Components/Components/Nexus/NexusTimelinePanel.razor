@@ -3,10 +3,10 @@
 @inject IJSRuntime JS
 @inject ILogger<NexusTimelinePanel> Logger
 
-<div class="ui-panel-card-tight">
+<div class="ui-panel-card">
     @if (State.IsLoadingOlderMessages)
     {
-        <div class="mb-3 flex justify-end px-2 ui-type-overline">
+        <div class="mb-3 flex justify-end px-2 ui-type-overline text-slate-400">
             <span>Loading older...</span>
         </div>
     }

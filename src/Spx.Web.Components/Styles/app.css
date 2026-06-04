@@ -112,7 +112,7 @@
     }
 
     .ui-panel-card-tight {
-        @apply rounded-2xl border border-white/10 bg-slate-950/40 p-3 sm:p-4;
+        @apply rounded-lg border border-white/10 bg-slate-950/35 p-2 sm:p-3;
     }
 
     .ui-panel-card-inner {
@@ -170,8 +170,12 @@
     /* Typography scale */
 
     .ui-type-overline {
-        @apply text-xs font-semibold uppercase text-slate-400;
+        @apply text-xs font-semibold uppercase;
         letter-spacing: 0.2em;
+    }
+
+    .ui-type-body {
+        @apply text-sm leading-6 text-slate-300;
     }
 
     .ui-type-meta {
@@ -185,6 +189,18 @@
     .ui-panel-label {
         @apply text-sm font-semibold uppercase text-slate-400;
         letter-spacing: 0.2em;
+    }
+
+    .ui-panel-separator {
+        @apply border-t border-white/10 pt-4;
+    }
+
+    .ui-badge-pill {
+        @apply rounded-full border border-white/10 px-3 py-1;
+    }
+
+    .ui-hits-pill {
+        @apply rounded-full border px-1.5 py-0.5 text-xs font-medium;
     }
 
     .ui-code-token {
