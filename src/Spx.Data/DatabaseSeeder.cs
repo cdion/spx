@@ -11,7 +11,7 @@ namespace Spx.Data;
 /// Does NOT run EF migrations — that is handled by the deployment's migrations bundle
 /// (see deploy/Containerfile). This seeder assumes the schema is already current.
 /// </summary>
-public sealed class DatabaseSeeder(
+public sealed partial class DatabaseSeeder(
     IServiceScopeFactory scopeFactory,
     ILogger<DatabaseSeeder> logger
 ) : IHostedService
@@ -25,7 +25,7 @@ public sealed class DatabaseSeeder(
 
         if (await userManager.Users.AnyAsync(cancellationToken))
         {
-            logger.LogInformation("Users already exist, skipping seed");
+            LogSkippingSeed(logger);
             return;
         }
 
@@ -39,16 +39,23 @@ public sealed class DatabaseSeeder(
         var result = await userManager.CreateAsync(user, "Password12345");
         if (result.Succeeded)
         {
-            logger.LogInformation("Seeded user: {Email}", user.Email);
+            LogSeededUser(logger, user.Email);
         }
         else
         {
-            logger.LogWarning(
-                "Failed to seed user: {Errors}",
-                string.Join("; ", result.Errors.Select(e => e.Description))
-            );
+            var errors = string.Join("; ", result.Errors.Select(e => e.Description));
+            LogSeedFailed(logger, errors);
         }
     }
 
     public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Users already exist, skipping seed")]
+    private static partial void LogSkippingSeed(ILogger logger);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Seeded user: {Email}")]
+    private static partial void LogSeededUser(ILogger logger, string email);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Failed to seed user: {Errors}")]
+    private static partial void LogSeedFailed(ILogger logger, string errors);
 }

@@ -34,7 +34,6 @@ internal sealed class PlaygroundNexusHarness
         }
 
         var state = new NexusState();
-        var random = new Random(42);
         var players = playerIds.ToImmutableArray();
 
         NexusEngine.Initialize(
@@ -42,11 +41,11 @@ internal sealed class PlaygroundNexusHarness
             new InitializeNexusGameCommand([
                 .. players.Select(playerId => new NexusSessionPlayer(playerId)),
             ]),
-            random
+            new Random()
         );
         MoveStartingFleetsToNexus(state);
 
-        sessions[gameId] = new SessionEntry(gameId, state, random, DateTime.UtcNow, players);
+        sessions[gameId] = new SessionEntry(gameId, state, DateTime.UtcNow, players);
         return Task.FromResult(true);
     }
 
@@ -76,7 +75,7 @@ internal sealed class PlaygroundNexusHarness
             return new GameSessionCommandFailed("Game session unavailable.");
         }
 
-        var result = NexusEngine.SubmitOrders(session.State, command, session.Random);
+        var result = NexusEngine.SubmitOrders(session.State, command, new Random());
         if (result is NexusTurnOrdersRejected rejected)
         {
             return new GameSessionCommandFailed(rejected.ErrorMessage);
@@ -297,7 +296,6 @@ internal sealed class PlaygroundNexusHarness
     private sealed class SessionEntry(
         Guid gameId,
         NexusState state,
-        Random random,
         DateTime createdAtUtc,
         ImmutableArray<Guid> playerIds
     )
@@ -305,8 +303,6 @@ internal sealed class PlaygroundNexusHarness
         public Guid GameId { get; } = gameId;
 
         public NexusState State { get; } = state;
-
-        public Random Random { get; } = random;
 
         public DateTime CreatedAtUtc { get; } = createdAtUtc;
 
