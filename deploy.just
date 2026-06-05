@@ -19,36 +19,29 @@ deploy-build-images:
         -t {{silo_image}} \
         .
 
-# Push the locally built images to the configured registry
-deploy-push-images:
-    @echo "==> Pushing {{web_image}}..."
-    {{container_cli}} push {{web_image}}
-    @echo "==> Pushing {{silo_image}}..."
-    {{container_cli}} push {{silo_image}}
-
-# Build and publish the versioned images to the configured registry
-deploy-publish: deploy-build-images deploy-push-images
-    @echo "==> Published {{web_image}} and {{silo_image}}."
+# Build, promote, and send the versioned images to the VM
+deploy-publish: deploy-build-images deploy-promote-prod deploy-pull-images
+    @echo "==> Published {{app_version}} to {{vm}}."
 
 # Promote the current build to the stable production tags
 deploy-promote-prod:
     @echo "==> Promoting {{web_image}} to {{deploy_web_image}}..."
     @{{container_cli}} image exists {{web_image}} || {{container_cli}} pull {{web_image}}
     {{container_cli}} tag {{web_image}} {{deploy_web_image}}
-    {{container_cli}} push {{deploy_web_image}}
     @echo "==> Promoting {{silo_image}} to {{deploy_silo_image}}..."
     @{{container_cli}} image exists {{silo_image}} || {{container_cli}} pull {{silo_image}}
     {{container_cli}} tag {{silo_image}} {{deploy_silo_image}}
-    {{container_cli}} push {{deploy_silo_image}}
 
-# Publish the current build and promote it to the stable deployment tags
-deploy-release-prod: deploy-publish deploy-promote-prod
-    @echo "==> Promoted {{app_version}} to the {{deploy_tag}} deployment tags."
+# Publish and deliver the current build to the VM as the stable deployment tags
+deploy-release-prod: deploy-publish
+    @echo "==> Delivered {{app_version}} as {{deploy_tag}} to {{vm}}."
 
-# Pull the selected images onto the VM before running migrations or restarting services
+# Send images to the VM over SSH (compress → pipe → load)
 deploy-pull-images:
-    @echo "==> Pulling images on {{vm}}..."
-    ssh {{vm}} "sudo {{container_cli}} pull {{deploy_web_image}} && sudo {{container_cli}} pull {{deploy_silo_image}}"
+    @echo "==> Sending {{deploy_web_image}} to {{vm}}..."
+    {{container_cli}} save --compress {{deploy_web_image}} | ssh {{vm}} "sudo {{container_cli}} load"
+    @echo "==> Sending {{deploy_silo_image}} to {{vm}}..."
+    {{container_cli}} save --compress {{deploy_silo_image}} | ssh {{vm}} "sudo {{container_cli}} load"
 
 # Run pending EF Core migrations against appdb using the bundled efbundle executable
 deploy-migrate:
@@ -64,6 +57,6 @@ deploy-restart-app:
     @echo "==> Restarting services on {{vm}}..."
     ssh {{vm}} "sudo systemctl restart spx-silo spx-web caddy"
 
-# Full deploy: pull images on the VM, run migrations, restart services
+# Full deploy: send images to the VM, run migrations, restart services
 deploy: deploy-pull-images deploy-migrate deploy-restart-app
     @echo "==> Done. https://mostlyhuman.ca"
