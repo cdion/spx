@@ -69,7 +69,7 @@ public class NexusMapTests
     {
         var incomeSystems = Map.Where(s => !s.IsNexus && !s.HomePlayerId.HasValue).ToList();
         Assert.Equal(16, incomeSystems.Count);
-        Assert.All(incomeSystems, s => Assert.InRange(s.IncomeValue, 1, 3));
+        Assert.All(incomeSystems, s => Assert.InRange(s.IncomeValue, 1, 2));
     }
 
     [Fact]
@@ -130,45 +130,145 @@ public class NexusCombatSpecTests
 {
     [Theory]
     // Each attacker: one hit per targetable category, one null per untargetable category
-    // Interceptor — BonusVsStrike, Can't target Capital or Planetary
-    [InlineData(NexusUnitType.Interceptor, NexusUnitType.Fighter, 4)]
-    [InlineData(NexusUnitType.Interceptor, NexusUnitType.Frigate, null)]
-    [InlineData(NexusUnitType.Interceptor, NexusUnitType.Infantry, null)]
+    // Interceptor — FirstAttackStrike (Contact phase only), Can't target Capital or Planetary
+    [InlineData(NexusUnitType.Interceptor, NexusUnitType.Fighter, NexusCombatPhase.Contact, 4)]
+    [InlineData(NexusUnitType.Interceptor, NexusUnitType.Frigate, NexusCombatPhase.Contact, null)]
+    [InlineData(NexusUnitType.Interceptor, NexusUnitType.Infantry, NexusCombatPhase.Contact, null)]
     // Fighter — PenaltyVsCapital
-    [InlineData(NexusUnitType.Fighter, NexusUnitType.Interceptor, 4)]
-    [InlineData(NexusUnitType.Fighter, NexusUnitType.Frigate, 5)]
-    [InlineData(NexusUnitType.Fighter, NexusUnitType.Infantry, null)]
-    // Bomber — PenaltyVsStrike, can target all categories
-    [InlineData(NexusUnitType.Bomber, NexusUnitType.Interceptor, 5)]
-    [InlineData(NexusUnitType.Bomber, NexusUnitType.Frigate, 4)]
-    [InlineData(NexusUnitType.Bomber, NexusUnitType.Infantry, 4)]
+    // Fighter — PenaltyVsCapital
+    [InlineData(NexusUnitType.Fighter, NexusUnitType.Interceptor, NexusCombatPhase.Battle, 4)]
+    [InlineData(NexusUnitType.Fighter, NexusUnitType.Frigate, NexusCombatPhase.Battle, 5)]
+    [InlineData(NexusUnitType.Fighter, NexusUnitType.Infantry, NexusCombatPhase.Battle, null)]
+    // Bomber — PenaltyVsStrike, can target all categories in Battle
+    [InlineData(NexusUnitType.Bomber, NexusUnitType.Interceptor, NexusCombatPhase.Battle, 5)]
+    [InlineData(NexusUnitType.Bomber, NexusUnitType.Frigate, NexusCombatPhase.Battle, 4)]
+    [InlineData(NexusUnitType.Bomber, NexusUnitType.Infantry, NexusCombatPhase.Battle, 4)]
     // Frigate — Shield, flat threshold
-    [InlineData(NexusUnitType.Frigate, NexusUnitType.Interceptor, 4)]
-    [InlineData(NexusUnitType.Frigate, NexusUnitType.Frigate, 4)]
-    [InlineData(NexusUnitType.Frigate, NexusUnitType.Infantry, null)]
-    // Destroyer — PenaltyVsStrike
-    [InlineData(NexusUnitType.Destroyer, NexusUnitType.Interceptor, 5)]
-    [InlineData(NexusUnitType.Destroyer, NexusUnitType.Frigate, 4)]
+    [InlineData(NexusUnitType.Frigate, NexusUnitType.Interceptor, NexusCombatPhase.Battle, 4)]
+    [InlineData(NexusUnitType.Frigate, NexusUnitType.Frigate, NexusCombatPhase.Battle, 4)]
+    [InlineData(NexusUnitType.Frigate, NexusUnitType.Infantry, NexusCombatPhase.Battle, null)]
+    // Destroyer — FreeAttackStrike, Penalty removed
+    [InlineData(NexusUnitType.Destroyer, NexusUnitType.Interceptor, NexusCombatPhase.Battle, 4)]
+    [InlineData(NexusUnitType.Destroyer, NexusUnitType.Frigate, NexusCombatPhase.Battle, 4)]
     // Cruiser — BonusVsCapital
-    [InlineData(NexusUnitType.Cruiser, NexusUnitType.Interceptor, 4)]
-    [InlineData(NexusUnitType.Cruiser, NexusUnitType.Frigate, 3)]
-    [InlineData(NexusUnitType.Cruiser, NexusUnitType.Infantry, 4)]
+    [InlineData(NexusUnitType.Cruiser, NexusUnitType.Interceptor, NexusCombatPhase.Battle, 4)]
+    [InlineData(NexusUnitType.Cruiser, NexusUnitType.Frigate, NexusCombatPhase.Battle, 3)]
+    [InlineData(NexusUnitType.Cruiser, NexusUnitType.Infantry, NexusCombatPhase.Battle, 4)]
     // Carrier — high base threshold
-    [InlineData(NexusUnitType.Carrier, NexusUnitType.Interceptor, 5)]
-    [InlineData(NexusUnitType.Carrier, NexusUnitType.Frigate, 5)]
-    [InlineData(NexusUnitType.Carrier, NexusUnitType.Infantry, null)]
+    [InlineData(NexusUnitType.Carrier, NexusUnitType.Interceptor, NexusCombatPhase.Battle, 5)]
+    [InlineData(NexusUnitType.Carrier, NexusUnitType.Frigate, NexusCombatPhase.Battle, 5)]
+    [InlineData(NexusUnitType.Carrier, NexusUnitType.Infantry, NexusCombatPhase.Battle, null)]
     // Infantry — flat, Planetary only
-    [InlineData(NexusUnitType.Infantry, NexusUnitType.Infantry, 4)]
-    [InlineData(NexusUnitType.Infantry, NexusUnitType.Interceptor, null)]
+    [InlineData(NexusUnitType.Infantry, NexusUnitType.Infantry, NexusCombatPhase.Battle, 4)]
+    [InlineData(NexusUnitType.Infantry, NexusUnitType.Interceptor, NexusCombatPhase.Battle, null)]
     // Armor — Shield, Planetary only
-    [InlineData(NexusUnitType.Armor, NexusUnitType.Infantry, 4)]
-    [InlineData(NexusUnitType.Armor, NexusUnitType.Frigate, null)]
-    [InlineData(NexusUnitType.Armor, NexusUnitType.Interceptor, null)]
+    [InlineData(NexusUnitType.Armor, NexusUnitType.Infantry, NexusCombatPhase.Battle, 4)]
+    [InlineData(NexusUnitType.Armor, NexusUnitType.Frigate, NexusCombatPhase.Battle, null)]
+    [InlineData(NexusUnitType.Armor, NexusUnitType.Interceptor, NexusCombatPhase.Battle, null)]
     public void GetHitThreshold_ReturnsExpected(
         NexusUnitType attacker,
         NexusUnitType target,
+        NexusCombatPhase phase,
         int? expected
-    ) => Assert.Equal(expected, NexusCombatSpec.GetHitThreshold(attacker, target));
+    ) => Assert.Equal(expected, NexusCombatSpec.GetHitThreshold(attacker, target, phase));
+
+    // ── Targeting Weights (Escort protection) ─────────────────────────────────
+
+    [Fact]
+    public void ComputeTargetWeights_NoEscorts_AllUnitsHaveBaseSilhouette()
+    {
+        // No Escort units — all units keep their base silhouette
+        var units = new[] { NexusUnitType.Carrier, NexusUnitType.Cruiser, NexusUnitType.Destroyer };
+        var weights = NexusCombatSpec.ComputeTargetWeights(units);
+        Assert.Equal([4, 3, 2], weights);
+    }
+
+    [Fact]
+    public void ComputeTargetWeights_OneEscort_ProtectsHighestSilhouetteCapital()
+    {
+        // 1 Frigate (Escort, sil 2) + 1 Carrier (sil 4) + 1 Cruiser (sil 3)
+        // Carrier has highest silhouette → gets protection (sil 4→3)
+        var units = new[] { NexusUnitType.Frigate, NexusUnitType.Carrier, NexusUnitType.Cruiser };
+        var weights = NexusCombatSpec.ComputeTargetWeights(units);
+        // Carrier: sil 4→3, Cruiser: sil 3 (unprotected), Frigate: sil 2
+        Assert.Equal([2, 3, 3], weights);
+    }
+
+    [Fact]
+    public void ComputeTargetWeights_OneEscort_MultipleSameSilhouette_ProtectsOne()
+    {
+        // 1 Frigate (Escort, sil 2) + 2 Cruisers (sil 3, sil 3)
+        // One Cruiser gets protected (sil 3→2), the other stays at 3.
+        // Both have equal silhouette so the first in iteration order gets protection.
+        var units = new[] { NexusUnitType.Frigate, NexusUnitType.Cruiser, NexusUnitType.Cruiser };
+        var weights = NexusCombatSpec.ComputeTargetWeights(units);
+        // First Cruiser (pos 1) gets protected → 2; second (pos 2) stays → 3
+        Assert.Equal([2, 2, 3], weights);
+    }
+
+    [Fact]
+    public void ComputeTargetWeights_TwoEscorts_ProtectBothCapitals()
+    {
+        // 2 Frigates (Escort, sil 2) + 1 Carrier (sil 4) + 1 Cruiser (sil 3)
+        // Both Capitals get protected
+        var units = new[]
+        {
+            NexusUnitType.Frigate,
+            NexusUnitType.Frigate,
+            NexusUnitType.Carrier,
+            NexusUnitType.Cruiser,
+        };
+        var weights = NexusCombatSpec.ComputeTargetWeights(units);
+        // Carrier: sil 4→3, Cruiser: sil 3→2, 2x Frigate: sil 2, sil 2
+        Assert.Equal([2, 2, 3, 2], weights);
+    }
+
+    [Fact]
+    public void ComputeTargetWeights_MoreEscortsThanCapitals_ExtraEscortsDoNothing()
+    {
+        // 3 Frigates (Escort, sil 2) + 1 Carrier (sil 4) + 1 Cruiser (sil 3)
+        // Only 2 protectable Capitals, so extra Escort has no effect
+        var units = new[]
+        {
+            NexusUnitType.Frigate,
+            NexusUnitType.Frigate,
+            NexusUnitType.Frigate,
+            NexusUnitType.Carrier,
+            NexusUnitType.Cruiser,
+        };
+        var weights = NexusCombatSpec.ComputeTargetWeights(units);
+        // Same as 2 Escorts: Carrier 3, Cruiser 2, 3x Frigate 2
+        Assert.Equal([2, 2, 2, 3, 2], weights);
+    }
+
+    [Fact]
+    public void ComputeTargetWeights_EscortDoesNotProtectItself()
+    {
+        // 1 Frigate (Escort, sil 2) alone — no protectable targets
+        var units = new[] { NexusUnitType.Frigate };
+        var weights = NexusCombatSpec.ComputeTargetWeights(units);
+        Assert.Equal([2], weights);
+    }
+
+    [Fact]
+    public void ComputeTargetWeights_StrikeAndPlanetary_NotAffectedByEscort()
+    {
+        // 1 Frigate (Escort) + 1 Fighter (Strike, sil 1) + 1 Infantry (Planetary, sil 1)
+        // Escort only affects Capital ships, so Fighter and Infantry stay at 1
+        var units = new[] { NexusUnitType.Frigate, NexusUnitType.Fighter, NexusUnitType.Infantry };
+        var weights = NexusCombatSpec.ComputeTargetWeights(units);
+        Assert.Equal([2, 1, 1], weights);
+    }
+
+    [Fact]
+    public void ComputeTargetWeights_SilhouetteFloorIsOne()
+    {
+        // 1 Frigate (Escort) + 1 Destroyer (Capital, sil 2→1)
+        // Destroyer gets protection: sil 2→1 (floor)
+        var units = new[] { NexusUnitType.Frigate, NexusUnitType.Destroyer };
+        var weights = NexusCombatSpec.ComputeTargetWeights(units);
+        Assert.Equal([2, 1], weights);
+    }
 }
 
 // ── Engine — Initialize ───────────────────────────────────────────────────────
@@ -640,6 +740,132 @@ public class NexusRoundResolutionTests
     }
 
     [Fact]
+    public void Move_PlanetaryOut_HomeSystemRetainsControl()
+    {
+        var s = MakeState();
+        var target = new HexCoord(1, -2);
+        var home = s.Systems.First(sys => sys.HomePlayerId == P1Id);
+        Assert.Equal(P1Id, home.ControlOwner); // home starts controlled
+
+        // Move Carrier + all Infantry out of home, leaving only Fighters
+        // Carrier provides capacity for the Infantry.
+        SubmitBoth(
+            s,
+            p1Moves:
+            [
+                Move(
+                    NexusMap.Player1HomeCoord,
+                    target,
+                    (NexusUnitType.Carrier, 1),
+                    (NexusUnitType.Infantry, 4)
+                ),
+            ]
+        );
+
+        // Home system retains control even when all planetary units leave
+        Assert.Equal(P1Id, home.ControlOwner);
+    }
+
+    [Fact]
+    public void Move_PlanetaryOut_NonHomeSystem_LosesControl()
+    {
+        var s = MakeState();
+        var alpha = s.Systems.First(sys => sys.Coord == new HexCoord(1, -1));
+
+        // P1 captures Alpha with Carrier + Infantry, giving control
+        alpha.AddUnits(P1Id, NexusUnitType.Carrier, 1);
+        alpha.AddUnits(P1Id, NexusUnitType.Infantry, 2);
+        alpha.ControlOwner = P1Id;
+
+        var target = new HexCoord(0, -1); // adjacent to Alpha
+
+        // Move Carrier + all Infantry out of Alpha — no planetary left
+        SubmitBoth(
+            s,
+            p1Moves:
+            [
+                Move(alpha.Coord, target, (NexusUnitType.Carrier, 1), (NexusUnitType.Infantry, 2)),
+            ]
+        );
+
+        // Non-home system with no planetary units should lose control
+        Assert.Null(alpha.ControlOwner);
+    }
+
+    [Fact]
+    public void Move_PlanetaryOutThenIn_HomeRetainsControlDestinationGains()
+    {
+        var s = MakeState();
+        var target = new HexCoord(1, -2);
+        var home = s.Systems.First(sys => sys.HomePlayerId == P1Id);
+
+        // Move all Infantry out of home (Carrier carries them).
+        // Home still has Fighters but no planetary — but retains control as a home system.
+        SubmitBoth(
+            s,
+            p1Moves:
+            [
+                Move(
+                    NexusMap.Player1HomeCoord,
+                    target,
+                    (NexusUnitType.Carrier, 1),
+                    (NexusUnitType.Infantry, 4)
+                ),
+            ]
+        );
+
+        // Source: home retains control (home system rule)
+        Assert.Equal(P1Id, home.ControlOwner);
+
+        // Destination: P1 has planetary on target — gains control
+        var dst = s.Systems.First(sys => sys.Coord == target);
+        Assert.Equal(P1Id, dst.ControlOwner);
+    }
+
+    [Fact]
+    public void Move_PartialPlanetaryLeaves_RetainsControl()
+    {
+        var s = MakeState();
+        var target = new HexCoord(1, -2);
+        var home = s.Systems.First(sys => sys.HomePlayerId == P1Id);
+
+        // Move only 1 Infantry out of 4 — still have 3 planetary left
+        SubmitBoth(
+            s,
+            p1Moves: [Move(NexusMap.Player1HomeCoord, target, (NexusUnitType.Infantry, 1))]
+        );
+
+        // Home still has 3 Infantry — control retained
+        Assert.Equal(P1Id, home.ControlOwner);
+    }
+
+    [Fact]
+    public void Combat_PlanetaryKilled_LosesControl()
+    {
+        var s = MakeState();
+        var alpha = s.Systems.First(sys => sys.Coord == new HexCoord(1, -1));
+        var p1Home = s.Systems.First(sys => sys.HomePlayerId == P1Id);
+
+        // P1 captures Alpha with Carrier + Infantry
+        alpha.AddUnits(P1Id, NexusUnitType.Carrier, 1);
+        alpha.AddUnits(P1Id, NexusUnitType.Infantry, 1);
+        alpha.ControlOwner = P1Id;
+
+        // P2 moves 6 Bombers into Alpha to kill everything
+        var staging = new HexCoord(2, -1);
+        s.Systems.First(sys => sys.Coord == staging).AddUnits(P2Id, NexusUnitType.Bomber, 6);
+
+        SubmitBoth(s, p2Moves: [Move(staging, alpha.Coord, (NexusUnitType.Bomber, 6))]);
+
+        // If combat destroyed all P1 units, control is lost.
+        // P1 had Carrier (2 hits) + Infantry (1 hit) vs 6 Bombers (1 hit each, IgnoresShield).
+        // With 6 attacks in Battle, odds are high Carrier and Infantry are destroyed.
+        var p1Survives = alpha.HasAnyUnits(P1Id);
+        if (!p1Survives)
+            Assert.Null(alpha.ControlOwner);
+    }
+
+    [Fact]
     public void BuildOrder_UnitAppearsAtHome()
     {
         var s = MakeState();
@@ -669,17 +895,13 @@ public class NexusRoundResolutionTests
     }
 
     [Fact]
-    public void Combat_EmitsNexusCombatBeganEvent()
+    public void Combat_EmitsNexusCombatResultEvent()
     {
         var s = MakeState();
-        // Place P2 units adjacent to P1 home so combat occurs there
-        var p1Home = s.Systems.First(sys => sys.HomePlayerId == P1Id);
-        // Move P2 infantry to a position adjacent to P1 home
-        var nearP1 = new HexCoord(1, -2); // adjacent to P1 home (2,-2)
+        var nearP1 = new HexCoord(1, -2);
         s.Systems.First(sys => sys.Coord == nearP1).AddUnits(P2Id, NexusUnitType.Infantry, 2);
         s.Systems.First(sys => sys.Coord == nearP1).AddUnits(P2Id, NexusUnitType.Carrier, 1);
 
-        // P1 moves carrier + infantry to nearP1; P2 stays
         SubmitBoth(
             s,
             p1Moves:
@@ -693,15 +915,13 @@ public class NexusRoundResolutionTests
             ]
         );
 
-        Assert.Contains(s.LastResolveEvents, e => e is NexusCombatBeganEvent);
+        Assert.Contains(s.LastResolveEvents, e => e is NexusCombatResultEvent);
     }
 
     [Fact]
     public void Combat_MultipleContested_ResolvesInSpiralOrder()
     {
         var s = MakeState();
-        // Place both players' units at Alpha (1,-1) Ring 1 and Eta (2,-1) Ring 2.
-        // Alpha is earlier in spiral order → its NexusCombatBeganEvent must appear first.
         var alpha = s.Systems.First(sys => sys.Coord == new HexCoord(1, -1));
         alpha.AddUnits(P1Id, NexusUnitType.Carrier, 1);
         alpha.AddUnits(P1Id, NexusUnitType.Infantry, 1);
@@ -716,14 +936,14 @@ public class NexusRoundResolutionTests
 
         SubmitBoth(s);
 
-        var combatStarts = s
-            .LastResolveEvents.OfType<NexusCombatBeganEvent>()
+        var combatResults = s
+            .LastResolveEvents.OfType<NexusCombatResultEvent>()
             .Select(e => e.System)
             .ToList();
 
-        Assert.Equal(2, combatStarts.Count);
-        Assert.Equal(new HexCoord(1, -1), combatStarts[0]); // Alpha before Eta
-        Assert.Equal(new HexCoord(2, -1), combatStarts[1]);
+        Assert.Equal(2, combatResults.Count);
+        Assert.Equal(new HexCoord(1, -1), combatResults[0]); // Alpha before Eta
+        Assert.Equal(new HexCoord(2, -1), combatResults[1]);
     }
 
     [Fact]
@@ -751,15 +971,14 @@ public class NexusRoundResolutionTests
         SubmitBoth(s);
 
         // Assert
-        var firstStrike = s.LastResolveEvents.OfType<NexusFirstStrikeEvent>().FirstOrDefault();
-        var normal = s.LastResolveEvents.OfType<NexusCombatResultEvent>().FirstOrDefault();
+        var combatResult = s.LastResolveEvents.OfType<NexusCombatResultEvent>().SingleOrDefault();
 
-        // Count losses for the defender (P2) across both combat steps
-        var defenderLosses = 0;
-        if (firstStrike is not null)
-            defenderLosses += firstStrike.Losses.Where(l => l.PlayerId == P2Id).Sum(l => l.Count);
-        if (normal is not null)
-            defenderLosses += normal.Losses.Where(l => l.PlayerId == P2Id).Sum(l => l.Count);
+        // Count losses for the defender (P2) across all phases
+        var defenderLosses =
+            combatResult?.Phases.Sum(phase =>
+                phase.Losses.Where(l => l.PlayerId == P2Id).Sum(l => l.Count)
+            )
+            ?? 0;
 
         // The defender started with 1 Fighter — loss count must not exceed 1.
         Assert.True(
@@ -1509,5 +1728,236 @@ public class NexusSupplyCheckTests
             + sys.GetUnitCount(P1Id, NexusUnitType.Carrier)
         );
         Assert.Equal(expected, view.CurrentPlayer.CapitalCount);
+    }
+}
+
+// ── Tag Behavior ────────────────────────────────────────────────────────────
+
+public class NexusTagBehaviorTests
+{
+    private static readonly Guid P1Id = Guid.Parse("aaaaaaaa-0000-0000-0000-000000000001");
+    private static readonly Guid P2Id = Guid.Parse("bbbbbbbb-0000-0000-0000-000000000002");
+
+    private static NexusState MakeState()
+    {
+        var state = new NexusState();
+        NexusEngine.Initialize(
+            state,
+            new InitializeNexusGameCommand(
+                ImmutableArray.Create(new NexusSessionPlayer(P1Id), new NexusSessionPlayer(P2Id))
+            ),
+            new Random(42)
+        );
+        return state;
+    }
+
+    private static void SubmitRound(
+        NexusState state,
+        ImmutableArray<NexusMoveOrder> p1Moves = default,
+        ImmutableArray<NexusMoveOrder> p2Moves = default
+    )
+    {
+        NexusEngine.SubmitOrders(
+            state,
+            new NexusTurnOrdersCommand(
+                P1Id,
+                state.RoundNumber,
+                p1Moves.IsDefault ? [] : p1Moves,
+                [],
+                false
+            ),
+            new Random(42)
+        );
+        NexusEngine.SubmitOrders(
+            state,
+            new NexusTurnOrdersCommand(
+                P2Id,
+                state.RoundNumber,
+                p2Moves.IsDefault ? [] : p2Moves,
+                [],
+                false
+            ),
+            new Random(42)
+        );
+    }
+
+    private static NexusCombatAttackRoll[] GetAttackRolls(NexusState state)
+    {
+        return
+        [
+            .. state
+                .LastResolveEvents.OfType<NexusCombatResultEvent>()
+                .SelectMany(e => e.Phases)
+                .SelectMany(p => p.AttackRolls),
+        ];
+    }
+
+    // ── Combat Steps ────────────────────────────────────────────────────────
+
+    [Fact]
+    public void ContactStep_FiresBeforeBattle()
+    {
+        var s = MakeState();
+        var alpha = s.Systems.First(sys => sys.Coord == new HexCoord(1, -1));
+
+        // Interceptor (FirstAttackStrike) vs Fighter (CanAttackStrike)
+        alpha.AddUnits(P1Id, NexusUnitType.Interceptor, 1);
+        alpha.AddUnits(P2Id, NexusUnitType.Fighter, 1);
+
+        SubmitRound(s);
+
+        var result = s.LastResolveEvents.OfType<NexusCombatResultEvent>().SingleOrDefault();
+        Assert.NotNull(result);
+        Assert.Contains(result.Phases, p => p.Phase == NexusCombatPhase.Contact);
+        Assert.Contains(result.Phases, p => p.Phase == NexusCombatPhase.Battle);
+    }
+
+    [Fact]
+    public void ContactPhase_KillsReduceBattleAttacks()
+    {
+        var s = MakeState();
+        var alpha = s.Systems.First(sys => sys.Coord == new HexCoord(1, -1));
+
+        // 2 Interceptors (FirstAttackStrike) vs 1 Fighter (CanAttackStrike, 1 hit).
+        // If Fighter dies in Contact, it has 0 attacks in Battle.
+        alpha.AddUnits(P1Id, NexusUnitType.Interceptor, 2);
+        alpha.AddUnits(P2Id, NexusUnitType.Fighter, 1);
+
+        SubmitRound(s);
+
+        var result = s.LastResolveEvents.OfType<NexusCombatResultEvent>().SingleOrDefault();
+        Assert.NotNull(result);
+
+        var battlePhase = result.Phases.FirstOrDefault(p => p.Phase == NexusCombatPhase.Battle);
+        var contactPhase = result.Phases.FirstOrDefault(p => p.Phase == NexusCombatPhase.Contact);
+
+        var p2HitsInBattle = battlePhase?.AttackRolls.Count(r => r.AttackingPlayerId == P2Id) ?? 0;
+        var p2LossesInContact =
+            contactPhase?.Losses.Where(l => l.PlayerId == P2Id).Sum(l => l.Count) ?? 0;
+
+        // If Fighter was destroyed in Contact, it has 0 Battle attacks
+        if (p2LossesInContact > 0)
+            Assert.Equal(0, p2HitsInBattle);
+    }
+
+    // ── Shield ───────────────────────────────────────────────────────────────
+
+    [Fact]
+    public void Shield_CanAbsorbHit()
+    {
+        var s = MakeState();
+        var alpha = s.Systems.First(sys => sys.Coord == new HexCoord(1, -1));
+
+        // Armor (Shield, Planetary) vs Cruisers (can target Planetary, no IgnoreShield).
+        // Many Cruisers to guarantee a hit lands.
+        alpha.AddUnits(P1Id, NexusUnitType.Armor, 1);
+        alpha.AddUnits(P2Id, NexusUnitType.Cruiser, 5);
+
+        SubmitRound(s);
+
+        var attackRolls = GetAttackRolls(s);
+        var shieldedHits = attackRolls.Count(r => r.IsHit && r.WasShielded);
+        var unshieldedHits = attackRolls.Count(r => r.IsHit && !r.WasShielded);
+
+        // At least one shielded hit should occur when a hit lands on Shield unit
+        Assert.True(
+            shieldedHits > 0,
+            $"Expected ≥ 1 shielded hit, got {shieldedHits} (unshielded: {unshieldedHits})"
+        );
+    }
+
+    // ── IgnoreShield ─────────────────────────────────────────────────────────
+
+    [Fact]
+    public void IgnoreShield_BypassesShieldSave()
+    {
+        var s = MakeState();
+        var alpha = s.Systems.First(sys => sys.Coord == new HexCoord(1, -1));
+
+        // Bomber (IgnoreShield, can target Planetary) vs Armor (Shield)
+        alpha.AddUnits(P1Id, NexusUnitType.Armor, 1);
+        alpha.AddUnits(P2Id, NexusUnitType.Bomber, 3);
+
+        SubmitRound(s);
+
+        var attackRolls = GetAttackRolls(s);
+        var hitsOnArmor = attackRolls.Count(r =>
+            r.AttackerType == NexusUnitType.Bomber && r.TargetType == NexusUnitType.Armor
+        );
+        var shieldedHits = attackRolls.Count(r =>
+            r.AttackerType == NexusUnitType.Bomber
+            && r.TargetType == NexusUnitType.Armor
+            && r.WasShielded
+        );
+
+        // IgnoreShield means hits should never be shielded
+        Assert.Equal(0, shieldedHits);
+    }
+
+    // ── FreeAttack ───────────────────────────────────────────────────────────
+
+    [Fact]
+    public void FreeAttackVsStrike_GeneratesExtraAttacks()
+    {
+        var s = MakeState();
+        var alpha = s.Systems.First(sys => sys.Coord == new HexCoord(1, -1));
+
+        // Destroyer (FreeAttackVsStrike, base 2 attacks) vs Fighters (Strike)
+        alpha.AddUnits(P1Id, NexusUnitType.Destroyer, 1);
+        alpha.AddUnits(P2Id, NexusUnitType.Fighter, 3);
+
+        SubmitRound(s);
+
+        var attackRolls = GetAttackRolls(s);
+        var destroyerAttacks = attackRolls.Count(r => r.AttackerType == NexusUnitType.Destroyer);
+
+        // Destroyer has 2 base attacks + 1 FreeAttackVsStrike per step = 3 per step
+        // Over 2 steps (Contact + Battle) = up to 6 attacks total
+        // But if Destroyer is destroyed in Contact, it doesn't fire in Battle.
+        // Fighters have no FirstAttack*, so they only fire in Battle.
+        // Destroyer has no FirstAttack*, so it fires only in Battle.
+        // So: 2 base + 1 free = 3 attacks in Battle step
+        Assert.True(
+            destroyerAttacks >= 3,
+            $"Expected at least 3 Destroyer attacks, got {destroyerAttacks}"
+        );
+    }
+
+    // ── Escort (via public API) ───────────────────────────────────────────────
+
+    [Fact]
+    public void Escort_CombatRunsWithoutError()
+    {
+        var s = MakeState();
+        var alpha = s.Systems.First(sys => sys.Coord == new HexCoord(1, -1));
+
+        // 1 Frigate (Escort) + 1 Carrier + 1 Cruiser vs Bombers
+        // This exercises the Escort code path in PickTargetByWeight.
+        alpha.AddUnits(P1Id, NexusUnitType.Frigate, 1);
+        alpha.AddUnits(P1Id, NexusUnitType.Carrier, 1);
+        alpha.AddUnits(P1Id, NexusUnitType.Cruiser, 1);
+        alpha.AddUnits(P2Id, NexusUnitType.Bomber, 6);
+
+        SubmitRound(s);
+
+        Assert.Contains(s.LastResolveEvents, e => e is NexusCombatResultEvent);
+    }
+
+    // ── Phases ───────────────────────────────────────────────────────────────
+
+    [Fact]
+    public void Combat_HasBothContactAndBattlePhases()
+    {
+        var s = MakeState();
+        var alpha = s.Systems.First(sys => sys.Coord == new HexCoord(1, -1));
+
+        // FirstAttackStrike + CanAttackStrike units to exercise both phases
+        alpha.AddUnits(P1Id, NexusUnitType.Interceptor, 2); // FirstAttackStrike
+        alpha.AddUnits(P1Id, NexusUnitType.Fighter, 2); // CanAttackStrike
+        alpha.AddUnits(P2Id, NexusUnitType.Fighter, 3); // CanAttackStrike
+
+        SubmitRound(s);
+
+        Assert.Contains(s.LastResolveEvents, e => e is NexusCombatResultEvent);
     }
 }

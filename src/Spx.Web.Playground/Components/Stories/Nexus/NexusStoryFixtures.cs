@@ -291,7 +291,7 @@ internal static class NexusStoryFixtures
                 FullHitsStacks((NexusUnitType.Carrier, 1)),
                 IsRetreat: false
             ),
-            new NexusCombatBeganEvent(new HexCoord(1, -2), Player1Id, Player2Id),
+            new NexusSystemClearedEvent(new HexCoord(1, -2), Player1Id),
             new NexusIncomeEvent(
                 Player1Id,
                 11,

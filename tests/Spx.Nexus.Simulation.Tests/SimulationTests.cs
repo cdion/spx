@@ -46,7 +46,7 @@ public sealed class SimulationTests
         var report = TacticalSimulator.Run(settings, new[] { scenario }, new[] { profile });
         var matchup = Assert.Single(report.Matchups);
         var assaultPhases = report
-            .PhaseSummaries.Where(summary => summary.Phase == "FirstStrike")
+            .PhaseSummaries.Where(summary => summary.Phase == "Contact")
             .OrderBy(summary => summary.Side)
             .ToArray();
 

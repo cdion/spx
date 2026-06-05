@@ -116,7 +116,7 @@ public sealed class TacticalSimulator
 
                 foreach (var phase in outcome.Phases)
                 {
-                    var bucket = phaseBuckets[phase.IsFirstStrike];
+                    var bucket = phaseBuckets[phase.IsContact];
                     bucket.AttackerAttacks += phase.AttackerAttacks;
                     bucket.AttackerHits += phase.AttackerHits;
                     bucket.AttackerKills += phase.AttackerKills;
@@ -166,7 +166,7 @@ public sealed class TacticalSimulator
             .OrderBy(pair => pair.Key)
             .SelectMany(pair =>
             {
-                var phase = pair.Key ? NexusCombatPhase.FirstStrike : NexusCombatPhase.Battle;
+                var phase = pair.Key ? NexusCombatPhase.Contact : NexusCombatPhase.Battle;
                 var phaseName = phase.ToString();
                 return new[]
                 {
@@ -346,53 +346,31 @@ public sealed class TacticalSimulator
         {
             PhaseAccumulator bucket;
 
-            if (result is NexusFirstStrikeEvent fs)
+            if (result is NexusCombatResultEvent combat)
             {
-                bucket = phases[true];
-                bucket.AttackerAttacks += fs.AttackRolls.Count(roll =>
-                    roll.AttackingPlayerId == attackerPlayerId
-                );
-                bucket.AttackerHits += fs.AttackRolls.Count(roll =>
-                    roll.AttackingPlayerId == attackerPlayerId && roll.IsHit
-                );
-                bucket.AttackerKills += fs
-                    .Losses.Where(loss => loss.PlayerId == defenderPlayerId)
-                    .Sum(loss => loss.Count);
-                bucket.DefenderAttacks += fs.AttackRolls.Count(roll =>
-                    roll.AttackingPlayerId == defenderPlayerId
-                );
-                bucket.DefenderHits += fs.AttackRolls.Count(roll =>
-                    roll.AttackingPlayerId == defenderPlayerId && roll.IsHit
-                );
-                bucket.DefenderKills += fs
-                    .Losses.Where(loss => loss.PlayerId == attackerPlayerId)
-                    .Sum(loss => loss.Count);
-            }
-            else if (result is NexusCombatResultEvent cr)
-            {
-                bucket = phases[false];
-                bucket.AttackerAttacks += cr.AttackRolls.Count(roll =>
-                    roll.AttackingPlayerId == attackerPlayerId
-                );
-                bucket.AttackerHits += cr.AttackRolls.Count(roll =>
-                    roll.AttackingPlayerId == attackerPlayerId && roll.IsHit
-                );
-                bucket.AttackerKills += cr
-                    .Losses.Where(loss => loss.PlayerId == defenderPlayerId)
-                    .Sum(loss => loss.Count);
-                bucket.DefenderAttacks += cr.AttackRolls.Count(roll =>
-                    roll.AttackingPlayerId == defenderPlayerId
-                );
-                bucket.DefenderHits += cr.AttackRolls.Count(roll =>
-                    roll.AttackingPlayerId == defenderPlayerId && roll.IsHit
-                );
-                bucket.DefenderKills += cr
-                    .Losses.Where(loss => loss.PlayerId == attackerPlayerId)
-                    .Sum(loss => loss.Count);
-            }
-            else
-            {
-                continue;
+                foreach (var phase in combat.Phases)
+                {
+                    var isContact = phase.Phase == NexusCombatPhase.Contact;
+                    bucket = phases[isContact];
+                    bucket.AttackerAttacks += phase.AttackRolls.Count(roll =>
+                        roll.AttackingPlayerId == attackerPlayerId
+                    );
+                    bucket.AttackerHits += phase.AttackRolls.Count(roll =>
+                        roll.AttackingPlayerId == attackerPlayerId && roll.IsHit
+                    );
+                    bucket.AttackerKills += phase
+                        .Losses.Where(loss => loss.PlayerId == defenderPlayerId)
+                        .Sum(loss => loss.Count);
+                    bucket.DefenderAttacks += phase.AttackRolls.Count(roll =>
+                        roll.AttackingPlayerId == defenderPlayerId
+                    );
+                    bucket.DefenderHits += phase.AttackRolls.Count(roll =>
+                        roll.AttackingPlayerId == defenderPlayerId && roll.IsHit
+                    );
+                    bucket.DefenderKills += phase
+                        .Losses.Where(loss => loss.PlayerId == attackerPlayerId)
+                        .Sum(loss => loss.Count);
+                }
             }
         }
 
@@ -451,7 +429,7 @@ public sealed class TacticalSimulator
     }
 
     private sealed record TrialPhaseOutcome(
-        bool IsFirstStrike,
+        bool IsContact,
         double AttackerAttacks,
         double AttackerHits,
         double AttackerKills,

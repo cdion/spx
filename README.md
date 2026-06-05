@@ -1,20 +1,19 @@
 # Spx
 
-Spx is a .NET 10 multiplayer game lobby application built on Microsoft Orleans, ASP.NET Core Identity, PostgreSQL, Redis, Blazor, and .NET Aspire.
+Spx is a .NET 10 multiplayer game lobby application built on Microsoft Orleans, ASP.NET Core Identity, PostgreSQL, Redis, Blazor, .NET Aspire, and Tailwind CSS.
 
-The current app is no longer a starter template. It includes account flows, invite-code based game creation and joining, lobby views, message persistence, and a split between application, data, web, and Orleans hosting layers.
+From the authenticated landing page (the game lobby), users can create a new game, join an existing game with an invite code, reopen active games, and view ended games as lightweight history. The app covers account flows, invite-code-based game creation and joining, lobby views, message persistence, and a split between application, data, web, and Orleans hosting layers.
 
-## Stack
+## Prerequisites
 
 - .NET 10 SDK
-- .NET Aspire AppHost for local orchestration
-- Microsoft Orleans for distributed runtime and grain hosting
-- Redis for Orleans clustering
-- PostgreSQL for application data and Orleans storage schema
-- ASP.NET Core Identity for authentication and confirmed-account flows
-- Blazor Web App with interactive server components
-- Tailwind CSS via the repo-local standalone binary
-- Local .NET tool manifest for `dotnet-ef` and coverage reporting tools
+- A container runtime compatible with Aspire local development, such as Docker or Podman
+
+Restore repo-local tools before using EF commands or coverage tasks:
+
+```bash
+dotnet tool restore
+```
 
 ## Solution Layout
 
@@ -35,16 +34,110 @@ The current app is no longer a starter template. It includes account flows, invi
 - `tests/Spx.Web.Tests`: web and adapter integration tests
 - `tools/tailwind`: repo-local Tailwind CLI binary
 
-## Prerequisites
+## Local Development
 
-- .NET 10 SDK
-- A container runtime compatible with Aspire local development, such as Docker or Podman
-
-Restore repo-local tools before using EF commands or coverage tasks:
+The intended local entry point:
 
 ```bash
-dotnet tool restore
+just dev
 ```
+
+This starts the Tailwind watcher and the AppHost under `dotnet watch` together.
+
+Alternatively, run just the AppHost to inspect logs, health, and endpoints via the Aspire dashboard:
+
+```bash
+just run
+```
+
+That starts:
+- the `web` app
+- the Orleans `silo`
+- Redis for Orleans clustering
+- PostgreSQL with `appdb` and `orleansdb`
+- the Aspire dashboard
+
+| Command | What it does |
+|---|---|
+| `just dev` | AppHost + Tailwind in parallel |
+| `just dev-run` | Start the AppHost |
+| `just dev-watch` | AppHost under `dotnet watch` (background) |
+| `just dev-tailwind` | Build Tailwind CSS once |
+| `just dev-tailwind-watch` | Watch Tailwind source files |
+| `just dev-watch-playground` | Playground under `dotnet watch` (background) |
+| `just dev-build-project src/Spx.Web` | Build one project |
+
+### Tailwind
+
+- Source CSS: `src/Spx.Web.Components/Styles/app.css`
+- Generated CSS: `src/Spx.Web.Components/wwwroot/app.css`
+- The component library runs a one-shot Tailwind build before `Build` and `Publish`
+- `just dev-tailwind-watch` runs the watcher alongside the AppHost via `just dev`
+
+### Database Resets
+
+| Command | What it does |
+|---|---|
+| `just infra-reset-appdb` | Clear all application tables in `appdb` while preserving `__EFMigrationsHistory`. Targets the running Aspire-managed Postgres container directly, so you do not need to chase the current mapped host port. |
+| `just infra-reset-orleansdb` | Clear persisted Orleans grain state from `orleansdb` by talking directly to the running Aspire-managed Postgres container. Restart the AppHost afterward to clear any in-memory grain activations. |
+
+## Data And Storage
+
+The AppHost provisions two PostgreSQL databases:
+- **`appdb`** — ASP.NET Core Identity and EF-backed game data. Migrations are applied automatically on web startup.
+- **`orleansdb`** — Orleans storage schema. The PostgreSQL SQL assets are bootstrapped automatically on silo startup if the schema is missing.
+
+Redis remains the clustering backend for Orleans during local development.
+
+## Entity Framework Workflow
+
+Use the checked-in local tool manifest instead of a globally installed `dotnet-ef`:
+
+```bash
+dotnet tool run dotnet-ef -- --help
+```
+
+Typical commands from the repo root:
+
+```bash
+dotnet tool run dotnet-ef -- migrations add NameOfMigration --project src/Spx.Data/Spx.Data.csproj --startup-project src/Spx.Web/Spx.Web.csproj
+dotnet tool run dotnet-ef -- database update --project src/Spx.Data/Spx.Data.csproj --startup-project src/Spx.Web/Spx.Web.csproj
+```
+
+Current migrations live under `src/Spx.Data/Migrations`.
+
+## Authentication And Email
+
+The web app uses ASP.NET Core Identity with confirmed accounts enabled.
+
+**In development**, confirmation and password reset emails are not sent externally. Instead, the web app logs the full confirmation and reset URLs in the `web` resource logs. Typical local auth test flow:
+
+1. Start the AppHost.
+2. Open the Aspire dashboard.
+3. Open the `web` resource logs.
+4. Register, resend confirmation, or request a password reset.
+5. Copy the logged link into the browser.
+
+**In production**, the app uses a Resend-backed email sender. Configuration must provide `Resend:ApiKey` and `Resend:FromEmail`. The `FromEmail` address must belong to a Resend-verified domain or subdomain such as `mail.mostlyhuman.ca`.
+
+## Testing
+
+The repo testing strategy is documented in `TESTING.md`.
+
+```bash
+just dev-test-project tests/Spx.Nexus.Domain.Tests
+just dev-test-project tests/Spx.Web.Tests
+just dev-test-all
+```
+
+Coverage:
+
+```bash
+just dev-coverage tests/Spx.Nexus.Domain.Tests
+just dev-coverage-full       # clean → collect all → HTML report
+```
+
+The coverage report is written to `coverage/html/`.
 
 ## CI And Deployment
 
@@ -70,176 +163,36 @@ just deploy-promote-prod   # tag current build as prod
 just deploy                # deploy-pull-images → deploy-migrate → deploy-restart-app
 ```
 
-On `main`, the CI workflow is the producer of the deployable versioned images.
-It runs `just ci`, publishes the immutable commit-derived tags to GHCR, and then
-promotes the same build to the stable `prod` tags. The deploy workflow is gated
-on CI success, refreshes the VM's GHCR login explicitly, and then runs
-`just deploy` against whatever `prod` already points to. Deploy does not
-rebuild images or move tags.
+### CI Pipeline
 
-The workflows authenticate to GHCR with repository secrets `GHCR_USERNAME` and
-`GHCR_TOKEN` rather than relying on the built-in `GITHUB_TOKEN`. That avoids
-package-linkage and workflow-access issues with pre-existing GHCR packages.
+On `main`, the CI workflow:
+1. Runs `just ci` (restore → build → test).
+2. Publishes immutable commit-derived tags to GHCR.
+3. Promotes the same build to the stable `prod` tags.
 
-The canonical build version is shared between container image tags and the web
-UI. By default it is derived from the current Git commit in a SemVer-compatible
-format, and you can override it when needed:
+Deploy is gated on CI success, refreshes the VM's GHCR login explicitly, then runs `just deploy` against whatever `prod` already points to. Deploy does not rebuild images or move tags.
+
+The workflows authenticate to GHCR with repository secrets `GHCR_USERNAME` and `GHCR_TOKEN` rather than relying on the built-in `GITHUB_TOKEN`. That avoids package-linkage and workflow-access issues with pre-existing GHCR packages.
+
+### Build Version
+
+The canonical build version is shared between container image tags and the web UI. By default it is derived from the current Git commit in a SemVer-compatible format, and you can override it when needed:
 
 ```bash
 SPX_VERSION=1.2.3-rc.1 just ci
-SPX_VERSION=1.2.3-rc.1 IMAGE_TAG=1.2.3-rc.1 just deploy-publish
-IMAGE_TAG=1.2.3-rc.1 just deploy-promote-prod
+IMAGE_TAG=1.2.3-rc.1 just deploy-publish deploy-promote-prod
 ```
 
-`just infra-bootstrap` remains the one-time VM setup path. It now also handles GHCR
-login for the VM's root Podman context when `GHCR_USERNAME` and `GHCR_TOKEN` are
-present in the shell environment. That keeps registry bootstrap and Quadlet file
-installation in the same path used for first-time environment setup.
+### Required Secrets
 
-The CI workflow expects these GitHub secrets:
+| Secret | CI | Deploy | Purpose |
+|---|---|---|---|
+| `GHCR_USERNAME` | ✓ | ✓ | GHCR account name (e.g. `cdion`) |
+| `GHCR_TOKEN` | ✓ | ✓ | Classic PAT with `write:packages` + `read:packages` (CI) or `read:packages` (deploy) |
+| `VM` | | ✓ | SSH target `user@host` |
+| `VM_SSH_KEY` | | ✓ | Private key for that host |
+| `VM_KNOWN_HOSTS` | | ✓ | Pinned known-host entry for the VM |
 
-- `GHCR_USERNAME`: the GHCR account name, for example `cdion`
-- `GHCR_TOKEN`: a classic personal access token with at least `write:packages` and `read:packages`
+### VM Bootstrap
 
-The deploy workflow expects these GitHub secrets:
-
-- `GHCR_USERNAME`: the GHCR account name used for the VM's remote `podman login`
-- `GHCR_TOKEN`: a personal access token with at least `read:packages`
-- `VM`: SSH target in the form `user@host`
-- `VM_SSH_KEY`: private key for that host
-- `VM_KNOWN_HOSTS`: pinned known-host entry for the VM
-
-## Local Development
-
-The intended local entry point is:
-
-```bash
-just dev
-```
-
-This starts the Tailwind watcher and the AppHost under `dotnet watch` together.
-
-Alternatively, run just the AppHost to inspect logs, health, and endpoints
-via the Aspire dashboard:
-
-```bash
-just run
-```
-
-That starts:
-
-- the `web` app
-- the Orleans `silo`
-- Redis for Orleans clustering
-- PostgreSQL with `appdb` and `orleansdb`
-- the Aspire dashboard
-
-Single-purpose recipes:
-
-| Command | What it does |
-|---|---|
-| `just dev-run` | Start the AppHost |
-| `just dev-watch` | AppHost under `dotnet watch` (background) |
-| `just dev-watch-playground` | Playground under `dotnet watch` (background) |
-| `just dev-tailwind` | Build Tailwind CSS once |
-| `just dev-tailwind-watch` | Watch Tailwind source files |
-| `just dev` | AppHost + Tailwind in parallel |
-| `just dev-build-project src/Spx.Web` | Build one project |
-| `just infra-reset-appdb` | Clear local app database |
-| `just infra-reset-orleansdb` | Clear local Orleans storage |
-
-## Application Behavior
-
-The authenticated landing page is the game lobby. From there, users can:
-
-- create a new game
-- join an existing game with an invite code
-- reopen active games
-- view ended games as lightweight history
-
-The current web layer is centered on account management and lobby-first multiplayer flows rather than the earlier hello-grain demo path.
-
-## Authentication And Email
-
-The web app uses ASP.NET Core Identity with confirmed accounts enabled.
-
-In development, confirmation and password reset emails are not sent externally. Instead, the web app logs the full confirmation and reset URLs in the `web` resource logs.
-
-Typical local auth test flow:
-
-1. Start the AppHost.
-2. Open the Aspire dashboard.
-3. Open the `web` resource logs.
-4. Register, resend confirmation, or request a password reset.
-5. Copy the logged link into the browser.
-
-Outside development, the app uses a Resend-backed email sender. Production configuration must provide `Resend:ApiKey` and `Resend:FromEmail`, and the `FromEmail` address must belong to a Resend-verified domain or subdomain such as `mail.mostlyhuman.ca`.
-
-## Data And Storage
-
-The AppHost provisions two PostgreSQL databases:
-
-- `appdb` for ASP.NET Core Identity and EF-backed game data
-- `orleansdb` for Orleans storage schema bootstrap
-
-On web startup, EF Core migrations are applied automatically for `appdb`.
-
-For local development, `just reset-appdb` clears all application tables in `appdb` while preserving `__EFMigrationsHistory`. It targets the running Aspire-managed Postgres container directly, so you do not need to chase the current mapped host port.
-
-On silo startup, the Orleans PostgreSQL SQL assets are bootstrapped automatically into `orleansdb` if the schema is missing.
-
-For local development, `just reset-orleansdb` clears the persisted Orleans grain state from `orleansdb` by talking directly to the running Aspire-managed Postgres container. Restart the AppHost afterward to clear any in-memory grain activations.
-
-Redis remains the clustering backend for Orleans during local development.
-
-## Entity Framework Workflow
-
-Use the checked-in local tool manifest instead of a globally installed `dotnet-ef`:
-
-```bash
-dotnet tool restore
-dotnet tool run dotnet-ef -- --help
-```
-
-Typical commands from the repo root:
-
-```bash
-dotnet tool run dotnet-ef -- migrations add NameOfMigration --project src/Spx.Data/Spx.Data.csproj --startup-project src/Spx.Web/Spx.Web.csproj
-dotnet tool run dotnet-ef -- database update --project src/Spx.Data/Spx.Data.csproj --startup-project src/Spx.Web/Spx.Web.csproj
-```
-
-Current migrations live under `src/Spx.Data/Migrations`.
-
-## Tailwind Workflow
-
-- Source CSS: `src/Spx.Web.Components/Styles/app.css`
-- Generated CSS: `src/Spx.Web.Components/wwwroot/app.css`
-- The component library runs a one-shot Tailwind build before `Build` and `Publish`
-- `just tailwind-watch` runs the watcher alongside the AppHost via `just dev`
-
-Build the CSS manually:
-
-```bash
-just dev-tailwind
-```
-
-## Testing
-
-The repo testing strategy is documented in `TESTING.md`.
-
-Common commands from the repo root:
-
-```bash
-just dev-test-project tests/Spx.Nexus.Domain.Tests
-just dev-test-project tests/Spx.Web.Tests
-just dev-test-all
-```
-
-Coverage:
-
-```bash
-just dev-coverage tests/Spx.Nexus.Domain.Tests
-just dev-coverage-full       # clean → collect all → HTML report
-```
-
-The coverage report is written to `coverage/html/`.
+`just infra-bootstrap` remains the one-time VM setup path. It handles GHCR login for the VM's root Podman context when `GHCR_USERNAME` and `GHCR_TOKEN` are present in the shell environment, keeping registry bootstrap and Quadlet file installation in the same path.

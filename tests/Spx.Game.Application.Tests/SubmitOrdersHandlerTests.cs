@@ -45,50 +45,57 @@ public sealed class SubmitOrdersHandlerTests
         };
         var evt = new NexusCombatResultEvent(
             new HexCoord(0, 0),
+            RedPlayerId,
+            BluePlayerId,
             [
-                new NexusCombatLoss(BluePlayerId, NexusUnitType.Destroyer, 1),
-                new NexusCombatLoss(RedPlayerId, NexusUnitType.Fighter, 2),
-            ],
-            [
-                new NexusCombatAttackRoll(
-                    RedPlayerId,
-                    NexusUnitType.Cruiser,
-                    NexusUnitType.Destroyer,
-                    5,
-                    3,
-                    true,
-                    2,
-                    BluePlayerId,
-                    1
-                ),
-                new NexusCombatAttackRoll(
-                    RedPlayerId,
-                    NexusUnitType.Cruiser,
-                    NexusUnitType.Destroyer,
-                    2,
-                    3,
-                    false,
-                    2,
-                    BluePlayerId,
-                    1
-                ),
-                new NexusCombatAttackRoll(
-                    BluePlayerId,
-                    NexusUnitType.Destroyer,
-                    NexusUnitType.Fighter,
-                    5,
-                    5,
-                    true,
-                    1,
-                    RedPlayerId,
-                    1
+                new NexusPhaseResult(
+                    NexusCombatPhase.Battle,
+                    [
+                        new NexusCombatLoss(BluePlayerId, NexusUnitType.Destroyer, 1),
+                        new NexusCombatLoss(RedPlayerId, NexusUnitType.Fighter, 2),
+                    ],
+                    [
+                        new NexusCombatAttackRoll(
+                            RedPlayerId,
+                            NexusUnitType.Cruiser,
+                            NexusUnitType.Destroyer,
+                            5,
+                            3,
+                            true,
+                            2,
+                            BluePlayerId,
+                            1
+                        ),
+                        new NexusCombatAttackRoll(
+                            RedPlayerId,
+                            NexusUnitType.Cruiser,
+                            NexusUnitType.Destroyer,
+                            2,
+                            3,
+                            false,
+                            2,
+                            BluePlayerId,
+                            1
+                        ),
+                        new NexusCombatAttackRoll(
+                            BluePlayerId,
+                            NexusUnitType.Destroyer,
+                            NexusUnitType.Fighter,
+                            5,
+                            5,
+                            true,
+                            1,
+                            RedPlayerId,
+                            1
+                        ),
+                    ]
                 ),
             ]
         );
 
         var message = NexusSessionEventFormatter.Format(evt, playerNames, RedPlayerId);
 
-        Assert.Contains("Battle at Nexus", message);
+        Assert.Contains("Combat at Nexus", message);
         Assert.Contains(
             "Alice Cruiser (2/2 hits) -> Bob Destroyer (1/2 hits): rolled 5 vs 3 hit",
             message

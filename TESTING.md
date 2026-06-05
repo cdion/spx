@@ -1,165 +1,25 @@
 # Testing Strategy
 
-This repo should be mostly unit tested.
+Unit tests are the default. Integration tests are reserved for adapter seams where framework behavior owns the risk. Host-level and end-to-end tests are rare.
 
-The default rule is:
+The architecture guides where tests live:
 
-- test application behavior with unit tests
-- test only important adapter seams with integration tests
-- keep host-level and end-to-end tests rare
+- **`Spx.Account.Application`** and **`Spx.Game.Application`** — carry most of the test volume via pure handler/helper tests
+- **`Spx.Game.Domain`** — carries unit tests for reusable card and crafting logic
+- **`Spx.Data`**, **`Spx.Web`**, and **Orleans integration points** — carry a smaller number of focused integration tests for wiring and framework behavior
 
-That fits the current architecture:
+## Decision Framework
 
-- `Spx.Account.Application` and `Spx.Game.Application` contain application use cases and should carry most of the test volume
-- `Spx.Game.Domain` contains pure game rules and should carry unit tests for reusable card and crafting logic
-- `Spx.Data`, `Spx.Web`, and Orleans integration points should have a smaller number of focused integration tests where wiring and framework behavior matter
+When adding a new test, ask:
 
-## Current Test Project Layout
+1. Is the behavior decided in `Spx.Account.Application` or `Spx.Game.Application` without needing a real framework implementation?
+   → Write a **unit test** in the corresponding `.Application.Tests` project.
+2. Does the behavior depend on EF Core, ASP.NET Identity, endpoint binding, or Orleans runtime semantics?
+   → Write an **integration test** in the relevant integration test project.
+3. Would mocking the dependency make the test prove less than a real adapter check?
+   → Keep one or two integration tests for that seam, not dozens.
 
-### `tests/Spx.Account.Application.Tests`
-
-Purpose: fast unit tests for account application handlers.
-
-This project is the main home for tests covering:
-
-- `Login`
-- `Logout`
-- `Register`
-- `ConfirmEmail`
-- `ForgotPassword`
-- `ResetPassword`
-- `ResendConfirmation`
-
-These tests should use fakes for `IAccountIdentity` and `IAccountEmailSender` and should assert:
-
-- validation branches
-- outcome mapping
-- whether follow-up actions happen or do not happen
-- error propagation from ports
-
-Examples:
-
-- `RegisterHandler` returns `PasswordMismatch` when passwords differ
-- `RegisterHandler` does not send email when user creation fails
-- `ForgotPasswordHandler` does not send reset email for unknown or unconfirmed users
-- `ResetPasswordHandler` maps identity failures to the right outcome
-- `LoginHandler` maps sign-in statuses to the right redirect/outcome behavior
-
-### `tests/Spx.Game.Application.Tests`
-
-Purpose: fast unit tests for games application handlers and pure helpers.
-
-This project is the main home for tests covering:
-
-- `CreateGame`
-- `JoinGame`
-- `LeaveGame`
-- `GetLobby`
-- `GetUserGames`
-- `GetMessages`
-- `GetMessageUpdates`
-- `SendPublicMessage`
-- `SendPrivateMessage`
-- `EditMessage`
-- `DeleteMessage`
-- `InviteCodeGenerator`
-- `GameInputNormalizer`
-- `GameMessageFactory`
-
-These tests should prefer fakes or in-memory test doubles for the application ports and should assert:
-
-- validation rules
-- branching behavior
-- command/result mapping
-- publisher invocation behavior
-- normalization and formatting rules
-
-Examples:
-
-- invite code normalization and generation shape
-- player name and game name validation branches
-- message body validation and ownership checks
-- message update filtering logic
-- lobby result shaping for allowed and denied access
-
-### `tests/Spx.Game.Domain.Tests`
-
-Purpose: fast unit tests for pure game rule helpers.
-
-This project is the home for tests covering:
-
-- `GameCardCatalog`
-- `GameCraftingRules`
-- other pure rule helpers that only depend on game enums, card definitions, and deterministic rule evaluation
-
-These tests should assert:
-
-- card classification and initiative weights
-- refine and produce recipe/result rules
-- reusable rule helpers that are consumed by multiple layers
-
-### `tests/Spx.Game.Application.IntegrationTests`
-
-Purpose: integration tests for the EF-backed games persistence path.
-
-This project should stay, but it should stay narrow. It should cover only the cases where a real database-backed path is important to prove, such as:
-
-- EF query shape and filtering
-- persistence of game, player, and message state changes
-- important multi-entity updates in a single workflow
-- high-value end-to-end application-through-EF scenarios
-
-As unit coverage grows, avoid turning this project into the default place for every new games behavior test.
-
-### `tests/Spx.Web.Tests`
-
-Purpose: integration tests for important web adapters.
-
-This project should stay focused on:
-
-- HTTP endpoint mapping and redirect behavior
-- ASP.NET Identity-backed `IAccountIdentity` behavior
-- other web-owned adapters where framework wiring matters
-
-Good candidates here:
-
-- `MapAccountEndpoints()` redirect/query behavior
-- `IdentityAccountIdentityAdapter`
-- email adapter link generation if it becomes more complex
-
-### UI Component Testing Policy
-
-For Blazor/bUnit interaction tests in `tests/Spx.Web.Tests`:
-
-- add a `data-testid` to every element a test clicks, hovers, types into, or asserts by presence/absence
-- use semantic, domain-shaped test ids such as `nexus-map-system-q2-r-2` or `nexus-pending-move-order-0-q2-r-2-to-q1-r-2`
-- do not use CSS classes, Tailwind utilities, `title` attributes, text matching, or `FindAll()[n]` ordering to locate interactive targets
-- when a test needs to observe UI state, expose an explicit state attribute such as `data-state`, `data-focus-state`, `aria-selected`, `aria-expanded`, or `aria-pressed` instead of asserting on class strings
-- if a component lacks a stable selector, add one in the component rather than writing a brittle test around its presentation markup
-
-Semantic selectors are still appropriate when the accessibility contract itself is the thing under test. Tests for roles, ARIA wiring, or stable ids may query by `role`, `aria-*`, or element id directly.
-
-Do not use this project for pure `Spx.Account.Application` handler tests.
-
-### `tests/Spx.Grains.Tests`
-
-Purpose: focused tests for grain behavior and Orleans-specific edges.
-
-Keep this project small and targeted. Prefer direct grain behavior tests over broad host-level tests unless the Orleans runtime wiring itself is the risk being validated.
-
-### `tests/Spx.Grains.IntegrationTests`
-
-Purpose: focused Orleans runtime integration tests.
-
-Use this project for the small number of cases where the risk depends on Orleans activation lifetime, timers, observers, or other runtime semantics that are not meaningfully proved by direct grain tests.
-
-## What Should Be Unit Tested vs Integrated
-
-### Unit tests by default
-
-Use unit tests when the behavior is owned by your code and can be expressed through application contracts.
-
-That includes:
+### Unit test by default
 
 - handler validation
 - branching and rule enforcement
@@ -168,48 +28,95 @@ That includes:
 - normalization and formatting helpers
 - edge-case handling for missing or invalid inputs
 
-### Integration tests when the framework owns risk
-
-Use integration tests when the risk lives in framework behavior or adapter wiring.
-
-That includes:
+### Integrate when the framework owns risk
 
 - EF Core persistence and query behavior
 - ASP.NET Identity token and sign-in behavior
 - HTTP endpoint form binding and redirects
 - Orleans observer or runtime interactions that are hard to fake meaningfully
 
-## Current Repo Direction
+## Test Project Reference
 
-The repo now has the intended split between unit-heavy application tests and narrower integration seams.
+### `tests/Spx.Account.Application.Tests`
 
-In particular:
+Fast unit tests for account application handlers:
 
-- `tests/Spx.Account.Application.Tests` exists and should remain the default place for pure account handler behavior
-- `tests/Spx.Game.Application.Tests` exists and should remain the default place for pure games handler and helper behavior
-- `tests/Spx.Game.Domain.Tests` should be the default place for pure reusable game rule helpers
-- `tests/Spx.Game.Application.IntegrationTests` should stay focused on EF-backed scenarios and avoid becoming the default home for new games behavior tests
-- `tests/Spx.Web.Tests` is in a good place and should remain small and adapter-focused
-- `tests/Spx.Grains.Tests` is already relatively small and focused
-- `tests/Spx.Grains.IntegrationTests` should stay small and cover runtime-owned seams only
+- `Login`, `Logout`, `Register`, `ConfirmEmail`, `ForgotPassword`, `ResetPassword`, `ResendConfirmation`
 
-## Practical Rules For New Tests
+Use fakes for `IAccountIdentity` and `IAccountEmailSender`. Assert validation branches, outcome mapping, follow-up action behavior (send / don't send), and error propagation from ports.
 
-When adding a new test, ask:
+Examples:
+- `RegisterHandler` returns `PasswordMismatch` when passwords differ
+- `RegisterHandler` does not send email when user creation fails
+- `ForgotPasswordHandler` does not send reset email for unknown or unconfirmed users
+- `ResetPasswordHandler` maps identity failures to the right outcome
+- `LoginHandler` maps sign-in statuses to the right redirect/outcome behavior
 
-1. Is the behavior decided in `Spx.Account.Application` or `Spx.Game.Application` without needing a real framework implementation?
-   Put it in a unit test project.
-2. Does the behavior depend on EF Core, ASP.NET Identity, endpoint binding, or Orleans runtime semantics?
-   Put it in the relevant integration test project.
-3. Would mocking the dependency make the test prove less than a real adapter check?
-   Keep one or two integration tests for that seam, not dozens.
+### `tests/Spx.Game.Application.Tests`
 
-## Ongoing Direction
+Fast unit tests for games application handlers and pure helpers:
 
-1. Add new `Spx.Account.Application` behavior tests to `tests/Spx.Account.Application.Tests` by default.
-2. Add new `Spx.Game.Application` handler and helper tests to `tests/Spx.Game.Application.Tests` by default.
-3. Add pure reusable game rule tests to `tests/Spx.Game.Domain.Tests`.
-4. Keep `tests/Spx.Game.Application.IntegrationTests` limited to EF-backed scenarios that need a real database path.
-5. Keep `tests/Spx.Web.Tests` limited to web adapters and endpoint wiring.
-6. Keep `tests/Spx.Grains.IntegrationTests` limited to Orleans runtime semantics.
-7. Treat integration tests as a thin proving layer, not the default place for new behavior coverage.
+- `CreateGame`, `JoinGame`, `LeaveGame`, `GetLobby`, `GetUserGames`
+- `GetMessages`, `GetMessageUpdates`, `SendPublicMessage`, `SendPrivateMessage`, `EditMessage`, `DeleteMessage`
+- `InviteCodeGenerator`, `GameInputNormalizer`, `GameMessageFactory`
+
+Use fakes or in-memory test doubles for application ports. Assert validation rules, branching behavior, command/result mapping, publisher invocation, and normalization/formatting rules.
+
+Examples:
+- invite code normalization and generation shape
+- player name and game name validation branches
+- message body validation and ownership checks
+- message update filtering logic
+- lobby result shaping for allowed and denied access
+
+### `tests/Spx.Game.Domain.Tests`
+
+Fast unit tests for pure game rule helpers:
+
+- `GameCardCatalog`, `GameCraftingRules`
+- Other pure rule helpers that depend only on game enums, card definitions, and deterministic rule evaluation
+
+Assert card classification, initiative weights, refine/produce recipe/result rules, and reusable rule helpers consumed by multiple layers.
+
+### `tests/Spx.Game.Application.IntegrationTests`
+
+Narrow integration tests for the EF-backed games persistence path. Cover only cases where a real database path is important to prove:
+
+- EF query shape and filtering
+- persistence of game, player, and message state changes
+- important multi-entity updates in a single workflow
+- high-value end-to-end application-through-EF scenarios
+
+Do not let this project become the default home for every new games behavior test.
+
+### `tests/Spx.Web.Tests`
+
+Focused integration tests for web adapters:
+
+- HTTP endpoint mapping and redirect behavior
+- ASP.NET Identity-backed `IAccountIdentity` behavior
+- Other web-owned adapters where framework wiring matters
+
+Good candidates: `MapAccountEndpoints()` redirect/query behavior, `IdentityAccountIdentityAdapter`, email adapter link generation.
+
+Do not use this project for pure `Spx.Account.Application` handler tests.
+
+### `tests/Spx.Grains.Tests`
+
+Focused tests for grain behavior and Orleans-specific edges. Prefer direct grain behavior tests over broad host-level tests unless Orleans runtime wiring is the risk being validated.
+
+### `tests/Spx.Grains.IntegrationTests`
+
+Focused Orleans runtime integration tests. Reserve for cases where risk depends on Orleans activation lifetime, timers, observers, or other runtime semantics that are not meaningfully proved by direct grain tests.
+
+## UI Component Testing Policy
+
+For Blazor/bUnit interaction tests:
+
+- Add a **`data-testid`** to every element a test clicks, hovers, types into, or asserts by presence/absence.
+- Use semantic, domain-shaped test ids such as `nexus-map-system-q2-r-2` or `nexus-pending-move-order-0-q2-r-2-to-q1-r-2`.
+- **Do not** use CSS classes, Tailwind utilities, `title` attributes, text matching, or `FindAll()[n]` ordering to locate interactive targets.
+- When a test needs to observe UI state, expose an explicit state attribute such as `data-state`, `data-focus-state`, `aria-selected`, `aria-expanded`, or `aria-pressed` instead of asserting on class strings.
+- If a component lacks a stable selector, add one in the component rather than writing a brittle test around its presentation markup.
+
+Semantic selectors (`role`, `aria-*`, element id) are still appropriate when the accessibility contract itself is the thing under test.

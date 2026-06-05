@@ -62,7 +62,7 @@ public static class NexusMap
 
     /// <summary>
     /// Generates the initial <see cref="NexusSystemState"/> list for a new game.
-    /// Income values for the 16 non-nexus non-home systems are randomly assigned (1-3 Energy/turn).
+    /// Income values for the 16 non-nexus non-home systems are randomly assigned (1-2 Energy/turn).
     /// </summary>
     public static List<NexusSystemState> GenerateMap(Guid player1Id, Guid player2Id, Random rng)
     {
@@ -82,7 +82,7 @@ public static class NexusMap
             var incomeValue =
                 isNexus ? 0
                 : homePlayerId.HasValue ? 2
-                : rng.Next(1, 4); // 1-3 inclusive
+                : rng.Next(1, 3); // 1-2 inclusive
 
             var system = new NexusSystemState
             {

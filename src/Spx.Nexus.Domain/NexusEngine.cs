@@ -510,7 +510,7 @@ public static class NexusEngine
 
             if (player.PendingBeginNexusGate && (!hasPlanetaryOnNexus || nexusIsContested))
             {
-                player.Energy += GateCost;
+                // Energy already deducted in Step 1 — no refund on cancellation.
                 if (player.GateProgress == NexusGateProgress.Started)
                     player.GateProgress = NexusGateProgress.None;
 
@@ -597,22 +597,19 @@ public static class NexusEngine
             }
         }
 
-        // Update control for all move destinations
-        var destinations = p1
-            .PendingMoveOrders.Select(o => o.To)
+        // Update control for all systems affected by moves (sources and destinations).
+        // Units may leave a system, removing planetary presence and thus control.
+        var affectedSystems = p1
+            .PendingMoveOrders.Select(o => o.From)
+            .Concat(p1.PendingMoveOrders.Select(o => o.To))
+            .Concat(p2.PendingMoveOrders.Select(o => o.From))
             .Concat(p2.PendingMoveOrders.Select(o => o.To))
             .Distinct();
 
-        foreach (var coord in destinations)
+        foreach (var coord in affectedSystems)
         {
             var system = GetSystem(state, coord)!;
-            UpdateSystemControl(
-                system,
-                p1.PlayerId,
-                p2.PlayerId,
-                groundCombatOccurred: false,
-                events
-            );
+            UpdateSystemControl(system, p1.PlayerId, p2.PlayerId, events);
         }
     }
 
@@ -632,7 +629,6 @@ public static class NexusEngine
             if (system is null || !system.HasAnyUnits(player1Id) || !system.HasAnyUnits(player2Id))
                 continue;
 
-            events.Add(new NexusCombatBeganEvent(system.Coord, player1Id, player2Id));
             ResolveSystemCombat(system, player1Id, player2Id, events, rng);
         }
     }
@@ -648,33 +644,41 @@ public static class NexusEngine
         var units1 = ExpandUnits(system.GetPlayerStacks(player1Id));
         var units2 = ExpandUnits(system.GetPlayerStacks(player2Id));
 
-        var hadPlanetary1 = units1.Any(u => u.Type.IsPlanetary());
-        var hadPlanetary2 = units2.Any(u => u.Type.IsPlanetary());
-        var groundCombatOccurred = hadPlanetary1 && hadPlanetary2;
+        var phaseResults = ImmutableArray.CreateBuilder<NexusPhaseResult>();
 
-        // First strike step — units with FirstStrike tag fire first
-        ResolveOneStep(
+        var contactResult = ResolveOneStep(
             system.Coord,
             units1,
             units2,
             player1Id,
             player2Id,
-            events,
             rng,
-            isFirstStrike: true
+            NexusCombatPhase.Contact
         );
+        if (contactResult is not null)
+            phaseResults.Add(contactResult);
 
-        // Battle step — surviving units without FirstStrike fire
-        ResolveOneStep(
+        var battleResult = ResolveOneStep(
             system.Coord,
             units1,
             units2,
             player1Id,
             player2Id,
-            events,
             rng,
-            isFirstStrike: false
+            NexusCombatPhase.Battle
         );
+        if (battleResult is not null)
+            phaseResults.Add(battleResult);
+
+        if (phaseResults.Count > 0)
+            events.Add(
+                new NexusCombatResultEvent(
+                    system.Coord,
+                    player1Id,
+                    player2Id,
+                    phaseResults.ToImmutable()
+                )
+            );
 
         var surviving1 = CollapseAlive(units1);
         var surviving2 = CollapseAlive(units2);
@@ -698,41 +702,32 @@ public static class NexusEngine
         else
             system.Units.Remove(player2Id);
 
-        UpdateSystemControl(system, player1Id, player2Id, groundCombatOccurred, events);
+        UpdateSystemControl(system, player1Id, player2Id, events);
     }
 
-    private static void ResolveOneStep(
+    private static NexusPhaseResult? ResolveOneStep(
         HexCoord systemCoord,
         List<CombatUnit> units1,
         List<CombatUnit> units2,
         Guid player1Id,
         Guid player2Id,
-        List<NexusResolveEvent> events,
         Random rng,
-        bool isFirstStrike
+        NexusCombatPhase phase
     )
     {
-        // Filter to attackers eligible for this step
-        var eligible1 = units1
-            .Where(u =>
-                !u.IsDestroyed
-                && u.Type.Profile().Tags.HasFlag(NexusUnitTag.FirstStrike) == isFirstStrike
-            )
-            .ToList();
-        var eligible2 = units2
-            .Where(u =>
-                !u.IsDestroyed
-                && u.Type.Profile().Tags.HasFlag(NexusUnitTag.FirstStrike) == isFirstStrike
-            )
-            .ToList();
+        // All alive units participate in every phase, but targeting is restricted
+        // by category: FirstAttack* tags in the Contact phase, CanAttack* tags
+        // in the Battle phase.
+        var alive1 = units1.Where(u => !u.IsDestroyed).ToList();
+        var alive2 = units2.Where(u => !u.IsDestroyed).ToList();
 
-        if (eligible1.Count == 0 && eligible2.Count == 0)
-            return;
+        if (alive1.Count == 0 && alive2.Count == 0)
+            return null;
 
         var pendingHits = new List<(CombatUnit Target, Guid TargetPlayerId, bool WasShielded)>();
         var attackRolls = new List<NexusCombatAttackRoll>();
-        GatherAttacks(eligible1, units2, player1Id, player2Id, rng, pendingHits, attackRolls);
-        GatherAttacks(eligible2, units1, player2Id, player1Id, rng, pendingHits, attackRolls);
+        GatherAttacks(alive1, units2, player1Id, player2Id, rng, pendingHits, attackRolls, phase);
+        GatherAttacks(alive2, units1, player2Id, player1Id, rng, pendingHits, attackRolls, phase);
 
         var losses = new Dictionary<(Guid, NexusUnitType), int>();
         foreach (var (target, targetPlayerId, wasShielded) in pendingHits)
@@ -750,30 +745,13 @@ public static class NexusEngine
             }
         }
 
-        if (isFirstStrike)
-        {
-            events.Add(
-                new NexusFirstStrikeEvent(
-                    systemCoord,
-                    losses
-                        .Select(kv => new NexusCombatLoss(kv.Key.Item1, kv.Key.Item2, kv.Value))
-                        .ToImmutableArray(),
-                    attackRolls.ToImmutableArray()
-                )
-            );
-        }
-        else
-        {
-            events.Add(
-                new NexusCombatResultEvent(
-                    systemCoord,
-                    losses
-                        .Select(kv => new NexusCombatLoss(kv.Key.Item1, kv.Key.Item2, kv.Value))
-                        .ToImmutableArray(),
-                    attackRolls.ToImmutableArray()
-                )
-            );
-        }
+        return new NexusPhaseResult(
+            phase,
+            losses
+                .Select(kv => new NexusCombatLoss(kv.Key.Item1, kv.Key.Item2, kv.Value))
+                .ToImmutableArray(),
+            attackRolls.ToImmutableArray()
+        );
     }
 
     private static void GatherAttacks(
@@ -783,7 +761,8 @@ public static class NexusEngine
         Guid targetPlayerId,
         Random rng,
         List<(CombatUnit Target, Guid TargetPlayerId, bool WasShielded)> pendingHits,
-        List<NexusCombatAttackRoll> attackRolls
+        List<NexusCombatAttackRoll> attackRolls,
+        NexusCombatPhase phase
     )
     {
         foreach (var attacker in attackers)
@@ -791,18 +770,21 @@ public static class NexusEngine
             if (attacker.IsDestroyed)
                 continue;
 
+            var profile = attacker.Type.Profile();
+            var tags = profile.Tags;
+
+            // Filter targets by category eligibility for this phase:
+            // Contact phase → only targets with a FirstAttack* tag
+            // Battle phase     → only targets with a CanAttack* tag
             var eligible = targets
                 .Where(t =>
                     !t.IsDestroyed
-                    && NexusCombatSpec.GetHitThreshold(attacker.Type, t.Type) is not null
+                    && NexusCombatSpec.GetHitThreshold(attacker.Type, t.Type, phase) is not null
                 )
                 .ToList();
 
             if (eligible.Count == 0)
                 continue;
-
-            var profile = attacker.Type.Profile();
-            var tags = profile.Tags;
 
             // Local function to perform one attack roll against a given pool of eligible targets
             void PerformAttack(List<CombatUnit> pool)
@@ -811,7 +793,9 @@ public static class NexusEngine
                     return;
 
                 var target = PickTargetByWeight(pool, rng);
-                var threshold = NexusCombatSpec.GetHitThreshold(attacker.Type, target.Type)!.Value;
+                var threshold = NexusCombatSpec
+                    .GetHitThreshold(attacker.Type, target.Type, phase)!
+                    .Value;
                 var roll = rng.Next(1, 7); // 1–6 inclusive
                 var isHit = roll >= threshold;
                 var wasShielded = false;
@@ -845,16 +829,16 @@ public static class NexusEngine
                     pendingHits.Add((target, targetPlayerId, wasShielded));
             }
 
-            // Battle attacks
+            // Base attacks per this unit's profile
             for (var i = 0; i < profile.Attacks; i++)
                 PerformAttack(eligible);
 
             // Free extra attacks restricted to a specific category
-            if (tags.HasFlag(NexusUnitTag.FreeAttackVsStrike))
+            if (tags.HasFlag(NexusUnitTag.FreeAttackStrike))
                 PerformAttack(eligible.Where(t => t.Type.IsStrike()).ToList());
-            if (tags.HasFlag(NexusUnitTag.FreeAttackVsCapital))
+            if (tags.HasFlag(NexusUnitTag.FreeAttackCapital))
                 PerformAttack(eligible.Where(t => t.Type.IsCapital()).ToList());
-            if (tags.HasFlag(NexusUnitTag.FreeAttackVsPlanetary))
+            if (tags.HasFlag(NexusUnitTag.FreeAttackPlanetary))
                 PerformAttack(eligible.Where(t => t.Type.IsPlanetary()).ToList());
         }
     }
@@ -865,7 +849,6 @@ public static class NexusEngine
         NexusSystemState system,
         Guid player1Id,
         Guid player2Id,
-        bool groundCombatOccurred,
         List<NexusResolveEvent> events
     )
     {
@@ -882,6 +865,7 @@ public static class NexusEngine
 
         if (p1HasPresence && p2HasPresence)
         {
+            // Both players have units — contested, no income for either
             if (system.ControlOwner is not null)
             {
                 system.ControlOwner = null;
@@ -890,6 +874,7 @@ public static class NexusEngine
         }
         else if (p1HasPlanetary && !p2HasPresence)
         {
+            // Only P1 has planetary and no opponent presence — P1 controls
             if (system.ControlOwner != player1Id)
             {
                 system.ControlOwner = player1Id;
@@ -898,19 +883,34 @@ public static class NexusEngine
         }
         else if (p2HasPlanetary && !p1HasPresence)
         {
+            // Only P2 has planetary and no opponent presence — P2 controls
             if (system.ControlOwner != player2Id)
             {
                 system.ControlOwner = player2Id;
                 events.Add(new NexusPlanetaryControlEvent(system.Coord, player2Id));
             }
         }
-        else if (groundCombatOccurred && system.ControlOwner is not null)
+        else
         {
-            // All planetary units wiped out in ground combat
-            system.ControlOwner = null;
-            events.Add(new NexusSystemUncontrolledEvent(system.Coord));
+            // Neither player has planetary units — no planetary presence to establish control.
+            // Capital ships and strike craft alone cannot establish or retain control.
+            // Exception: a home system always belongs to its owner (can only be contested).
+            if (system.HomePlayerId.HasValue)
+            {
+                if (system.ControlOwner != system.HomePlayerId)
+                {
+                    system.ControlOwner = system.HomePlayerId;
+                    events.Add(
+                        new NexusPlanetaryControlEvent(system.Coord, system.HomePlayerId.Value)
+                    );
+                }
+            }
+            else if (system.ControlOwner is not null)
+            {
+                system.ControlOwner = null;
+                events.Add(new NexusSystemUncontrolledEvent(system.Coord));
+            }
         }
-        // else: capital ships or strike craft only — retain existing control
     }
 
     // ── Combat Helpers ────────────────────────────────────────────────────────
@@ -952,26 +952,9 @@ public static class NexusEngine
 
     private static CombatUnit PickTargetByWeight(List<CombatUnit> targets, Random rng)
     {
-        // Check if the defender (targets side) has any Escort units
-        var defenderHasEscort = targets.Any(t =>
-            t.Type.Profile().Tags.HasFlag(NexusUnitTag.Escort)
-        );
-
-        var weights = new int[targets.Count];
-        var totalWeight = 0;
-        for (var i = 0; i < targets.Count; i++)
-        {
-            var sil = targets[i].Type.Profile().Silhouette;
-            // Escort: reduce effective silhouette of non-Escort Capital units on the defender's side
-            if (
-                defenderHasEscort
-                && targets[i].Type.IsCapital()
-                && !targets[i].Type.Profile().Tags.HasFlag(NexusUnitTag.Escort)
-            )
-                sil = Math.Max(1, sil - 1);
-            weights[i] = sil;
-            totalWeight += sil;
-        }
+        var types = targets.Select(t => t.Type).ToArray();
+        var weights = NexusCombatSpec.ComputeTargetWeights(types);
+        var totalWeight = weights.Sum();
 
         var pick = rng.Next(totalWeight);
         var cumulative = 0;

@@ -75,31 +75,23 @@ public sealed record NexusSystemUncontrolledEvent([property: Id(0)] HexCoord Sys
 
 // ── Combat ────────────────────────────────────────────────────────────────────
 
-/// <summary>Combat has begun in a system between two players.</summary>
+/// <summary>One phase's worth of combat data, nested inside <see cref="NexusCombatResultEvent"/>.</summary>
 [GenerateSerializer]
 [Immutable]
-public sealed record NexusCombatBeganEvent(
-    [property: Id(0)] HexCoord System,
-    [property: Id(1)] Guid Player1Id,
-    [property: Id(2)] Guid Player2Id
-) : NexusResolveEvent;
-
-/// <summary>Results of the first strike combat step — units with FirstStrike tag fire before normal units.</summary>
-[GenerateSerializer]
-[Immutable]
-public sealed record NexusFirstStrikeEvent(
-    [property: Id(0)] HexCoord System,
+public sealed record NexusPhaseResult(
+    [property: Id(0)] NexusCombatPhase Phase,
     [property: Id(1)] ImmutableArray<NexusCombatLoss> Losses,
     [property: Id(2)] ImmutableArray<NexusCombatAttackRoll> AttackRolls
-) : NexusResolveEvent;
+);
 
-/// <summary>Results of the normal combat step — surviving non-first-strike units fire.</summary>
+/// <summary>Complete combat result for one contested system, covering both phases.</summary>
 [GenerateSerializer]
 [Immutable]
 public sealed record NexusCombatResultEvent(
     [property: Id(0)] HexCoord System,
-    [property: Id(1)] ImmutableArray<NexusCombatLoss> Losses,
-    [property: Id(2)] ImmutableArray<NexusCombatAttackRoll> AttackRolls
+    [property: Id(1)] Guid Player1Id,
+    [property: Id(2)] Guid Player2Id,
+    [property: Id(3)] ImmutableArray<NexusPhaseResult> Phases
 ) : NexusResolveEvent;
 
 /// <summary>All of one player's units have been eliminated from the system.</summary>

@@ -25,24 +25,7 @@ public static class NexusSessionEventFormatter
                 $"{SectorName(e.System, ownerPlayerId: null, viewingPlayerId)} is contested",
             NexusSystemUncontrolledEvent e =>
                 $"{SectorName(e.System, ownerPlayerId: null, viewingPlayerId)} is now uncontrolled — no planetary units present",
-            NexusCombatBeganEvent e =>
-                $"Combat erupted at {SectorName(e.System, ownerPlayerId: null, viewingPlayerId)} between {PlayerName(e.Player1Id, playerNames)} and {PlayerName(e.Player2Id, playerNames)}",
-            NexusFirstStrikeEvent e => FormatCombatResult(
-                e.System,
-                e.Losses,
-                e.AttackRolls,
-                playerNames,
-                viewingPlayerId,
-                isFirstStrike: true
-            ),
-            NexusCombatResultEvent e => FormatCombatResult(
-                e.System,
-                e.Losses,
-                e.AttackRolls,
-                playerNames,
-                viewingPlayerId,
-                isFirstStrike: false
-            ),
+            NexusCombatResultEvent e => FormatCombatResult(e, playerNames, viewingPlayerId),
             NexusSystemClearedEvent e =>
                 $"{PlayerName(e.VictorId, playerNames)} cleared {SectorName(e.System, ownerPlayerId: null, viewingPlayerId)}",
             NexusIncomeEvent e =>
@@ -92,44 +75,47 @@ public static class NexusSessionEventFormatter
         );
 
     private static string FormatCombatResult(
-        HexCoord system,
-        ImmutableArray<NexusCombatLoss> losses,
-        ImmutableArray<NexusCombatAttackRoll> attackRolls,
+        NexusCombatResultEvent e,
         IReadOnlyDictionary<Guid, string> playerNames,
-        Guid? viewingPlayerId,
-        bool isFirstStrike
+        Guid? viewingPlayerId
     )
     {
-        var systemName = SectorName(system, ownerPlayerId: null, viewingPlayerId);
-        var lossSummaries = losses
-            .GroupBy(loss => loss.PlayerId)
-            .Select(group =>
-            {
-                var playerName = PlayerName(group.Key, playerNames);
-                var lossList = string.Join(
-                    ", ",
-                    group.Select(loss => $"{loss.Count}× {loss.UnitType}").OrderBy(text => text)
+        var systemName = SectorName(e.System, ownerPlayerId: null, viewingPlayerId);
+        var lines = new List<string>
+        {
+            $"Combat at {systemName} — {PlayerName(e.Player1Id, playerNames)} vs {PlayerName(e.Player2Id, playerNames)}",
+        };
+
+        foreach (var phase in e.Phases)
+        {
+            var phaseName = phase.Phase.DisplayName();
+            lines.Add($"  {phaseName}:");
+
+            if (phase.AttackRolls.Length > 0)
+                lines.AddRange(
+                    phase.AttackRolls.Select(r => $"    {FormatAttackRoll(r, playerNames)}")
                 );
-                return $"{playerName} loses {lossList}";
-            })
-            .OrderBy(summary => summary)
-            .ToList();
 
-        var phase = isFirstStrike ? NexusCombatPhase.FirstStrike : NexusCombatPhase.Battle;
-        var stepName = phase.DisplayName();
-        var lines = new List<string> { $"{stepName} at {systemName}" };
-        if (attackRolls.Length == 0)
-        {
-            lines.Add("No attacks resolved");
-        }
-        else
-        {
-            lines.AddRange(attackRolls.Select(roll => FormatAttackRoll(roll, playerNames)));
-        }
+            var lossSummaries = phase
+                .Losses.GroupBy(loss => loss.PlayerId)
+                .Select(group =>
+                {
+                    var playerName = PlayerName(group.Key, playerNames);
+                    var lossList = string.Join(
+                        ", ",
+                        group.Select(loss => $"{loss.Count}× {loss.UnitType}").OrderBy(text => text)
+                    );
+                    return $"{playerName} loses {lossList}";
+                })
+                .OrderBy(s => s)
+                .ToList();
 
-        lines.Add(
-            lossSummaries.Count > 0 ? $"Losses: {string.Join("; ", lossSummaries)}" : "Losses: none"
-        );
+            lines.Add(
+                lossSummaries.Count > 0
+                    ? $"    Losses: {string.Join("; ", lossSummaries)}"
+                    : $"    Losses: none"
+            );
+        }
 
         return string.Join("\n", lines);
     }

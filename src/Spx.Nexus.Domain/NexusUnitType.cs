@@ -10,7 +10,7 @@ public enum NexusUnitCategory
 
 /// <summary>
 /// Full combat profile for a unit type.
-/// <para><see cref="Tags"/> encodes special abilities (Shield, FirstStrike, CanTarget*,
+/// <para><see cref="Tags"/> encodes special abilities (Shield, FirstAttack*, CanAttack*,
 /// BonusVs*, PenaltyVs*). Bonus tags lower the hit threshold by 1 against that category;
 /// penalty tags raise it by 1. A missing <c>CanTarget*</c> tag for the target's category
 /// means the unit cannot target it.</para>
@@ -57,7 +57,7 @@ public static class NexusUnitTypeExtensions
                 Attacks: 1,
                 HitThreshold: 4,
                 Cost: 1,
-                Tags: NexusUnitTag.CanTargetStrike | NexusUnitTag.FirstStrike
+                Tags: NexusUnitTag.FirstAttackStrike
             ),
             NexusUnitType.Fighter => new(
                 NexusUnitCategory.Strike,
@@ -66,8 +66,8 @@ public static class NexusUnitTypeExtensions
                 Attacks: 1,
                 HitThreshold: 4,
                 Cost: 1,
-                Tags: NexusUnitTag.CanTargetStrike
-                    | NexusUnitTag.CanTargetCapital
+                Tags: NexusUnitTag.CanAttackStrike
+                    | NexusUnitTag.CanAttackCapital
                     | NexusUnitTag.PenaltyVsCapital
             ),
             NexusUnitType.Bomber => new(
@@ -77,9 +77,9 @@ public static class NexusUnitTypeExtensions
                 Attacks: 1,
                 HitThreshold: 4,
                 Cost: 2,
-                Tags: NexusUnitTag.CanTargetStrike
-                    | NexusUnitTag.CanTargetCapital
-                    | NexusUnitTag.CanTargetPlanetary
+                Tags: NexusUnitTag.CanAttackStrike
+                    | NexusUnitTag.CanAttackCapital
+                    | NexusUnitTag.CanAttackPlanetary
                     | NexusUnitTag.PenaltyVsStrike
                     | NexusUnitTag.IgnoreShield
             ),
@@ -90,8 +90,8 @@ public static class NexusUnitTypeExtensions
                 Attacks: 2,
                 HitThreshold: 4,
                 Cost: 3,
-                Tags: NexusUnitTag.CanTargetStrike
-                    | NexusUnitTag.CanTargetCapital
+                Tags: NexusUnitTag.CanAttackStrike
+                    | NexusUnitTag.CanAttackCapital
                     | NexusUnitTag.Shield
                     | NexusUnitTag.Escort
             ),
@@ -102,10 +102,9 @@ public static class NexusUnitTypeExtensions
                 Attacks: 2,
                 HitThreshold: 4,
                 Cost: 4,
-                Tags: NexusUnitTag.CanTargetStrike
-                    | NexusUnitTag.CanTargetCapital
-                    | NexusUnitTag.PenaltyVsStrike
-                    | NexusUnitTag.FreeAttackVsStrike
+                Tags: NexusUnitTag.CanAttackStrike
+                    | NexusUnitTag.CanAttackCapital
+                    | NexusUnitTag.FreeAttackStrike
             ),
             NexusUnitType.Cruiser => new(
                 NexusUnitCategory.Capital,
@@ -114,9 +113,9 @@ public static class NexusUnitTypeExtensions
                 Attacks: 3,
                 HitThreshold: 4,
                 Cost: 5,
-                Tags: NexusUnitTag.CanTargetStrike
-                    | NexusUnitTag.CanTargetCapital
-                    | NexusUnitTag.CanTargetPlanetary
+                Tags: NexusUnitTag.CanAttackStrike
+                    | NexusUnitTag.CanAttackCapital
+                    | NexusUnitTag.CanAttackPlanetary
                     | NexusUnitTag.BonusVsCapital
             ),
             NexusUnitType.Carrier => new(
@@ -126,8 +125,8 @@ public static class NexusUnitTypeExtensions
                 Attacks: 2,
                 HitThreshold: 5,
                 Cost: 6,
-                Tags: NexusUnitTag.CanTargetStrike
-                    | NexusUnitTag.CanTargetCapital
+                Tags: NexusUnitTag.CanAttackStrike
+                    | NexusUnitTag.CanAttackCapital
                     | NexusUnitTag.Shield
             ),
             NexusUnitType.Infantry => new(
@@ -137,7 +136,7 @@ public static class NexusUnitTypeExtensions
                 Attacks: 1,
                 HitThreshold: 4,
                 Cost: 1,
-                Tags: NexusUnitTag.CanTargetPlanetary
+                Tags: NexusUnitTag.CanAttackPlanetary
             ),
             NexusUnitType.Armor => new(
                 NexusUnitCategory.Planetary,
@@ -146,7 +145,7 @@ public static class NexusUnitTypeExtensions
                 Attacks: 1,
                 HitThreshold: 4,
                 Cost: 2,
-                Tags: NexusUnitTag.CanTargetPlanetary | NexusUnitTag.Shield
+                Tags: NexusUnitTag.CanAttackPlanetary | NexusUnitTag.Shield
             ),
             _ => throw new ArgumentOutOfRangeException(nameof(t), t, null),
         };

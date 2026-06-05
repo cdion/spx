@@ -22,7 +22,7 @@
 
 - **Nexus** `[N]` — center system; win site only, no income, cannot be controlled for income
 - **Home systems** — two opposing outer systems, one per player; each produces **2 Energy/turn**; under that player's control from game start
-- **16 income systems** — every remaining system; each is assigned a random income value of **1–3 Energy/turn** at game creation; values are fixed for the duration of the game
+- **16 income systems** — every remaining system; each is assigned a random income value of **1–2 Energy/turn** at game creation; values are fixed for the duration of the game
 - Income values are placed asymmetrically — no symmetry guarantee between the two sides
 - The income value of every system is visible to both players from turn 1
 - Map is fully visible from turn 1
@@ -36,7 +36,7 @@ One resource type: **Energy**.
 | Source | Income |
 |---|---|
 | Home system | +2 Energy/turn |
-| Income system | +1–3 Energy/turn (value assigned at map generation) |
+| Income system | +1–2 Energy/turn (value assigned at map generation) |
 
 - Controlling a system earns its Energy income; the opponent loses that income if they previously controlled it
 - Energy has no upper limit; unused Energy carries over between turns
@@ -82,25 +82,25 @@ Three categories of units: **Capital**, **Strike**, and **Planetary**.
 
 | Unit | Category | Cost | Hull | Silhouette | Base hit | Combat role |
 |---|---|---|---|---|---|---|
-| **Frigate** | Capital | 4 | 1 | 1 | 4+ | Anti-ship; weak against strike craft; has **shield** (absorbs first hit per turn) |
-| **Destroyer** | Capital | 5 | 2 | 2 | 4+ | Anti-strike and anti-ship; participates in Intercept and Line |
-| **Cruiser** | Capital | 6 | 2 | 3 | 3+ | Heavy anti-capital with bombard support; needs escort against strike craft; capacity 2 (any mix of strike craft and planetary units) |
-| **Carrier** | Capital | 8 | 4 | 4 | 6+ | Transport; capacity 8 (any mix of strike craft and planetary units) |
+| **Frigate** | Capital | 3 | 1 | 2 | 4+ | Anti-ship and anti-strike; provides escort (protects one non-Escort Capital per Frigate); has **shield** (absorbs first hit per turn) |
+| **Destroyer** | Capital | 4 | 2 | 2 | 4+ | Anti-strike with free strike attack; participates in Contact and Battle |
+| **Cruiser** | Capital | 5 | 2 | 3 | 4+ | Heavy anti-capital (bonus vs Capital) with planetary bombard; needs escort against strike craft; capacity 2 (any mix of strike craft and planetary units) |
+| **Carrier** | Capital | 6 | 2 | 4 | 5+ | Transport; capacity 8 (any mix of strike craft and planetary units); has **shield** |
 
 ### Strike
 
 | Unit | Category | Cost | Hull | Silhouette | Base hit | Combat role |
 |---|---|---|---|---|---|---|
-| **Interceptor** | Strike | 2 | 1 | 1 | 4+ | Counters fighters and bombers across Intercept and Line; cannot attack ships |
-| **Fighter** | Strike | 2 | 1 | 1 | 4+ | General-purpose; engages all enemy strike craft |
-| **Bomber** | Strike | 4 | 1 | 2 | 5+ | Attacks capital ships in Line; bombards planetary units in Orbit |
+| **Interceptor** | Strike | 1 | 1 | 1 | 4+ | Counters strike craft in Contact phase; absent from Battle; cannot attack ships |
+| **Fighter** | Strike | 1 | 1 | 1 | 4+ | General-purpose; engages strike craft and capital ships (penalty vs Capital) |
+| **Bomber** | Strike | 2 | 1 | 1 | 4+ | Attacks capital ships and planetary units; penalty vs strike craft; ignores shields |
 
 ### Planetary
 
 | Unit | Category | Cost | Hull | Silhouette | Base hit | Combat role |
 |---|---|---|---|---|---|---|
-| **Infantry** | Planetary | 2 | 1 | 1 | 4+ | General ground combat |
-| **Armor** | Planetary | 4 | 1 | 2 | 3+ | Armored ground assault; advantage over infantry; fires at reduced accuracy in Orbit (5+); has **shield** (absorbs first hit per turn) |
+| **Infantry** | Planetary | 1 | 1 | 1 | 4+ | General ground combat |
+| **Armor** | Planetary | 2 | 1 | 2 | 4+ | Armored ground assault; has **shield** (absorbs first hit per turn) |
 
 Only planetary units may begin **Nexus Gate** construction.
 
@@ -115,8 +115,8 @@ Each round follows this sequence:
 1. **Plan phase** — both players simultaneously and secretly commit orders
 2. **Resolve phase:**
    1. Build cost deducted · Nexus Gate payment deducted
-  2. Moves — all units move simultaneously. Units whose paths cross in opposite directions (A moves to B's system while B moves to A's system) simply swap — no combat at either system. If units arrive at a system occupied by enemy units, they stop and combat resolves in step 3. Planetary units arriving at an opponent-controlled or uncontrolled system with no enemy units present can establish control immediately.
-  3. Combat — all contested systems resolve in spiral order (Nexus → Ring 1 → Ring 2, homes last); each system runs Intercept, Line, commitment, Orbit, and Surface before the next system resolves
+  2. Moves — all units move simultaneously. If units arrive at a system occupied by enemy units, they stop and combat resolves in step 3. Planetary units arriving at an opponent-controlled or uncontrolled system with no enemy units present can establish control immediately.
+  3. Combat — all contested systems resolve in spiral order (Nexus → Ring 1 → Ring 2, homes last); each system runs Contact then Battle before the next system resolves
    4. Income — all income calculated and applied simultaneously; a player earns income from every system they control
    5. Newly built units appear at home system
    6. Supply check — if a player's Capital count exceeds their supply pool, excess Capitals are automatically disbanded in spiral order (see Supply section)
@@ -145,19 +145,19 @@ Player-level orders (not unit-specific):
 
 ## System Control
 
-A player **controls** a system when they have at least one planetary unit in it and the opponent has no units there. Control is the mechanism for earning income from a system.
+A player **controls** a system **only** when they have at least one planetary unit in it and the opponent has no units there. Control is the mechanism for earning income from a system.
 
 **Establishing control:** Planetary units arriving at an uncontrolled system or an opponent-controlled system with no enemy units present take control of it immediately during the Moves step. No order is required — presence is sufficient.
 
-**Retaining control:** A player retains control of a system after voluntarily moving their planetary units away. The system stays controlled until enemy units arrive and contest it.
+**Losing control from planetary departure:** Control is lost immediately when a player no longer has any planetary units on the system, even if friendly capital ships or strike craft remain. If a player moves their last planetary unit away, the system becomes uncontrolled (not retained by the departing player's remaining ships).
 
-**Contested system:** A system with units from both players present is contested — neither player controls it and it produces no income for either player. After Line, all surviving planetary units in that system commit to the fight. Committed planetary units stay locked in the system while it remains contested, can be orbitally bombarded, and participate in Surface. Once the system is no longer contested, surviving committed planetary units return to the fleet. If all planetary units on both sides are eliminated in combat, the system becomes uncontrolled.
+**Contested system:** A system with units from both players present is contested — neither player controls it and it produces no income for either player. All units present participate in combat (see [Combat](#combat)). Planetary units in a contested system are locked and cannot move while the system remains contested. Once the system is no longer contested, surviving planetary units are free to move again. If all planetary units on both sides are eliminated in combat, the system becomes uncontrolled.
 
-**Capital ships and strike craft** cannot establish control on their own. They can, however, contest an existing controller while they remain in the system.
+**Capital ships and strike craft** cannot establish or retain control on their own. They can, however, contest an existing controller while they remain in the system. A system with only capital ships and/or strike craft (no planetary units) is always uncontrolled.
 
-**Uncontrolled system:** A system that has never been captured, or where combat eliminated all planetary units from both sides. Produces no income until one player's planetary units arrive.
+**Uncontrolled system:** A system that has never been captured, or where combat eliminated all planetary units, or where the controlling player's last planetary unit moved away. Produces no income until one player's planetary units arrive.
 
-**Home systems** are under each player's control from game start and follow the same rules as any other system — they can be captured if the opponent's planetary units arrive uncontested.
+**Home systems** are under each player's control from game start (starting with 4 Infantry) and follow the same rules as any other system — they can be captured if the opponent's planetary units arrive uncontested.
 
 **The Nexus** cannot be controlled for income regardless of planetary unit presence.
 
@@ -165,83 +165,83 @@ A player **controls** a system when they have at least one planetary unit in it 
 
 ## Combat
 
-When units from both players occupy the same system after moves resolve, combat resolves in four sequential **exchange phases** with a planetary commitment step after Line. If multiple systems are contested, they resolve in **spiral order** (Nexus first, then Ring 1 clockwise from NE, then Ring 2 clockwise from NE, with home systems last). Each system's combat completes fully before the next contested system begins. Each phase is an attrition exchange — both sides roll simultaneously, casualties are applied after all dice resolve, and survivors carry forward. Neither side retreats; both may remain on a contested system after all phases complete.
+When units from both players occupy the same system after moves resolve, combat resolves in two sequential **exchange phases**: **Contact** then **Battle**. If multiple systems are contested, they resolve in **spiral order** (Nexus first, then Ring 1 clockwise from NE, then Ring 2 clockwise from NE, with home systems last). Each system's combat completes fully before the next contested system begins. Each phase is an attrition exchange — both sides roll simultaneously, casualties are applied after all dice resolve, and survivors carry forward. Neither side retreats; both may remain on a contested system after all phases complete.
 
 ### Dice System
 
-Each unit rolls 1d6 in each phase it participates in. A result at or above the unit's **effective hit threshold** scores 1 hit on an enemy unit. Each hit randomly targets one enemy unit; the probability of a unit being selected is proportional to its **silhouette** (targeting weight). A unit is destroyed when it has absorbed hits equal to its **hull** (HP). Units fight at full strength until destroyed. A threshold below 2 always hits; a threshold above 6 never hits.
+Each unit rolls 1d6 per attack in each phase it participates in. A result at or above the unit's **effective hit threshold** scores 1 hit on an enemy unit. Each hit randomly targets one enemy unit; the probability of a unit being selected is proportional to its **silhouette** (targeting weight). A unit is destroyed when it has absorbed hits equal to its **hull** (HP). Units fight at full strength until destroyed. The minimum hit threshold is 2 (a threshold below 2 always hits).
 
 ### Shields
 
-Some units have a **shield** that may absorb incoming hits. When a shielded unit would take a hit, roll 1d6: on a **4+** the shield absorbs the hit — the hit is negated and the shield is consumed for the rest of that turn. On a **1–3** the hit passes through to hull and the shield remains active (it may still attempt to absorb a later hit this turn). The shield regenerates at the end of each turn's combat (after Surface resolves). A shield-absorbed hit is recorded in the combat log as "absorbed" rather than "hit". The Frigate and Armor are currently the only shielded units.
+Some units have a **shield** that may absorb incoming hits. When a shielded unit would take a hit, roll 1d6: on a **4+** the shield absorbs the hit — the hit is negated and the shield is consumed for the rest of that turn. On a **1–3** the hit passes through to hull and the shield remains active (it may still attempt to absorb a later hit this turn). The shield regenerates at the end of each turn's combat (after Battle resolves). A shield-absorbed hit is recorded in the combat log as "absorbed" rather than "hit". The Frigate, Carrier, and Armor are currently the only shielded units.
 
-### Full Interaction Matrix
+### Escort
 
-**P1** = Intercept · **P2** = Line · **P3** = Orbit · **P4** = Surface · **—** = cannot target this category
+The **Frigate** has the Escort tag. Each Frigate in a system protects one non-Escort Capital ship by reducing its effective silhouette by 1 (minimum 1). The ships with the highest silhouette are covered first. Escort does not stack.
 
-| Attacker | vs Strike | vs Capital | vs Planetary |
-|---|---|---|---|
-| **Fighter** | 4+ (P1) | 6+ (P2) | — |
-| **Interceptor** | 2+ vs bomber · 4+ vs fighter (P1, P2) · 3+ vs interceptor (P1, P2) | — | — |
-| **Bomber** | 5+ vs fighter/bomber · 6+ vs interceptor (P1) | 4+ (P2) | 4+ (P3) |
-| **Destroyer** | 4+ (P1) | 5+ vs strike · 4+ vs capital (P2) | — |
-| **Frigate** | 5+ (P2) | 4+ (P2) | — |
-| **Cruiser** | 6+ (P2) | 3+ (P2) | 4+ (P3) |
-| **Carrier** | 6+ (P2) | 6+ (P2) | — |
-| **Infantry** | — | — | 4+ vs inf · 5+ vs armor (P4) |
-| **Armor** | — | — | 5+ (P3) · 3+ vs inf · 4+ vs armor (P4) |
+### Free extra attacks
 
-† Fighter vs Ship (P2): 6+ — fighters can technically harass ships but are nearly ineffective against them.  
-§ Infantry: 4+ vs infantry, 5+ vs armor. Armor in Orbit: 5+ vs both. Armor in Surface: 3+ vs infantry, 4+ vs armor.
+The **Destroyer** has one free extra attack per phase that only targets Strike units, in addition to its base attacks.
 
+### Targeting System
 
-### Phase Participation
+Each unit type has a **base hit threshold** and a set of **tags** that determine:
+- Which phases it participates in (Contact, Battle, or both)
+- Which enemy categories it can target per phase
+- Bonus or penalty modifiers to its hit threshold vs specific categories
 
-**A** = attacks (rolls dice) · **T** = targetable (can receive hits) · **—** = not present this phase
+The effective hit threshold against a given target category is:
+```
+base threshold
+  − 1 if the attacker has BonusVs{Category}
+  + 1 if the attacker has PenaltyVs{Category}
+  minimum 2
+```
 
-| Unit | P1 Intercept | P2 Line | P3 Orbit | P4 Surface |
-|---|---|---|---|---|
-| **Interceptor** | A · T | A · T | — | — |
-| **Fighter** | A · T | A · T | — | — |
-| **Bomber** | A · T | A · T | A | — |
-| **Destroyer** | A only (not targetable) | A · T | — | — |
-| **Frigate** | — | A · T ★ | — | — |
-| **Cruiser** | — | A · T | A | — |
-| **Carrier** | — | A · T | — | — |
-| **Infantry** | — | — | T only | A · T |
-| **Armor** | — | — | A · T ★ | A · T ★ |
+#### Phase eligibility (targeting tags)
+
+| Phase | Targeting tag |
+|---|---|
+| **Contact** | `FirstAttack{Category}` — attack resolves before return fire from units that only target in Battle |
+| **Battle** | `CanAttack{Category}` — standard engagement |
+
+A unit can only be targeted by attacks in phases where it is present and targetable (see Participation table).
+
+### Participation & Hit Thresholds
+
+**A** = attacks · **T** = targetable · **—** = not present this phase
+
+| Unit | Contact | Battle | Base hit | vs Strike | vs Capital | vs Planetary | Special |
+|---|---|---|---|---|---|---|---|
+| **Interceptor** | A · T | — | 4 | 4 (FirstAttack) | — | — | Strike-only in Contact |
+| **Fighter** | — | A · T | 4 | 4 | 5 (penalty) | — | — |
+| **Bomber** | — | A · T | 4 | 5 (penalty) | 4 | 4 | Ignores shields |
+| **Destroyer** | A · T | A · T | 4 | 4 | 4 | — | FreeAttack vs Strike |
+| **Frigate** | — | A · T | 4 | 4 | 4 | — | Shield, Escort |
+| **Cruiser** | — | A · T | 4 | 4 | 3 (bonus) | 4 | Capacity 2 |
+| **Carrier** | — | A · T | 5 | 5 | 5 | — | Shield, Capacity 8 |
+| **Infantry** | — | A · T | 4 | — | — | 4 | — |
+| **Armor** | — | A · T | 4 | — | — | 4 | Shield |
 
 Silhouette-weighted random targeting applies only within the eligible target pool for the attacking unit's current phase. A unit cannot be targeted in a phase where it is marked **—**.
 
-★ Frigate and Armor have a shield: absorbs the first hit per turn before taking hull damage.
+### Phase 1 — Contact
 
-### Phase 1 — Intercept
+Strike craft and Destroyers that have `FirstAttack{Category}` tags attack eligible targets. Currently only **Interceptors** participate (FirstAttackStrike), attacking enemy strike craft. **Destroyers** also participate in Contact (targeting both Strike and Capital). Eligible attackers cannot be targeted by units that only participate in Battle. Skipped if neither side has any eligible attackers.
 
-Interceptors, fighters, and bombers attack other strike craft. Destroyers attack strike craft but **cannot be targeted** in Intercept. Capital ships (Frigate, Cruiser, Carrier) are absent. Skipped if neither side has any eligible units.
+### Phase 2 — Battle
 
-### Phase 2 — Line
-
-All capital ships participate. Surviving strike craft remain present and are targetable, and fighters, interceptors, bombers, and destroyers can attack strike craft. Interceptors still cannot attack capital ships in Line. Skipped if neither side has any capital ships.
-
-### Commitment Step — After Line
-
-After Line resolves, all surviving planetary units in that contested system commit to the fight. Committed planetary units remain visible in the system but are locked and cannot move while the system stays contested.
-
-### Phase 3 — Orbit
-
-Surviving bombers (4+) and cruisers (6+) each roll against enemy committed planetary units. Armor rolls at reduced accuracy (5+) against enemy committed planetary units. Planetary units cannot return fire in Orbit. Hits applied before Surface. Skipped if the attacker has no surviving bombers, cruisers, or armor, or the defender has no committed planetary units.
-
-### Phase 4 — Surface
-
-Participants: committed infantry and committed armor. Capital ships are not present and cannot be targeted in Surface. Skipped if neither side has eligible committed ground units.
+All remaining units participate according to their `CanAttack{Category}` tags. All surviving units from Contact are present and targetable. This is the main engagement phase. Skipped if neither side has any eligible units.
 
 ### System Outcome
 
-After all four phases, both players plan orders for their surviving units the following turn.
+After both combat phases, control is determined by planetary unit presence (see [System Control](#system-control)).
 
-- **Both sides have surviving units:** system is contested — neither controls it, no income for either
-- **One side eliminated:** surviving player holds the system; if they have planetary units present they control it; any committed planetary units then return to the fleet because the system is no longer contested; if only capital ships or strike craft remain, control is unchanged from before combat
-- **All planetary units on both sides eliminated:** system becomes uncontrolled regardless of prior state
+- **Both sides have surviving units:** system remains contested — neither controls it, no income for either
+- **One side eliminated:** surviving player may control if they have planetary units present
+- **No planetary units from either side:** system becomes uncontrolled
+
+
 
 ---
 
@@ -253,7 +253,7 @@ After all four phases, both players plan orders for their surviving units the fo
 - Total cost: **24 Energy**, committed over **2 consecutive turns** (12 Energy per turn)
 - **Turn N:** declare construction, commit 12 Energy; construction status is visible to both players
 - **Turn N+1:** commit 12 Energy; gate completes — you win
-- Construction is cancelled and all committed resources are lost if: all planetary units on the Nexus are eliminated in combat; the planetary units move away voluntarily; or the player cannot commit the remaining resources on turn N+1
+- Construction is cancelled if: all planetary units on the Nexus are eliminated in combat; the planetary units move away voluntarily; or the player does not declare `BeginNexusGate` on the following turn. In all cases, committed Energy is forfeited — no refund.
 - The construction check happens after combat resolves — at least one planetary unit must survive combat on the Nexus and the Nexus must still be uncontested for construction to proceed that turn
 - If both players complete the Nexus Gate in the same turn: **draw**
 
@@ -267,7 +267,7 @@ The resolve phase emits a typed sequence of events. The front end consumes these
 
 | Event | Fired when | Key data |
 |---|---|---|
-| `NexusUnitsMovedEvent` | A player's units leave one system and arrive at another | `PlayerId`, `From`, `To`, `Units` (type → count), `IsRetreat` |
+| `NexusUnitsMovedEvent` | A player's units leave one system and arrive at another | `PlayerId`, `From`, `To`, `Stacks` (unit type, hits, count), `IsRetreat` |
 
 `IsRetreat = true` when the source system was contested before moves resolved (the player is moving out of a fight). Retreat moves and normal moves use the same event type.
 
@@ -276,7 +276,7 @@ The resolve phase emits a typed sequence of events. The front end consumes these
 | Event | Fired when | Key data |
 |---|---|---|
 | `NexusPlanetaryControlEvent` | A player gains or retains sole planetary presence in a system | `System`, `PlayerId` |
-| `NexusSystemContestedEvent` | Both players have planetary units in the same system | `System` |
+| `NexusSystemContestedEvent` | Both players have units in the same system — no income for either | `System` |
 | `NexusSystemUncontrolledEvent` | All planetary units are gone from a system — control cleared | `System` |
 
 ### Combat
@@ -284,10 +284,10 @@ The resolve phase emits a typed sequence of events. The front end consumes these
 | Event | Fired when | Key data |
 |---|---|---|
 | `NexusCombatBeganEvent` | Combat is about to resolve at a system | `System`, `Player1Id`, `Player2Id` |
-| `NexusPhaseResultEvent` | One combat phase (Intercept/Line/Orbit/Surface) completes | `System`, `Phase` (1–4), `Losses` (per player/type/count), `AttackRolls` (individual dice) |
+| `NexusCombatStepEvent` | One combat phase (Contact/Battle) completes | `System`, `Phase` (Contact/Battle), `Losses` (per player/type/count), `AttackRolls` (individual dice) |
 | `NexusSystemClearedEvent` | All units of one player are eliminated from a system | `System`, `VictorId` |
 
-Only phases where at least one side has eligible units produce a `NexusPhaseResultEvent`. `AttackRolls` carries every individual die roll (attacker type, target type, roll, threshold, hit/miss) to support detailed log rendering.
+Only phases where at least one side has eligible units produce a `NexusCombatStepEvent`. `AttackRolls` carries every individual die roll (attacker type, target type, roll, threshold, hit/miss) to support detailed log rendering.
 
 ### Income & Deployment
 
@@ -298,7 +298,7 @@ Only phases where at least one side has eligible units produce a `NexusPhaseResu
 
 One `NexusUnitDeployedEvent` fires per unit type per build order; multiple orders of the same type in one turn produce separate events.
 
-### Supply *(pending implementation)*
+### Supply
 
 | Event | Fired when | Key data |
 |---|---|---|
@@ -312,7 +312,7 @@ Events fire in spiral order (Nexus → Ring 1 → Ring 2), one per unit type per
 |---|---|---|
 | `NexusGateStartedEvent` | A player commits the first 12 Energy; construction begun | `PlayerId`, `System` |
 | `NexusGateCompletedEvent` | A player commits the second 12 Energy; gate complete | `PlayerId`, `System` |
-| `NexusGateCancelledEvent` | Construction cancelled — planetary units lost, voluntarily moved, or insufficient energy | `PlayerId`, `System` |
+| `NexusGateCancelledEvent` | Construction cancelled — planetary units lost, voluntarily moved, or gate not re-declared | `PlayerId`, `System` |
 
 Energy already committed when a gate is cancelled is forfeited.
 
@@ -337,15 +337,13 @@ One message is appended to the game log for each significant event during resolu
 | Units retreat | `[A]'s [unit type] retreated from [System] to [System]` |
 | Planetary units take control | `[A] controls [System]` |
 
-### Combat (one block per contested system, four phases)
+### Combat (one block per contested system, two phases)
 
 | Event | Message |
 |---|---|
 | Combat begins | `Combat at [System] — [A]: [summary] vs [B]: [summary]` |
-| Phase 1 result | `Intercept at [System] — [A] loses [N] strike craft, [B] loses [N] strike craft` |
-| Phase 2 result | `Line at [System] — [A] loses [N] ship(s), [B] loses [N] ship(s)` |
-| Orbit | `[A]'s bomber(s) strike [System] — [B] loses [N] ground unit(s) to orbital bombardment` |
-| Phase 4 result | `Surface at [System] — [A] loses [N] ground unit(s), [B] loses [N] ground unit(s)` |
+| Phase 1 result | `Contact at [System] — [A] loses [N] unit(s), [B] loses [N] unit(s)` |
+| Phase 2 result | `Battle at [System] — [A] loses [N] unit(s), [B] loses [N] unit(s)` |
 | System cleared (one side eliminated) | `[A] holds [System] — [B] has no surviving units` |
 | System contested (both survive) | `[System] remains contested — both players have surviving units` |
 | System becomes uncontrolled | `[System] is now uncontrolled` |
@@ -369,7 +367,7 @@ One message is appended to the game log for each significant event during resolu
 |---|---|
 | Gate construction begun (turn 1 of 2) | `[A] begins Nexus Gate construction — 12 Energy committed (turn 1 of 2)` |
 | Gate construction completes (turn 2 of 2) | `[A] commits final 12 Energy — Nexus Gate complete` |
-| Gate construction cancelled | `[A]'s Nexus Gate construction cancelled — committed resources lost` |
+| Gate construction cancelled | `[A]'s Nexus Gate construction was cancelled` |
 | Victory by gate | `[A] wins — Nexus Gate constructed` |
 | Draw by simultaneous gate | `Draw — both players completed the Nexus Gate simultaneously` |
 

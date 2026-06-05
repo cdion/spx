@@ -271,8 +271,6 @@ public static class NexusGameplayPanelState
             NexusPlanetaryControlEvent e => new NexusEventFocus([e.System], Primary: e.System),
             NexusSystemContestedEvent e => new NexusEventFocus([e.System], Primary: e.System),
             NexusSystemUncontrolledEvent e => new NexusEventFocus([e.System], Primary: e.System),
-            NexusCombatBeganEvent e => new NexusEventFocus([e.System], Primary: e.System),
-            NexusFirstStrikeEvent e => new NexusEventFocus([e.System], Primary: e.System),
             NexusCombatResultEvent e => new NexusEventFocus([e.System], Primary: e.System),
             NexusSystemClearedEvent e => new NexusEventFocus([e.System], Primary: e.System),
             NexusUnitDeployedEvent e => new NexusEventFocus([e.HomeSystem], Primary: e.HomeSystem),

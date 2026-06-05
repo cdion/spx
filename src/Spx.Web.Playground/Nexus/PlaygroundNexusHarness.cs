@@ -43,7 +43,6 @@ internal sealed class PlaygroundNexusHarness
             ]),
             new Random()
         );
-        MoveStartingFleetsToNexus(state);
 
         sessions[gameId] = new SessionEntry(gameId, state, DateTime.UtcNow, players);
         return Task.FromResult(true);
@@ -256,28 +255,6 @@ internal sealed class PlaygroundNexusHarness
         Guid gameId,
         CancellationToken cancellationToken = default
     ) => Task.CompletedTask;
-
-    /// <summary>Move both players' starting fleets from their home systems to the Nexus for faster combat iteration.</summary>
-    private static void MoveStartingFleetsToNexus(NexusState state)
-    {
-        var nexus = state.Systems.First(s => s.Coord == NexusMap.NexusCoord);
-
-        foreach (
-            var (playerId, homeCoord) in new[]
-            {
-                (PlaygroundNexusUsers.Player1Id, NexusMap.Player1HomeCoord),
-                (PlaygroundNexusUsers.Player2Id, NexusMap.Player2HomeCoord),
-            }
-        )
-        {
-            var homeSystem = state.Systems.First(s => s.Coord == homeCoord);
-            if (homeSystem.Units.TryGetValue(playerId, out var units))
-            {
-                nexus.Units[playerId] = units;
-                homeSystem.Units.Remove(playerId);
-            }
-        }
-    }
 
     private static IReadOnlyList<GamePlayerView> CreatePlayers(DateTime createdAtUtc) =>
         [

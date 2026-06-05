@@ -1,9 +1,9 @@
 namespace Spx.Nexus.Domain;
 
-/// <summary>The two combat phases: first strike fires first, then battle resolves remaining units.</summary>
+/// <summary>The two combat phases: contact fires first, then battle resolves remaining units.</summary>
 public enum NexusCombatPhase
 {
-    FirstStrike = 0,
+    Contact = 0,
     Battle = 1,
 }
 
@@ -14,7 +14,7 @@ public static class NexusCombatPhaseExtensions
     public static string DisplayName(this NexusCombatPhase phase) =>
         phase switch
         {
-            NexusCombatPhase.FirstStrike => "First Strike",
+            NexusCombatPhase.Contact => "Contact",
             NexusCombatPhase.Battle => "Battle",
             _ => throw new ArgumentOutOfRangeException(nameof(phase), phase, null),
         };
@@ -42,17 +42,17 @@ public enum NexusUnitTag
     /// <summary>Absorbs the first hit each combat on a 4+ save.</summary>
     Shield = 1,
 
-    /// <summary>Fires before normal units; kills from first strike don't fire back.</summary>
-    FirstStrike = 2,
+    /// <summary>Base attacks against Strike units resolve in the Contact phase (safe from return fire).</summary>
+    FirstAttackStrike = 2,
 
-    /// <summary>Can target Strike-category units.</summary>
-    CanTargetStrike = 4,
+    /// <summary>Base attacks against Strike units resolve in the Battle phase.</summary>
+    CanAttackStrike = 4,
 
-    /// <summary>Can target Capital-category units.</summary>
-    CanTargetCapital = 8,
+    /// <summary>Base attacks against Capital units resolve in the Battle phase.</summary>
+    CanAttackCapital = 8,
 
-    /// <summary>Can target Planetary-category units.</summary>
-    CanTargetPlanetary = 16,
+    /// <summary>Base attacks against Planetary units resolve in the Battle phase.</summary>
+    CanAttackPlanetary = 16,
 
     /// <summary>Hit threshold -1 vs Strike targets.</summary>
     BonusVsStrike = 32,
@@ -76,14 +76,20 @@ public enum NexusUnitTag
     IgnoreShield = 2048,
 
     /// <summary>One extra attack each step that only targets Strike units.</summary>
-    FreeAttackVsStrike = 4096,
+    FreeAttackStrike = 4096,
 
     /// <summary>One extra attack each step that only targets Capital units.</summary>
-    FreeAttackVsCapital = 8192,
+    FreeAttackCapital = 8192,
 
     /// <summary>One extra attack each step that only targets Planetary units.</summary>
-    FreeAttackVsPlanetary = 16384,
+    FreeAttackPlanetary = 16384,
 
     /// <summary>Reduces effective silhouette of friendly non-Escort Capital units by 1 (min 1). Does not stack.</summary>
     Escort = 32768,
+
+    /// <summary>Base attacks against Capital units resolve in the Contact phase (safe from return fire).</summary>
+    FirstAttackCapital = 65536,
+
+    /// <summary>Base attacks against Planetary units resolve in the Contact phase (safe from return fire).</summary>
+    FirstAttackPlanetary = 131072,
 }
