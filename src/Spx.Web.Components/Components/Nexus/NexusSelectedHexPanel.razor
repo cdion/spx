@@ -239,9 +239,9 @@
                                             <div class="space-y-2 ui-panel-separator">
                                                 <p class="text-base font-semibold text-slate-300">Nexus Gate</p>
                                                 <button class="@GateButtonClass" data-testid="@NexusGameplayPanelTestIds.NexusGateDraftToggle"
-                                                        @onclick="OnNexusGateDraftChangedAsync">
+                                                        @onclick="OnNexusGateDraftChangedAsync" disabled="@(!CanAffordGate && !PendingBeginNexusGate)">
                                                     <span>Begin Nexus Gate</span>
-                                                    <span class="text-yellow-400">12⚡</span>
+                                                    <span class="text-yellow-400">@NexusEngine.GateCost⚡</span>
                                                 </button>
                                             </div>
                                         }
@@ -319,6 +319,8 @@
         && System.GetPlayerStacks(CurrentPlayerId).Any(stack => stack.UnitType.IsPlanetary() && stack.Count > 0)
         && (!OpponentPlayerId.HasValue || System.GetPlayerStacks(OpponentPlayerId.Value).Length == 0);
 
+    private bool CanAffordGate => ProjectedEnergy >= NexusEngine.GateCost;
+
     private string MyForcesClass =>
         CurrentPlayerFaction == NexusFactionColor.Red ? "text-red-400" : "text-sky-400";
 
@@ -331,7 +333,9 @@
     private string GateButtonClass =>
         PendingBeginNexusGate
             ? "ui-button-control-info flex w-full justify-between gap-2"
-            : "ui-button-control flex w-full justify-between gap-2";
+            : CanAffordGate
+                ? "ui-button-control flex w-full justify-between gap-2"
+                : "ui-button-row-disabled flex w-full justify-between gap-2";
 
     private NexusFactionColor OpponentFactionColor =>
         CurrentPlayerFaction == NexusFactionColor.Red ? NexusFactionColor.Blue : NexusFactionColor.Red;

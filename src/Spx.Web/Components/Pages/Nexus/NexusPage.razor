@@ -70,7 +70,8 @@ else
         }
 
         <LobbySessionPanel @ref="sessionPanel" State="LobbySessionState" MessagesState="LobbyMessagesState"
-                           MessagesCallbacks="LobbyMessagesCallbacks" OnSubmitOrders="SubmitOrdersAsync" />
+                           MessagesCallbacks="LobbyMessagesCallbacks" OnSubmitOrders="SubmitOrdersAsync"
+                           OnGameplayErrorCleared="ClearGameplayErrorAsync" />
 
         <LobbyCurrentUserPanel Lobby="@lobby" IsLeaving="@isLeaving" OnLeave="LeaveGameAsync" />
     </section>
@@ -354,6 +355,13 @@ else
 
     private Task SubmitOrdersAsync(NexusTurnOrdersCommand command)
         => actionCoordinator!.SubmitOrdersAsync(GameId, command);
+
+    private Task ClearGameplayErrorAsync()
+    {
+        data.ClearGameplayError();
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
 
     public async ValueTask DisposeAsync()
     {

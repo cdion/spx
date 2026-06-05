@@ -409,8 +409,7 @@ public sealed record OrderDraftState(
     public static OrderDraftState Empty { get; } = new([], [], false);
 
     public int ProjectedSpend =>
-        PendingBuildOrders.Sum(order => order.UnitType.Cost() * order.Count)
-        + (PendingBeginNexusGate ? 12 : 0);
+        NexusEngine.ComputeProjectedSpend(PendingBuildOrders, PendingBeginNexusGate);
 }
 
 public sealed record SidebarState(NexusGameplayTab ActiveTab)

@@ -123,6 +123,9 @@
     public EventCallback<NexusTurnOrdersCommand> OnSubmitOrders { get; set; }
 
     [Parameter]
+    public EventCallback GameplayErrorCleared { get; set; }
+
+    [Parameter]
     public NexusGameplayTab? SelectedTab { get; set; }
 
     [Parameter]
@@ -223,6 +226,7 @@
     private void HandleSelectionRequest(SelectionRequest request)
     {
         DismissEventFocus();
+        ClearParentGameplayError();
 
         if (request.Kind == SelectionRequestKind.ClearSelection)
         {
@@ -261,6 +265,8 @@
 
     private void HandleOrderDraftRequest(OrderDraftRequest request)
     {
+        ClearParentGameplayError();
+
         switch (request.Kind)
         {
             case OrderDraftRequestKind.MoveDraftChanged:
@@ -289,6 +295,7 @@
 
     private void HandlePendingOrderRequest(PendingOrderRequest request)
     {
+        ClearParentGameplayError();
         _orderDraftState = NexusGameplayPanelState.ApplyPendingOrderRequest(_orderDraftState, request);
     }
 
@@ -359,6 +366,14 @@
     private int ProjectedSpend => _orderDraftState.ProjectedSpend;
 
     private int ProjectedEnergy => Session.CurrentPlayer.Energy - ProjectedSpend;
+
+    private void ClearParentGameplayError()
+    {
+        if (GameplayError is not null && GameplayErrorCleared.HasDelegate)
+        {
+            GameplayErrorCleared.InvokeAsync();
+        }
+    }
 
     private async Task SubmitOrdersAsync()
     {

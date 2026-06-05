@@ -4,9 +4,20 @@ namespace Spx.Nexus.Domain;
 
 public static class NexusEngine
 {
-    private const int GateCost = 12;
+    /// <summary>Energy cost to begin or continue building the Nexus Gate each round.</summary>
+    public const int GateCost = 12;
 
     // ── Public API ────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Computes the total energy cost of a set of build orders and an optional
+    /// Nexus Gate activation. Uses domain cost constants so callers don't
+    /// duplicate magic numbers or summation logic.
+    /// </summary>
+    public static int ComputeProjectedSpend(
+        IEnumerable<NexusBuildOrder> buildOrders,
+        bool beginNexusGate
+    ) => buildOrders.Sum(o => o.UnitType.Cost() * o.Count) + (beginNexusGate ? GateCost : 0);
 
     public static void Initialize(NexusState state, InitializeNexusGameCommand command, Random rng)
     {

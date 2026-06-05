@@ -38,7 +38,8 @@
                 {
                     <NexusGameplayPanel Session="ResolvedSessionState.Session" Lobby="ResolvedSessionState.Lobby"
                                         IsSubmittingAction="@ResolvedSessionState.IsSubmittingGameplayAction"
-                                        GameplayError="@ResolvedSessionState.GameplayError" OnSubmitOrders="OnSubmitOrders" />
+                                        GameplayError="@ResolvedSessionState.GameplayError" OnSubmitOrders="OnSubmitOrders"
+                                        GameplayErrorCleared="OnGameplayErrorCleared" />
                 }
             </div>
         </ChildContent>
@@ -66,7 +67,8 @@ else
     <SurfacePanelShell SurfaceClass="ui-surface-form-tight space-y-5" BodyClass="">
         <ChildContent>
             <NexusGameplayPanel Session="Session" Lobby="Lobby" IsSubmittingAction="IsSubmittingAction"
-                                GameplayError="@GameplayError" OnSubmitOrders="OnSubmitOrders" />
+                                GameplayError="@GameplayError" OnSubmitOrders="OnSubmitOrders"
+                                GameplayErrorCleared="OnGameplayErrorCleared" />
         </ChildContent>
     </SurfacePanelShell>
 }
@@ -101,6 +103,9 @@ else
 
     [Parameter]
     public EventCallback<NexusTurnOrdersCommand> OnSubmitOrders { get; set; }
+
+    [Parameter]
+    public EventCallback OnGameplayErrorCleared { get; set; }
 
     private LobbySessionTab _selectedTab = LobbySessionTab.Timeline;
     private NexusTimelinePanel? timelinePanel;
