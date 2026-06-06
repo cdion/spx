@@ -1,0 +1,36 @@
+<div @onmouseenter="Show" @onmouseleave="Hide">
+    @Trigger
+</div>
+
+@if (_visible && Content is not null)
+{
+    var left = Math.Max(8, _x - 240);
+    var top = Math.Max(8, _y - 20);
+    <div style="position:fixed;left:@(left)px;top:@(top)px;pointer-events:none;z-index:50">
+        @Content
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired]
+    public RenderFragment Trigger { get; set; } = default!;
+
+    [Parameter]
+    public RenderFragment? Content { get; set; }
+
+    private bool _visible;
+    private double _x;
+    private double _y;
+
+    private void Show(MouseEventArgs e)
+    {
+        _visible = true;
+        _x = e.ClientX;
+        _y = e.ClientY;
+    }
+
+    private void Hide()
+    {
+        _visible = false;
+    }
+}

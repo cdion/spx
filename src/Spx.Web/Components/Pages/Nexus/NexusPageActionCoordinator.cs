@@ -1,5 +1,6 @@
 using Spx.Game.Application;
 using Spx.Game.Application.Features.LeaveGame;
+using Spx.Game.Application.Nexus.Features.ManageDesign;
 using Spx.Game.Application.Nexus.Features.SubmitOrders;
 using Spx.Nexus.Domain;
 
@@ -8,6 +9,7 @@ namespace Spx.Web.Components.Pages.Nexus;
 internal sealed partial class NexusPageActionCoordinator(
     ILeaveGameHandler leaveGameHandler,
     ISubmitOrdersHandler submitOrdersHandler,
+    IManageDesignHandler manageDesignHandler,
     ILogger<NexusPageActionCoordinator> logger,
     NexusPageDataState data,
     NexusPageActionState actions
@@ -92,6 +94,74 @@ internal sealed partial class NexusPageActionCoordinator(
         }
     }
 
+    public async Task CreateDesignAsync(
+        Guid gameId,
+        NexusCreateDesignCommand command,
+        CancellationToken cancellationToken = default
+    )
+    {
+        if (!actions.TryBeginGameplayAction())
+            return;
+        data.ClearGameplayError();
+        try
+        {
+            var result = await manageDesignHandler.CreateDesignAsync(
+                gameId,
+                command,
+                cancellationToken
+            );
+            if (result is not GameSessionCommandSucceeded succeeded)
+            {
+                data.SetGameplayError(((GameSessionCommandFailed)result).ErrorMessage);
+                return;
+            }
+            data.ApplySession(succeeded.Session);
+        }
+        catch (Exception exception)
+        {
+            LogManageDesignFailed(logger, exception, gameId, command.PlayerId);
+            data.SetGameplayError("The design could not be created. Please try again.");
+        }
+        finally
+        {
+            actions.CompleteGameplayAction();
+        }
+    }
+
+    public async Task DeleteDesignAsync(
+        Guid gameId,
+        NexusDeleteDesignCommand command,
+        CancellationToken cancellationToken = default
+    )
+    {
+        if (!actions.TryBeginGameplayAction())
+            return;
+        data.ClearGameplayError();
+        try
+        {
+            var result = await manageDesignHandler.DeleteDesignAsync(
+                gameId,
+                command,
+                cancellationToken
+            );
+            if (result is not GameSessionCommandSucceeded succeeded)
+            {
+                data.SetGameplayError(((GameSessionCommandFailed)result).ErrorMessage);
+                return;
+            }
+            data.ApplySession(succeeded.Session);
+        }
+        catch (Exception exception)
+        {
+            LogManageDesignFailed(logger, exception, gameId, command.PlayerId);
+            data.SetGameplayError("The design could not be deleted. Please try again.");
+        }
+        finally
+        {
+            actions.CompleteGameplayAction();
+        }
+    }
+
     [LoggerMessage(
         Level = LogLevel.Error,
         Message = "Failed to leave game {GameId} for user {UserId}."
@@ -108,6 +178,17 @@ internal sealed partial class NexusPageActionCoordinator(
         Message = "Failed to submit orders for game {GameId} player {PlayerId}."
     )]
     private static partial void LogSubmitOrdersFailed(
+        ILogger logger,
+        Exception exception,
+        Guid gameId,
+        Guid playerId
+    );
+
+    [LoggerMessage(
+        Level = LogLevel.Error,
+        Message = "Failed to manage design for game {GameId} player {PlayerId}."
+    )]
+    private static partial void LogManageDesignFailed(
         ILogger logger,
         Exception exception,
         Guid gameId,

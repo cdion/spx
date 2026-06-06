@@ -19,6 +19,7 @@
 @inject IEditMessageHandler EditMessageHandler
 @inject IDeleteMessageHandler DeleteMessageHandler
 @inject ISubmitOrdersHandler SubmitOrdersHandler
+@inject IManageDesignHandler ManageDesignHandler
 @inject IGameInvalidationNotifier InvalidationNotifier
 @inject NexusPresenceLeaseCoordinator PresenceLeaseCoordinator
 @inject ILogger<NexusPage> Logger
@@ -71,6 +72,7 @@ else
 
         <LobbySessionPanel @ref="sessionPanel" State="LobbySessionState" MessagesState="LobbyMessagesState"
                            MessagesCallbacks="LobbyMessagesCallbacks" OnSubmitOrders="SubmitOrdersAsync"
+                           OnCreateDesign="CreateDesignAsync" OnDeleteDesign="DeleteDesignAsync"
                            OnGameplayErrorCleared="ClearGameplayErrorAsync" />
 
         <LobbyCurrentUserPanel Lobby="@lobby" IsLeaving="@isLeaving" OnLeave="LeaveGameAsync" />
@@ -158,6 +160,7 @@ else
         actionCoordinator = new NexusPageActionCoordinator(
             LeaveGameHandler,
             SubmitOrdersHandler,
+            ManageDesignHandler,
             ActionCoordinatorLogger,
             data,
             actions);
@@ -355,6 +358,18 @@ else
 
     private Task SubmitOrdersAsync(NexusTurnOrdersCommand command)
         => actionCoordinator!.SubmitOrdersAsync(GameId, command);
+
+    private async Task CreateDesignAsync(NexusCreateDesignCommand command)
+    {
+        await actionCoordinator!.CreateDesignAsync(GameId, command);
+        StateHasChanged();
+    }
+
+    private async Task DeleteDesignAsync(Guid designId)
+    {
+        await actionCoordinator!.DeleteDesignAsync(GameId, new NexusDeleteDesignCommand(currentPlayerId, designId));
+        StateHasChanged();
+    }
 
     private Task ClearGameplayErrorAsync()
     {

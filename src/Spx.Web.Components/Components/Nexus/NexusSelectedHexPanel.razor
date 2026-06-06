@@ -58,25 +58,24 @@
                                 {
                                     var stackKey = GetStackKey(stack);
                                     var selected = _selection.GetValueOrDefault(stackKey);
+                                    var stackDesign = _designLookup.GetValueOrDefault(stack.DesignId);
 
-                                    <div class="@GetFleetRowClass(selected)">
-                                        <button type="button"
-                                                class="flex min-w-0 flex-1 items-center gap-2 text-left disabled:cursor-default"
-                                                data-testid="@GetFleetButtonTestId(stack)" disabled="@(!IsEditable)"
-                                                @onclick="() => ToggleWholeStackAsync(stackKey)">
-                                            <span class="text-sm font-semibold @GetStackNameClass(selected)">@GetDesignLabel(stack)</span>
-                                            <span
-                                                class="ui-hits-pill @GetHitsPillClass(stack)">@stack.RemainingHits/@NexusHullBaselines.GetBaseline(stack.Category).Hits
-                                                hits</span>
-                                            </button>
-                                            @if (IsEditable)
-                                            {
-                                                <div class="flex shrink-0 items-center gap-1">
-                                                    <button type="button" class="ui-button-icon" disabled="@(selected <= 0)"
-                                                            @onclick="() => AdjustStackAsync(stackKey, -1)">−</button>
-                                                    <span
-                                                        class="w-10 text-center text-sm font-semibold tabular-nums @GetSelectedCountClass(selected)">@selected<span
-                                                        class="font-normal text-slate-400">/</span>@stack.Count</span>
+                                    <HoverTooltip>
+                                        <Trigger>
+                                            <div class="@GetFleetRowClass(selected)">
+                                                <button type="button"
+                                                        class="flex min-w-0 flex-1 items-center gap-2 text-left disabled:cursor-default"
+                                                        data-testid="@GetFleetButtonTestId(stack)" disabled="@(!IsEditable)"
+                                                        @onclick="() => ToggleWholeStackAsync(stackKey)">
+                                                    <span class="text-sm font-semibold @GetStackNameClass(selected)">@GetDesignLabel(stack)</span>
+                                                    <span class="ui-hits-pill @GetHitsPillClass(stack)">@stack.RemainingHits/@NexusHullBaselines.GetBaseline(stack.Category).Hits hits</span>
+                                                </button>
+                                                @if (IsEditable)
+                                                {
+                                                    <div class="flex shrink-0 items-center gap-1">
+                                                        <button type="button" class="ui-button-icon" disabled="@(selected <= 0)"
+                                                                @onclick="() => AdjustStackAsync(stackKey, -1)">−</button>
+                                                        <span class="w-10 text-center text-sm font-semibold tabular-nums @GetSelectedCountClass(selected)">@selected<span class="font-normal text-slate-400">/</span>@stack.Count</span>
                                                         <button type="button" class="ui-button-icon" disabled="@(selected >= stack.Count)"
                                                                 @onclick="() => AdjustStackAsync(stackKey, 1)">+</button>
                                                     </div>
@@ -86,12 +85,20 @@
                                                     <span class="shrink-0 text-sm text-slate-400">×@stack.Count</span>
                                                 }
                                             </div>
-                                        }
-                                    </div>
-                                </div>
-                            }
-                        </section>
+                                        </Trigger>
+                                        <Content>
+                                            <NexusUnitProfileCard
+                                                Category="stack.Category"
+                                                Design="stackDesign"
+                                                Name="stack.DesignName" />
+                                        </Content>
+                                    </HoverTooltip>
+                                }
+                            </div>
+                        </div>
                     }
+                </section>
+            }
         else
                     {
                         <div class="rounded-xl border border-white/10 bg-slate-950/35 p-3 text-base text-slate-500">No movable units in
@@ -115,16 +122,25 @@
                                         <div class="space-y-1">
                                             @foreach (var stack in stacks)
                                             {
-                                                <div class="ui-button-row-available cursor-default">
-                                                    <div class="flex min-w-0 flex-1 items-center gap-2">
-                                                        <span class="text-sm font-semibold text-slate-200">@GetDesignLabel(stack)</span>
-                                                        <span
-                                                            class="ui-hits-pill @GetHitsPillClass(stack)">@stack.RemainingHits/@NexusHullBaselines.GetBaseline(stack.Category).Hits
-                                                            hits</span>
+                                                var stackDesign = _designLookup.GetValueOrDefault(stack.DesignId);
+                                                <HoverTooltip>
+                                                    <Trigger>
+                                                        <div class="ui-button-row-available cursor-default">
+                                                            <div class="flex min-w-0 flex-1 items-center gap-2">
+                                                                <span class="text-sm font-semibold text-slate-200">@GetDesignLabel(stack)</span>
+                                                                <span class="ui-hits-pill @GetHitsPillClass(stack)">@stack.RemainingHits/@NexusHullBaselines.GetBaseline(stack.Category).Hits hits</span>
+                                                            </div>
+                                                            <span class="shrink-0 text-sm font-semibold text-slate-400">×@stack.Count</span>
                                                         </div>
-                                                        <span class="shrink-0 text-sm font-semibold text-slate-400">×@stack.Count</span>
-                                                    </div>
-                                                }
+                                                    </Trigger>
+                                                    <Content>
+                                                        <NexusUnitProfileCard
+                                                            Category="stack.Category"
+                                                            Design="stackDesign"
+                                                            Name="stack.DesignName" />
+                                                    </Content>
+                                                </HoverTooltip>
+                                            }
                                             </div>
                                         </div>
                                     }
@@ -148,21 +164,30 @@
                                             <div class="space-y-1">
                                                 @foreach (var stack in stacks)
                                                 {
-                                                    <div class="ui-button-row-available cursor-default">
-                                                        <div class="flex min-w-0 flex-1 items-center gap-2">
-                                                            <span class="text-sm font-semibold text-slate-200">@GetDesignLabel(stack)</span>
-                                                            <span
-                                                                class="ui-hits-pill @GetHitsPillClass(stack)">@stack.RemainingHits/@NexusHullBaselines.GetBaseline(stack.Category).Hits
-                                                                hits</span>
+                                                    var stackDesign = _designLookup.GetValueOrDefault(stack.DesignId);
+                                                    <HoverTooltip>
+                                                        <Trigger>
+                                                            <div class="ui-button-row-available cursor-default">
+                                                                <div class="flex min-w-0 flex-1 items-center gap-2">
+                                                                    <span class="text-sm font-semibold text-slate-200">@GetDesignLabel(stack)</span>
+                                                                    <span class="ui-hits-pill @GetHitsPillClass(stack)">@stack.RemainingHits/@NexusHullBaselines.GetBaseline(stack.Category).Hits hits</span>
+                                                                </div>
+                                                                <span class="shrink-0 text-sm font-semibold text-slate-400">×@stack.Count</span>
                                                             </div>
-                                                            <span class="shrink-0 text-sm font-semibold text-slate-400">×@stack.Count</span>
-                                                        </div>
-                                                    }
-                                                </div>
+                                                        </Trigger>
+                                                        <Content>
+                                                            <NexusUnitProfileCard
+                                                                Category="stack.Category"
+                                                                Design="stackDesign"
+                                                                Name="stack.DesignName" />
+                                                        </Content>
+                                                    </HoverTooltip>
+                                                }
                                             </div>
-                                        }
-                                    </section>
-                                }
+                                        </div>
+                                    }
+                                </section>
+                            }
 
                                 @if (_enemyCommittedStacks.Length > 0)
                                 {
@@ -176,26 +201,34 @@
                                             }
 
                                             <div class="ui-panel-card-tight">
-                                                <p class="ui-type-overline mb-1 @EnemyForcesClass">Enemy Committed
-                                                    Planetary</p>
-                                                    <div class="space-y-1">
-                                                        @foreach (var stack in stacks)
-                                                        {
-                                                            <div class="ui-button-row-available cursor-default">
-                                                                <div class="flex min-w-0 flex-1 items-center gap-2">
-                                                                    <span class="text-sm font-semibold text-slate-200">@GetDesignLabel(stack)</span>
-                                                                    <span
-                                                                        class="ui-hits-pill @GetHitsPillClass(stack)">@stack.RemainingHits/@NexusHullBaselines.GetBaseline(stack.Category).Hits
-                                                                        hits</span>
+                                                <p class="ui-type-overline mb-1 @EnemyForcesClass">Enemy Committed Planetary</p>
+                                                <div class="space-y-1">
+                                                    @foreach (var stack in stacks)
+                                                    {
+                                                        var stackDesign = _designLookup.GetValueOrDefault(stack.DesignId);
+                                                        <HoverTooltip>
+                                                            <Trigger>
+                                                                <div class="ui-button-row-available cursor-default">
+                                                                    <div class="flex min-w-0 flex-1 items-center gap-2">
+                                                                        <span class="text-sm font-semibold text-slate-200">@GetDesignLabel(stack)</span>
+                                                                        <span class="ui-hits-pill @GetHitsPillClass(stack)">@stack.RemainingHits/@NexusHullBaselines.GetBaseline(stack.Category).Hits hits</span>
                                                                     </div>
                                                                     <span class="shrink-0 text-sm font-semibold text-slate-400">×@stack.Count</span>
                                                                 </div>
-                                                            }
-                                                        </div>
-                                                    </div>
-                                                }
-                                            </section>
+                                                            </Trigger>
+                                                            <Content>
+                                                                <NexusUnitProfileCard
+                                                                    Category="stack.Category"
+                                                                    Design="stackDesign"
+                                                                    Name="stack.DesignName" />
+                                                            </Content>
+                                                        </HoverTooltip>
+                                                    }
+                                                </div>
+                                            </div>
                                         }
+                                    </section>
+                                }
                                     </div>
 
 
@@ -307,13 +340,13 @@
     private int CarryCapacity => SelectedStacks.Sum(stack =>
     {
         if (!_designLookup.TryGetValue(stack.DesignId, out var d)) return 0;
-        return d.Modules.OfType<Hangar>().Sum(t => t.Capacity) * stack.Count;
+        return NexusHullBaselines.GetProfile(d).CarryCapacity * stack.Count;
     });
 
     private int SlotsNeeded => SelectedStacks.Sum(stack =>
     {
         if (!_designLookup.TryGetValue(stack.DesignId, out var d)) return 0;
-        return d.Modules.OfType<Dock>().Any() ? stack.Count : 0;
+        return NexusHullBaselines.GetProfile(d).RequiresCarrier ? stack.Count : 0;
     });
 
     private bool HasSelection => _selection.Values.Any(value => value > 0);

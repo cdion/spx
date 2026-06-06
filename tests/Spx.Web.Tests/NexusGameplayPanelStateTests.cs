@@ -218,13 +218,11 @@ public sealed class NexusGameplayPanelStateTests
     public void ApplyBuildDraftAdjustment_WhenAddOneRequested_AddsBuildOrder()
     {
         var nextState = NexusGameplayPanelState.ApplyBuildDraftAdjustment(
-            OrderDraftState.Empty with
-            {
-                Designs = [FighterDesign],
-            },
+            OrderDraftState.Empty,
             FighterDesignId,
             BuildDraftAdjustmentKind.AddOne,
-            projectedEnergy: 20
+            projectedEnergy: 20,
+            designs: [FighterDesign]
         );
 
         var buildOrder = Assert.Single(nextState.PendingBuildOrders);

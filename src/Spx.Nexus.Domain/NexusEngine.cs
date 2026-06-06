@@ -49,7 +49,7 @@ public static class NexusEngine
                     {
                         PlayerId = p.PlayerId,
                         Faction = factions[i],
-                        Energy = 0,
+                        Energy = 5,
                         IsActive = true,
                     }
             )
@@ -303,7 +303,7 @@ public static class NexusEngine
 
                 if (alreadyCommitted + stack.Count > available)
                 {
-                    var carryCapacity = profile.Modules.OfType<Hangar>().Sum(t => t.Capacity);
+                    var carryCapacity = profile.CarryCapacity;
                     if (carryCapacity > 0)
                     {
                         var availableCapacity = GetAvailableCarryCapacity(
@@ -328,9 +328,8 @@ public static class NexusEngine
                 }
 
                 fromCommitted[key] = alreadyCommitted + stack.Count;
-                capacityProvided +=
-                    profile.Modules.OfType<Hangar>().Sum(t => t.Capacity) * stack.Count;
-                capacityNeeded += profile.Modules.OfType<Dock>().Any() ? stack.Count : 0;
+                capacityProvided += profile.CarryCapacity * stack.Count;
+                capacityNeeded += profile.RequiresCarrier ? stack.Count : 0;
             }
 
             if (capacityNeeded > capacityProvided)
@@ -352,8 +351,7 @@ public static class NexusEngine
             .GetPlayerStacks(playerId)
             .Sum(s =>
                 designs.TryGetValue(s.DesignId, out var d)
-                    ? NexusHullBaselines.GetProfile(d).Modules.OfType<Hangar>().Sum(t => t.Capacity)
-                        * s.Count
+                    ? NexusHullBaselines.GetProfile(d).CarryCapacity * s.Count
                     : 0
             );
 
@@ -363,8 +361,7 @@ public static class NexusEngine
     ) =>
         committedUnits.Sum(kv =>
             designs.TryGetValue(kv.Key.DesignId, out var d)
-                ? NexusHullBaselines.GetProfile(d).Modules.OfType<Hangar>().Sum(t => t.Capacity)
-                    * kv.Value
+                ? NexusHullBaselines.GetProfile(d).CarryCapacity * kv.Value
                 : 0
         );
 
@@ -374,8 +371,7 @@ public static class NexusEngine
     ) =>
         requestedStacks.Sum(stack =>
             designs.TryGetValue(stack.DesignId, out var d)
-                ? NexusHullBaselines.GetProfile(d).Modules.OfType<Hangar>().Sum(t => t.Capacity)
-                    * stack.Count
+                ? NexusHullBaselines.GetProfile(d).CarryCapacity * stack.Count
                 : 0
         );
 

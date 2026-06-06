@@ -2,6 +2,7 @@
 @rendermode InteractiveServer
 @using Spx.Game.Application.Nexus.Features.EnsureNexusSession
 @using Spx.Game.Application.Nexus.Features.GetNexusPage
+@using Spx.Game.Application.Nexus.Features.ManageDesign
 @using Spx.Game.Application.Nexus.Features.SubmitOrders
 
 <div class="flex h-full flex-col">
@@ -46,6 +47,7 @@
         <div class="flex min-h-0 flex-1 flex-col">
             <NexusGameplayPanel Session="_view" Lobby="_lobby" IsSubmittingAction="false" GameplayError="@_error"
                                 OnSubmitOrders="HandleSubmitOrders"
+                                OnCreateDesign="HandleCreateDesign" OnDeleteDesign="HandleDeleteDesign"
                                 GameplayErrorCleared="ClearGameplayError" />
         </div>
     }
@@ -73,6 +75,9 @@
 
     [Inject]
     private ISubmitOrdersHandler SubmitOrdersHandler { get; set; } = null!;
+
+    [Inject]
+    private IManageDesignHandler ManageDesignHandler { get; set; } = null!;
 
     private Guid OtherPlayerId => _viewingPlayerId == Player1Id ? Player2Id : Player1Id;
     private string OtherUserId => _viewingUserId == Player1UserId ? Player2UserId : Player1UserId;
@@ -111,6 +116,24 @@
     private async Task HandleSubmitOrders(NexusTurnOrdersCommand command)
     {
         var outcome = await SubmitOrdersHandler.HandleAsync(_gameId, command);
+        _error = outcome is GameSessionCommandFailed failed ? failed.ErrorMessage : null;
+        if (_error is null)
+            await RefreshViewAsync();
+    }
+
+    private async Task HandleCreateDesign(NexusCreateDesignCommand command)
+    {
+        var outcome = await ManageDesignHandler.CreateDesignAsync(_gameId, command);
+        _error = outcome is GameSessionCommandFailed failed ? failed.ErrorMessage : null;
+        if (_error is null)
+            await RefreshViewAsync();
+    }
+
+    private async Task HandleDeleteDesign(Guid designId)
+    {
+        var outcome = await ManageDesignHandler.DeleteDesignAsync(
+            _gameId,
+            new NexusDeleteDesignCommand(_viewingPlayerId, designId));
         _error = outcome is GameSessionCommandFailed failed ? failed.ErrorMessage : null;
         if (_error is null)
             await RefreshViewAsync();

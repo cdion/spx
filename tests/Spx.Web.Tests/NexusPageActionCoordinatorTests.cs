@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging.Abstractions;
 using Spx.Game.Application;
 using Spx.Game.Application.Features.LeaveGame;
+using Spx.Game.Application.Nexus.Features.ManageDesign;
 using Spx.Game.Application.Nexus.Features.SubmitOrders;
 using Spx.Nexus.Domain;
 using Spx.Web.Components.Pages.Nexus;
@@ -171,6 +172,7 @@ public sealed class NexusPageActionCoordinatorTests
                         session ?? GamePageCoordinatorTestData.CreateSession(Guid.NewGuid())
                     ),
                 },
+            new StubManageDesignHandler(),
             NullLogger<NexusPageActionCoordinator>.Instance,
             data,
             actions
@@ -218,5 +220,20 @@ public sealed class NexusPageActionCoordinatorTests
                 ? Task.FromResult(Result)
                 : Task.FromException<GameSessionCommandOutcome>(Exception);
         }
+    }
+
+    private sealed class StubManageDesignHandler : IManageDesignHandler
+    {
+        public Task<GameSessionCommandOutcome> CreateDesignAsync(
+            Guid gameId,
+            NexusCreateDesignCommand command,
+            CancellationToken cancellationToken = default
+        ) => Task.FromResult<GameSessionCommandOutcome>(new GameSessionCommandFailed("stub"));
+
+        public Task<GameSessionCommandOutcome> DeleteDesignAsync(
+            Guid gameId,
+            NexusDeleteDesignCommand command,
+            CancellationToken cancellationToken = default
+        ) => Task.FromResult<GameSessionCommandOutcome>(new GameSessionCommandFailed("stub"));
     }
 }

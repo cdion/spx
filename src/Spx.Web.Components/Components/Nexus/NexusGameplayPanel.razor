@@ -59,6 +59,14 @@
                                                      ViewingPlayerId="@Session.CurrentPlayer.PlayerId" RowClassSelector="GetEventRowClass"
                                                      RowStateSelector="GetEventRowState" OnEventFocusRequested="HandleEventFocusRequest" />
                         }
+                        else if (_sidebarState.ActiveTab == NexusGameplayTab.Designs)
+                        {
+                            <NexusDesignEditorPanel Designs="@(Session.CurrentPlayer.Designs ?? [])"
+                                                    IsSubmitting="@IsSubmittingAction"
+                                                    PlayerId="@Session.CurrentPlayer.PlayerId"
+                                                    OnCreateDesign="OnCreateDesign"
+                                                    OnDeleteDesign="OnDeleteDesign" />
+                        }
                         else
                         {
                             <div class="space-y-4">
@@ -125,6 +133,12 @@
     public EventCallback<NexusTurnOrdersCommand> OnSubmitOrders { get; set; }
 
     [Parameter]
+    public EventCallback<NexusCreateDesignCommand> OnCreateDesign { get; set; }
+
+    [Parameter]
+    public EventCallback<Guid> OnDeleteDesign { get; set; }
+
+    [Parameter]
     public EventCallback GameplayErrorCleared { get; set; }
 
     [Parameter]
@@ -136,7 +150,7 @@
     private Guid? _lastKnownGameId;
     private Guid? _lastKnownCurrentPlayerId;
     private int? _lastKnownRound;
-    private static readonly NexusGameplayTab[] SidebarTabs = [NexusGameplayTab.Orders, NexusGameplayTab.Events];
+    private static readonly NexusGameplayTab[] SidebarTabs = [NexusGameplayTab.Orders, NexusGameplayTab.Designs, NexusGameplayTab.Events];
     private OrderDraftState _orderDraftState = OrderDraftState.Empty;
     private SelectionState _selectionState = SelectionState.Empty;
     private SidebarState _sidebarState = SidebarState.Default;
@@ -157,7 +171,7 @@
         _lastKnownGameId = Session.GameId;
         _lastKnownCurrentPlayerId = Session.CurrentPlayer.PlayerId;
         _lastKnownRound = Session.RoundNumber;
-        _orderDraftState = OrderDraftState.Empty with { Designs = Session.CurrentPlayer.Designs ?? [] };
+        _orderDraftState = OrderDraftState.Empty;
         _selectionState = SelectionState.Empty;
         _sidebarState = SidebarState.Default;
         _eventFocusState = EventFocusState.Empty;
@@ -286,7 +300,8 @@
                     _orderDraftState,
                     request.DesignId!.Value,
                     request.BuildAdjustment!.Value,
-                    ProjectedEnergy
+                    ProjectedEnergy,
+                    Session.CurrentPlayer.Designs ?? []
                 );
                 return;
             case OrderDraftRequestKind.NexusGateDraftChanged:
@@ -365,7 +380,7 @@
             && system.GetPlayerStacks(Session.Opponent.PlayerId).Length > 0;
     }
 
-    private int ProjectedSpend => _orderDraftState.ProjectedSpend;
+    private int ProjectedSpend => _orderDraftState.ComputeProjectedSpend(Session.CurrentPlayer.Designs ?? []);
 
     private int ProjectedEnergy => Session.CurrentPlayer.Energy - ProjectedSpend;
 
@@ -405,6 +420,7 @@
         tab switch
         {
             NexusGameplayTab.Orders => "Orders",
+            NexusGameplayTab.Designs => "Designs",
             NexusGameplayTab.Events => "Events",
             _ => tab.ToString(),
         };

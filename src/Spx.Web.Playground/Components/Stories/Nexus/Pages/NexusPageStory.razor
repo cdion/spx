@@ -2,6 +2,7 @@
 @rendermode InteractiveServer
 @using Spx.Game.Application.Nexus.Features.EnsureNexusSession
 @using Spx.Game.Application.Nexus.Features.GetNexusPage
+@using Spx.Game.Application.Nexus.Features.ManageDesign
 @using Spx.Game.Application.Nexus.Features.SubmitOrders
 
 <StoryHeader Title="Nexus Page">
@@ -118,7 +119,8 @@
 
                             <LobbySessionPanel State="SessionState" MessagesState="MessagesState" MessagesCallbacks="MessagesCallbacks"
                                                SelectedTab="@_selectedSessionTab" SelectedTabChanged="HandleSessionTabChanged"
-                                               OnSubmitOrders="HandleSubmitOrders" />
+                                               OnSubmitOrders="HandleSubmitOrders"
+                                               OnCreateDesign="HandleCreateDesign" OnDeleteDesign="HandleDeleteDesign" />
 
                             <LobbyCurrentUserPanel Lobby="@lobby" IsLeaving="false" OnLeave="NoOp" />
 
@@ -156,6 +158,9 @@
 
     [Inject]
     private ISubmitOrdersHandler SubmitOrdersHandler { get; set; } = null!;
+
+    [Inject]
+    private IManageDesignHandler ManageDesignHandler { get; set; } = null!;
 
     private string? PageError => _showPageError ? "We couldn't refresh the lobby snapshot. Existing UI remains visible while the page retries." : null;
 
@@ -344,6 +349,33 @@
     {
         _selectedSessionTab = tab;
         return Task.CompletedTask;
+    }
+
+    private async Task HandleCreateDesign(NexusCreateDesignCommand command)
+    {
+        var outcome = await ManageDesignHandler.CreateDesignAsync(_activeGameId, command);
+        if (outcome is GameSessionCommandFailed failed)
+        {
+            _lastAction = failed.ErrorMessage;
+            return;
+        }
+        await LoadActivePageAsync();
+        _lastAction = $"Created design \"{command.Name}\".";
+    }
+
+    private async Task HandleDeleteDesign(Guid designId)
+    {
+        if (_lobby is null) return;
+        var outcome = await ManageDesignHandler.DeleteDesignAsync(
+            _activeGameId,
+            new NexusDeleteDesignCommand(_lobby.CurrentPlayerId, designId));
+        if (outcome is GameSessionCommandFailed failed)
+        {
+            _lastAction = failed.ErrorMessage;
+            return;
+        }
+        await LoadActivePageAsync();
+        _lastAction = "Deleted design.";
     }
 
     private async Task LoadActivePageAsync()

@@ -127,12 +127,23 @@ public static class NexusGameplayPanelState
         OrderDraftState state,
         Guid designId,
         BuildDraftAdjustmentKind adjustment,
-        int projectedEnergy
+        int projectedEnergy,
+        IReadOnlyList<NexusUnitDesign> designs
     ) =>
         adjustment switch
         {
-            BuildDraftAdjustmentKind.AddOne => AddBuildOrder(state, designId, projectedEnergy),
-            BuildDraftAdjustmentKind.AddMax => AddBuildOrderMax(state, designId, projectedEnergy),
+            BuildDraftAdjustmentKind.AddOne => AddBuildOrder(
+                state,
+                designId,
+                projectedEnergy,
+                designs
+            ),
+            BuildDraftAdjustmentKind.AddMax => AddBuildOrderMax(
+                state,
+                designId,
+                projectedEnergy,
+                designs
+            ),
             BuildDraftAdjustmentKind.RemoveOne => RemoveBuildOrder(state, designId),
             BuildDraftAdjustmentKind.RemoveAll => RemoveBuildOrdersForUnit(state, designId),
             _ => state,
@@ -179,10 +190,11 @@ public static class NexusGameplayPanelState
     private static OrderDraftState AddBuildOrder(
         OrderDraftState state,
         Guid designId,
-        int projectedEnergy
+        int projectedEnergy,
+        IReadOnlyList<NexusUnitDesign> designs
     )
     {
-        var design = state.Designs.FirstOrDefault(d => d.DesignId == designId);
+        var design = designs.FirstOrDefault(d => d.DesignId == designId);
         if (design is null)
             return state;
 
@@ -211,10 +223,11 @@ public static class NexusGameplayPanelState
     private static OrderDraftState AddBuildOrderMax(
         OrderDraftState state,
         Guid designId,
-        int projectedEnergy
+        int projectedEnergy,
+        IReadOnlyList<NexusUnitDesign> designs
     )
     {
-        var design = state.Designs.FirstOrDefault(d => d.DesignId == designId);
+        var design = designs.FirstOrDefault(d => d.DesignId == designId);
         if (design is null)
             return state;
 
@@ -223,13 +236,16 @@ public static class NexusGameplayPanelState
             return state;
 
         var nextState = state;
+        var designsLookup = designs.ToDictionary(d => d.DesignId);
+        var baseSpend = state.ComputeProjectedSpend(designsLookup);
         var maxAdd = projectedEnergy / cost;
         for (var i = 0; i < maxAdd; i++)
         {
             nextState = AddBuildOrder(
                 nextState,
                 designId,
-                projectedEnergy - nextState.ProjectedSpend + state.ProjectedSpend
+                projectedEnergy - nextState.ComputeProjectedSpend(designsLookup) + baseSpend,
+                designs
             );
         }
 
@@ -417,26 +433,19 @@ public sealed record SelectionState(
 public sealed record OrderDraftState(
     ImmutableArray<NexusMoveOrder> PendingMoveOrders,
     ImmutableArray<NexusBuildOrder> PendingBuildOrders,
-    bool PendingBeginNexusGate,
-    ImmutableArray<NexusUnitDesign> Designs = default
+    bool PendingBeginNexusGate
 )
 {
     public static OrderDraftState Empty { get; } = new([], [], false);
 
-    public int ProjectedSpend
+    public int ComputeProjectedSpend(IReadOnlyList<NexusUnitDesign> designs)
     {
-        get
-        {
-            var lookup = new Dictionary<Guid, NexusUnitDesign>();
-            foreach (var d in Designs.IsDefaultOrEmpty ? [] : Designs)
-                lookup[d.DesignId] = d;
-            return NexusEngine.ComputeProjectedSpend(
-                PendingBuildOrders,
-                PendingBeginNexusGate,
-                lookup
-            );
-        }
+        var lookup = designs.ToDictionary(d => d.DesignId);
+        return NexusEngine.ComputeProjectedSpend(PendingBuildOrders, PendingBeginNexusGate, lookup);
     }
+
+    public int ComputeProjectedSpend(Dictionary<Guid, NexusUnitDesign> lookup) =>
+        NexusEngine.ComputeProjectedSpend(PendingBuildOrders, PendingBeginNexusGate, lookup);
 }
 
 public sealed record SidebarState(NexusGameplayTab ActiveTab)

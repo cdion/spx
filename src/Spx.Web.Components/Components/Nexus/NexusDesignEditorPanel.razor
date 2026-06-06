@@ -1,0 +1,341 @@
+@using System.Collections.Immutable
+
+<section class="ui-surface-section h-full min-h-0 space-y-4 overflow-y-auto p-3 lg:p-4">
+
+    @* Existing designs *@
+    @if (Designs.Length > 0)
+    {
+        <section class="space-y-3">
+            <p class="ui-type-overline">Your Designs</p>
+            @foreach (var group in HullGroups)
+            {
+                var groupDesigns = Designs.Where(d => d.Hull == group.Hull).ToList();
+                if (groupDesigns.Count == 0) continue;
+
+                <div class="ui-panel-card-tight">
+                    <p class="ui-type-overline mb-1 text-slate-500">@group.Label</p>
+                    <ul class="space-y-1">
+                        @foreach (var design in groupDesigns)
+                        {
+                            var profile = NexusHullBaselines.GetProfile(design);
+                            <li class="flex items-center justify-between gap-2 rounded-xl border border-white/10 bg-slate-950/60 px-3 py-2">
+                                <span class="min-w-0 flex-1 truncate text-base text-slate-200">
+                                    @design.Name
+                                    <span class="ml-1 text-yellow-400/80">@profile.Cost⚡</span>
+                                </span>
+                                <span class="shrink-0 text-sm text-slate-500">
+                                    @GetModuleSummary(design)
+                                </span>
+                                <button type="button" class="ui-button-icon-danger shrink-0" title="Delete design"
+                                        disabled="@IsSubmitting"
+                                        @onclick="() => DeleteDesignAsync(design.DesignId)">
+                                    ×
+                                </button>
+                            </li>
+                        }
+                    </ul>
+                </div>
+            }
+        </section>
+
+        <div class="ui-panel-separator"></div>
+    }
+
+    @* Create form *@
+    <section class="space-y-4">
+        <p class="ui-type-overline">New Design</p>
+
+        <div class="space-y-3">
+
+            @* Name *@
+            <div class="ui-field">
+                <label class="ui-label" for="design-name">Name</label>
+                <input id="design-name" type="text" class="ui-input" placeholder="e.g. Interceptor"
+                       @bind="_name" @bind:event="oninput" maxlength="40" />
+            </div>
+
+            @* Hull *@
+            <div class="ui-field">
+                <label class="ui-label">Hull</label>
+                <div class="flex gap-3">
+                    @foreach (var group in HullGroups)
+                    {
+                        var hull = group.Hull;
+                        <label class="flex cursor-pointer items-center gap-1.5 text-base text-slate-300">
+                            <input type="radio" name="design-hull" class="accent-indigo-400"
+                                   checked="@(_hull == hull)"
+                                   @onchange="() => SetHull(hull)" />
+                            @group.Label
+                        </label>
+                    }
+                </div>
+            </div>
+
+            @* Module list *@
+            <div class="space-y-2">
+                <div class="flex items-center justify-between">
+                    <label class="ui-label">Modules</label>
+                    <span class="ui-type-meta @(_slotsUsed > _slotBudget ? "text-red-400" : "text-slate-500")">
+                        @_slotsUsed / @_slotBudget slots
+                    </span>
+                </div>
+
+                @if (_modules.Count > 0)
+                {
+                    <ul class="space-y-1">
+                        @for (var i = 0; i < _modules.Count; i++)
+                        {
+                            var idx = i;
+                            var mod = _modules[i];
+                            <li class="flex items-center justify-between gap-2 rounded-xl border border-white/10 bg-slate-950/60 px-3 py-2">
+                                <span class="text-base text-slate-300">@GetModuleLabel(mod)</span>
+                                <button type="button" class="ui-button-icon-danger" title="Remove module"
+                                        @onclick="() => RemoveModule(idx)">×</button>
+                            </li>
+                        }
+                    </ul>
+                }
+
+                @* Add module row *@
+                <div class="flex flex-wrap items-end gap-2">
+                    <div class="min-w-0 flex-1">
+                        <label class="ui-label" for="add-module-type">Module</label>
+                        <select id="add-module-type" class="ui-select w-full"
+                                @bind="_addModuleType">
+                            @foreach (var mt in AvailableModuleTypes)
+                            {
+                                <option value="@mt">@mt</option>
+                            }
+                        </select>
+                    </div>
+
+                    @if (AddModuleNeedsCategory)
+                    {
+                        <div class="min-w-0 flex-1">
+                            <label class="ui-label" for="add-module-category">Target</label>
+                            <select id="add-module-category" class="ui-select w-full"
+                                    @bind="_addModuleCategory">
+                                <option value="@NexusUnitCategory.Strike">Strike</option>
+                                <option value="@NexusUnitCategory.Capital">Capital</option>
+                                <option value="@NexusUnitCategory.Planetary">Planetary</option>
+                            </select>
+                        </div>
+                    }
+
+                    @if (AddModuleNeedsN)
+                    {
+                        <div style="width: 5rem;">
+                            <label class="ui-label" for="add-module-n">@AddModuleNLabel</label>
+                            <input id="add-module-n" type="number" class="ui-input w-full"
+                                   min="@AddModuleNMin" max="@AddModuleNMax"
+                                   @bind="_addModuleN" />
+                        </div>
+                    }
+
+                    <button type="button" class="ui-button-secondary shrink-0 self-end"
+                            @onclick="AddModule">+ Add</button>
+                </div>
+            </div>
+
+            @* Validation / error *@
+            @if (!string.IsNullOrWhiteSpace(_validationError))
+            {
+                <p class="text-sm text-red-400">@_validationError</p>
+            }
+
+            @* Live stats *@
+            @if (_modules.Count > 0 && string.IsNullOrWhiteSpace(_validationError))
+            {
+                var profile = NexusHullBaselines.GetProfile(new NexusUnitDesign
+                {
+                    Hull = _hull,
+                    Modules = _modules,
+                });
+                <div class="flex flex-wrap gap-x-4 gap-y-1 text-sm text-slate-400">
+                    <span>Cost: <span class="text-yellow-400">@profile.Cost⚡</span></span>
+                    <span>Hits: @profile.Hits</span>
+                    <span>Attacks: @profile.Attacks</span>
+                    @if (profile.Move > 0)
+                    {
+                        <span>Move: @profile.Move</span>
+                    }
+                </div>
+            }
+
+            <button type="button" class="ui-button-primary w-full"
+                    disabled="@(!CanCreate)"
+                    @onclick="CreateDesignAsync">
+                @(IsSubmitting ? "Creating..." : "Create Design")
+            </button>
+        </div>
+    </section>
+</section>
+
+@code {
+    private static readonly (NexusUnitCategory Hull, string Label)[] HullGroups =
+    [
+        (NexusUnitCategory.Strike, "Strike"),
+        (NexusUnitCategory.Capital, "Capital"),
+        (NexusUnitCategory.Planetary, "Planetary"),
+    ];
+
+    private static readonly string[] AllModuleTypes =
+    [
+        "Battery", "Vanguard", "Barrage", "Seeker", "Scatter",
+        "Shield", "Disruptor", "Armour",
+        "Screen", "Command",
+        "Dock", "Hangar",
+        "Control", "Drive", "Repair",
+        "Beacon", "Cloak",
+    ];
+
+    [Parameter, EditorRequired]
+    public ImmutableArray<NexusUnitDesign> Designs { get; set; } = [];
+
+    [Parameter]
+    public bool IsSubmitting { get; set; }
+
+    [Parameter]
+    public EventCallback<NexusCreateDesignCommand> OnCreateDesign { get; set; }
+
+    [Parameter]
+    public EventCallback<Guid> OnDeleteDesign { get; set; }
+
+    [Parameter, EditorRequired]
+    public Guid PlayerId { get; set; }
+
+    private string _name = "";
+    private NexusUnitCategory _hull = NexusUnitCategory.Strike;
+    private readonly List<NexusUnitModule> _modules = [];
+    private string? _validationError;
+    private int _lastKnownDesignsCount = -1;
+
+    private string _addModuleType = "Battery";
+    private NexusUnitCategory _addModuleCategory = NexusUnitCategory.Strike;
+    private int _addModuleN = 1;
+
+    private int _slotsUsed => _modules.Sum(NexusModuleCosts.GetSlots);
+    private int _slotBudget => NexusHullBaselines.SlotBudget(_hull);
+
+    private bool CanCreate =>
+        !IsSubmitting
+        && !string.IsNullOrWhiteSpace(_name)
+        && _modules.Count > 0
+        && string.IsNullOrWhiteSpace(_validationError);
+
+    private IEnumerable<string> AvailableModuleTypes =>
+        _hull == NexusUnitCategory.Capital
+            ? AllModuleTypes
+            : AllModuleTypes.Where(t => t != "Hangar");
+
+    private bool AddModuleNeedsCategory =>
+        _addModuleType is "Battery" or "Vanguard" or "Barrage" or "Seeker" or "Scatter" or "Screen" or "Command";
+
+    private bool AddModuleNeedsN =>
+        _addModuleType is "Armour" or "Drive" or "Screen" or "Command" or "Seeker" or "Scatter" or "Beacon" or "Cloak" or "Hangar";
+
+    private string AddModuleNLabel => _addModuleType switch
+    {
+        "Hangar" => "Cap",
+        "Seeker" or "Scatter" => "Mag",
+        _ => "N",
+    };
+
+    private int AddModuleNMin => 1;
+
+    private int AddModuleNMax => _addModuleType switch
+    {
+        "Hangar" => 8,
+        "Armour" or "Screen" or "Command" => 4,
+        "Beacon" => 3,
+        "Drive" or "Cloak" or "Seeker" or "Scatter" => 2,
+        _ => 1,
+    };
+
+    protected override void OnParametersSet()
+    {
+        if (_lastKnownDesignsCount >= 0 && Designs.Length > _lastKnownDesignsCount)
+        {
+            _name = "";
+            _modules.Clear();
+            _validationError = null;
+        }
+        _lastKnownDesignsCount = Designs.Length;
+    }
+
+    private void SetHull(NexusUnitCategory hull)
+    {
+        _hull = hull;
+        _modules.Clear();
+        Revalidate();
+    }
+
+    private void AddModule()
+    {
+        _modules.Add(BuildModule(_addModuleType, _addModuleCategory, Math.Clamp(_addModuleN, AddModuleNMin, AddModuleNMax)));
+        Revalidate();
+    }
+
+    private void RemoveModule(int index)
+    {
+        _modules.RemoveAt(index);
+        Revalidate();
+    }
+
+    private void Revalidate()
+    {
+        _validationError = _modules.Count > 0
+            ? NexusDesignConstraints.Validate(_hull, _modules)
+            : null;
+    }
+
+    private async Task CreateDesignAsync()
+    {
+        Revalidate();
+        if (!CanCreate) return;
+
+        var command = new NexusCreateDesignCommand(
+            PlayerId,
+            _name.Trim(),
+            _hull,
+            _modules.ToImmutableArray()
+        );
+        await OnCreateDesign.InvokeAsync(command);
+    }
+
+    private Task DeleteDesignAsync(Guid designId) =>
+        OnDeleteDesign.InvokeAsync(designId);
+
+    private static NexusUnitModule BuildModule(string type, NexusUnitCategory category, int n) =>
+        type switch
+        {
+            "Shield" => new Shield(),
+            "Disruptor" => new Disruptor(),
+            "Dock" => new Dock(),
+            "Control" => new Control(),
+            "Repair" => new Repair(),
+            "Battery" => new Battery(category),
+            "Vanguard" => new Vanguard(category),
+            "Barrage" => new Barrage(category),
+            "Hangar" => new Hangar(n),
+            "Armour" => new Armour(n),
+            "Drive" => new Drive(n),
+            "Beacon" => new Beacon(n),
+            "Cloak" => new Cloak(n),
+            "Screen" => new Screen(category, n),
+            "Command" => new Command(category, n),
+            "Seeker" => new Seeker(category, n),
+            "Scatter" => new Scatter(category, n),
+            _ => throw new ArgumentOutOfRangeException(nameof(type), type, null),
+        };
+
+    private static string GetModuleLabel(NexusUnitModule module) =>
+        NexusDomainLabels.GetModuleLabel(module);
+
+    private static string GetModuleSummary(NexusUnitDesign design)
+    {
+        if (design.Modules.Count == 0) return "";
+        var parts = design.Modules.Select(m => m.GetType().Name);
+        return string.Join(", ", parts);
+    }
+}

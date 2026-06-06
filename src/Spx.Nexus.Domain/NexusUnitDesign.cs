@@ -41,6 +41,8 @@ public record NexusUnitProfile(
     int HitThreshold,
     int Cost,
     int Move,
+    int CarryCapacity,
+    bool RequiresCarrier,
     IReadOnlyList<NexusUnitModule> Modules
 );
 
@@ -62,6 +64,8 @@ public static class NexusHullBaselines
                 HitThreshold: 4,
                 Cost: StrikeBaseCost,
                 Move: 0,
+                CarryCapacity: 0,
+                RequiresCarrier: false,
                 Modules: []
             ),
             NexusUnitCategory.Capital => new(
@@ -72,6 +76,8 @@ public static class NexusHullBaselines
                 HitThreshold: 4,
                 Cost: CapitalBaseCost,
                 Move: 1,
+                CarryCapacity: 0,
+                RequiresCarrier: false,
                 Modules: []
             ),
             NexusUnitCategory.Planetary => new(
@@ -82,6 +88,8 @@ public static class NexusHullBaselines
                 HitThreshold: 4,
                 Cost: PlanetaryBaseCost,
                 Move: 0,
+                CarryCapacity: 0,
+                RequiresCarrier: false,
                 Modules: []
             ),
             _ => throw new ArgumentOutOfRangeException(nameof(hull), hull, null),
@@ -103,6 +111,8 @@ public static class NexusHullBaselines
             Hits = baseline.Hits + extraHits,
             Move = baseline.Move + extraMove,
             Silhouette = Math.Max(0, baseline.Silhouette + extraSilhouette),
+            CarryCapacity = design.Modules.OfType<Hangar>().Sum(t => t.Capacity),
+            RequiresCarrier = baseline.Move + extraMove == 0,
             Modules = design.Modules,
         };
     }
@@ -142,9 +152,9 @@ public static class NexusDesignConstraints
         if (duplicateError != null)
             return duplicateError;
 
-        var hasAttack = modules.OfType<Battery>().Any() || modules.OfType<Vanguard>().Any();
-        if (!hasAttack)
-            return "Design must have at least one Battery or Vanguard module.";
+        var crossModuleError = ValidateCrossModuleRules(modules);
+        if (crossModuleError != null)
+            return crossModuleError;
 
         var usedSlots = modules.Sum(NexusModuleCosts.GetSlots);
         var budget = NexusHullBaselines.SlotBudget(hull);
@@ -163,6 +173,8 @@ public static class NexusDesignConstraints
             Hangar { Capacity: > 8 } => "Hangar Capacity cannot exceed 8.",
             Dock when hull == NexusUnitCategory.Capital =>
                 "Dock module is not valid on Capital hull designs.",
+            Control when hull != NexusUnitCategory.Planetary =>
+                "Control module is only valid on Planetary hull designs.",
             Armour { N: <= 0 } => "Armour N must be at least 1.",
             Armour { N: > 4 } => "Armour N cannot exceed 4.",
             Drive when hull == NexusUnitCategory.Planetary =>
@@ -202,6 +214,30 @@ public static class NexusDesignConstraints
             return "Duplicate Cloak module.";
         if (modules.OfType<Beacon>().Any() && modules.OfType<Cloak>().Any())
             return "Beacon and Cloak modules are mutually exclusive.";
+
+        foreach (var category in Enum.GetValues<NexusUnitCategory>())
+        {
+            if (modules.OfType<Battery>().Count(b => b.Category == category) > 1)
+                return $"Duplicate Battery({category}) module.";
+            if (modules.OfType<Vanguard>().Count(v => v.Category == category) > 1)
+                return $"Duplicate Vanguard({category}) module.";
+            if (
+                modules.OfType<Seeker>().Any(s => s.Category == category)
+                && modules.OfType<Scatter>().Any(s => s.Category == category)
+            )
+                return $"Seeker({category}) and Scatter({category}) modules are mutually exclusive.";
+        }
+
+        return null;
+    }
+
+    private static string? ValidateCrossModuleRules(IReadOnlyList<NexusUnitModule> modules)
+    {
+        foreach (var barrage in modules.OfType<Barrage>())
+        {
+            if (!modules.OfType<Battery>().Any(b => b.Category == barrage.Category))
+                return $"Barrage({barrage.Category}) requires a Battery({barrage.Category}) module.";
+        }
         return null;
     }
 }

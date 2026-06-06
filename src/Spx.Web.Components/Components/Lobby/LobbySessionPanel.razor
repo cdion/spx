@@ -39,6 +39,7 @@
                     <NexusGameplayPanel Session="ResolvedSessionState.Session" Lobby="ResolvedSessionState.Lobby"
                                         IsSubmittingAction="@ResolvedSessionState.IsSubmittingGameplayAction"
                                         GameplayError="@ResolvedSessionState.GameplayError" OnSubmitOrders="OnSubmitOrders"
+                                        OnCreateDesign="OnCreateDesign" OnDeleteDesign="OnDeleteDesign"
                                         GameplayErrorCleared="OnGameplayErrorCleared" />
                 }
             </div>
@@ -68,6 +69,7 @@ else
         <ChildContent>
             <NexusGameplayPanel Session="Session" Lobby="Lobby" IsSubmittingAction="IsSubmittingAction"
                                 GameplayError="@GameplayError" OnSubmitOrders="OnSubmitOrders"
+                                OnCreateDesign="OnCreateDesign" OnDeleteDesign="OnDeleteDesign"
                                 GameplayErrorCleared="OnGameplayErrorCleared" />
         </ChildContent>
     </SurfacePanelShell>
@@ -103,6 +105,12 @@ else
 
     [Parameter]
     public EventCallback<NexusTurnOrdersCommand> OnSubmitOrders { get; set; }
+
+    [Parameter]
+    public EventCallback<NexusCreateDesignCommand> OnCreateDesign { get; set; }
+
+    [Parameter]
+    public EventCallback<Guid> OnDeleteDesign { get; set; }
 
     [Parameter]
     public EventCallback OnGameplayErrorCleared { get; set; }

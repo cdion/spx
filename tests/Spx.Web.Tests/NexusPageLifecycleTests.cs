@@ -20,6 +20,7 @@ using Spx.Game.Application.Features.SendPrivateMessage;
 using Spx.Game.Application.Features.SendPublicMessage;
 using Spx.Game.Application.Nexus;
 using Spx.Game.Application.Nexus.Features.GetNexusPage;
+using Spx.Game.Application.Nexus.Features.ManageDesign;
 using Spx.Game.Application.Nexus.Features.SubmitOrders;
 using Spx.Web.Components.Pages.Nexus;
 using Spx.Web.Hubs;
@@ -252,6 +253,7 @@ public sealed class NexusPageLifecycleTests : TestContext
         Services.AddSingleton(Substitute.For<IEditMessageHandler>());
         Services.AddSingleton(Substitute.For<IDeleteMessageHandler>());
         Services.AddSingleton(Substitute.For<ISubmitOrdersHandler>());
+        Services.AddSingleton(Substitute.For<IManageDesignHandler>());
         Services.AddSingleton(clusterClient);
         Services.AddSingleton(invalidationNotifier);
         Services.AddSingleton(coordinator);
