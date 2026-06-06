@@ -91,7 +91,7 @@
                             var mod = _modules[i];
                             <li class="flex items-center justify-between gap-2 rounded-xl border border-white/10 bg-slate-950/60 px-3 py-2">
                                 <span class="text-base text-slate-300">@GetModuleLabel(mod)</span>
-                                <span class="flex shrink-0 items-center gap-1.5">
+                                <span class="ml-auto flex shrink-0 items-center gap-1.5">
                                     <span class="ui-inline-badge border-amber-400/30 bg-amber-500/10 text-amber-200">⚡@NexusModuleCosts.GetCost(mod)</span>
                                     <span class="ui-inline-badge border-sky-400/30 bg-sky-400/10 text-sky-200">@FormatSlotCost(NexusModuleCosts.GetSlots(mod))</span>
                                 </span>
@@ -233,9 +233,10 @@
         && string.IsNullOrWhiteSpace(_validationError);
 
     private IEnumerable<string> AvailableModuleTypes =>
-        _hull == NexusUnitCategory.Capital
+        (_hull == NexusUnitCategory.Capital
             ? AllModuleTypes
-            : AllModuleTypes.Where(t => t != "Hangar");
+            : AllModuleTypes.Where(t => t != "Hangar"))
+        .OrderBy(x => x);
 
     private bool AddModuleNeedsCategory =>
         _addModuleType is "Battery" or "Vanguard" or "Seeker" or "Scatter" or "Screen" or "Command";
@@ -283,6 +284,7 @@
     private void AddModule()
     {
         _modules.Add(BuildModule(_addModuleType, _addModuleCategory, Math.Clamp(_addModuleN, AddModuleNMin, AddModuleNMax)));
+        _modules.Sort((a, b) => a.GetType().Name.CompareTo(b.GetType().Name));
         Revalidate();
     }
 
@@ -347,7 +349,7 @@
     private static string GetModuleSummary(NexusUnitDesign design)
     {
         if (design.Modules.Count == 0) return "";
-        var parts = design.Modules.Select(m =>
+        var parts = design.Modules.OrderBy(m => m.GetType().Name).Select(m =>
         {
             var name = m.GetType().Name;
             var cost = NexusModuleCosts.GetCost(m);
