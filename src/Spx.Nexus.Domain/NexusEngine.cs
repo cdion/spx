@@ -1014,13 +1014,17 @@ public static class NexusEngine
                     pendingHits.Add((target, targetPlayerId, wasShielded));
             }
 
-            for (var i = 0; i < profile.Attacks; i++)
-                PerformAttack(eligible);
-
-            foreach (var freeAttack in tags.OfType<Barrage>())
-                PerformAttack(
-                    eligible.Where(t => t.Profile.Category == freeAttack.Category).ToList()
-                );
+            foreach (var (cat, spec) in profile.Attacks)
+            {
+                var count = phase == NexusCombatPhase.Contact ? spec.Contact : spec.Battle;
+                if (count == 0)
+                    continue;
+                var pool = eligible.Where(t => t.Profile.Category == cat).ToList();
+                if (pool.Count == 0)
+                    continue;
+                for (var i = 0; i < count; i++)
+                    PerformAttack(pool);
+            }
         }
     }
 

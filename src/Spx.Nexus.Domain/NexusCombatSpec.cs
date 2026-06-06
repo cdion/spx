@@ -24,23 +24,12 @@ public static class NexusCombatSpec
         int commandBonus = 0
     )
     {
-        if (!CanTargetCategory(attacker.Modules, target.Category, phase))
+        if (!attacker.Attacks.TryGetValue(target.Category, out var spec))
             return null;
-
-        var threshold = attacker.HitThreshold;
-
-        var bonus = attacker
-            .Modules.OfType<Seeker>()
-            .Where(t => t.Category == target.Category)
-            .Sum(t => t.Magnitude);
-        var penalty = attacker
-            .Modules.OfType<Scatter>()
-            .Where(t => t.Category == target.Category)
-            .Sum(t => t.Magnitude);
-
-        threshold = threshold - bonus - commandBonus + penalty;
-
-        return Math.Max(MinimumHitThreshold, threshold);
+        var count = phase == NexusCombatPhase.Contact ? spec.Contact : spec.Battle;
+        if (count == 0)
+            return null;
+        return Math.Max(MinimumHitThreshold, spec.Threshold - commandBonus);
     }
 
     /// <summary>
@@ -75,22 +64,6 @@ public static class NexusCombatSpec
         var rank = eligible.FindIndex(p => ReferenceEquals(p, attacker));
         return rank >= 0 && rank < coverage ? 1 : 0;
     }
-
-    /// <summary>
-    /// Returns true if the unit with the given <paramref name="tags"/> can target
-    /// <paramref name="category"/> in the specified <paramref name="phase"/>.
-    /// </summary>
-    public static bool CanTargetCategory(
-        IReadOnlyList<NexusUnitModule> tags,
-        NexusUnitCategory category,
-        NexusCombatPhase phase
-    ) =>
-        phase switch
-        {
-            NexusCombatPhase.Contact => tags.OfType<Vanguard>().Any(t => t.Category == category),
-            NexusCombatPhase.Battle => tags.OfType<Battery>().Any(t => t.Category == category),
-            _ => false,
-        };
 
     /// <summary>
     /// Computes targeting silhouette weights for a list of unit profiles.

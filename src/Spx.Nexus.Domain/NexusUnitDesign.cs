@@ -28,17 +28,15 @@ public sealed class NexusUnitDesign
 }
 
 /// <summary>
-/// Full combat and movement profile for a unit, derived from its hull baseline plus tag
-/// modifiers. <see cref="Move"/> is the number of hex sectors the unit can move independently
-/// (0 means it must be carried). Modules encode special abilities; see <see cref="NexusCombatSpec"/>
-/// for how they affect targeting and hit resolution.
+/// Full combat and movement profile for a unit, derived from its hull baseline plus modules.
+/// <see cref="Move"/> is the number of hex sectors the unit can move independently (0 means it must be carried).
+/// <see cref="Attacks"/> is a per-category dictionary mapping target to (Battle attacks, Contact attacks, threshold).
 /// </summary>
 public record NexusUnitProfile(
     NexusUnitCategory Category,
     int Hits,
     int Silhouette,
-    int Attacks,
-    int HitThreshold,
+    IReadOnlyDictionary<NexusUnitCategory, NexusAttackSpec> Attacks,
     int Cost,
     int Move,
     int CarryCapacity,
@@ -60,8 +58,7 @@ public static class NexusHullBaselines
                 NexusUnitCategory.Strike,
                 Hits: 1,
                 Silhouette: 1,
-                Attacks: 1,
-                HitThreshold: 4,
+                Attacks: new Dictionary<NexusUnitCategory, NexusAttackSpec>(),
                 Cost: StrikeBaseCost,
                 Move: 0,
                 CarryCapacity: 0,
@@ -72,8 +69,7 @@ public static class NexusHullBaselines
                 NexusUnitCategory.Capital,
                 Hits: 1,
                 Silhouette: 2,
-                Attacks: 2,
-                HitThreshold: 4,
+                Attacks: new Dictionary<NexusUnitCategory, NexusAttackSpec>(),
                 Cost: CapitalBaseCost,
                 Move: 1,
                 CarryCapacity: 0,
@@ -84,8 +80,7 @@ public static class NexusHullBaselines
                 NexusUnitCategory.Planetary,
                 Hits: 1,
                 Silhouette: 1,
-                Attacks: 1,
-                HitThreshold: 4,
+                Attacks: new Dictionary<NexusUnitCategory, NexusAttackSpec>(),
                 Cost: PlanetaryBaseCost,
                 Move: 0,
                 CarryCapacity: 0,
@@ -105,12 +100,38 @@ public static class NexusHullBaselines
         var extraSilhouette =
             design.Modules.OfType<Beacon>().Sum(t => t.N)
             - design.Modules.OfType<Cloak>().Sum(t => t.N);
+
+        NexusAttackSpec? DeriveSpec(NexusUnitCategory cat)
+        {
+            var battle =
+                design.Modules.OfType<Battery>().Count(b => b.Category == cat)
+                + design.Modules.OfType<Barrage>().Count(b => b.Category == cat);
+            var contact = design.Modules.OfType<Vanguard>().Count(v => v.Category == cat);
+            if (battle + contact == 0)
+                return null;
+            var seeker = design
+                .Modules.OfType<Seeker>()
+                .Where(s => s.Category == cat)
+                .Sum(s => s.Magnitude);
+            var scatter = design
+                .Modules.OfType<Scatter>()
+                .Where(s => s.Category == cat)
+                .Sum(s => s.Magnitude);
+            return new(battle, contact, Math.Max(2, 4 - seeker + scatter));
+        }
+
+        var attacks = Enum.GetValues<NexusUnitCategory>()
+            .Select(cat => (cat, spec: DeriveSpec(cat)))
+            .Where(x => x.spec is not null)
+            .ToDictionary(x => x.cat, x => x.spec!);
+
         return baseline with
         {
             Cost = cost,
             Hits = baseline.Hits + extraHits,
             Move = baseline.Move + extraMove,
             Silhouette = Math.Max(0, baseline.Silhouette + extraSilhouette),
+            Attacks = attacks,
             CarryCapacity = design.Modules.OfType<Hangar>().Sum(t => t.Capacity),
             RequiresCarrier = baseline.Move + extraMove == 0,
             Modules = design.Modules,

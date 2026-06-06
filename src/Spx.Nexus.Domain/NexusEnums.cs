@@ -9,6 +9,9 @@ public enum NexusCombatPhase
     Battle = 1,
 }
 
+/// <summary>Derived attack capability for one target category: how many attacks in each phase and at what threshold.</summary>
+public record NexusAttackSpec(int Battle, int Contact, int Threshold);
+
 /// <summary>Extensions for <see cref="NexusCombatPhase"/>.</summary>
 public static class NexusCombatPhaseExtensions
 {

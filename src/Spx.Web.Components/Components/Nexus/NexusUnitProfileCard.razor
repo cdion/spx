@@ -14,11 +14,32 @@
     <dl class="space-y-1">
         @((MarkupString)StatRow("Hits", baseline.Hits, profile.Hits))
         @((MarkupString)StatRow("Move", baseline.Move, profile.Move))
-        @((MarkupString)StatRow("Attacks", baseline.Attacks, profile.Attacks))
-        @((MarkupString)ThresholdRow(profile.HitThreshold))
         @((MarkupString)StatRow("Silhouette", baseline.Silhouette, profile.Silhouette))
         @((MarkupString)CostRow(baseline.Cost, profile.Cost))
     </dl>
+
+    @if (profile.Attacks.Count > 0)
+    {
+        <div class="border-t border-white/10 pt-2">
+            <p class="ui-type-overline mb-1">Attacks</p>
+            <ul class="space-y-0.5">
+                @foreach (var (cat, spec) in profile.Attacks)
+                {
+                    var label = NexusDomainLabels.GetHullLabel(cat);
+                    var timing = spec.Contact > 0 && spec.Battle > 0
+                        ? "Contact+Battle"
+                        : spec.Contact > 0 ? "Contact" : "Battle";
+                    var count = spec.Battle + spec.Contact;
+                    <li class="text-xs text-slate-300">
+                        @count×
+                        <span class="font-semibold text-slate-200">vs @label</span>
+                        @spec.Threshold+
+                        <span class="text-slate-500">(@timing)</span>
+                    </li>
+                }
+            </ul>
+        </div>
+    }
 
     @if (Design.Modules.Count > 0)
     {
@@ -48,29 +69,28 @@
 
     private static string StatRow(string label, int baseVal, int finalVal)
     {
-        if (baseVal == finalVal)
-            return $"<div class='flex justify-between gap-3'><dt class='text-slate-400'>{label}</dt><dd class='tabular-nums text-slate-200'>{finalVal}</dd></div>";
-
-        var delta = finalVal - baseVal;
-        var deltaClass = delta > 0 ? "text-green-400" : "text-red-400";
-        var deltaStr = (delta > 0 ? "+" : "") + delta;
+        var mods = finalVal - baseVal;
+        var modsClass = mods > 0 ? "text-green-400" : mods < 0 ? "text-red-400" : "text-slate-500";
+        var modsStr = mods > 0 ? $"+{mods}" : mods.ToString();
         return $"<div class='flex justify-between gap-3'><dt class='text-slate-400'>{label}</dt>"
-            + $"<dd class='tabular-nums'><span class='text-slate-400'>{baseVal}</span> <span class='{deltaClass}'>{deltaStr}</span> <span class='text-slate-200'>= {finalVal}</span></dd></div>";
+            + $"<dd class='tabular-nums'>"
+            + $"<span class='text-slate-500'>{baseVal}</span> "
+            + $"<span class='{modsClass}'>{modsStr}</span> "
+            + $"→ <span class='text-slate-100'>{finalVal}</span>"
+            + $"</dd></div>";
     }
-
-    private static string ThresholdRow(int threshold) =>
-        $"<div class='flex justify-between gap-3'><dt class='text-slate-400'>To Hit</dt><dd class='tabular-nums text-slate-200'>{threshold}+</dd></div>";
 
     private static string CostRow(int baseVal, int finalVal)
     {
-        if (baseVal == finalVal)
-            return $"<div class='flex justify-between gap-3'><dt class='text-slate-400'>Cost</dt><dd class='tabular-nums text-yellow-400'>{finalVal}⚡</dd></div>";
-
-        var delta = finalVal - baseVal;
+        var mods = finalVal - baseVal;
+        var modsClass = mods > 0 ? "text-green-400" : mods < 0 ? "text-red-400" : "text-slate-500";
+        var modsStr = mods > 0 ? $"+{mods}" : mods.ToString();
         return $"<div class='flex justify-between gap-3'><dt class='text-slate-400'>Cost</dt>"
-            + $"<dd class='tabular-nums'><span class='text-slate-400'>{baseVal}</span>"
-            + $" <span class='text-yellow-400/60'>+{delta}</span>"
-            + $" <span class='text-yellow-400'>= {finalVal}⚡</span></dd></div>";
+            + $"<dd class='tabular-nums'>"
+            + $"<span class='text-slate-500'>{baseVal}</span> "
+            + $"<span class='{modsClass}'>{modsStr}</span> "
+            + $"→ <span class='text-yellow-400'>{finalVal}⚡</span>"
+            + $"</dd></div>";
     }
 
     private static string GetModuleLabel(NexusUnitModule module) =>
