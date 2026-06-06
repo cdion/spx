@@ -42,6 +42,7 @@ public static class NexusDomainLabels
             Hangar { Capacity: var cap } => $"Hangar ×{cap}",
             Armour { N: var n } => $"Armour ×{n}",
             Drive { N: var n } => $"Drive ×{n}",
+            Bulkhead { N: var n } => $"Bulkhead ×{n}",
             Beacon { N: var n } => $"Beacon ×{n}",
             Cloak { N: var n } => $"Cloak ×{n}",
             Shield => "Shield",

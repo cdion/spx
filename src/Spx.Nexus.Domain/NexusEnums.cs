@@ -107,7 +107,11 @@ public sealed record Drive([property: Id(0)] int N) : NexusUnitModule;
 [GenerateSerializer]
 public sealed record Repair : NexusUnitModule;
 
-/// <summary>Increases silhouette by <see cref="N"/>, making this unit more likely to be targeted. Grants N extra module slots.</summary>
+/// <summary>Grants N extra module slots at the cost of increased silhouette. Making this unit more likely to be targeted.</summary>
+[GenerateSerializer]
+public sealed record Bulkhead([property: Id(0)] int N) : NexusUnitModule;
+
+/// <summary>Increases silhouette by <see cref="N"/>, making this unit more likely to be targeted. No slot benefit.</summary>
 [GenerateSerializer]
 public sealed record Beacon([property: Id(0)] int N) : NexusUnitModule;
 
@@ -136,6 +140,7 @@ public static class NexusModuleCosts
             Control => 1,
             Drive { N: var n } => n * 2,
             Repair => 3,
+            Bulkhead { N: var n } => n * 2,
             Beacon => 0,
             _ => 0,
         };
@@ -157,7 +162,8 @@ public static class NexusModuleCosts
             Control => 0,
             Drive { N: var n } => n,
             Repair => 1,
-            Beacon { N: var n } => -n,
+            Bulkhead { N: var n } => -n,
+            Beacon => 1,
             Cloak { N: var n } => n,
             _ => 0,
         };

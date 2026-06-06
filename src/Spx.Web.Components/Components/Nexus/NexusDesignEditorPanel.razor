@@ -91,7 +91,11 @@
                             var mod = _modules[i];
                             <li class="flex items-center justify-between gap-2 rounded-xl border border-white/10 bg-slate-950/60 px-3 py-2">
                                 <span class="text-base text-slate-300">@GetModuleLabel(mod)</span>
-                                <button type="button" class="ui-button-icon-danger" title="Remove module"
+                                <span class="flex shrink-0 items-center gap-1.5">
+                                    <span class="ui-inline-badge border-amber-400/30 bg-amber-500/10 text-amber-200">⚡@NexusModuleCosts.GetCost(mod)</span>
+                                    <span class="ui-inline-badge border-sky-400/30 bg-sky-400/10 text-sky-200">@FormatSlotCost(NexusModuleCosts.GetSlots(mod))</span>
+                                </span>
+                                <button type="button" class="ui-button-icon-danger shrink-0" title="Remove module"
                                         @onclick="() => RemoveModule(idx)">×</button>
                             </li>
                         }
@@ -191,7 +195,7 @@
         "Screen", "Command",
         "Dock", "Hangar",
         "Control", "Drive", "Repair",
-        "Beacon", "Cloak",
+        "Bulkhead", "Beacon", "Cloak",
     ];
 
     [Parameter, EditorRequired]
@@ -237,7 +241,7 @@
         _addModuleType is "Battery" or "Vanguard" or "Seeker" or "Scatter" or "Screen" or "Command";
 
     private bool AddModuleNeedsN =>
-        _addModuleType is "Armour" or "Drive" or "Screen" or "Command" or "Seeker" or "Scatter" or "Beacon" or "Cloak" or "Hangar";
+        _addModuleType is "Armour" or "Drive" or "Screen" or "Command" or "Seeker" or "Scatter" or "Bulkhead" or "Beacon" or "Cloak" or "Hangar";
 
     private string AddModuleNLabel => _addModuleType switch
     {
@@ -252,7 +256,8 @@
     {
         "Hangar" => 8,
         "Armour" or "Screen" or "Command" => 4,
-        "Beacon" => 3,
+        "Bulkhead" => 3,
+        "Beacon" => 1,
         "Drive" or "Cloak" or "Seeker" or "Scatter" => 2,
         _ => 1,
     };
@@ -324,7 +329,8 @@
             "Hangar" => new Hangar(n),
             "Armour" => new Armour(n),
             "Drive" => new Drive(n),
-            "Beacon" => new Beacon(n),
+            "Bulkhead" => new Bulkhead(n),
+        "Beacon" => new Beacon(n),
             "Cloak" => new Cloak(n),
             "Screen" => new Screen(category, n),
             "Command" => new Command(category, n),
@@ -336,10 +342,18 @@
     private static string GetModuleLabel(NexusUnitModule module) =>
         NexusDomainLabels.GetModuleLabel(module);
 
+    private static string FormatSlotCost(int slots) => slots < 0 ? $"◻+{-slots}" : slots == 0 ? "◻0" : $"◻{slots}";
+
     private static string GetModuleSummary(NexusUnitDesign design)
     {
         if (design.Modules.Count == 0) return "";
-        var parts = design.Modules.Select(m => m.GetType().Name);
+        var parts = design.Modules.Select(m =>
+        {
+            var name = m.GetType().Name;
+            var cost = NexusModuleCosts.GetCost(m);
+            var slots = NexusModuleCosts.GetSlots(m);
+            return $"{name} ⚡{cost} {FormatSlotCost(slots)}";
+        });
         return string.Join(", ", parts);
     }
 }

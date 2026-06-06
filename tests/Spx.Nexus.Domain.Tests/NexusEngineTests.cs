@@ -2589,10 +2589,17 @@ public class NexusDesignTests
     }
 
     [Fact]
-    public void ModuleCosts_Beacon_ZeroCostNegativeSlots()
+    public void ModuleCosts_Bulkhead_EnergyCostNegativeSlots()
     {
-        Assert.Equal(0, NexusModuleCosts.GetCost(new Beacon(2)));
-        Assert.Equal(-2, NexusModuleCosts.GetSlots(new Beacon(2)));
+        Assert.Equal(4, NexusModuleCosts.GetCost(new Bulkhead(2)));  // N*2
+        Assert.Equal(-2, NexusModuleCosts.GetSlots(new Bulkhead(2))); // -N
+    }
+
+    [Fact]
+    public void ModuleCosts_Beacon_ZeroEnergyCostOneSlot()
+    {
+        Assert.Equal(0, NexusModuleCosts.GetCost(new Beacon(1)));
+        Assert.Equal(1, NexusModuleCosts.GetSlots(new Beacon(1)));
     }
 
     [Fact]

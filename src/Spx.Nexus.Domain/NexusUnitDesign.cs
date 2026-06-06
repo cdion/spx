@@ -98,7 +98,8 @@ public static class NexusHullBaselines
         var extraHits = design.Modules.OfType<Armour>().Sum(t => t.N);
         var extraMove = design.Modules.OfType<Drive>().Sum(t => t.N);
         var extraSilhouette =
-            design.Modules.OfType<Beacon>().Sum(t => t.N)
+            design.Modules.OfType<Bulkhead>().Sum(t => t.N)
+            + design.Modules.OfType<Beacon>().Sum(t => t.N)
             - design.Modules.OfType<Cloak>().Sum(t => t.N);
 
         NexusAttackSpec? DeriveSpec(NexusUnitCategory cat)
@@ -200,8 +201,10 @@ public static class NexusDesignConstraints
             Seeker { Magnitude: > 2 } => "Seeker Magnitude cannot exceed 2.",
             Scatter { Magnitude: <= 0 } => "Scatter Magnitude must be at least 1.",
             Scatter { Magnitude: > 2 } => "Scatter Magnitude cannot exceed 2.",
+            Bulkhead { N: <= 0 } => "Bulkhead N must be at least 1.",
+            Bulkhead { N: > 3 } => "Bulkhead N cannot exceed 3.",
             Beacon { N: <= 0 } => "Beacon N must be at least 1.",
-            Beacon { N: > 3 } => "Beacon N cannot exceed 3.",
+            Beacon { N: > 1 } => "Beacon N cannot exceed 1.",
             Cloak { N: <= 0 } => "Cloak N must be at least 1.",
             Cloak { N: > 2 } => "Cloak N cannot exceed 2.",
             Screen { N: <= 0 } => "Screen N must be at least 1.",
@@ -223,6 +226,8 @@ public static class NexusDesignConstraints
             return "Duplicate Control module.";
         if (modules.OfType<Repair>().Count() > 1)
             return "Duplicate Repair module.";
+        if (modules.OfType<Bulkhead>().Count() > 1)
+            return "Duplicate Bulkhead module.";
         if (modules.OfType<Beacon>().Count() > 1)
             return "Duplicate Beacon module.";
         if (modules.OfType<Cloak>().Count() > 1)
