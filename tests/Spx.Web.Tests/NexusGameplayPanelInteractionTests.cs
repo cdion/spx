@@ -150,7 +150,7 @@ public sealed class NexusGameplayPanelInteractionTests : TestContext
             .Click();
 
         var carrierButton = cut.Find(
-            TestIdSelector(NexusGameplayPanelTestIds.FleetStack(NexusUnitType.Carrier, 2))
+            TestIdSelector(NexusGameplayPanelTestIds.FleetStack("Carrier", 1))
         );
 
         carrierButton.Click();
@@ -217,9 +217,9 @@ public sealed class NexusGameplayPanelInteractionTests : TestContext
             )
         );
 
-        Assert.Contains("Carrier (2/2 hits)", pendingOrder.TextContent);
-        Assert.Contains("Fighter (1/1 hits)", pendingOrder.TextContent);
-        Assert.Contains("Infantry (1/1 hits)", pendingOrder.TextContent);
+        Assert.Contains("Carrier (1 hits)", pendingOrder.TextContent);
+        Assert.Contains("Fighter (1 hits)", pendingOrder.TextContent);
+        Assert.Contains("Infantry (1 hits)", pendingOrder.TextContent);
     }
 
     [Fact]
@@ -245,9 +245,27 @@ public sealed class NexusGameplayPanelInteractionTests : TestContext
                             >.Empty.Add(
                                 GamePageCoordinatorTestData.CurrentPlayerId,
                                 ImmutableArray.Create(
-                                    new NexusUnitStackGroup(NexusUnitType.Carrier, 1, 1),
-                                    new NexusUnitStackGroup(NexusUnitType.Carrier, 1, 1),
-                                    new NexusUnitStackGroup(NexusUnitType.Fighter, 1, 1)
+                                    new NexusUnitStackGroup(
+                                        Guid.Parse("aaaaaaaa-0000-0000-0000-000000000001"),
+                                        NexusUnitCategory.Capital,
+                                        1,
+                                        1,
+                                        "Carrier"
+                                    ),
+                                    new NexusUnitStackGroup(
+                                        Guid.Parse("aaaaaaaa-0000-0000-0000-000000000001"),
+                                        NexusUnitCategory.Capital,
+                                        1,
+                                        1,
+                                        "Carrier"
+                                    ),
+                                    new NexusUnitStackGroup(
+                                        Guid.Parse("aaaaaaaa-0000-0000-0000-000000000002"),
+                                        NexusUnitCategory.Strike,
+                                        1,
+                                        1,
+                                        "Fighter"
+                                    )
                                 )
                             ),
                         }
@@ -272,8 +290,7 @@ public sealed class NexusGameplayPanelInteractionTests : TestContext
             )
             .Click();
 
-        cut.Find(TestIdSelector(NexusGameplayPanelTestIds.FleetStack(NexusUnitType.Carrier, 1)))
-            .Click();
+        cut.Find(TestIdSelector(NexusGameplayPanelTestIds.FleetStack("Carrier", 1))).Click();
         cut.Find(
                 TestIdSelector(
                     NexusGameplayPanelTestIds.System(GamePageCoordinatorTestData.MoveTargetCoord)
@@ -291,8 +308,8 @@ public sealed class NexusGameplayPanelInteractionTests : TestContext
             )
         );
 
-        Assert.Contains("1/2 hits", pendingOrder.TextContent);
-        Assert.DoesNotContain("2/2 hits", pendingOrder.TextContent);
+        Assert.Contains("1 hits", pendingOrder.TextContent);
+        Assert.DoesNotContain("this-string-no-longer-applies", pendingOrder.TextContent);
     }
 
     [Fact]
@@ -340,7 +357,7 @@ public sealed class NexusGameplayPanelInteractionTests : TestContext
             .Click();
 
         var carrierButton = cut.Find(
-            TestIdSelector(NexusGameplayPanelTestIds.FleetStack(NexusUnitType.Carrier, 2))
+            TestIdSelector(NexusGameplayPanelTestIds.FleetStack("Carrier", 1))
         );
 
         carrierButton.Click();
@@ -404,8 +421,7 @@ public sealed class NexusGameplayPanelInteractionTests : TestContext
             )
             .Click();
 
-        cut.Find(TestIdSelector(NexusGameplayPanelTestIds.FleetStack(NexusUnitType.Carrier, 2)))
-            .Click();
+        cut.Find(TestIdSelector(NexusGameplayPanelTestIds.FleetStack("Carrier", 1))).Click();
         cut.Find(
                 TestIdSelector(
                     NexusGameplayPanelTestIds.System(GamePageCoordinatorTestData.MoveTargetCoord)
@@ -449,8 +465,7 @@ public sealed class NexusGameplayPanelInteractionTests : TestContext
                 )
             )
             .Click();
-        cut.Find(TestIdSelector(NexusGameplayPanelTestIds.FleetStack(NexusUnitType.Carrier, 2)))
-            .Click();
+        cut.Find(TestIdSelector(NexusGameplayPanelTestIds.FleetStack("Carrier", 1))).Click();
         cut.Find(
                 TestIdSelector(
                     NexusGameplayPanelTestIds.System(GamePageCoordinatorTestData.MoveTargetCoord)

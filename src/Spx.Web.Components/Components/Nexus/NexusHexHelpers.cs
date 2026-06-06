@@ -143,7 +143,7 @@ internal static class NexusHexHelpers
         var planetary = 0;
         foreach (var stack in units)
         {
-            switch (stack.UnitType.Profile().Category)
+            switch (stack.Category)
             {
                 case NexusUnitCategory.Capital:
                     capital += stack.Count;

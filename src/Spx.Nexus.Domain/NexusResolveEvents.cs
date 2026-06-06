@@ -10,13 +10,14 @@ public abstract record NexusResolveEvent;
 
 // ── Supporting records ────────────────────────────────────────────────────────
 
-/// <summary>One unit type destroyed for one player during a combat phase.</summary>
+/// <summary>One unit design destroyed for one player during a combat phase.</summary>
 [GenerateSerializer]
 [Immutable]
 public sealed record NexusCombatLoss(
     [property: Id(0)] Guid PlayerId,
-    [property: Id(1)] NexusUnitType UnitType,
-    [property: Id(2)] int Count
+    [property: Id(1)] Guid DesignId,
+    [property: Id(2)] string DesignName,
+    [property: Id(3)] int Count
 );
 
 /// <summary>One individual attack roll during a combat phase.</summary>
@@ -24,15 +25,17 @@ public sealed record NexusCombatLoss(
 [Immutable]
 public sealed record NexusCombatAttackRoll(
     [property: Id(0)] Guid AttackingPlayerId,
-    [property: Id(1)] NexusUnitType AttackerType,
-    [property: Id(2)] NexusUnitType TargetType,
-    [property: Id(3)] int Roll,
-    [property: Id(4)] int Threshold,
-    [property: Id(5)] bool IsHit,
-    [property: Id(6)] int AttackerRemainingHits = 0,
-    [property: Id(7)] Guid? TargetPlayerId = null,
-    [property: Id(8)] int TargetRemainingHits = 0,
-    [property: Id(9)] bool WasShielded = false
+    [property: Id(1)] Guid AttackerDesignId,
+    [property: Id(2)] string AttackerDesignName,
+    [property: Id(3)] Guid TargetDesignId,
+    [property: Id(4)] string TargetDesignName,
+    [property: Id(5)] int Roll,
+    [property: Id(6)] int Threshold,
+    [property: Id(7)] bool IsHit,
+    [property: Id(8)] int AttackerRemainingHits = 0,
+    [property: Id(9)] Guid? TargetPlayerId = null,
+    [property: Id(10)] int TargetRemainingHits = 0,
+    [property: Id(11)] bool WasShielded = false
 );
 
 // ── Movement ──────────────────────────────────────────────────────────────────
@@ -120,9 +123,10 @@ public sealed record NexusIncomeEvent(
 [Immutable]
 public sealed record NexusUnitDeployedEvent(
     [property: Id(0)] Guid PlayerId,
-    [property: Id(1)] NexusUnitType UnitType,
-    [property: Id(2)] HexCoord HomeSystem,
-    [property: Id(3)] int Count
+    [property: Id(1)] Guid DesignId,
+    [property: Id(2)] string DesignName,
+    [property: Id(3)] HexCoord HomeSystem,
+    [property: Id(4)] int Count
 ) : NexusResolveEvent;
 
 // ── Nexus Gate ────────────────────────────────────────────────────────────────
@@ -153,14 +157,15 @@ public sealed record NexusGateCancelledEvent(
 
 // ── Supply ────────────────────────────────────────────────────────────────────
 
-/// <summary>A capital ship was disbanded because the player's capital count exceeded their supply pool.</summary>
+/// <summary>A capital ship design was disbanded because the player's capital count exceeded their supply pool.</summary>
 [GenerateSerializer]
 [Immutable]
 public sealed record NexusCapitalDisbandedEvent(
     [property: Id(0)] Guid PlayerId,
-    [property: Id(1)] NexusUnitType UnitType,
-    [property: Id(2)] HexCoord System,
-    [property: Id(3)] int Count
+    [property: Id(1)] Guid DesignId,
+    [property: Id(2)] string DesignName,
+    [property: Id(3)] HexCoord System,
+    [property: Id(4)] int Count
 ) : NexusResolveEvent;
 
 // ── Game End ──────────────────────────────────────────────────────────────────

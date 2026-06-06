@@ -7,6 +7,27 @@ namespace Spx.Web.Tests;
 
 public sealed class NexusGameplayPanelStateTests
 {
+    private static readonly Guid CarrierDesignId = Guid.Parse(
+        "aaaaaaaa-0000-0000-0000-000000000001"
+    );
+    private static readonly Guid FighterDesignId = Guid.Parse(
+        "aaaaaaaa-0000-0000-0000-000000000002"
+    );
+
+    private static NexusUnitDesign FighterDesign =>
+        new()
+        {
+            DesignId = FighterDesignId,
+            Name = "Fighter",
+            Hull = NexusUnitCategory.Strike,
+            Modules =
+            [
+                new Battery(NexusUnitCategory.Strike),
+                new Battery(NexusUnitCategory.Capital),
+                new Dock(),
+            ],
+        };
+
     [Fact]
     public void ShouldResetUiState_WhenGameIdChangesWithSameRound_ReturnsTrue()
     {
@@ -165,11 +186,7 @@ public sealed class NexusGameplayPanelStateTests
                 SelectedSystem = GamePageCoordinatorTestData.CurrentPlayerHomeCoord,
             },
             ImmutableArray.Create(
-                new NexusUnitStackGroup(
-                    NexusUnitType.Carrier,
-                    NexusUnitType.Carrier.Profile().Hits,
-                    1
-                )
+                new NexusUnitStackGroup(CarrierDesignId, NexusUnitCategory.Capital, 1, 1, "Carrier")
             ),
             session,
             GamePageCoordinatorTestData.CurrentPlayerId
@@ -201,14 +218,17 @@ public sealed class NexusGameplayPanelStateTests
     public void ApplyBuildDraftAdjustment_WhenAddOneRequested_AddsBuildOrder()
     {
         var nextState = NexusGameplayPanelState.ApplyBuildDraftAdjustment(
-            OrderDraftState.Empty,
-            NexusUnitType.Fighter,
+            OrderDraftState.Empty with
+            {
+                Designs = [FighterDesign],
+            },
+            FighterDesignId,
             BuildDraftAdjustmentKind.AddOne,
             projectedEnergy: 20
         );
 
         var buildOrder = Assert.Single(nextState.PendingBuildOrders);
-        Assert.Equal(NexusUnitType.Fighter, buildOrder.UnitType);
+        Assert.Equal(FighterDesignId, buildOrder.DesignId);
         Assert.Equal(1, buildOrder.Count);
     }
 
@@ -218,7 +238,9 @@ public sealed class NexusGameplayPanelStateTests
         var moveOrder = new NexusMoveOrder(
             GamePageCoordinatorTestData.CurrentPlayerHomeCoord,
             GamePageCoordinatorTestData.MoveTargetCoord,
-            ImmutableArray.Create(new NexusUnitStackGroup(NexusUnitType.Carrier, 4, 1))
+            ImmutableArray.Create(
+                new NexusUnitStackGroup(CarrierDesignId, NexusUnitCategory.Capital, 4, 1)
+            )
         );
 
         var nextState = NexusGameplayPanelState.ApplyPendingOrderRequest(

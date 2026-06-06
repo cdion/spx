@@ -100,6 +100,44 @@ internal sealed class PlaygroundNexusHarness
         return Task.CompletedTask;
     }
 
+    public async Task<GameSessionCommandOutcome> CreateDesignAsync(
+        Guid gameId,
+        NexusCreateDesignCommand command,
+        CancellationToken cancellationToken = default
+    )
+    {
+        if (!sessions.TryGetValue(gameId, out var session))
+            return new GameSessionCommandFailed("Game session unavailable.");
+
+        var result = NexusEngine.CreateDesign(session.State, command);
+        if (result is NexusDesignCommandRejected rejected)
+            return new GameSessionCommandFailed(rejected.ErrorMessage);
+
+        var sessionOutcome = await GetSessionAsync(gameId, command.PlayerId, cancellationToken);
+        return sessionOutcome is GameSessionFound found
+            ? new GameSessionCommandSucceeded(found.Session)
+            : new GameSessionCommandFailed("Game session unavailable.");
+    }
+
+    public async Task<GameSessionCommandOutcome> DeleteDesignAsync(
+        Guid gameId,
+        NexusDeleteDesignCommand command,
+        CancellationToken cancellationToken = default
+    )
+    {
+        if (!sessions.TryGetValue(gameId, out var session))
+            return new GameSessionCommandFailed("Game session unavailable.");
+
+        var result = NexusEngine.DeleteDesign(session.State, command);
+        if (result is NexusDesignCommandRejected rejected)
+            return new GameSessionCommandFailed(rejected.ErrorMessage);
+
+        var sessionOutcome = await GetSessionAsync(gameId, command.PlayerId, cancellationToken);
+        return sessionOutcome is GameSessionFound found
+            ? new GameSessionCommandSucceeded(found.Session)
+            : new GameSessionCommandFailed("Game session unavailable.");
+    }
+
     public Task<IReadOnlyList<Guid>?> GetActiveSessionPlayersAsync(
         Guid gameId,
         CancellationToken cancellationToken

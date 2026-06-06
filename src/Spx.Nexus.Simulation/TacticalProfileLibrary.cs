@@ -2,8 +2,114 @@ using Spx.Nexus.Domain;
 
 namespace Spx.Nexus.Simulation;
 
+/// <summary>
+/// Predefined designs that replicate the combat behavior of the original nine unit types.
+/// Used by the tactical simulation library.
+/// </summary>
+public static class SimulationDesigns
+{
+    public static readonly NexusUnitDesign Interceptor = D(
+        "Interceptor",
+        NexusUnitCategory.Strike,
+        new Vanguard(NexusUnitCategory.Strike),
+        new Dock()
+    );
+
+    public static readonly NexusUnitDesign Fighter = D(
+        "Fighter",
+        NexusUnitCategory.Strike,
+        new Battery(NexusUnitCategory.Strike),
+        new Battery(NexusUnitCategory.Capital),
+        new Scatter(NexusUnitCategory.Capital, 1),
+        new Dock()
+    );
+
+    public static readonly NexusUnitDesign Bomber = D(
+        "Bomber",
+        NexusUnitCategory.Strike,
+        new Battery(NexusUnitCategory.Strike),
+        new Battery(NexusUnitCategory.Capital),
+        new Battery(NexusUnitCategory.Planetary),
+        new Scatter(NexusUnitCategory.Strike, 1),
+        new Disruptor(),
+        new Dock()
+    );
+
+    public static readonly NexusUnitDesign Frigate = D(
+        "Frigate",
+        NexusUnitCategory.Capital,
+        new Battery(NexusUnitCategory.Strike),
+        new Battery(NexusUnitCategory.Capital),
+        new Shield(),
+        new Screen(NexusUnitCategory.Capital, 1),
+        new Hangar(2)
+    );
+
+    public static readonly NexusUnitDesign Destroyer = D(
+        "Destroyer",
+        NexusUnitCategory.Capital,
+        new Battery(NexusUnitCategory.Strike),
+        new Battery(NexusUnitCategory.Capital),
+        new Barrage(NexusUnitCategory.Strike),
+        new Hangar(2)
+    );
+
+    public static readonly NexusUnitDesign Cruiser = D(
+        "Cruiser",
+        NexusUnitCategory.Capital,
+        new Battery(NexusUnitCategory.Strike),
+        new Battery(NexusUnitCategory.Capital),
+        new Battery(NexusUnitCategory.Planetary),
+        new Seeker(NexusUnitCategory.Capital, 1),
+        new Hangar(2)
+    );
+
+    public static readonly NexusUnitDesign Carrier = D(
+        "Carrier",
+        NexusUnitCategory.Capital,
+        new Battery(NexusUnitCategory.Strike),
+        new Battery(NexusUnitCategory.Capital),
+        new Shield(),
+        new Hangar(8)
+    );
+
+    public static readonly NexusUnitDesign Infantry = D(
+        "Infantry",
+        NexusUnitCategory.Planetary,
+        new Battery(NexusUnitCategory.Planetary),
+        new Dock()
+    );
+
+    public static readonly NexusUnitDesign Armor = D(
+        "Armor",
+        NexusUnitCategory.Planetary,
+        new Battery(NexusUnitCategory.Planetary),
+        new Shield(),
+        new Dock()
+    );
+
+    private static NexusUnitDesign D(
+        string name,
+        NexusUnitCategory hull,
+        params NexusUnitModule[] tags
+    ) =>
+        new()
+        {
+            DesignId = Guid.NewGuid(),
+            Name = name,
+            Hull = hull,
+            Modules = [.. tags],
+        };
+}
+
 public static class TacticalProfileLibrary
 {
+    private static TacticalProfileUnit U(
+        NexusUnitDesign design,
+        int count,
+        int? remainingHits = null
+    ) => new(design, count, remainingHits);
+
     public static IReadOnlyList<TacticalProfile> CreateProfiles() =>
         [
             new(
@@ -11,89 +117,77 @@ public static class TacticalProfileLibrary
                 "2 Interceptors",
                 TacticalProfileFamily.SpaceDuel,
                 ["space", "anti-strike"],
-                [new TacticalProfileUnit(NexusUnitType.Interceptor, 2)]
+                [U(SimulationDesigns.Interceptor, 2)]
             ),
             new(
                 "fighters-2",
                 "2 Fighters",
                 TacticalProfileFamily.SpaceDuel,
                 ["space", "anti-strike"],
-                [new TacticalProfileUnit(NexusUnitType.Fighter, 2)]
+                [U(SimulationDesigns.Fighter, 2)]
             ),
             new(
                 "fighter-bomber",
                 "Fighter + Bomber",
                 TacticalProfileFamily.SpaceDuel,
                 ["space", "bombard", "anti-capital"],
-                [
-                    new TacticalProfileUnit(NexusUnitType.Fighter, 1),
-                    new TacticalProfileUnit(NexusUnitType.Bomber, 1),
-                ]
+                [U(SimulationDesigns.Fighter, 1), U(SimulationDesigns.Bomber, 1)]
             ),
             new(
                 "bombers-2",
                 "2 Bombers",
                 TacticalProfileFamily.SpaceDuel,
                 ["space", "bombard", "anti-capital"],
-                [new TacticalProfileUnit(NexusUnitType.Bomber, 2)]
+                [U(SimulationDesigns.Bomber, 2)]
             ),
             new(
                 "destroyer",
                 "Destroyer",
                 TacticalProfileFamily.SpaceDuel,
                 ["space", "anti-strike", "anti-capital"],
-                [new TacticalProfileUnit(NexusUnitType.Destroyer, 1)]
+                [U(SimulationDesigns.Destroyer, 1)]
             ),
             new(
                 "frigate-fighter",
                 "Frigate + Fighter",
                 TacticalProfileFamily.SpaceDuel,
                 ["space", "anti-capital"],
-                [
-                    new TacticalProfileUnit(NexusUnitType.Frigate, 1),
-                    new TacticalProfileUnit(NexusUnitType.Fighter, 1),
-                ]
+                [U(SimulationDesigns.Frigate, 1), U(SimulationDesigns.Fighter, 1)]
             ),
             new(
                 "cruiser",
                 "Cruiser",
                 TacticalProfileFamily.SpaceDuel,
                 ["space", "anti-capital"],
-                [new TacticalProfileUnit(NexusUnitType.Cruiser, 1)]
+                [U(SimulationDesigns.Cruiser, 1)]
             ),
             new(
                 "destroyer-cruiser",
                 "Destroyer + Cruiser",
                 TacticalProfileFamily.SpaceDuel,
                 ["space", "anti-strike", "anti-capital"],
-                [
-                    new TacticalProfileUnit(NexusUnitType.Destroyer, 1),
-                    new TacticalProfileUnit(NexusUnitType.Cruiser, 1),
-                ]
+                [U(SimulationDesigns.Destroyer, 1), U(SimulationDesigns.Cruiser, 1)]
             ),
             new(
                 "destroyer-frigate",
                 "Destroyer + Frigate",
                 TacticalProfileFamily.SpaceDuel,
                 ["space", "anti-strike", "anti-capital"],
-                [
-                    new TacticalProfileUnit(NexusUnitType.Destroyer, 1),
-                    new TacticalProfileUnit(NexusUnitType.Frigate, 1),
-                ]
+                [U(SimulationDesigns.Destroyer, 1), U(SimulationDesigns.Frigate, 1)]
             ),
             new(
                 "infantry-2",
                 "2 Infantry",
                 TacticalProfileFamily.InvasionControl,
                 ["ground", "invasion", "control"],
-                [new TacticalProfileUnit(NexusUnitType.Infantry, 2)]
+                [U(SimulationDesigns.Infantry, 2)]
             ),
             new(
                 "armor",
                 "Armor",
                 TacticalProfileFamily.InvasionControl,
                 ["ground", "invasion", "control"],
-                [new TacticalProfileUnit(NexusUnitType.Armor, 1)]
+                [U(SimulationDesigns.Armor, 1)]
             ),
             new(
                 "carrier-landing",
@@ -101,9 +195,9 @@ public static class TacticalProfileLibrary
                 TacticalProfileFamily.InvasionControl,
                 ["invasion", "control", "space"],
                 [
-                    new TacticalProfileUnit(NexusUnitType.Carrier, 1),
-                    new TacticalProfileUnit(NexusUnitType.Fighter, 1),
-                    new TacticalProfileUnit(NexusUnitType.Infantry, 2),
+                    U(SimulationDesigns.Carrier, 1),
+                    U(SimulationDesigns.Fighter, 1),
+                    U(SimulationDesigns.Infantry, 2),
                 ]
             ),
             new(
@@ -112,9 +206,9 @@ public static class TacticalProfileLibrary
                 TacticalProfileFamily.InvasionControl,
                 ["invasion", "bombard", "control"],
                 [
-                    new TacticalProfileUnit(NexusUnitType.Carrier, 1),
-                    new TacticalProfileUnit(NexusUnitType.Bomber, 1),
-                    new TacticalProfileUnit(NexusUnitType.Armor, 1),
+                    U(SimulationDesigns.Carrier, 1),
+                    U(SimulationDesigns.Bomber, 1),
+                    U(SimulationDesigns.Armor, 1),
                 ]
             ),
             new(
@@ -122,145 +216,114 @@ public static class TacticalProfileLibrary
                 "Cruiser + 2 Infantry",
                 TacticalProfileFamily.InvasionControl,
                 ["invasion", "bombard", "control", "anti-capital"],
-                [
-                    new TacticalProfileUnit(NexusUnitType.Cruiser, 1),
-                    new TacticalProfileUnit(NexusUnitType.Infantry, 2),
-                ]
+                [U(SimulationDesigns.Cruiser, 1), U(SimulationDesigns.Infantry, 2)]
             ),
-            // ── Budget tier 4 (equal-cost space comparisons) ─────────────────
+            // ── Budget profiles ───────────────────────────────────────────────
             new(
                 "frigate",
                 "Frigate",
                 TacticalProfileFamily.SpaceBudget,
                 ["space", "anti-capital"],
-                [new TacticalProfileUnit(NexusUnitType.Frigate, 1)]
+                [U(SimulationDesigns.Frigate, 1)]
             ),
             new(
                 "bomber",
                 "Bomber",
                 TacticalProfileFamily.SpaceBudget,
                 ["space", "bombard", "anti-capital"],
-                [new TacticalProfileUnit(NexusUnitType.Bomber, 1)]
+                [U(SimulationDesigns.Bomber, 1)]
             ),
-            // ── Budget tier 6 ────────────────────────────────────────────────
             new(
                 "interceptors-3",
                 "3 Interceptors",
                 TacticalProfileFamily.SpaceBudget,
                 ["space", "anti-strike"],
-                [new TacticalProfileUnit(NexusUnitType.Interceptor, 3)]
+                [U(SimulationDesigns.Interceptor, 3)]
             ),
             new(
                 "fighters-3",
                 "3 Fighters",
                 TacticalProfileFamily.SpaceBudget,
                 ["space", "anti-strike", "anti-capital"],
-                [new TacticalProfileUnit(NexusUnitType.Fighter, 3)]
+                [U(SimulationDesigns.Fighter, 3)]
             ),
             new(
                 "frigate-interceptor",
                 "Frigate + Interceptor",
                 TacticalProfileFamily.SpaceBudget,
                 ["space", "anti-capital"],
-                [
-                    new TacticalProfileUnit(NexusUnitType.Frigate, 1),
-                    new TacticalProfileUnit(NexusUnitType.Interceptor, 1),
-                ]
+                [U(SimulationDesigns.Frigate, 1), U(SimulationDesigns.Interceptor, 1)]
             ),
             new(
                 "bomber-interceptor",
                 "Bomber + Interceptor",
                 TacticalProfileFamily.SpaceBudget,
                 ["space", "bombard", "anti-capital"],
-                [
-                    new TacticalProfileUnit(NexusUnitType.Bomber, 1),
-                    new TacticalProfileUnit(NexusUnitType.Interceptor, 1),
-                ]
+                [U(SimulationDesigns.Bomber, 1), U(SimulationDesigns.Interceptor, 1)]
             ),
-            // ── Budget tier 8 ────────────────────────────────────────────────
             new(
                 "interceptors-4",
                 "4 Interceptors",
                 TacticalProfileFamily.SpaceBudget,
                 ["space", "anti-strike"],
-                [new TacticalProfileUnit(NexusUnitType.Interceptor, 4)]
+                [U(SimulationDesigns.Interceptor, 4)]
             ),
             new(
                 "fighters-4",
                 "4 Fighters",
                 TacticalProfileFamily.SpaceBudget,
                 ["space", "anti-strike", "anti-capital"],
-                [new TacticalProfileUnit(NexusUnitType.Fighter, 4)]
+                [U(SimulationDesigns.Fighter, 4)]
             ),
             new(
                 "frigates-2",
                 "2 Frigates",
                 TacticalProfileFamily.SpaceBudget,
                 ["space", "anti-capital"],
-                [new TacticalProfileUnit(NexusUnitType.Frigate, 2)]
+                [U(SimulationDesigns.Frigate, 2)]
             ),
             new(
                 "cruiser-interceptor",
                 "Cruiser + Interceptor",
                 TacticalProfileFamily.SpaceBudget,
                 ["space", "anti-capital"],
-                [
-                    new TacticalProfileUnit(NexusUnitType.Cruiser, 1),
-                    new TacticalProfileUnit(NexusUnitType.Interceptor, 1),
-                ]
+                [U(SimulationDesigns.Cruiser, 1), U(SimulationDesigns.Interceptor, 1)]
             ),
             new(
                 "cruiser-fighter",
                 "Cruiser + Fighter",
                 TacticalProfileFamily.SpaceBudget,
                 ["space", "anti-capital"],
-                [
-                    new TacticalProfileUnit(NexusUnitType.Cruiser, 1),
-                    new TacticalProfileUnit(NexusUnitType.Fighter, 1),
-                ]
+                [U(SimulationDesigns.Cruiser, 1), U(SimulationDesigns.Fighter, 1)]
             ),
-            // ── Mixed space+ground profiles (exercise Orbit-phase bombing) ───
-            // Budget 8
+            // ── Mixed space+ground profiles ───────────────────────────────────
             new(
                 "cruiser-infantry",
                 "Cruiser + Infantry",
                 TacticalProfileFamily.SpaceBudgetMixed,
                 ["space", "ground", "bombard", "control"],
-                [
-                    new TacticalProfileUnit(NexusUnitType.Cruiser, 1),
-                    new TacticalProfileUnit(NexusUnitType.Infantry, 1),
-                ]
+                [U(SimulationDesigns.Cruiser, 1), U(SimulationDesigns.Infantry, 1)]
             ),
             new(
                 "bomber-2infantry",
                 "Bomber + 2 Infantry",
                 TacticalProfileFamily.SpaceBudgetMixed,
                 ["space", "ground", "bombard", "control"],
-                [
-                    new TacticalProfileUnit(NexusUnitType.Bomber, 1),
-                    new TacticalProfileUnit(NexusUnitType.Infantry, 2),
-                ]
+                [U(SimulationDesigns.Bomber, 1), U(SimulationDesigns.Infantry, 2)]
             ),
             new(
                 "frigate-armor",
                 "Frigate + Armor",
                 TacticalProfileFamily.SpaceBudgetMixed,
                 ["space", "ground", "control"],
-                [
-                    new TacticalProfileUnit(NexusUnitType.Frigate, 1),
-                    new TacticalProfileUnit(NexusUnitType.Armor, 1),
-                ]
+                [U(SimulationDesigns.Frigate, 1), U(SimulationDesigns.Armor, 1)]
             ),
-            // Budget 10
             new(
                 "cruiser-2infantry",
                 "Cruiser + 2 Infantry",
                 TacticalProfileFamily.SpaceBudgetMixed,
                 ["space", "ground", "bombard", "control"],
-                [
-                    new TacticalProfileUnit(NexusUnitType.Cruiser, 1),
-                    new TacticalProfileUnit(NexusUnitType.Infantry, 2),
-                ]
+                [U(SimulationDesigns.Cruiser, 1), U(SimulationDesigns.Infantry, 2)]
             ),
             new(
                 "bomber-frigate-infantry",
@@ -268,9 +331,9 @@ public static class TacticalProfileLibrary
                 TacticalProfileFamily.SpaceBudgetMixed,
                 ["space", "ground", "bombard", "control"],
                 [
-                    new TacticalProfileUnit(NexusUnitType.Bomber, 1),
-                    new TacticalProfileUnit(NexusUnitType.Frigate, 1),
-                    new TacticalProfileUnit(NexusUnitType.Infantry, 1),
+                    U(SimulationDesigns.Bomber, 1),
+                    U(SimulationDesigns.Frigate, 1),
+                    U(SimulationDesigns.Infantry, 1),
                 ]
             ),
             new(
@@ -278,10 +341,7 @@ public static class TacticalProfileLibrary
                 "Carrier + Infantry",
                 TacticalProfileFamily.SpaceBudgetMixed,
                 ["space", "ground", "control"],
-                [
-                    new TacticalProfileUnit(NexusUnitType.Carrier, 1),
-                    new TacticalProfileUnit(NexusUnitType.Infantry, 1),
-                ]
+                [U(SimulationDesigns.Carrier, 1), U(SimulationDesigns.Infantry, 1)]
             ),
         ];
 
@@ -298,8 +358,6 @@ public static class TacticalProfileLibrary
             .Select(profile => profile.Id)
             .ToArray();
 
-        // Equal-budget tiers — profiles at exactly the same cost competing directly.
-        // Includes SpaceDuel profiles of the matching cost alongside the dedicated SpaceBudget profiles.
         static string[] BudgetTier(
             IReadOnlyList<TacticalProfile> all,
             int cost,
@@ -317,8 +375,6 @@ public static class TacticalProfileLibrary
         var budget6Ids = BudgetTier(profiles, 6, "fighter-bomber", "frigate-fighter", "cruiser");
         var budget8Ids = BudgetTier(profiles, 8, "bombers-2");
 
-        // Mixed scenarios: equal-budget compositions that include both space and ground units,
-        // so Orbit-phase bombing (Cruiser, Bomber vs Planetary) is exercised.
         static string[] MixedBudgetTier(IReadOnlyList<TacticalProfile> all, int cost) =>
             all.Where(p =>
                     p.Family == TacticalProfileFamily.SpaceBudgetMixed && p.TotalCost == cost

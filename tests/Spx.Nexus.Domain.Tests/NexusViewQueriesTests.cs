@@ -1,12 +1,36 @@
+using System.Collections.Immutable;
+using Spx.Nexus.Domain;
+
 namespace Spx.Nexus.Domain.Tests;
 
 public class NexusGameViewQueriesTests
 {
     // ─── helpers ────────────────────────────────────────────────────────────
 
+    private static readonly NexusUnitDesign CapitalDesign = new()
+    {
+        DesignId = Guid.Parse("11111111-0000-0000-0000-000000000001"),
+        Name = "Carrier",
+        Hull = NexusUnitCategory.Capital,
+        Modules =
+        [
+            new Battery(NexusUnitCategory.Strike),
+            new Battery(NexusUnitCategory.Capital),
+            new Hangar(8),
+        ],
+    };
+
+    private static readonly NexusUnitDesign PlanetaryDesign = new()
+    {
+        DesignId = Guid.Parse("22222222-0000-0000-0000-000000000002"),
+        Name = "Infantry",
+        Hull = NexusUnitCategory.Planetary,
+        Modules = [new Battery(NexusUnitCategory.Planetary), new Dock()],
+    };
+
     private static NexusSystemView MakeSystem(
         HexCoord coord,
-        params (Guid PlayerId, NexusUnitType Unit, int Count)[] units
+        params (Guid PlayerId, NexusUnitDesign Design, int Count)[] units
     )
     {
         var dict = units
@@ -14,7 +38,12 @@ public class NexusGameViewQueriesTests
             .ToImmutableDictionary(
                 g => g.Key,
                 g =>
-                    g.Select(u => new NexusUnitStackGroup(u.Unit, u.Unit.Profile().Hits, u.Count))
+                    g.Select(u => new NexusUnitStackGroup(
+                            u.Design.DesignId,
+                            u.Design.Hull,
+                            1,
+                            u.Count
+                        ))
                         .ToImmutableArray()
             );
         return new NexusSystemView(coord, false, 2, null, null, dict);
@@ -64,9 +93,8 @@ public class NexusGameViewQueriesTests
     {
         var playerId = Guid.NewGuid();
         var source = new HexCoord(0, 0);
-        // System exists but belongs to another player
         var otherId = Guid.NewGuid();
-        var view = MakeView(playerId, MakeSystem(source, (otherId, NexusUnitType.Carrier, 1)));
+        var view = MakeView(playerId, MakeSystem(source, (otherId, CapitalDesign, 1)));
 
         var result = NexusViewQueries.GetValidMoveDestinations(view, playerId, source);
 
@@ -77,9 +105,8 @@ public class NexusGameViewQueriesTests
     public void GetValidMoveDestinations_PlayerHasUnits_ReturnsValidAdjacentCoords()
     {
         var playerId = Guid.NewGuid();
-        // Use center (0,0) — all 6 neighbours are within the 19-hex map radius
         var source = new HexCoord(0, 0);
-        var view = MakeView(playerId, MakeSystem(source, (playerId, NexusUnitType.Carrier, 1)));
+        var view = MakeView(playerId, MakeSystem(source, (playerId, CapitalDesign, 1)));
 
         var result = NexusViewQueries.GetValidMoveDestinations(view, playerId, source);
 
@@ -91,9 +118,8 @@ public class NexusGameViewQueriesTests
     public void GetValidMoveDestinations_CornerSystem_FiltersOffMapCoords()
     {
         var playerId = Guid.NewGuid();
-        // P1 home (2,-2) has only 3 valid adjacent coords within the map
         var source = NexusMap.Player1HomeCoord;
-        var view = MakeView(playerId, MakeSystem(source, (playerId, NexusUnitType.Infantry, 1)));
+        var view = MakeView(playerId, MakeSystem(source, (playerId, PlanetaryDesign, 1)));
 
         var result = NexusViewQueries.GetValidMoveDestinations(view, playerId, source);
 
@@ -106,7 +132,7 @@ public class NexusGameViewQueriesTests
     {
         var playerId = Guid.NewGuid();
         var source = new HexCoord(0, 0);
-        var view = MakeView(playerId, MakeSystem(source, (playerId, NexusUnitType.Carrier, 1)));
+        var view = MakeView(playerId, MakeSystem(source, (playerId, CapitalDesign, 1)));
 
         var result = NexusViewQueries.GetValidMoveDestinations(view, playerId, source);
 
@@ -120,13 +146,7 @@ public class NexusGameViewQueriesTests
         var source = new HexCoord(0, 0);
         var unitStacks = ImmutableDictionary<Guid, ImmutableArray<NexusUnitStackGroup>>.Empty.Add(
             playerId,
-            [
-                new NexusUnitStackGroup(
-                    NexusUnitType.Infantry,
-                    NexusUnitType.Infantry.Profile().Hits,
-                    1
-                ),
-            ]
+            [new NexusUnitStackGroup(PlanetaryDesign.DesignId, PlanetaryDesign.Hull, 1, 1)]
         );
         // MovableUnitStacks is empty — planetary units are pinned in a contested system
         var movableStacks = ImmutableDictionary<Guid, ImmutableArray<NexusUnitStackGroup>>.Empty;

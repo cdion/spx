@@ -13,6 +13,7 @@ using Spx.Game.Application.Features.SendPrivateMessage;
 using Spx.Game.Application.Features.SendPublicMessage;
 using Spx.Game.Application.Nexus.Features.EnsureNexusSession;
 using Spx.Game.Application.Nexus.Features.GetNexusPage;
+using Spx.Game.Application.Nexus.Features.ManageDesign;
 using Spx.Game.Application.Nexus.Features.SubmitOrders;
 
 namespace Microsoft.Extensions.DependencyInjection;
@@ -29,6 +30,7 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<IGetGamePresenceHandler, GetGamePresenceHandler>();
         services.AddScoped<IGetUserGamesHandler, GetUserGamesHandler>();
         services.AddScoped<ISubmitOrdersHandler, SubmitOrdersHandler>();
+        services.AddScoped<IManageDesignHandler, ManageDesignHandler>();
 
         services.AddScoped<IGetMessagesHandler, GetMessagesHandler>();
         services.AddScoped<IGetMessageUpdatesHandler, GetMessageUpdatesHandler>();

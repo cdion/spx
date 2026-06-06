@@ -28,8 +28,14 @@
     private static ImmutableDictionary<Guid, ImmutableArray<NexusUnitStackGroup>> NoUnits =>
         ImmutableDictionary<Guid, ImmutableArray<NexusUnitStackGroup>>.Empty;
 
+    private static readonly Guid FrigateId = Guid.Parse("cccccccc-0000-0000-0000-000000000001");
+    private static readonly Guid CruiserId = Guid.Parse("cccccccc-0000-0000-0000-000000000002");
+    private static readonly Guid FighterId = Guid.Parse("cccccccc-0000-0000-0000-000000000003");
+    private static readonly Guid DestroyerId = Guid.Parse("cccccccc-0000-0000-0000-000000000004");
+    private static readonly Guid InfantryId = Guid.Parse("cccccccc-0000-0000-0000-000000000005");
+
     private static ImmutableDictionary<Guid, ImmutableArray<NexusUnitStackGroup>> WithUnits(
-        params (Guid Player, (NexusUnitType Type, int Count)[] Units)[] entries
+        params (Guid Player, (Guid DesignId, NexusUnitCategory Category, string Name, int Count)[] Units)[] entries
     )
     {
         var builder = ImmutableDictionary.CreateBuilder<Guid, ImmutableArray<NexusUnitStackGroup>>();
@@ -38,7 +44,7 @@
             builder.Add(
                 player,
                 units
-                    .Select(unit => new NexusUnitStackGroup(unit.Type, unit.Type.Profile().Hits, unit.Count))
+                    .Select(u => new NexusUnitStackGroup(u.DesignId, u.Category, 1, u.Count, u.Name))
                     .ToImmutableArray()
             );
         }
@@ -77,7 +83,10 @@ NexusFactionColor.Red),
                 2,
                 null,
                 P1,
-                WithUnits((P1, [(NexusUnitType.Frigate, 2), (NexusUnitType.Infantry, 1)]))
+                WithUnits((P1, [
+                    (FrigateId, NexusUnitCategory.Capital, "Frigate", 2),
+                    (InfantryId, NexusUnitCategory.Planetary, "Infantry", 1),
+                ]))
             )
         ),
         new(
@@ -88,7 +97,10 @@ NexusFactionColor.Red),
                 2,
                 null,
                 P2,
-                WithUnits((P2, [(NexusUnitType.Cruiser, 1), (NexusUnitType.Fighter, 2)]))
+                WithUnits((P2, [
+                    (CruiserId, NexusUnitCategory.Capital, "Cruiser", 1),
+                    (FighterId, NexusUnitCategory.Strike, "Fighter", 2),
+                ]))
             )
         ),
         new(
@@ -100,8 +112,11 @@ NexusFactionColor.Red),
                 null,
                 P1,
                 WithUnits(
-                    (P1, [(NexusUnitType.Destroyer, 1), (NexusUnitType.Infantry, 2)]),
-                    (P2, [(NexusUnitType.Frigate, 1)])
+                    (P1, [
+                        (DestroyerId, NexusUnitCategory.Capital, "Destroyer", 1),
+                        (InfantryId, NexusUnitCategory.Planetary, "Infantry", 2),
+                    ]),
+                    (P2, [(FrigateId, NexusUnitCategory.Capital, "Frigate", 1)])
                 )
             )
         ),

@@ -31,7 +31,7 @@ public static class NexusSessionEventFormatter
             NexusIncomeEvent e =>
                 $"{PlayerName(e.PlayerId, playerNames)} collected +{e.Amount}⚡ from {e.Sources.Length} system(s)",
             NexusUnitDeployedEvent e =>
-                $"{PlayerName(e.PlayerId, playerNames)} deployed {e.Count}× {e.UnitType} at {SectorName(e.HomeSystem, e.PlayerId, viewingPlayerId)}",
+                $"{PlayerName(e.PlayerId, playerNames)} deployed {e.Count}× {e.DesignName} at {SectorName(e.HomeSystem, e.PlayerId, viewingPlayerId)}",
             NexusGateStartedEvent e =>
                 $"{PlayerName(e.PlayerId, playerNames)} began Nexus Gate construction at {SectorName(e.System, ownerPlayerId: null, viewingPlayerId)}",
             NexusGateCompletedEvent e =>
@@ -39,7 +39,7 @@ public static class NexusSessionEventFormatter
             NexusGateCancelledEvent e =>
                 $"{PlayerName(e.PlayerId, playerNames)}'s Nexus Gate construction at {SectorName(e.System, ownerPlayerId: null, viewingPlayerId)} was cancelled",
             NexusCapitalDisbandedEvent e =>
-                $"{PlayerName(e.PlayerId, playerNames)}'s {e.UnitType} at {SectorName(e.System, ownerPlayerId: null, viewingPlayerId)} was disbanded (over supply limit)",
+                $"{PlayerName(e.PlayerId, playerNames)}'s {e.DesignName} at {SectorName(e.System, ownerPlayerId: null, viewingPlayerId)} was disbanded (over supply limit)",
             NexusVictoryEvent e =>
                 $"{PlayerName(e.WinnerId, playerNames)} activated the Nexus Gate — victory!",
             NexusDrawEvent e => $"The game ended in a draw: {e.Reason}",
@@ -67,12 +67,7 @@ public static class NexusSessionEventFormatter
     }
 
     private static string FormatUnits(ImmutableArray<NexusUnitStackGroup> stacks) =>
-        string.Join(
-            ", ",
-            stacks.Select(stack =>
-                $"{stack.Count}× {stack.UnitType} ({stack.RemainingHits}/{stack.UnitType.Profile().Hits} hits)"
-            )
-        );
+        string.Join(", ", stacks.Select(stack => $"{stack.Count}× (design {stack.DesignId})"));
 
     private static string FormatCombatResult(
         NexusCombatResultEvent e,
@@ -103,7 +98,9 @@ public static class NexusSessionEventFormatter
                     var playerName = PlayerName(group.Key, playerNames);
                     var lossList = string.Join(
                         ", ",
-                        group.Select(loss => $"{loss.Count}× {loss.UnitType}").OrderBy(text => text)
+                        group
+                            .Select(loss => $"{loss.Count}× {loss.DesignName}")
+                            .OrderBy(text => text)
                     );
                     return $"{playerName} loses {lossList}";
                 })
@@ -131,9 +128,6 @@ public static class NexusSessionEventFormatter
             : "Unknown";
 
         var hitResult = roll.WasShielded ? "absorbed" : (roll.IsHit ? "hit" : "miss");
-        return $"{attackerName} {FormatUnitWithHits(roll.AttackerType, roll.AttackerRemainingHits)} -> {targetName} {FormatUnitWithHits(roll.TargetType, roll.TargetRemainingHits)}: rolled {roll.Roll} vs {roll.Threshold} {hitResult}";
+        return $"{attackerName} {roll.AttackerDesignName} ({roll.AttackerRemainingHits} hits) -> {targetName} {roll.TargetDesignName} ({roll.TargetRemainingHits} hits): rolled {roll.Roll} vs {roll.Threshold} {hitResult}";
     }
-
-    private static string FormatUnitWithHits(NexusUnitType unitType, int remainingHits) =>
-        $"{unitType} ({remainingHits}/{unitType.Profile().Hits} hits)";
 }

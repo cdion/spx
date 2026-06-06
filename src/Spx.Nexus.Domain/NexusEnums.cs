@@ -1,3 +1,5 @@
+using Orleans;
+
 namespace Spx.Nexus.Domain;
 
 /// <summary>The two combat phases: contact fires first, then battle resolves remaining units.</summary>
@@ -33,63 +35,133 @@ public enum NexusGateProgress
     Completed = 2,
 }
 
-/// <summary>Tags model special abilities that affect combat behavior.</summary>
-[Flags]
-public enum NexusUnitTag
+/// <summary>Tags model special abilities and behaviours that can be applied to a unit design.</summary>
+[GenerateSerializer]
+[Alias("NexusUnitModule")]
+public abstract record NexusUnitModule;
+
+/// <summary>Absorbs the first hit each combat on a 4+ save.</summary>
+[GenerateSerializer]
+public sealed record Shield : NexusUnitModule;
+
+/// <summary>Attacks bypass Shield saves entirely.</summary>
+[GenerateSerializer]
+public sealed record Disruptor : NexusUnitModule;
+
+/// <summary>Reduces effective silhouette of up to <see cref="N"/> friendly ships by 1 (min 1) when attacked by <see cref="Category"/> units. Highest silhouette ships covered first.</summary>
+[GenerateSerializer]
+public sealed record Screen([property: Id(0)] NexusUnitCategory Category, [property: Id(1)] int N)
+    : NexusUnitModule;
+
+/// <summary>Reduces hit threshold by 1 for up to <see cref="N"/> friendly <see cref="Category"/> units when they attack. Highest silhouette units buffed first.</summary>
+[GenerateSerializer]
+public sealed record Command([property: Id(0)] NexusUnitCategory Category, [property: Id(1)] int N)
+    : NexusUnitModule;
+
+/// <summary>This unit can be transported by a Capital unit with <see cref="Hangar"/>. Consumes one carry slot.</summary>
+[GenerateSerializer]
+public sealed record Dock : NexusUnitModule;
+
+/// <summary>Provides carry capacity for units with <see cref="Dock"/>. Capital hull only.</summary>
+[GenerateSerializer]
+public sealed record Hangar([property: Id(0)] int Capacity) : NexusUnitModule;
+
+/// <summary>Base attacks against <see cref="Category"/> units resolve in the Battle phase.</summary>
+[GenerateSerializer]
+public sealed record Battery([property: Id(0)] NexusUnitCategory Category) : NexusUnitModule;
+
+/// <summary>Base attacks against <see cref="Category"/> units resolve in the Contact phase (safe from return fire).</summary>
+[GenerateSerializer]
+public sealed record Vanguard([property: Id(0)] NexusUnitCategory Category) : NexusUnitModule;
+
+/// <summary>One extra attack each step that only targets <see cref="Category"/> units.</summary>
+[GenerateSerializer]
+public sealed record Barrage([property: Id(0)] NexusUnitCategory Category) : NexusUnitModule;
+
+/// <summary>Hit threshold reduced by <see cref="Magnitude"/> vs <see cref="Category"/> targets.</summary>
+[GenerateSerializer]
+public sealed record Seeker(
+    [property: Id(0)] NexusUnitCategory Category,
+    [property: Id(1)] int Magnitude
+) : NexusUnitModule;
+
+/// <summary>Hit threshold increased by <see cref="Magnitude"/> vs <see cref="Category"/> targets.</summary>
+[GenerateSerializer]
+public sealed record Scatter(
+    [property: Id(0)] NexusUnitCategory Category,
+    [property: Id(1)] int Magnitude
+) : NexusUnitModule;
+
+/// <summary>Increases this unit's hit points by <see cref="N"/>.</summary>
+[GenerateSerializer]
+public sealed record Armour([property: Id(0)] int N) : NexusUnitModule;
+
+/// <summary>This unit can contest and hold system control. Without this module, a unit's presence alone cannot flip or hold a system.</summary>
+[GenerateSerializer]
+public sealed record Control : NexusUnitModule;
+
+/// <summary>Increases this unit's move range by <see cref="N"/> hexes.</summary>
+[GenerateSerializer]
+public sealed record Drive([property: Id(0)] int N) : NexusUnitModule;
+
+/// <summary>Restores one lost hit at the end of each turn's resolution.</summary>
+[GenerateSerializer]
+public sealed record Repair : NexusUnitModule;
+
+/// <summary>Increases silhouette by <see cref="N"/>, making this unit more likely to be targeted. Grants N extra module slots.</summary>
+[GenerateSerializer]
+public sealed record Beacon([property: Id(0)] int N) : NexusUnitModule;
+
+/// <summary>Reduces silhouette by <see cref="N"/> (minimum 1), making this unit less likely to be targeted.</summary>
+[GenerateSerializer]
+public sealed record Cloak([property: Id(0)] int N) : NexusUnitModule;
+
+/// <summary>Central cost and slot table for all modules.</summary>
+public static class NexusModuleCosts
 {
-    None = 0,
+    public static int GetCost(NexusUnitModule module) =>
+        module switch
+        {
+            Shield => 2,
+            Disruptor => 2,
+            Screen { N: var n } => n,
+            Command { N: var n } => n * 2,
+            Dock => 0,
+            Hangar { Capacity: var c } => c,
+            Battery => 1,
+            Vanguard => 2,
+            Barrage => 3,
+            Seeker { Magnitude: var m } => m * 2,
+            Scatter { Magnitude: var m } => -m,
+            Cloak { N: var n } => n * 2,
+            Armour { N: var n } => n * 2,
+            Control => 1,
+            Drive { N: var n } => n * 2,
+            Repair => 3,
+            Beacon => 0,
+            _ => 0,
+        };
 
-    /// <summary>Absorbs the first hit each combat on a 4+ save.</summary>
-    Shield = 1,
-
-    /// <summary>Base attacks against Strike units resolve in the Contact phase (safe from return fire).</summary>
-    FirstAttackStrike = 2,
-
-    /// <summary>Base attacks against Strike units resolve in the Battle phase.</summary>
-    CanAttackStrike = 4,
-
-    /// <summary>Base attacks against Capital units resolve in the Battle phase.</summary>
-    CanAttackCapital = 8,
-
-    /// <summary>Base attacks against Planetary units resolve in the Battle phase.</summary>
-    CanAttackPlanetary = 16,
-
-    /// <summary>Hit threshold -1 vs Strike targets.</summary>
-    BonusVsStrike = 32,
-
-    /// <summary>Hit threshold -1 vs Capital targets.</summary>
-    BonusVsCapital = 64,
-
-    /// <summary>Hit threshold -1 vs Planetary targets.</summary>
-    BonusVsPlanetary = 128,
-
-    /// <summary>Hit threshold +1 vs Strike targets.</summary>
-    PenaltyVsStrike = 256,
-
-    /// <summary>Hit threshold +1 vs Capital targets.</summary>
-    PenaltyVsCapital = 512,
-
-    /// <summary>Hit threshold +1 vs Planetary targets.</summary>
-    PenaltyVsPlanetary = 1024,
-
-    /// <summary>Attacks bypass Shield saves entirely.</summary>
-    IgnoreShield = 2048,
-
-    /// <summary>One extra attack each step that only targets Strike units.</summary>
-    FreeAttackStrike = 4096,
-
-    /// <summary>One extra attack each step that only targets Capital units.</summary>
-    FreeAttackCapital = 8192,
-
-    /// <summary>One extra attack each step that only targets Planetary units.</summary>
-    FreeAttackPlanetary = 16384,
-
-    /// <summary>Reduces effective silhouette of friendly non-Escort Capital units by 1 (min 1). Does not stack.</summary>
-    Escort = 32768,
-
-    /// <summary>Base attacks against Capital units resolve in the Contact phase (safe from return fire).</summary>
-    FirstAttackCapital = 65536,
-
-    /// <summary>Base attacks against Planetary units resolve in the Contact phase (safe from return fire).</summary>
-    FirstAttackPlanetary = 131072,
+    public static int GetSlots(NexusUnitModule module) =>
+        module switch
+        {
+            Battery => 1,
+            Vanguard => 1,
+            Barrage => 1,
+            Seeker { Magnitude: var m } => m,
+            Scatter => 0,
+            Shield => 1,
+            Disruptor => 1,
+            Armour { N: var n } => n,
+            Hangar { Capacity: var c } => (c + 1) / 2,
+            Dock => 0,
+            Screen { N: var n } => n,
+            Command { N: var n } => n,
+            Control => 0,
+            Drive { N: var n } => n,
+            Repair => 1,
+            Beacon { N: var n } => -n,
+            Cloak { N: var n } => n,
+            _ => 0,
+        };
 }

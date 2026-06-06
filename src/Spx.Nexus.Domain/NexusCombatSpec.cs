@@ -3,8 +3,8 @@ namespace Spx.Nexus.Domain;
 /// <summary>
 /// Combat rules for Nexus Protocol.
 /// <para>Each unit has a base hit threshold and tags that control targeting permissions
-/// (<c>CanAttack*</c> for Battle phase, <c>FirstAttack*</c> for Contact phase).
-/// <c>BonusVs*</c> lowers the threshold by 1; <c>PenaltyVs*</c> raises it by 1.
+/// (<c>Battery</c> for Battle phase, <c>Vanguard</c> for Contact phase).
+/// <c>Seeker</c> lowers the threshold by its magnitude; <c>Scatter</c> raises it.
 /// The result is clamped at a minimum of 2. If the unit lacks the appropriate
 /// targeting tag for the target's category, it cannot target that unit.</para>
 /// </summary>
@@ -18,26 +18,62 @@ public static class NexusCombatSpec
     /// in the given <paramref name="phase"/>.
     /// </summary>
     public static int? GetHitThreshold(
-        NexusUnitType attacker,
-        NexusUnitType target,
-        NexusCombatPhase phase = NexusCombatPhase.Battle
+        NexusUnitProfile attacker,
+        NexusUnitProfile target,
+        NexusCombatPhase phase = NexusCombatPhase.Battle,
+        int commandBonus = 0
     )
     {
-        var profile = attacker.Profile();
-        var targetCategory = target.Profile().Category;
-
-        if (!CanTargetCategory(profile.Tags, targetCategory, phase))
+        if (!CanTargetCategory(attacker.Modules, target.Category, phase))
             return null;
 
-        var threshold = profile.HitThreshold;
+        var threshold = attacker.HitThreshold;
 
-        // Apply bonus (threshold -1) or penalty (threshold +1) for the target's category
-        if (profile.Tags.HasFlag(BonusForCategory(targetCategory)))
-            threshold--;
-        else if (profile.Tags.HasFlag(PenaltyForCategory(targetCategory)))
-            threshold++;
+        var bonus = attacker
+            .Modules.OfType<Seeker>()
+            .Where(t => t.Category == target.Category)
+            .Sum(t => t.Magnitude);
+        var penalty = attacker
+            .Modules.OfType<Scatter>()
+            .Where(t => t.Category == target.Category)
+            .Sum(t => t.Magnitude);
+
+        threshold = threshold - bonus - commandBonus + penalty;
 
         return Math.Max(MinimumHitThreshold, threshold);
+    }
+
+    /// <summary>
+    /// Returns 1 if <paramref name="attacker"/> falls within the coverage of friendly
+    /// <see cref="Command"/> modules targeting its category, 0 otherwise.
+    /// Coverage = sum of N from all Command(Category) modules on other friendly units.
+    /// The highest-silhouette eligible units (non-Command-providers) are covered first.
+    /// </summary>
+    public static int GetCommandBonus(
+        NexusUnitProfile attacker,
+        IReadOnlyList<NexusUnitProfile> friendlyProfiles
+    )
+    {
+        var category = attacker.Category;
+
+        // Units that provide Command for attacker's category (other than attacker itself)
+        var coverage = friendlyProfiles
+            .Where(p => !ReferenceEquals(p, attacker))
+            .SelectMany(p => p.Modules.OfType<Command>().Where(c => c.Category == category))
+            .Sum(c => c.N);
+
+        if (coverage <= 0)
+            return 0;
+
+        // Eligible recipients: same category, not themselves a Command provider for this category
+        var eligible = friendlyProfiles
+            .Where(p => p.Category == category)
+            .Where(p => !p.Modules.OfType<Command>().Any(c => c.Category == category))
+            .OrderByDescending(p => p.Silhouette)
+            .ToList();
+
+        var rank = eligible.FindIndex(p => ReferenceEquals(p, attacker));
+        return rank >= 0 && rank < coverage ? 1 : 0;
     }
 
     /// <summary>
@@ -45,80 +81,49 @@ public static class NexusCombatSpec
     /// <paramref name="category"/> in the specified <paramref name="phase"/>.
     /// </summary>
     public static bool CanTargetCategory(
-        NexusUnitTag tags,
+        IReadOnlyList<NexusUnitModule> tags,
         NexusUnitCategory category,
         NexusCombatPhase phase
     ) =>
         phase switch
         {
-            NexusCombatPhase.Contact => tags.HasFlag(FirstAttackForCategory(category)),
-            NexusCombatPhase.Battle => tags.HasFlag(CanAttackForCategory(category)),
+            NexusCombatPhase.Contact => tags.OfType<Vanguard>().Any(t => t.Category == category),
+            NexusCombatPhase.Battle => tags.OfType<Battery>().Any(t => t.Category == category),
             _ => false,
         };
 
-    private static NexusUnitTag BonusForCategory(NexusUnitCategory category) =>
-        category switch
-        {
-            NexusUnitCategory.Strike => NexusUnitTag.BonusVsStrike,
-            NexusUnitCategory.Capital => NexusUnitTag.BonusVsCapital,
-            NexusUnitCategory.Planetary => NexusUnitTag.BonusVsPlanetary,
-            _ => NexusUnitTag.None,
-        };
-
-    private static NexusUnitTag PenaltyForCategory(NexusUnitCategory category) =>
-        category switch
-        {
-            NexusUnitCategory.Strike => NexusUnitTag.PenaltyVsStrike,
-            NexusUnitCategory.Capital => NexusUnitTag.PenaltyVsCapital,
-            NexusUnitCategory.Planetary => NexusUnitTag.PenaltyVsPlanetary,
-            _ => NexusUnitTag.None,
-        };
-
-    /// <summary>Returns the <c>CanAttack*</c> tag for the given category (Battle phase targeting).</summary>
-    public static NexusUnitTag CanAttackForCategory(NexusUnitCategory category) =>
-        category switch
-        {
-            NexusUnitCategory.Strike => NexusUnitTag.CanAttackStrike,
-            NexusUnitCategory.Capital => NexusUnitTag.CanAttackCapital,
-            NexusUnitCategory.Planetary => NexusUnitTag.CanAttackPlanetary,
-            _ => throw new ArgumentOutOfRangeException(nameof(category), category, null),
-        };
-
-    /// <summary>Returns the <c>FirstAttack*</c> tag for the given category (Contact phase targeting).</summary>
-    public static NexusUnitTag FirstAttackForCategory(NexusUnitCategory category) =>
-        category switch
-        {
-            NexusUnitCategory.Strike => NexusUnitTag.FirstAttackStrike,
-            NexusUnitCategory.Capital => NexusUnitTag.FirstAttackCapital,
-            NexusUnitCategory.Planetary => NexusUnitTag.FirstAttackPlanetary,
-            _ => throw new ArgumentOutOfRangeException(nameof(category), category, null),
-        };
-
     /// <summary>
-    /// Computes targeting silhouette weights for a list of individual units.
-    /// Each Escort unit protects one non-Escort Capital ship by reducing its
-    /// effective silhouette by 1 (minimum 1). The ships with the highest
-    /// silhouette are covered first. The returned array has one entry per
-    /// input unit (index-aligned).
+    /// Computes targeting silhouette weights for a list of unit profiles.
+    /// Each Screen(C) unit reduces the silhouette of one non-Screen Capital ship by 1 (min 1)
+    /// when the attacker is of category C. The ships with the highest silhouette are covered first.
+    /// The returned array has one entry per input profile (index-aligned).
     /// </summary>
-    public static int[] ComputeTargetWeights(IReadOnlyList<NexusUnitType> units)
+    public static int[] ComputeTargetWeights(
+        IReadOnlyList<NexusUnitProfile> profiles,
+        NexusUnitCategory attackerCategory
+    )
     {
-        var weights = new int[units.Count];
+        var weights = new int[profiles.Count];
 
-        var escortCount = units.Count(t => t.Profile().Tags.HasFlag(NexusUnitTag.Escort));
+        var escortCount = profiles.Sum(p =>
+            p.Modules.OfType<Screen>().Where(s => s.Category == attackerCategory).Sum(s => s.N)
+        );
 
-        var protectable = units
-            .Select((t, i) => (Type: t, Index: i))
-            .Where(x => x.Type.IsCapital() && !x.Type.Profile().Tags.HasFlag(NexusUnitTag.Escort))
-            .OrderByDescending(x => x.Type.Profile().Silhouette)
+        var protectable = profiles
+            .Select((p, i) => (Profile: p, Index: i))
+            .Where(x =>
+                x.Profile.Category == NexusUnitCategory.Capital
+                && !x.Profile.Modules.OfType<Screen>().Any()
+            )
+            .OrderByDescending(x => x.Profile.Silhouette)
             .ToList();
 
         var protectedCount = Math.Min(escortCount, protectable.Count);
         var protectedIndices = protectable.Take(protectedCount).Select(x => x.Index).ToHashSet();
 
-        for (var i = 0; i < units.Count; i++)
+        for (var i = 0; i < profiles.Count; i++)
         {
-            var sil = units[i].Profile().Silhouette;
+            var sil = profiles[i].Silhouette;
             if (protectedIndices.Contains(i))
                 sil = Math.Max(1, sil - 1);
             weights[i] = sil;

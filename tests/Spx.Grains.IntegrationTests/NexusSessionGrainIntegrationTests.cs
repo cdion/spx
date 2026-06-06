@@ -97,7 +97,7 @@ public sealed class GameSessionGrainIntegrationTests(OrleansClusterFixture fixtu
     }
 
     [Fact]
-    public async Task SubmitOrdersAsync_accepts_move_order_and_round_trips_serialization()
+    public async Task SubmitOrdersAsync_accepts_empty_orders_and_round_trips_serialization()
     {
         var grain = fixture.Cluster.Client.GetGrain<INexusSessionGrain>(
             Guid.Parse("00000000-0000-0000-0000-000000000005")
@@ -108,35 +108,9 @@ public sealed class GameSessionGrainIntegrationTests(OrleansClusterFixture fixtu
         Assert.NotNull(view);
 
         var currentPlayerId = view!.CurrentPlayer.PlayerId;
-        var systemWithFleet = view.Systems.First(s =>
-            s.GetPlayerUnitCounts(currentPlayerId).Values.Sum() > 0
-        );
-        var destination = NexusViewQueries.GetValidMoveDestinations(
-            view,
-            currentPlayerId,
-            systemWithFleet.Coord
-        )[0];
-        var moveUnit = systemWithFleet
-            .GetPlayerUnitCounts(currentPlayerId)
-            .First(kv => kv.Value > 0)
-            .Key;
 
         var result = await grain.SubmitOrdersAsync(
-            new NexusTurnOrdersCommand(
-                currentPlayerId,
-                1,
-                [
-                    new NexusMoveOrder(
-                        systemWithFleet.Coord,
-                        destination,
-                        ImmutableArray.Create(
-                            new NexusUnitStackGroup(moveUnit, moveUnit.Profile().Hits, 1)
-                        )
-                    ),
-                ],
-                [],
-                false
-            )
+            new NexusTurnOrdersCommand(currentPlayerId, 1, [], [], false)
         );
 
         Assert.IsType<NexusTurnOrdersAccepted>(result);

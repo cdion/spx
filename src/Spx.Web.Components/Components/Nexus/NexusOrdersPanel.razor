@@ -1,5 +1,5 @@
 <div class="space-y-4">
-    <NexusPendingOrdersListComponent MoveOrders="@MoveOrders" BuildOrders="@BuildOrders"
+    <NexusPendingOrdersListComponent MoveOrders="@MoveOrders" BuildOrders="@BuildOrders" Designs="@Designs"
                                      CurrentPlayerName="@CurrentPlayerName" CurrentPlayerHomeCoord="@CurrentPlayerHomeCoord"
                                      OpponentPlayerName="@OpponentPlayerName" OpponentPlayerHomeCoord="@OpponentPlayerHomeCoord"
                                      BeginNexusGate="@BeginNexusGate" IsEditable="@IsEditable" OnPendingOrderRequested="OnPendingOrderRequested" />
@@ -30,6 +30,9 @@
 
     [Parameter]
     public bool IsEditable { get; set; }
+
+    [Parameter]
+    public ImmutableArray<NexusUnitDesign> Designs { get; set; } = [];
 
     [Parameter]
     public EventCallback<PendingOrderRequest> OnPendingOrderRequested { get; set; }

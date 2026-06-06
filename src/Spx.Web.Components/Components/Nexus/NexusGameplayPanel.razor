@@ -76,6 +76,7 @@
                                                            IsEditable="@ShowOrdersForm" ProjectedEnergy="@ProjectedEnergy"
                                                            AvailableStacks="@GetAvailableMoveStacks(selectedSystem.Coord)"
                                                            PendingBuildOrders="@_orderDraftState.PendingBuildOrders"
+                                                           PlayerDesigns="@(Session.CurrentPlayer.Designs ?? [])"
                                                            OnOrderDraftRequested="HandleOrderDraftRequest" />
                                 }
                                 @if (_orderDraftState.PendingMoveOrders.Length > 0 ||
@@ -84,6 +85,7 @@
                                 {
                                     <NexusOrdersPanel MoveOrders="@_orderDraftState.PendingMoveOrders"
                                                       BuildOrders="@_orderDraftState.PendingBuildOrders"
+                                                      Designs="@(Session.CurrentPlayer.Designs ?? [])"
                                                       CurrentPlayerName="@CurrentPlayerName" CurrentPlayerHomeCoord="@CurrentPlayerHomeCoord"
                                                       OpponentPlayerName="@OpponentPlayerName"
                                                       OpponentPlayerHomeCoord="@OpponentPlayerHomeCoord"
@@ -155,7 +157,7 @@
         _lastKnownGameId = Session.GameId;
         _lastKnownCurrentPlayerId = Session.CurrentPlayer.PlayerId;
         _lastKnownRound = Session.RoundNumber;
-        _orderDraftState = OrderDraftState.Empty;
+        _orderDraftState = OrderDraftState.Empty with { Designs = Session.CurrentPlayer.Designs ?? [] };
         _selectionState = SelectionState.Empty;
         _sidebarState = SidebarState.Default;
         _eventFocusState = EventFocusState.Empty;
@@ -282,7 +284,7 @@
             case OrderDraftRequestKind.BuildDraftAdjusted:
                 _orderDraftState = NexusGameplayPanelState.ApplyBuildDraftAdjustment(
                     _orderDraftState,
-                    request.UnitType!.Value,
+                    request.DesignId!.Value,
                     request.BuildAdjustment!.Value,
                     ProjectedEnergy
                 );
@@ -337,7 +339,7 @@
         {
             for (var index = 0; index < builder.Count; index++)
             {
-                if (builder[index].UnitType != pendingStack.UnitType || builder[index].RemainingHits != pendingStack.RemainingHits)
+                if (builder[index].DesignId != pendingStack.DesignId || builder[index].RemainingHits != pendingStack.RemainingHits)
                     continue;
 
                 var nextCount = builder[index].Count - pendingStack.Count;

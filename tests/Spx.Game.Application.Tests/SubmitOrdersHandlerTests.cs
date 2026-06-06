@@ -13,6 +13,10 @@ public sealed class SubmitOrdersHandlerTests
     private static readonly Guid RedPlayerId = Guid.NewGuid();
     private static readonly Guid BluePlayerId = Guid.NewGuid();
 
+    private static readonly Guid FighterDesignId = Guid.NewGuid();
+    private static readonly Guid CruiserDesignId = Guid.NewGuid();
+    private static readonly Guid DestroyerDesignId = Guid.NewGuid();
+
     [Fact]
     public void Format_WhenViewingPlayerMatchesHomeOwner_UsesYourHomeSystem()
     {
@@ -25,7 +29,9 @@ public sealed class SubmitOrdersHandlerTests
             RedPlayerId,
             NexusMapTopology.Player1HomeCoord,
             new HexCoord(1, -2),
-            ImmutableArray.Create(new NexusUnitStackGroup(NexusUnitType.Fighter, 1, 1)),
+            ImmutableArray.Create(
+                new NexusUnitStackGroup(FighterDesignId, NexusUnitCategory.Strike, 1, 1)
+            ),
             IsRetreat: false
         );
 
@@ -51,42 +57,48 @@ public sealed class SubmitOrdersHandlerTests
                 new NexusPhaseResult(
                     NexusCombatPhase.Battle,
                     [
-                        new NexusCombatLoss(BluePlayerId, NexusUnitType.Destroyer, 1),
-                        new NexusCombatLoss(RedPlayerId, NexusUnitType.Fighter, 2),
+                        new NexusCombatLoss(BluePlayerId, DestroyerDesignId, "Destroyer", 1),
+                        new NexusCombatLoss(RedPlayerId, FighterDesignId, "Fighter", 2),
                     ],
                     [
                         new NexusCombatAttackRoll(
-                            RedPlayerId,
-                            NexusUnitType.Cruiser,
-                            NexusUnitType.Destroyer,
-                            5,
-                            3,
-                            true,
-                            2,
-                            BluePlayerId,
-                            1
+                            AttackingPlayerId: RedPlayerId,
+                            AttackerDesignId: CruiserDesignId,
+                            AttackerDesignName: "Cruiser",
+                            TargetDesignId: DestroyerDesignId,
+                            TargetDesignName: "Destroyer",
+                            Roll: 5,
+                            Threshold: 3,
+                            IsHit: true,
+                            AttackerRemainingHits: 2,
+                            TargetPlayerId: BluePlayerId,
+                            TargetRemainingHits: 1
                         ),
                         new NexusCombatAttackRoll(
-                            RedPlayerId,
-                            NexusUnitType.Cruiser,
-                            NexusUnitType.Destroyer,
-                            2,
-                            3,
-                            false,
-                            2,
-                            BluePlayerId,
-                            1
+                            AttackingPlayerId: RedPlayerId,
+                            AttackerDesignId: CruiserDesignId,
+                            AttackerDesignName: "Cruiser",
+                            TargetDesignId: DestroyerDesignId,
+                            TargetDesignName: "Destroyer",
+                            Roll: 2,
+                            Threshold: 3,
+                            IsHit: false,
+                            AttackerRemainingHits: 2,
+                            TargetPlayerId: BluePlayerId,
+                            TargetRemainingHits: 1
                         ),
                         new NexusCombatAttackRoll(
-                            BluePlayerId,
-                            NexusUnitType.Destroyer,
-                            NexusUnitType.Fighter,
-                            5,
-                            5,
-                            true,
-                            1,
-                            RedPlayerId,
-                            1
+                            AttackingPlayerId: BluePlayerId,
+                            AttackerDesignId: DestroyerDesignId,
+                            AttackerDesignName: "Destroyer",
+                            TargetDesignId: FighterDesignId,
+                            TargetDesignName: "Fighter",
+                            Roll: 5,
+                            Threshold: 5,
+                            IsHit: true,
+                            AttackerRemainingHits: 1,
+                            TargetPlayerId: RedPlayerId,
+                            TargetRemainingHits: 1
                         ),
                     ]
                 ),
@@ -97,15 +109,15 @@ public sealed class SubmitOrdersHandlerTests
 
         Assert.Contains("Combat at Nexus", message);
         Assert.Contains(
-            "Alice Cruiser (2/2 hits) -> Bob Destroyer (1/2 hits): rolled 5 vs 3 hit",
+            "Alice Cruiser (2 hits) -> Bob Destroyer (1 hits): rolled 5 vs 3 hit",
             message
         );
         Assert.Contains(
-            "Alice Cruiser (2/2 hits) -> Bob Destroyer (1/2 hits): rolled 2 vs 3 miss",
+            "Alice Cruiser (2 hits) -> Bob Destroyer (1 hits): rolled 2 vs 3 miss",
             message
         );
         Assert.Contains(
-            "Bob Destroyer (1/2 hits) -> Alice Fighter (1/1 hits): rolled 5 vs 5 hit",
+            "Bob Destroyer (1 hits) -> Alice Fighter (1 hits): rolled 5 vs 5 hit",
             message
         );
         Assert.Contains("Losses: Alice loses 2× Fighter; Bob loses 1× Destroyer", message);

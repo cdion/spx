@@ -353,6 +353,18 @@ public sealed class GetNexusPageHandlerTests
             AbandonCalls.Add((gameId, playerId));
             return Task.CompletedTask;
         }
+
+        public Task<GameSessionCommandOutcome> CreateDesignAsync(
+            Guid gameId,
+            NexusCreateDesignCommand command,
+            CancellationToken cancellationToken = default
+        ) => throw new NotSupportedException();
+
+        public Task<GameSessionCommandOutcome> DeleteDesignAsync(
+            Guid gameId,
+            NexusDeleteDesignCommand command,
+            CancellationToken cancellationToken = default
+        ) => throw new NotSupportedException();
     }
 
     private sealed class FakeGamePresenceService : IGamePresenceService

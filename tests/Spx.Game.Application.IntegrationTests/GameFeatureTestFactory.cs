@@ -108,4 +108,16 @@ internal sealed class FakeGameSessionService : INexusSessionService
         Guid playerId,
         CancellationToken cancellationToken = default
     ) => throw new NotSupportedException();
+
+    public Task<GameSessionCommandOutcome> CreateDesignAsync(
+        Guid gameId,
+        NexusCreateDesignCommand command,
+        CancellationToken cancellationToken = default
+    ) => throw new NotSupportedException();
+
+    public Task<GameSessionCommandOutcome> DeleteDesignAsync(
+        Guid gameId,
+        NexusDeleteDesignCommand command,
+        CancellationToken cancellationToken = default
+    ) => throw new NotSupportedException();
 }

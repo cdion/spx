@@ -27,7 +27,7 @@ public sealed record TacticalSimulationSettings(int IterationsPerMatchup, int Ba
 }
 
 public sealed record TacticalProfileUnit(
-    NexusUnitType UnitType,
+    NexusUnitDesign Design,
     int Count,
     int? RemainingHits = null
 );
@@ -36,11 +36,12 @@ public sealed record TacticalProfile(
     string Id,
     string Label,
     TacticalProfileFamily Family,
-    IReadOnlyList<string> Tags,
+    IReadOnlyList<string> Modules,
     IReadOnlyList<TacticalProfileUnit> Units
 )
 {
-    public int TotalCost => Units.Sum(unit => unit.UnitType.Cost() * unit.Count);
+    public int TotalCost =>
+        Units.Sum(unit => NexusHullBaselines.GetProfile(unit.Design).Cost * unit.Count);
 }
 
 public sealed record TacticalScenario(
@@ -55,7 +56,7 @@ public sealed record TacticalScenario(
 public sealed record TacticalProfileSummary(
     string Id,
     string Label,
-    IReadOnlyList<string> Tags,
+    IReadOnlyList<string> Modules,
     int TotalCost,
     IReadOnlyList<TacticalProfileUnit> Units
 );
@@ -107,7 +108,8 @@ public sealed record TacticalSurvivorSummary(
     string AttackerProfileId,
     string DefenderProfileId,
     string Side,
-    NexusUnitType UnitType,
+    Guid DesignId,
+    string DesignName,
     double ExpectedCount
 );
 

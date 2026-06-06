@@ -23,14 +23,14 @@ else
         }
         @foreach (var order in BuildOrders)
         {
+            var designName = GetDesignName(order.DesignId);
             <li class="flex items-center justify-between gap-2 rounded-xl border border-white/10 bg-slate-950/60 px-3 py-2"
-                data-testid="@NexusGameplayPanelTestIds.PendingBuildOrder(order.UnitType)">
-                <span class="text-base text-slate-300">Build @order.Count× @order.UnitType (@(order.UnitType.Cost() *
-                                                                                                                                                                                                                    order.Count)⚡)</span>
+                data-testid="@NexusGameplayPanelTestIds.PendingBuildOrder(designName)">
+                <span class="text-base text-slate-300">Build @order.Count× @designName</span>
                     @if (IsEditable)
                     {
                         <button class="ui-button-icon-danger" title="Remove order"
-                                data-testid="@NexusGameplayPanelTestIds.PendingBuildOrderRemove(order.UnitType)"
+                                data-testid="@NexusGameplayPanelTestIds.PendingBuildOrderRemove(designName)"
                                 @onclick="() => OnPendingOrderRequested.InvokeAsync(PendingOrderRequest.BuildOrderRemovalRequested(order))">
                             ×
                         </button>
@@ -68,6 +68,9 @@ else
     [Parameter]
     public HexCoord? OpponentPlayerHomeCoord { get; set; }
 
+    [Parameter]
+    public ImmutableArray<NexusUnitDesign> Designs { get; set; } = [];
+
     [Parameter, EditorRequired]
     public IReadOnlyList<NexusMoveOrder> MoveOrders { get; set; } = [];
 
@@ -88,11 +91,20 @@ else
         var unitSummary = string.Join(
             ", ",
             order.Stacks.Select(stack =>
-                $"{stack.Count}× {stack.UnitType} ({stack.RemainingHits}/{stack.UnitType.Profile().Hits} hits)"
+                $"{stack.Count}× {GetDesignLabel(stack)} ({stack.RemainingHits} hits)"
             )
         );
         return $"{GetSystemDisplayName(order.From)} → {GetSystemDisplayName(order.To)}: {unitSummary}";
     }
+
+    private string GetDesignName(Guid designId)
+    {
+        var design = Designs.FirstOrDefault(d => d.DesignId == designId);
+        return design?.Name ?? designId.ToString("N")[..8];
+    }
+
+    private static string GetDesignLabel(NexusUnitStackGroup stack) =>
+        stack.DesignName.Length > 0 ? stack.DesignName : stack.Category.ToString();
 
     private string GetSystemDisplayName(HexCoord coord)
         => NexusHomeSystemNames.GetSystemDisplayName(

@@ -7,6 +7,15 @@ namespace Spx.Web.Playground.Components.Stories.Nexus;
 
 internal static class NexusStoryFixtures
 {
+    // Story design IDs — stable GUIDs for playground scenarios
+    private static readonly Guid CarrierId = Guid.Parse("bbbbbbbb-0000-0000-0000-000000000001");
+    private static readonly Guid FighterId = Guid.Parse("bbbbbbbb-0000-0000-0000-000000000002");
+    private static readonly Guid InfantryId = Guid.Parse("bbbbbbbb-0000-0000-0000-000000000003");
+    private static readonly Guid DestroyerId = Guid.Parse("bbbbbbbb-0000-0000-0000-000000000004");
+    private static readonly Guid CruiserId = Guid.Parse("bbbbbbbb-0000-0000-0000-000000000005");
+    private static readonly Guid BomberId = Guid.Parse("bbbbbbbb-0000-0000-0000-000000000006");
+    private static readonly Guid ArmorId = Guid.Parse("bbbbbbbb-0000-0000-0000-000000000007");
+
     public static readonly Guid Player1Id = Spx.Web.Playground.Nexus.PlaygroundNexusUsers.Player1Id;
     public static readonly Guid Player2Id = Spx.Web.Playground.Nexus.PlaygroundNexusUsers.Player2Id;
 
@@ -288,7 +297,7 @@ internal static class NexusStoryFixtures
                 Player1Id,
                 NexusMap.Player1HomeCoord,
                 new HexCoord(1, -2),
-                FullHitsStacks((NexusUnitType.Carrier, 1)),
+                FullHitsStacks((CarrierId, NexusUnitCategory.Capital, "Carrier", 1)),
                 IsRetreat: false
             ),
             new NexusSystemClearedEvent(new HexCoord(1, -2), Player1Id),
@@ -316,16 +325,12 @@ internal static class NexusStoryFixtures
                     ImmutableDictionary<Guid, ImmutableArray<NexusUnitStackGroup>>.Empty.Add(
                         Player1Id,
                         FullHitsStacks(
-                            (NexusUnitType.Carrier, 1),
-                            (NexusUnitType.Fighter, 2),
-                            (NexusUnitType.Infantry, 4)
+                            (CarrierId, NexusUnitCategory.Capital, "Carrier", 1),
+                            (FighterId, NexusUnitCategory.Strike, "Fighter", 2),
+                            (InfantryId, NexusUnitCategory.Planetary, "Infantry", 4)
                         )
                     )
                 ),
-                ImmutableDictionary<NexusUnitType, int>
-                    .Empty.Add(NexusUnitType.Carrier, 1)
-                    .Add(NexusUnitType.Fighter, 2)
-                    .Add(NexusUnitType.Infantry, 4),
                 NexusGateProgress.None
             ),
             new(
@@ -339,16 +344,19 @@ internal static class NexusStoryFixtures
                     ImmutableDictionary<Guid, ImmutableArray<NexusUnitStackGroup>>
                         .Empty.Add(
                             Player1Id,
-                            FullHitsStacks((NexusUnitType.Carrier, 1), (NexusUnitType.Infantry, 2))
+                            FullHitsStacks(
+                                (CarrierId, NexusUnitCategory.Capital, "Carrier", 1),
+                                (InfantryId, NexusUnitCategory.Planetary, "Infantry", 2)
+                            )
                         )
                         .Add(
                             Player2Id,
-                            FullHitsStacks((NexusUnitType.Cruiser, 1), (NexusUnitType.Infantry, 1))
+                            FullHitsStacks(
+                                (CruiserId, NexusUnitCategory.Capital, "Cruiser", 1),
+                                (InfantryId, NexusUnitCategory.Planetary, "Infantry", 1)
+                            )
                         )
                 ),
-                ImmutableDictionary<NexusUnitType, int>
-                    .Empty.Add(NexusUnitType.Carrier, 1)
-                    .Add(NexusUnitType.Infantry, 2),
                 NexusGateProgress.Started
             ),
             new(
@@ -363,33 +371,36 @@ internal static class NexusStoryFixtures
                         .Empty.Add(
                             Player1Id,
                             FullHitsStacks(
-                                (NexusUnitType.Carrier, 1),
-                                (NexusUnitType.Fighter, 1),
-                                (NexusUnitType.Infantry, 2),
-                                (NexusUnitType.Armor, 1)
+                                (CarrierId, NexusUnitCategory.Capital, "Carrier", 1),
+                                (FighterId, NexusUnitCategory.Strike, "Fighter", 1),
+                                (InfantryId, NexusUnitCategory.Planetary, "Infantry", 2),
+                                (ArmorId, NexusUnitCategory.Planetary, "Armor", 1)
                             )
                         )
                         .Add(
                             Player2Id,
                             FullHitsStacks(
-                                (NexusUnitType.Destroyer, 1),
-                                (NexusUnitType.Bomber, 1),
-                                (NexusUnitType.Infantry, 1)
+                                (DestroyerId, NexusUnitCategory.Capital, "Destroyer", 1),
+                                (BomberId, NexusUnitCategory.Strike, "Bomber", 1),
+                                (InfantryId, NexusUnitCategory.Planetary, "Infantry", 1)
                             )
                         ),
                     ImmutableDictionary<Guid, ImmutableArray<NexusUnitStackGroup>>
                         .Empty.Add(
                             Player1Id,
-                            FullHitsStacks((NexusUnitType.Carrier, 1), (NexusUnitType.Fighter, 1))
+                            FullHitsStacks(
+                                (CarrierId, NexusUnitCategory.Capital, "Carrier", 1),
+                                (FighterId, NexusUnitCategory.Strike, "Fighter", 1)
+                            )
                         )
                         .Add(
                             Player2Id,
-                            FullHitsStacks((NexusUnitType.Destroyer, 1), (NexusUnitType.Bomber, 1))
+                            FullHitsStacks(
+                                (DestroyerId, NexusUnitCategory.Capital, "Destroyer", 1),
+                                (BomberId, NexusUnitCategory.Strike, "Bomber", 1)
+                            )
                         )
                 ),
-                ImmutableDictionary<NexusUnitType, int>
-                    .Empty.Add(NexusUnitType.Carrier, 1)
-                    .Add(NexusUnitType.Fighter, 1),
                 NexusGateProgress.None
             ),
             new(
@@ -402,33 +413,32 @@ internal static class NexusStoryFixtures
                     null,
                     ImmutableDictionary<Guid, ImmutableArray<NexusUnitStackGroup>>.Empty.Add(
                         Player1Id,
-                        FullHitsStacks((NexusUnitType.Destroyer, 1), (NexusUnitType.Fighter, 1))
+                        FullHitsStacks(
+                            (DestroyerId, NexusUnitCategory.Capital, "Destroyer", 1),
+                            (FighterId, NexusUnitCategory.Strike, "Fighter", 1)
+                        )
                     )
                 ),
-                ImmutableDictionary<NexusUnitType, int>
-                    .Empty.Add(NexusUnitType.Destroyer, 1)
-                    .Add(NexusUnitType.Fighter, 1),
                 NexusGateProgress.None
             ),
         ];
 
+    private static NexusUnitStackGroup Stack(
+        Guid designId,
+        NexusUnitCategory category,
+        string name,
+        int count
+    ) => new(designId, category, 1, count, name);
+
     private static ImmutableArray<NexusUnitStackGroup> FullHitsStacks(
-        params (NexusUnitType Type, int Count)[] units
-    ) =>
-        units
-            .Select(unit => new NexusUnitStackGroup(
-                unit.Type,
-                unit.Type.Profile().Hits,
-                unit.Count
-            ))
-            .ToImmutableArray();
+        params (Guid DesignId, NexusUnitCategory Category, string Name, int Count)[] units
+    ) => units.Select(u => Stack(u.DesignId, u.Category, u.Name, u.Count)).ToImmutableArray();
 
     public sealed record GameplayScenario(string Label, string Description, NexusGameView View);
 
     public sealed record SelectedHexScenario(
         string Label,
         NexusSystemView System,
-        ImmutableDictionary<NexusUnitType, int> AvailableUnits,
         NexusGateProgress GateProgress
     );
 

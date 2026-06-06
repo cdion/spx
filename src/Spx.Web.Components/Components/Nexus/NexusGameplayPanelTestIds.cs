@@ -12,11 +12,11 @@ public static class NexusGameplayPanelTestIds
 
     public static string System(HexCoord coord) => $"nexus-map-system-{CoordToken(coord)}";
 
-    public static string FleetStack(NexusUnitType unitType, int remainingHits) =>
-        $"nexus-fleet-unit-{UnitToken(unitType)}-h{remainingHits}";
+    public static string FleetStack(string designName, int remainingHits) =>
+        $"nexus-fleet-unit-{NameToken(designName)}-h{remainingHits}";
 
-    public static string BuildUnit(NexusUnitType unitType) =>
-        $"nexus-build-unit-{UnitToken(unitType)}";
+    public static string BuildUnit(string designName) =>
+        $"nexus-build-unit-{NameToken(designName)}";
 
     public static string PendingMoveOrder(int index, HexCoord from, HexCoord to) =>
         $"nexus-pending-move-order-{index}-{CoordToken(from)}-to-{CoordToken(to)}";
@@ -24,14 +24,13 @@ public static class NexusGameplayPanelTestIds
     public static string PendingMoveOrderRemove(int index, HexCoord from, HexCoord to) =>
         $"{PendingMoveOrder(index, from, to)}-remove";
 
-    public static string PendingBuildOrder(NexusUnitType unitType) =>
-        $"nexus-pending-build-order-{UnitToken(unitType)}";
+    public static string PendingBuildOrder(string designName) =>
+        $"nexus-pending-build-order-{NameToken(designName)}";
 
-    public static string PendingBuildOrderRemove(NexusUnitType unitType) =>
-        $"{PendingBuildOrder(unitType)}-remove";
+    public static string PendingBuildOrderRemove(string designName) =>
+        $"{PendingBuildOrder(designName)}-remove";
 
     private static string CoordToken(HexCoord coord) => $"q{coord.Q}-r{coord.R}";
 
-    private static string UnitToken(NexusUnitType unitType) =>
-        unitType.ToString().ToLowerInvariant();
+    private static string NameToken(string name) => name.ToLowerInvariant().Replace(" ", "-");
 }

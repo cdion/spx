@@ -14,13 +14,10 @@ public sealed record InitializeNexusGameCommand(
     [property: Id(0)] ImmutableArray<NexusSessionPlayer> Players
 );
 
-/// <summary>Build order for one unit type with a count.</summary>
+/// <summary>Build order for one design with a count.</summary>
 [GenerateSerializer]
 [Immutable]
-public sealed record NexusBuildOrder(
-    [property: Id(0)] NexusUnitType UnitType,
-    [property: Id(1)] int Count
-);
+public sealed record NexusBuildOrder([property: Id(0)] Guid DesignId, [property: Id(1)] int Count);
 
 /// <summary>
 /// A single fleet move: pick a subset of units from <see cref="From"/> and move them to
@@ -61,3 +58,40 @@ public sealed record NexusTurnOrdersAccepted : NexusTurnOrdersResult;
 [Immutable]
 public sealed record NexusTurnOrdersRejected([property: Id(0)] string ErrorMessage)
     : NexusTurnOrdersResult;
+
+// ── Out-of-band design management ────────────────────────────────────────────
+
+[GenerateSerializer]
+[Immutable]
+public sealed record NexusCreateDesignCommand(
+    [property: Id(0)] Guid PlayerId,
+    [property: Id(1)] string Name,
+    [property: Id(2)] NexusUnitCategory Hull,
+    [property: Id(3)] ImmutableArray<NexusUnitModule> Modules
+);
+
+[GenerateSerializer]
+[Immutable]
+public sealed record NexusDeleteDesignCommand(
+    [property: Id(0)] Guid PlayerId,
+    [property: Id(1)] Guid DesignId
+);
+
+[GenerateSerializer]
+[Alias("NexusDesignCommandResult")]
+[Immutable]
+public abstract record NexusDesignCommandResult;
+
+[GenerateSerializer]
+[Immutable]
+public sealed record NexusDesignCreated([property: Id(0)] NexusUnitDesign Design)
+    : NexusDesignCommandResult;
+
+[GenerateSerializer]
+[Immutable]
+public sealed record NexusDesignDeleted : NexusDesignCommandResult;
+
+[GenerateSerializer]
+[Immutable]
+public sealed record NexusDesignCommandRejected([property: Id(0)] string ErrorMessage)
+    : NexusDesignCommandResult;

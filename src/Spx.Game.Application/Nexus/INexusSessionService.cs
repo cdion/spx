@@ -23,4 +23,16 @@ public interface INexusSessionService
     );
 
     Task AbandonAsync(Guid gameId, Guid playerId, CancellationToken cancellationToken = default);
+
+    Task<GameSessionCommandOutcome> CreateDesignAsync(
+        Guid gameId,
+        NexusCreateDesignCommand command,
+        CancellationToken cancellationToken = default
+    );
+
+    Task<GameSessionCommandOutcome> DeleteDesignAsync(
+        Guid gameId,
+        NexusDeleteDesignCommand command,
+        CancellationToken cancellationToken = default
+    );
 }

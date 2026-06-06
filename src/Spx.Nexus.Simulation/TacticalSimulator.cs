@@ -22,6 +22,13 @@ public sealed class TacticalSimulator
         IReadOnlyList<TacticalProfile> profiles
     )
     {
+        // Build a design lookup from all profiles so we can resolve DesignId → name.
+        var designLookup = profiles
+            .SelectMany(p => p.Units)
+            .Select(u => u.Design)
+            .GroupBy(d => d.DesignId)
+            .ToDictionary(g => g.Key, g => g.First());
+
         var matchupSummaries = new List<TacticalMatchupSummary>();
         var phaseSummaries = new List<TacticalPhaseSummary>();
         var survivorSummaries = new List<TacticalSurvivorSummary>();
@@ -33,11 +40,17 @@ public sealed class TacticalSimulator
                 .Where(profile => scenarioProfileIds.Contains(profile.Id))
                 .ToArray();
 
-            foreach (var attacker in scenarioProfiles)
+            foreach (var attackerProfile in scenarioProfiles)
             {
-                foreach (var defender in scenarioProfiles)
+                foreach (var defenderProfile in scenarioProfiles)
                 {
-                    var aggregate = RunMatchup(settings, scenario, attacker, defender);
+                    var aggregate = RunMatchup(
+                        settings,
+                        scenario,
+                        attackerProfile,
+                        defenderProfile,
+                        designLookup
+                    );
                     matchupSummaries.Add(aggregate.Matchup);
                     phaseSummaries.AddRange(aggregate.Phases);
                     survivorSummaries.AddRange(aggregate.Survivors);
@@ -62,7 +75,7 @@ public sealed class TacticalSimulator
                 .Select(p => new TacticalProfileSummary(
                     p.Id,
                     p.Label,
-                    p.Tags,
+                    p.Modules,
                     p.TotalCost,
                     p.Units
                 ))
@@ -77,7 +90,8 @@ public sealed class TacticalSimulator
         TacticalSimulationSettings settings,
         TacticalScenario scenario,
         TacticalProfile attacker,
-        TacticalProfile defender
+        TacticalProfile defender,
+        Dictionary<Guid, NexusUnitDesign> designLookup
     )
     {
         var attackerWins = 0;
@@ -94,15 +108,22 @@ public sealed class TacticalSimulator
             [true] = new(),
             [false] = new(),
         };
-        var attackerSurvivors = new Dictionary<NexusUnitType, double>();
-        var defenderSurvivors = new Dictionary<NexusUnitType, double>();
+        var attackerSurvivors = new Dictionary<Guid, double>();
+        var defenderSurvivors = new Dictionary<Guid, double>();
 
         for (var iteration = 0; iteration < settings.IterationsPerMatchup; iteration++)
         {
             var seed = settings.BaseSeed + iteration;
             foreach (var attackerUsesPrimarySlot in new[] { true, false })
             {
-                var outcome = RunTrial(seed, scenario, attacker, defender, attackerUsesPrimarySlot);
+                var outcome = RunTrial(
+                    seed,
+                    scenario,
+                    attacker,
+                    defender,
+                    attackerUsesPrimarySlot,
+                    designLookup
+                );
                 totalTrials++;
 
                 attackerWins += outcome.AttackerWon ? 1 : 0;
@@ -135,8 +156,6 @@ public sealed class TacticalSimulator
             .First()
             .Key;
 
-        // Damage efficiency: expected cost of enemy units destroyed per own credit spent.
-        // Destroyed value = starting cost − expected survivor cost over all trials.
         var attackerDamageValuePerTrial = defender.TotalCost - defenderSurvivorCost / totalTrials;
         var defenderDamageValuePerTrial = attacker.TotalCost - attackerSurvivorCost / totalTrials;
         var attackerDamageEfficiency =
@@ -201,6 +220,9 @@ public sealed class TacticalSimulator
                 defender.Id,
                 "attacker",
                 pair.Key,
+                designLookup.TryGetValue(pair.Key, out var d)
+                    ? d.Name
+                    : pair.Key.ToString("N")[..8],
                 pair.Value / totalTrials
             ))
             .Concat(
@@ -210,11 +232,14 @@ public sealed class TacticalSimulator
                     defender.Id,
                     "defender",
                     pair.Key,
+                    designLookup.TryGetValue(pair.Key, out var d)
+                        ? d.Name
+                        : pair.Key.ToString("N")[..8],
                     pair.Value / totalTrials
                 ))
             )
             .OrderBy(summary => summary.Side)
-            .ThenBy(summary => summary.UnitType)
+            .ThenBy(summary => summary.DesignName)
             .ToArray();
 
         return new MatchupAggregateResult(matchup, phases, survivors);
@@ -225,7 +250,8 @@ public sealed class TacticalSimulator
         TacticalScenario scenario,
         TacticalProfile attacker,
         TacticalProfile defender,
-        bool attackerUsesPrimarySlot
+        bool attackerUsesPrimarySlot,
+        Dictionary<Guid, NexusUnitDesign> designLookup
     )
     {
         var attackerPlayerId = attackerUsesPrimarySlot ? AttackerId : DefenderId;
@@ -253,12 +279,12 @@ public sealed class TacticalSimulator
             _ => null,
         };
 
-        AddProfileUnits(battleSystem, attackerPlayerId, attacker);
-        AddProfileUnits(battleSystem, defenderPlayerId, defender);
+        AddProfileUnits(state, battleSystem, attackerPlayerId, attacker);
+        AddProfileUnits(state, battleSystem, defenderPlayerId, defender);
 
         var phaseOutcomes = new List<TrialPhaseOutcome>();
-        Dictionary<NexusUnitType, int> attackerSurvivors = [];
-        Dictionary<NexusUnitType, int> defenderSurvivors = [];
+        Dictionary<Guid, int> attackerSurvivors = [];
+        Dictionary<Guid, int> defenderSurvivors = [];
         var attackerHasUnits = true;
         var defenderHasUnits = true;
         var firstContactActive = false;
@@ -298,8 +324,8 @@ public sealed class TacticalSimulator
             !attackerHasUnits && !defenderHasUnits,
             battleSystem.ControlOwner == attackerPlayerId,
             battleSystem.ControlOwner == defenderPlayerId,
-            ComputeSurvivorCost(attackerSurvivors),
-            ComputeSurvivorCost(defenderSurvivors),
+            ComputeSurvivorCost(attackerSurvivors, designLookup),
+            ComputeSurvivorCost(defenderSurvivors, designLookup),
             firstContactActive,
             attackerSurvivors,
             defenderSurvivors,
@@ -344,14 +370,12 @@ public sealed class TacticalSimulator
 
         foreach (var result in events.OfType<NexusResolveEvent>())
         {
-            PhaseAccumulator bucket;
-
             if (result is NexusCombatResultEvent combat)
             {
                 foreach (var phase in combat.Phases)
                 {
                     var isContact = phase.Phase == NexusCombatPhase.Contact;
-                    bucket = phases[isContact];
+                    var bucket = phases[isContact];
                     bucket.AttackerAttacks += phase.AttackRolls.Count(roll =>
                         roll.AttackingPlayerId == attackerPlayerId
                     );
@@ -389,21 +413,41 @@ public sealed class TacticalSimulator
     }
 
     private static void AddProfileUnits(
+        NexusState state,
         NexusSystemState battleSystem,
         Guid playerId,
         TacticalProfile profile
     )
     {
+        var player = state.Players.First(p => p.PlayerId == playerId);
         foreach (var unit in profile.Units)
-            battleSystem.AddUnits(playerId, unit.UnitType, unit.Count, unit.RemainingHits);
+        {
+            if (!player.Designs.Any(d => d.DesignId == unit.Design.DesignId))
+                player.Designs.Add(unit.Design);
+
+            battleSystem.AddUnits(
+                playerId,
+                unit.Design.DesignId,
+                unit.Design.Hull,
+                unit.Count,
+                unit.RemainingHits
+            );
+        }
     }
 
-    private static double ComputeSurvivorCost(IReadOnlyDictionary<NexusUnitType, int> survivors) =>
-        survivors.Sum(pair => pair.Key.Cost() * pair.Value);
+    private static double ComputeSurvivorCost(
+        IReadOnlyDictionary<Guid, int> survivors,
+        Dictionary<Guid, NexusUnitDesign> designLookup
+    ) =>
+        survivors.Sum(pair =>
+            designLookup.TryGetValue(pair.Key, out var design)
+                ? NexusHullBaselines.GetProfile(design).Cost * pair.Value
+                : 0
+        );
 
     private static void AccumulateUnits(
-        Dictionary<NexusUnitType, double> totals,
-        IReadOnlyDictionary<NexusUnitType, int> survivors
+        Dictionary<Guid, double> totals,
+        IReadOnlyDictionary<Guid, int> survivors
     )
     {
         foreach (var pair in survivors)
@@ -448,8 +492,8 @@ public sealed class TacticalSimulator
         double AttackerSurvivorCost,
         double DefenderSurvivorCost,
         bool FirstContactActive,
-        IReadOnlyDictionary<NexusUnitType, int> AttackerSurvivors,
-        IReadOnlyDictionary<NexusUnitType, int> DefenderSurvivors,
+        IReadOnlyDictionary<Guid, int> AttackerSurvivors,
+        IReadOnlyDictionary<Guid, int> DefenderSurvivors,
         IReadOnlyList<TrialPhaseOutcome> Phases
     );
 

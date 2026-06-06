@@ -93,31 +93,7 @@ public static class NexusMap
                 ControlOwner = homePlayerId,
             };
 
-            if (homePlayerId.HasValue)
-            {
-                // Starting composition: 1 Carrier + 4 Infantry + 2 Fighters per player
-                system.Units[homePlayerId.Value] =
-                [
-                    new NexusUnitStack
-                    {
-                        UnitType = NexusUnitType.Carrier,
-                        RemainingHits = NexusUnitType.Carrier.Profile().Hits,
-                        Count = 1,
-                    },
-                    new NexusUnitStack
-                    {
-                        UnitType = NexusUnitType.Infantry,
-                        RemainingHits = NexusUnitType.Infantry.Profile().Hits,
-                        Count = 4,
-                    },
-                    new NexusUnitStack
-                    {
-                        UnitType = NexusUnitType.Fighter,
-                        RemainingHits = NexusUnitType.Fighter.Profile().Hits,
-                        Count = 2,
-                    },
-                ];
-            }
+            // Starting units are no longer seeded here — players build from their own designs.
 
             systems.Add(system);
         }

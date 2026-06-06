@@ -6,9 +6,11 @@ namespace Spx.Nexus.Domain;
 [GenerateSerializer]
 [Immutable]
 public sealed record NexusUnitStackGroup(
-    [property: Id(0)] NexusUnitType UnitType,
-    [property: Id(1)] int RemainingHits,
-    [property: Id(2)] int Count
+    [property: Id(0)] Guid DesignId,
+    [property: Id(1)] NexusUnitCategory Category,
+    [property: Id(2)] int RemainingHits,
+    [property: Id(3)] int Count,
+    [property: Id(4)] string DesignName = ""
 );
 
 [GenerateSerializer]
@@ -39,13 +41,13 @@ public sealed record NexusSystemView(
             : ImmutableArray<NexusUnitStackGroup>.Empty;
     }
 
-    public ImmutableDictionary<NexusUnitType, int> GetPlayerUnitCounts(Guid playerId)
+    public ImmutableDictionary<Guid, int> GetPlayerUnitCounts(Guid playerId)
     {
-        var builder = ImmutableDictionary.CreateBuilder<NexusUnitType, int>();
+        var builder = ImmutableDictionary.CreateBuilder<Guid, int>();
         foreach (var stack in GetPlayerStacks(playerId))
         {
-            builder.TryGetValue(stack.UnitType, out var current);
-            builder[stack.UnitType] = current + stack.Count;
+            builder.TryGetValue(stack.DesignId, out var current);
+            builder[stack.DesignId] = current + stack.Count;
         }
 
         return builder.ToImmutable();
@@ -66,7 +68,9 @@ public sealed record NexusPlayerView(
     [property: Id(7)] ImmutableArray<NexusBuildOrder>? PendingBuildOrders,
     [property: Id(8)] bool PendingBeginNexusGate,
     [property: Id(9)] int SupplyPool,
-    [property: Id(10)] int CapitalCount
+    [property: Id(10)] int CapitalCount,
+    // Own player only
+    [property: Id(11)] ImmutableArray<NexusUnitDesign>? Designs = null
 );
 
 [GenerateSerializer]

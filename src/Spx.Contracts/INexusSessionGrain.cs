@@ -11,4 +11,8 @@ public interface INexusSessionGrain : IGrainWithGuidKey
     Task<NexusGameView?> GetViewAsync(Guid playerId);
 
     Task AbandonAsync(Guid playerId);
+
+    Task<NexusDesignCommandResult> CreateDesignAsync(NexusCreateDesignCommand command);
+
+    Task<NexusDesignCommandResult> DeleteDesignAsync(NexusDeleteDesignCommand command);
 }

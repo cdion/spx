@@ -56,6 +56,32 @@ public sealed partial class NexusSessionGrain(
         await GrainFactory.GetGrain<ILobbyInvalidationGrain>(_gameId).PublishSessionInvalidated();
     }
 
+    public async Task<NexusDesignCommandResult> CreateDesignAsync(NexusCreateDesignCommand command)
+    {
+        var result = NexusEngine.CreateDesign(state.State.Game, command);
+        if (result is NexusDesignCreated)
+        {
+            await state.WriteStateAsync();
+            await GrainFactory
+                .GetGrain<ILobbyInvalidationGrain>(_gameId)
+                .PublishSessionInvalidated();
+        }
+        return result;
+    }
+
+    public async Task<NexusDesignCommandResult> DeleteDesignAsync(NexusDeleteDesignCommand command)
+    {
+        var result = NexusEngine.DeleteDesign(state.State.Game, command);
+        if (result is NexusDesignDeleted)
+        {
+            await state.WriteStateAsync();
+            await GrainFactory
+                .GetGrain<ILobbyInvalidationGrain>(_gameId)
+                .PublishSessionInvalidated();
+        }
+        return result;
+    }
+
     [LoggerMessage(Level = LogLevel.Information, Message = "Game {GameId} initialized.")]
     private static partial void LogInitialized(ILogger logger, Guid gameId);
 }

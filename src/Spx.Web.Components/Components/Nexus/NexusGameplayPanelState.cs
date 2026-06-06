@@ -125,16 +125,16 @@ public static class NexusGameplayPanelState
 
     public static OrderDraftState ApplyBuildDraftAdjustment(
         OrderDraftState state,
-        NexusUnitType unit,
+        Guid designId,
         BuildDraftAdjustmentKind adjustment,
         int projectedEnergy
     ) =>
         adjustment switch
         {
-            BuildDraftAdjustmentKind.AddOne => AddBuildOrder(state, unit, projectedEnergy),
-            BuildDraftAdjustmentKind.AddMax => AddBuildOrderMax(state, unit, projectedEnergy),
-            BuildDraftAdjustmentKind.RemoveOne => RemoveBuildOrder(state, unit),
-            BuildDraftAdjustmentKind.RemoveAll => RemoveBuildOrdersForUnit(state, unit),
+            BuildDraftAdjustmentKind.AddOne => AddBuildOrder(state, designId, projectedEnergy),
+            BuildDraftAdjustmentKind.AddMax => AddBuildOrderMax(state, designId, projectedEnergy),
+            BuildDraftAdjustmentKind.RemoveOne => RemoveBuildOrder(state, designId),
+            BuildDraftAdjustmentKind.RemoveAll => RemoveBuildOrdersForUnit(state, designId),
             _ => state,
         };
 
@@ -156,7 +156,7 @@ public static class NexusGameplayPanelState
                 PendingBuildOrders =
                 [
                     .. state.PendingBuildOrders.Where(order =>
-                        order.UnitType != request.BuildOrder!.UnitType
+                        order.DesignId != request.BuildOrder!.DesignId
                     ),
                 ],
             },
@@ -178,19 +178,28 @@ public static class NexusGameplayPanelState
 
     private static OrderDraftState AddBuildOrder(
         OrderDraftState state,
-        NexusUnitType unit,
+        Guid designId,
         int projectedEnergy
     )
     {
-        if (projectedEnergy < unit.Cost())
+        var design = state.Designs.FirstOrDefault(d => d.DesignId == designId);
+        if (design is null)
             return state;
 
-        var index = FindBuildOrderIndex(state.PendingBuildOrders, unit);
+        var cost = NexusHullBaselines.GetProfile(design).Cost;
+        if (projectedEnergy < cost)
+            return state;
+
+        var index = FindBuildOrderIndex(state.PendingBuildOrders, designId);
         if (index < 0)
         {
             return state with
             {
-                PendingBuildOrders = [.. state.PendingBuildOrders, new NexusBuildOrder(unit, 1)],
+                PendingBuildOrders =
+                [
+                    .. state.PendingBuildOrders,
+                    new NexusBuildOrder(designId, 1),
+                ],
             };
         }
 
@@ -201,17 +210,25 @@ public static class NexusGameplayPanelState
 
     private static OrderDraftState AddBuildOrderMax(
         OrderDraftState state,
-        NexusUnitType unit,
+        Guid designId,
         int projectedEnergy
     )
     {
+        var design = state.Designs.FirstOrDefault(d => d.DesignId == designId);
+        if (design is null)
+            return state;
+
+        var cost = NexusHullBaselines.GetProfile(design).Cost;
+        if (cost <= 0)
+            return state;
+
         var nextState = state;
-        var maxAdd = projectedEnergy / unit.Cost();
+        var maxAdd = projectedEnergy / cost;
         for (var i = 0; i < maxAdd; i++)
         {
             nextState = AddBuildOrder(
                 nextState,
-                unit,
+                designId,
                 projectedEnergy - nextState.ProjectedSpend + state.ProjectedSpend
             );
         }
@@ -219,9 +236,9 @@ public static class NexusGameplayPanelState
         return nextState;
     }
 
-    private static OrderDraftState RemoveBuildOrder(OrderDraftState state, NexusUnitType unit)
+    private static OrderDraftState RemoveBuildOrder(OrderDraftState state, Guid designId)
     {
-        var index = FindBuildOrderIndex(state.PendingBuildOrders, unit);
+        var index = FindBuildOrderIndex(state.PendingBuildOrders, designId);
         if (index < 0)
             return state;
 
@@ -238,26 +255,23 @@ public static class NexusGameplayPanelState
         return state with { PendingBuildOrders = updatedOrders.ToImmutable() };
     }
 
-    private static OrderDraftState RemoveBuildOrdersForUnit(
-        OrderDraftState state,
-        NexusUnitType unit
-    ) =>
+    private static OrderDraftState RemoveBuildOrdersForUnit(OrderDraftState state, Guid designId) =>
         state with
         {
             PendingBuildOrders =
             [
-                .. state.PendingBuildOrders.Where(order => order.UnitType != unit),
+                .. state.PendingBuildOrders.Where(order => order.DesignId != designId),
             ],
         };
 
     private static int FindBuildOrderIndex(
         ImmutableArray<NexusBuildOrder> pendingBuildOrders,
-        NexusUnitType unit
+        Guid designId
     )
     {
         for (var i = 0; i < pendingBuildOrders.Length; i++)
         {
-            if (pendingBuildOrders[i].UnitType == unit)
+            if (pendingBuildOrders[i].DesignId == designId)
                 return i;
         }
 
@@ -344,7 +358,7 @@ public sealed record SelectionRequest(SelectionRequestKind Kind, HexCoord? Syste
 public sealed record OrderDraftRequest(
     OrderDraftRequestKind Kind,
     ImmutableArray<NexusUnitStackGroup> MoveDraftStacks = default,
-    NexusUnitType? UnitType = null,
+    Guid? DesignId = null,
     BuildDraftAdjustmentKind? BuildAdjustment = null,
     bool? BeginNexusGate = null
 )
@@ -353,12 +367,12 @@ public sealed record OrderDraftRequest(
         new(OrderDraftRequestKind.MoveDraftChanged, MoveDraftStacks: stacks);
 
     public static OrderDraftRequest BuildDraftAdjusted(
-        NexusUnitType unitType,
+        Guid designId,
         BuildDraftAdjustmentKind adjustment
     ) =>
         new(
             OrderDraftRequestKind.BuildDraftAdjusted,
-            UnitType: unitType,
+            DesignId: designId,
             BuildAdjustment: adjustment
         );
 
@@ -403,13 +417,26 @@ public sealed record SelectionState(
 public sealed record OrderDraftState(
     ImmutableArray<NexusMoveOrder> PendingMoveOrders,
     ImmutableArray<NexusBuildOrder> PendingBuildOrders,
-    bool PendingBeginNexusGate
+    bool PendingBeginNexusGate,
+    ImmutableArray<NexusUnitDesign> Designs = default
 )
 {
     public static OrderDraftState Empty { get; } = new([], [], false);
 
-    public int ProjectedSpend =>
-        NexusEngine.ComputeProjectedSpend(PendingBuildOrders, PendingBeginNexusGate);
+    public int ProjectedSpend
+    {
+        get
+        {
+            var lookup = new Dictionary<Guid, NexusUnitDesign>();
+            foreach (var d in Designs.IsDefaultOrEmpty ? [] : Designs)
+                lookup[d.DesignId] = d;
+            return NexusEngine.ComputeProjectedSpend(
+                PendingBuildOrders,
+                PendingBeginNexusGate,
+                lookup
+            );
+        }
+    }
 }
 
 public sealed record SidebarState(NexusGameplayTab ActiveTab)

@@ -55,20 +55,20 @@
             OrderDraftRequestKind.MoveDraftChanged =>
                 $"Move draft: {request.MoveDraftStacks.Length} stack(s)",
             OrderDraftRequestKind.BuildDraftAdjusted =>
-                $"Build {request.BuildAdjustment} × {request.UnitType}",
+                $"Build {request.BuildAdjustment} × {request.DesignId}",
             OrderDraftRequestKind.NexusGateDraftChanged =>
                 $"Nexus gate: {request.BeginNexusGate}",
             _ => request.ToString(),
         };
 
-        if (request.Kind == OrderDraftRequestKind.BuildDraftAdjusted && request.UnitType is { } unitType)
+        if (request.Kind == OrderDraftRequestKind.BuildDraftAdjusted && request.DesignId is { } designId)
         {
             _pendingBuildOrders = request.BuildAdjustment switch
             {
-                BuildDraftAdjustmentKind.AddOne => AdjustBuildOrder(unitType, +1),
-                BuildDraftAdjustmentKind.RemoveOne => AdjustBuildOrder(unitType, -1),
+                BuildDraftAdjustmentKind.AddOne => AdjustBuildOrder(designId, +1),
+                BuildDraftAdjustmentKind.RemoveOne => AdjustBuildOrder(designId, -1),
                 BuildDraftAdjustmentKind.RemoveAll => _pendingBuildOrders
-                    .Where(o => o.UnitType != unitType)
+                    .Where(o => o.DesignId != designId)
                     .ToList(),
                 BuildDraftAdjustmentKind.AddMax => _pendingBuildOrders,
                 _ => _pendingBuildOrders,
@@ -78,10 +78,10 @@
         return Task.CompletedTask;
     }
 
-    private IReadOnlyList<NexusBuildOrder> AdjustBuildOrder(NexusUnitType unitType, int delta)
+    private IReadOnlyList<NexusBuildOrder> AdjustBuildOrder(Guid designId, int delta)
     {
         var list = _pendingBuildOrders.ToList();
-        var index = list.FindIndex(o => o.UnitType == unitType);
+        var index = list.FindIndex(o => o.DesignId == designId);
         if (index >= 0)
         {
             var next = list[index].Count + delta;
@@ -92,7 +92,7 @@
         }
         else if (delta > 0)
         {
-            list.Add(new NexusBuildOrder(unitType, delta));
+            list.Add(new NexusBuildOrder(designId, delta));
         }
 
         return list;

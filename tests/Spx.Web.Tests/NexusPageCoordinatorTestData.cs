@@ -7,6 +7,35 @@ namespace Spx.Web.Tests;
 
 internal static class GamePageCoordinatorTestData
 {
+    // Test designs with stable GUIDs
+    private static readonly Guid CarrierDesignId = Guid.Parse(
+        "aaaaaaaa-0000-0000-0000-000000000001"
+    );
+    private static readonly Guid FighterDesignId = Guid.Parse(
+        "aaaaaaaa-0000-0000-0000-000000000002"
+    );
+    private static readonly Guid InfantryDesignId = Guid.Parse(
+        "aaaaaaaa-0000-0000-0000-000000000003"
+    );
+
+    private static ImmutableArray<NexusUnitStackGroup> FullHitsStacks(
+        params (Guid DesignId, NexusUnitCategory Category, string Name, int Count)[] units
+    ) =>
+        units
+            .Select(u => new NexusUnitStackGroup(u.DesignId, u.Category, 1, u.Count, u.Name))
+            .ToImmutableArray();
+
+    private static ImmutableArray<NexusUnitStackGroup> FullHitsCarrierFighterInfantry(
+        int carriers = 1,
+        int fighters = 1,
+        int infantry = 2
+    ) =>
+        FullHitsStacks(
+            (CarrierDesignId, NexusUnitCategory.Capital, "Carrier", carriers),
+            (FighterDesignId, NexusUnitCategory.Strike, "Fighter", fighters),
+            (InfantryDesignId, NexusUnitCategory.Planetary, "Infantry", infantry)
+        );
+
     public static readonly Guid CurrentPlayerId = Guid.Parse(
         "4f4f7dfa-778d-4f65-b8dd-dcde0e6e8f40"
     );
@@ -90,14 +119,7 @@ internal static class GamePageCoordinatorTestData
                     unitStacks: ImmutableDictionary<
                         Guid,
                         ImmutableArray<NexusUnitStackGroup>
-                    >.Empty.Add(
-                        CurrentPlayerId,
-                        FullHitsStacks(
-                            (NexusUnitType.Carrier, 1),
-                            (NexusUnitType.Fighter, 1),
-                            (NexusUnitType.Infantry, 2)
-                        )
-                    )
+                    >.Empty.Add(CurrentPlayerId, FullHitsCarrierFighterInfantry())
                 ),
                 CreateSystem(MoveTargetCoord, incomeValue: 1),
                 CreateSystem(AlternateFocusCoord, incomeValue: 2),
@@ -108,7 +130,10 @@ internal static class GamePageCoordinatorTestData
                     unitStacks: ImmutableDictionary<
                         Guid,
                         ImmutableArray<NexusUnitStackGroup>
-                    >.Empty.Add(OpponentPlayerId, FullHitsStacks((NexusUnitType.Fighter, 1)))
+                    >.Empty.Add(
+                        OpponentPlayerId,
+                        FullHitsStacks((FighterDesignId, NexusUnitCategory.Strike, "Fighter", 1))
+                    )
                 ),
             ],
             CurrentPlayer = baseSession.CurrentPlayer with { Energy = currentPlayerEnergy },
@@ -122,7 +147,7 @@ internal static class GamePageCoordinatorTestData
                 CurrentPlayerId,
                 CurrentPlayerHomeCoord,
                 MoveTargetCoord,
-                FullHitsStacks((NexusUnitType.Fighter, 1)),
+                FullHitsStacks((FighterDesignId, NexusUnitCategory.Strike, "Fighter", 1)),
                 IsRetreat: false
             ),
             new NexusPlanetaryControlEvent(AlternateFocusCoord, CurrentPlayerId),
@@ -155,15 +180,4 @@ internal static class GamePageCoordinatorTestData
             controlOwner,
             unitStacks ?? ImmutableDictionary<Guid, ImmutableArray<NexusUnitStackGroup>>.Empty
         );
-
-    private static ImmutableArray<NexusUnitStackGroup> FullHitsStacks(
-        params (NexusUnitType Type, int Count)[] units
-    ) =>
-        units
-            .Select(unit => new NexusUnitStackGroup(
-                unit.Type,
-                unit.Type.Profile().Hits,
-                unit.Count
-            ))
-            .ToImmutableArray();
 }

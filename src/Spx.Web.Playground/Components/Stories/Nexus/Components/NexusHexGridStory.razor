@@ -110,7 +110,7 @@
                         _pendingFrom.Value,
                         coord,
                         units
-                            .Select(unit => new NexusUnitStackGroup(unit.Key, unit.Key.Profile().Hits, unit.Value))
+                            .Select(unit => new NexusUnitStackGroup(unit.Key, NexusUnitCategory.Capital, 1, unit.Value))
                             .ToImmutableArray()));
                 }
             }

@@ -189,6 +189,76 @@ public sealed partial class OrleansNexusRuntimeClient(
         }
     }
 
+    public async Task<GameSessionCommandOutcome> CreateDesignAsync(
+        Guid gameId,
+        NexusCreateDesignCommand command,
+        CancellationToken cancellationToken = default
+    )
+    {
+        try
+        {
+            var result = await clusterClient
+                .GetGrain<INexusSessionGrain>(gameId)
+                .CreateDesignAsync(command);
+
+            if (result is NexusDesignCommandRejected rejected)
+            {
+                LogDesignCommandRejected(logger, gameId, command.PlayerId, rejected.ErrorMessage);
+                return new GameSessionCommandFailed(rejected.ErrorMessage);
+            }
+
+            var sessionOutcome = await GetSessionAsync(gameId, command.PlayerId, cancellationToken);
+            if (sessionOutcome is not GameSessionFound found)
+                return new GameSessionCommandFailed(
+                    "Game state could not be loaded after creating design."
+                );
+
+            return new GameSessionCommandSucceeded(found.Session);
+        }
+        catch (Exception exception)
+        {
+            LogManageDesignFailed(logger, exception, gameId, command.PlayerId);
+            throw new InvalidOperationException(
+                "The design could not be created. Please try again."
+            );
+        }
+    }
+
+    public async Task<GameSessionCommandOutcome> DeleteDesignAsync(
+        Guid gameId,
+        NexusDeleteDesignCommand command,
+        CancellationToken cancellationToken = default
+    )
+    {
+        try
+        {
+            var result = await clusterClient
+                .GetGrain<INexusSessionGrain>(gameId)
+                .DeleteDesignAsync(command);
+
+            if (result is NexusDesignCommandRejected rejected)
+            {
+                LogDesignCommandRejected(logger, gameId, command.PlayerId, rejected.ErrorMessage);
+                return new GameSessionCommandFailed(rejected.ErrorMessage);
+            }
+
+            var sessionOutcome = await GetSessionAsync(gameId, command.PlayerId, cancellationToken);
+            if (sessionOutcome is not GameSessionFound found)
+                return new GameSessionCommandFailed(
+                    "Game state could not be loaded after deleting design."
+                );
+
+            return new GameSessionCommandSucceeded(found.Session);
+        }
+        catch (Exception exception)
+        {
+            LogManageDesignFailed(logger, exception, gameId, command.PlayerId);
+            throw new InvalidOperationException(
+                "The design could not be deleted. Please try again."
+            );
+        }
+    }
+
     [LoggerMessage(
         Level = LogLevel.Warning,
         Message = "Failed to publish lobby update for game {GameId}."
@@ -277,6 +347,28 @@ public sealed partial class OrleansNexusRuntimeClient(
         Message = "Failed to abandon session for game {GameId} player {PlayerId}."
     )]
     private static partial void LogAbandonSessionFailed(
+        ILogger logger,
+        Exception exception,
+        Guid gameId,
+        Guid playerId
+    );
+
+    [LoggerMessage(
+        Level = LogLevel.Information,
+        Message = "Design command rejected for game {GameId} player {PlayerId}: {ErrorMessage}"
+    )]
+    private static partial void LogDesignCommandRejected(
+        ILogger logger,
+        Guid gameId,
+        Guid playerId,
+        string errorMessage
+    );
+
+    [LoggerMessage(
+        Level = LogLevel.Warning,
+        Message = "Failed to manage design for game {GameId} player {PlayerId}."
+    )]
+    private static partial void LogManageDesignFailed(
         ILogger logger,
         Exception exception,
         Guid gameId,

@@ -64,9 +64,9 @@
                                                 class="flex min-w-0 flex-1 items-center gap-2 text-left disabled:cursor-default"
                                                 data-testid="@GetFleetButtonTestId(stack)" disabled="@(!IsEditable)"
                                                 @onclick="() => ToggleWholeStackAsync(stackKey)">
-                                            <span class="text-sm font-semibold @GetStackNameClass(selected)">@stack.UnitType</span>
+                                            <span class="text-sm font-semibold @GetStackNameClass(selected)">@GetDesignLabel(stack)</span>
                                             <span
-                                                class="ui-hits-pill @GetHitsPillClass(stack)">@stack.RemainingHits/@stack.UnitType.Profile().Hits
+                                                class="ui-hits-pill @GetHitsPillClass(stack)">@stack.RemainingHits/@NexusHullBaselines.GetBaseline(stack.Category).Hits
                                                 hits</span>
                                             </button>
                                             @if (IsEditable)
@@ -117,9 +117,9 @@
                                             {
                                                 <div class="ui-button-row-available cursor-default">
                                                     <div class="flex min-w-0 flex-1 items-center gap-2">
-                                                        <span class="text-sm font-semibold text-slate-200">@stack.UnitType</span>
+                                                        <span class="text-sm font-semibold text-slate-200">@GetDesignLabel(stack)</span>
                                                         <span
-                                                            class="ui-hits-pill @GetHitsPillClass(stack)">@stack.RemainingHits/@stack.UnitType.Profile().Hits
+                                                            class="ui-hits-pill @GetHitsPillClass(stack)">@stack.RemainingHits/@NexusHullBaselines.GetBaseline(stack.Category).Hits
                                                             hits</span>
                                                         </div>
                                                         <span class="shrink-0 text-sm font-semibold text-slate-400">×@stack.Count</span>
@@ -150,9 +150,9 @@
                                                 {
                                                     <div class="ui-button-row-available cursor-default">
                                                         <div class="flex min-w-0 flex-1 items-center gap-2">
-                                                            <span class="text-sm font-semibold text-slate-200">@stack.UnitType</span>
+                                                            <span class="text-sm font-semibold text-slate-200">@GetDesignLabel(stack)</span>
                                                             <span
-                                                                class="ui-hits-pill @GetHitsPillClass(stack)">@stack.RemainingHits/@stack.UnitType.Profile().Hits
+                                                                class="ui-hits-pill @GetHitsPillClass(stack)">@stack.RemainingHits/@NexusHullBaselines.GetBaseline(stack.Category).Hits
                                                                 hits</span>
                                                             </div>
                                                             <span class="shrink-0 text-sm font-semibold text-slate-400">×@stack.Count</span>
@@ -183,9 +183,9 @@
                                                         {
                                                             <div class="ui-button-row-available cursor-default">
                                                                 <div class="flex min-w-0 flex-1 items-center gap-2">
-                                                                    <span class="text-sm font-semibold text-slate-200">@stack.UnitType</span>
+                                                                    <span class="text-sm font-semibold text-slate-200">@GetDesignLabel(stack)</span>
                                                                     <span
-                                                                        class="ui-hits-pill @GetHitsPillClass(stack)">@stack.RemainingHits/@stack.UnitType.Profile().Hits
+                                                                        class="ui-hits-pill @GetHitsPillClass(stack)">@stack.RemainingHits/@NexusHullBaselines.GetBaseline(stack.Category).Hits
                                                                         hits</span>
                                                                     </div>
                                                                     <span class="shrink-0 text-sm font-semibold text-slate-400">×@stack.Count</span>
@@ -210,19 +210,18 @@
                                                     <div class="ui-panel-card-tight">
                                                         <p class="mb-1 text-base font-semibold uppercase tracking-wide text-slate-400">@group.Label</p>
                                                         <div class="space-y-1">
-                                                            @foreach (var unitType in Enum.GetValues<NexusUnitType>().Where(unit => unit.Profile().Category ==
-                                                    group.Category))
+                                                            @foreach (var design in PlayerDesigns.Where(d => d.Hull == group.Category))
                                                             {
-                                                                var cost = unitType.Cost();
-                                                                var count = PendingBuildOrders.FirstOrDefault(o => o.UnitType == unitType)?.Count ?? 0;
+                                                                var cost = NexusHullBaselines.GetProfile(design).Cost;
+                                                                var count = PendingBuildOrders.FirstOrDefault(o => o.DesignId == design.DesignId)?.Count ?? 0;
                                                                 var canAdd = ProjectedEnergy >= cost;
 
-                                                                <button type="button" class="@GetBuildRowClass(unitType, count, canAdd)"
-                                                                        data-testid="@GetBuildButtonTestId(unitType)" @onclick="e => OnBuildRowClickAsync(unitType, e)"
-                                                                        @ondblclick="() => OnOrderDraftRequested.InvokeAsync(OrderDraftRequest.BuildDraftAdjusted(unitType, BuildDraftAdjustmentKind.AddMax))"
+                                                                <button type="button" class="@GetBuildRowClass(design, count, canAdd)"
+                                                                        data-testid="@GetBuildButtonTestId(design)" @onclick="e => OnBuildRowClickAsync(design, e)"
+                                                                        @ondblclick="() => OnOrderDraftRequested.InvokeAsync(OrderDraftRequest.BuildDraftAdjusted(design.DesignId, BuildDraftAdjustmentKind.AddMax))"
                                                                         @oncontextmenu:preventDefault="true"
-                                                                        @oncontextmenu="() => OnOrderDraftRequested.InvokeAsync(OrderDraftRequest.BuildDraftAdjusted(unitType, BuildDraftAdjustmentKind.RemoveOne))">
-                                                                    <span class="min-w-0 flex-1 whitespace-nowrap text-base text-slate-100">@unitType <span
+                                                                        @oncontextmenu="() => OnOrderDraftRequested.InvokeAsync(OrderDraftRequest.BuildDraftAdjusted(design.DesignId, BuildDraftAdjustmentKind.RemoveOne))">
+                                                                    <span class="min-w-0 flex-1 whitespace-nowrap text-base text-slate-100">@design.Name <span
                                                                         class="ml-1 text-yellow-400">@cost⚡</span></span>
                                                                         <span class="shrink-0 whitespace-nowrap pl-3 text-base text-slate-400">@count</span>
                                                                     </button>
@@ -292,18 +291,30 @@
     public IReadOnlyList<NexusBuildOrder> PendingBuildOrders { get; set; } = [];
 
     [Parameter]
+    public ImmutableArray<NexusUnitDesign> PlayerDesigns { get; set; } = [];
+
+    [Parameter]
     public EventCallback<OrderDraftRequest> OnOrderDraftRequested { get; set; }
 
     private readonly Dictionary<StackKey, int> _selection = [];
+    private Dictionary<Guid, NexusUnitDesign> _designLookup = [];
     private HexCoord _previousCoord;
     private ImmutableArray<NexusUnitStackGroup> _myStacks = [];
     private ImmutableArray<NexusUnitStackGroup> _myCommittedStacks = [];
     private ImmutableArray<NexusUnitStackGroup> _enemyStacks = [];
     private ImmutableArray<NexusUnitStackGroup> _enemyCommittedStacks = [];
 
-    private int CarryCapacity => SelectedStacks.Sum(stack => stack.UnitType.CarryCapacity() * stack.Count);
+    private int CarryCapacity => SelectedStacks.Sum(stack =>
+    {
+        if (!_designLookup.TryGetValue(stack.DesignId, out var d)) return 0;
+        return d.Modules.OfType<Hangar>().Sum(t => t.Capacity) * stack.Count;
+    });
 
-    private int SlotsNeeded => SelectedStacks.Sum(stack => stack.UnitType.ConsumedCapacity() * stack.Count);
+    private int SlotsNeeded => SelectedStacks.Sum(stack =>
+    {
+        if (!_designLookup.TryGetValue(stack.DesignId, out var d)) return 0;
+        return d.Modules.OfType<Dock>().Any() ? stack.Count : 0;
+    });
 
     private bool HasSelection => _selection.Values.Any(value => value > 0);
 
@@ -316,7 +327,7 @@
     private bool CanShowGateOption =>
         CurrentPlayerGateProgress != NexusGateProgress.Completed
         && System.IsNexus
-        && System.GetPlayerStacks(CurrentPlayerId).Any(stack => stack.UnitType.IsPlanetary() && stack.Count > 0)
+        && System.GetPlayerStacks(CurrentPlayerId).Any(stack => stack.Category == NexusUnitCategory.Planetary && stack.Count > 0)
         && (!OpponentPlayerId.HasValue || System.GetPlayerStacks(OpponentPlayerId.Value).Length == 0);
 
     private bool CanAffordGate => ProjectedEnergy >= NexusEngine.GateCost;
@@ -375,6 +386,9 @@
 
     protected override async Task OnParametersSetAsync()
     {
+        _designLookup = PlayerDesigns.IsDefaultOrEmpty
+            ? []
+            : PlayerDesigns.ToDictionary(d => d.DesignId);
         _myStacks = AvailableStacks;
         var isContested =
             OpponentPlayerId.HasValue
@@ -383,7 +397,7 @@
         _myCommittedStacks = isContested
             ? System
                 .GetPlayerStacks(CurrentPlayerId)
-                .Where(s => s.UnitType.IsPlanetary())
+                .Where(s => s.Category == NexusUnitCategory.Planetary)
                 .ToImmutableArray()
             : ImmutableArray<NexusUnitStackGroup>.Empty;
         _enemyStacks = OpponentPlayerId.HasValue
@@ -393,7 +407,7 @@
             isContested && OpponentPlayerId.HasValue
                 ? System
                     .GetPlayerStacks(OpponentPlayerId.Value)
-                    .Where(s => s.UnitType.IsPlanetary())
+                    .Where(s => s.Category == NexusUnitCategory.Planetary)
                     .ToImmutableArray()
                 : ImmutableArray<NexusUnitStackGroup>.Empty;
 
@@ -432,8 +446,8 @@
         NexusUnitCategory category
     ) =>
         stacks
-            .Where(stack => stack.UnitType.Profile().Category == category)
-            .OrderBy(stack => stack.UnitType)
+            .Where(stack => stack.Category == category)
+            .OrderBy(stack => stack.DesignName)
             .ThenByDescending(stack => stack.RemainingHits);
 
     private string GetFleetRowClass(int selected)
@@ -455,7 +469,7 @@
 
     private static string GetHitsPillClass(NexusUnitStackGroup stack)
     {
-        if (stack.RemainingHits >= stack.UnitType.Profile().Hits)
+        if (stack.RemainingHits >= NexusHullBaselines.GetBaseline(stack.Category).Hits)
             return "border-emerald-400/30 bg-emerald-500/10 text-emerald-200";
 
         if (stack.RemainingHits > 1)
@@ -469,11 +483,11 @@
 
     private int GetAvailableCount(StackKey stackKey) =>
         _myStacks
-            .Where(stack => stack.UnitType == stackKey.UnitType && stack.RemainingHits == stackKey.RemainingHits)
+            .Where(stack => stack.DesignId == stackKey.DesignId && stack.RemainingHits == stackKey.RemainingHits)
             .Sum(stack => stack.Count);
 
     private static StackKey GetStackKey(NexusUnitStackGroup stack) =>
-        new(stack.UnitType, stack.RemainingHits);
+        new(stack.DesignId, stack.RemainingHits);
 
     private Task ToggleWholeStackAsync(StackKey stackKey)
     {
@@ -525,7 +539,7 @@
         return PublishSelectionAsync();
     }
 
-    private string GetBuildRowClass(NexusUnitType unitType, int count, bool canAdd)
+    private string GetBuildRowClass(NexusUnitDesign design, int count, bool canAdd)
     {
         if (count > 0)
         {
@@ -540,17 +554,17 @@
         return "ui-button-row-available";
     }
 
-    private Task OnBuildRowClickAsync(NexusUnitType unitType, MouseEventArgs e)
+    private Task OnBuildRowClickAsync(NexusUnitDesign design, MouseEventArgs e)
     {
         if (e.ShiftKey)
         {
             return OnOrderDraftRequested.InvokeAsync(
-                OrderDraftRequest.BuildDraftAdjusted(unitType, BuildDraftAdjustmentKind.RemoveAll)
+                OrderDraftRequest.BuildDraftAdjusted(design.DesignId, BuildDraftAdjustmentKind.RemoveAll)
             );
         }
 
         return OnOrderDraftRequested.InvokeAsync(
-            OrderDraftRequest.BuildDraftAdjusted(unitType, BuildDraftAdjustmentKind.AddOne)
+            OrderDraftRequest.BuildDraftAdjusted(design.DesignId, BuildDraftAdjustmentKind.AddOne)
         );
     }
 
@@ -574,12 +588,15 @@
         );
 
     private static string GetFleetButtonTestId(NexusUnitStackGroup stack) =>
-        NexusGameplayPanelTestIds.FleetStack(stack.UnitType, stack.RemainingHits);
+        NexusGameplayPanelTestIds.FleetStack(stack.DesignName, stack.RemainingHits);
 
-    private static string GetBuildButtonTestId(NexusUnitType unitType) =>
-        NexusGameplayPanelTestIds.BuildUnit(unitType);
+    private static string GetBuildButtonTestId(NexusUnitDesign design) =>
+        NexusGameplayPanelTestIds.BuildUnit(design.Name);
 
     private sealed record UnitGroup(string Label, NexusUnitCategory Category);
 
-    private sealed record StackKey(NexusUnitType UnitType, int RemainingHits);
+    private static string GetDesignLabel(NexusUnitStackGroup stack) =>
+        stack.DesignName.Length > 0 ? stack.DesignName : stack.Category.ToString();
+
+    private sealed record StackKey(Guid DesignId, int RemainingHits);
 }

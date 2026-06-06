@@ -25,13 +25,17 @@ public sealed record NexusGameCompletion(
 public sealed class NexusUnitStack
 {
     [Id(0)]
-    public NexusUnitType UnitType { get; set; }
+    public Guid DesignId { get; set; }
 
     [Id(1)]
     public int RemainingHits { get; set; }
 
     [Id(2)]
     public int Count { get; set; }
+
+    /// <summary>Redundant copy of the design's hull category — avoids design lookups in system-level queries.</summary>
+    [Id(3)]
+    public NexusUnitCategory Category { get; set; }
 }
 
 [GenerateSerializer]
@@ -55,28 +59,28 @@ public sealed class NexusSystemState
     [Id(4)]
     public Guid? ControlOwner { get; set; }
 
-    /// <summary>Units present: player ID → list of stacks (unit type + remaining hits + count).</summary>
+    /// <summary>Units present: player ID → list of stacks (design ID + category + remaining hits + count).</summary>
     [Id(5)]
     public Dictionary<Guid, List<NexusUnitStack>> Units { get; set; } = [];
 
-    public int GetUnitCount(Guid playerId, NexusUnitType unitType)
+    public int GetUnitCount(Guid playerId, Guid designId)
     {
         if (!Units.TryGetValue(playerId, out var stacks))
             return 0;
         var total = 0;
         foreach (var stack in stacks)
-            if (stack.UnitType == unitType)
+            if (stack.DesignId == designId)
                 total += stack.Count;
         return total;
     }
 
-    public Dictionary<NexusUnitType, int> GetPlayerUnits(Guid playerId)
+    public Dictionary<Guid, int> GetPlayerUnits(Guid playerId)
     {
         if (!Units.TryGetValue(playerId, out var stacks))
             return [];
-        var result = new Dictionary<NexusUnitType, int>();
+        var result = new Dictionary<Guid, int>();
         foreach (var stack in stacks)
-            result[stack.UnitType] = result.GetValueOrDefault(stack.UnitType) + stack.Count;
+            result[stack.DesignId] = result.GetValueOrDefault(stack.DesignId) + stack.Count;
         return result;
     }
 
@@ -88,9 +92,11 @@ public sealed class NexusSystemState
 
     public void AddUnits(
         Guid playerId,
-        NexusUnitType unitType,
+        Guid designId,
+        NexusUnitCategory category,
         int count,
-        int? remainingHits = null
+        int? remainingHits = null,
+        int designHits = 1
     )
     {
         if (count <= 0)
@@ -101,40 +107,37 @@ public sealed class NexusSystemState
             Units[playerId] = stacks;
         }
 
-        var hitsToStore = remainingHits ?? unitType.Profile().Hits;
-        var existing = stacks.Find(s => s.UnitType == unitType && s.RemainingHits == hitsToStore);
+        var hitsToStore = remainingHits ?? designHits;
+        var existing = stacks.Find(s => s.DesignId == designId && s.RemainingHits == hitsToStore);
         if (existing is not null)
             existing.Count += count;
         else
             stacks.Add(
                 new NexusUnitStack
                 {
-                    UnitType = unitType,
+                    DesignId = designId,
+                    Category = category,
                     RemainingHits = hitsToStore,
                     Count = count,
                 }
             );
     }
 
-    public void RemoveUnits(Guid playerId, NexusUnitType unitType, int count) =>
-        TakeUnits(playerId, unitType, count);
+    public void RemoveUnits(Guid playerId, Guid designId, int count) =>
+        TakeUnits(playerId, designId, count);
 
     /// <summary>
-    /// Removes <paramref name="count"/> units of <paramref name="unitType"/> and returns
+    /// Removes <paramref name="count"/> units of <paramref name="designId"/> and returns
     /// the (RemainingHits, Count) pairs actually taken.
     /// </summary>
-    public List<(int RemainingHits, int Count)> TakeUnits(
-        Guid playerId,
-        NexusUnitType unitType,
-        int count
-    )
+    public List<(int RemainingHits, int Count)> TakeUnits(Guid playerId, Guid designId, int count)
     {
         var taken = new List<(int RemainingHits, int Count)>();
         if (!Units.TryGetValue(playerId, out var stacks))
             return taken;
 
         var ordered = stacks
-            .Where(s => s.UnitType == unitType)
+            .Where(s => s.DesignId == designId)
             .OrderByDescending(s => s.RemainingHits)
             .ToList();
 
@@ -168,7 +171,7 @@ public sealed class NexusSystemState
         foreach (var requestedStack in requestedStacks)
         {
             var stack = stacks.FirstOrDefault(s =>
-                s.UnitType == requestedStack.UnitType
+                s.DesignId == requestedStack.DesignId
                 && s.RemainingHits == requestedStack.RemainingHits
             );
 
@@ -181,7 +184,12 @@ public sealed class NexusSystemState
 
             stack.Count -= take;
             taken.Add(
-                new NexusUnitStackGroup(requestedStack.UnitType, requestedStack.RemainingHits, take)
+                new NexusUnitStackGroup(
+                    requestedStack.DesignId,
+                    requestedStack.Category,
+                    requestedStack.RemainingHits,
+                    take
+                )
             );
         }
 
@@ -193,7 +201,14 @@ public sealed class NexusSystemState
     }
 
     public bool HasPlanetaryUnits(Guid playerId) =>
-        Units.TryGetValue(playerId, out var stacks) && stacks.Any(s => s.UnitType.IsPlanetary());
+        Units.TryGetValue(playerId, out var stacks)
+        && stacks.Any(s => s.Category == NexusUnitCategory.Planetary);
+
+    public bool HasControllingUnits(Guid playerId, Dictionary<Guid, NexusUnitDesign> designs) =>
+        Units.TryGetValue(playerId, out var stacks)
+        && stacks.Any(s =>
+            designs.TryGetValue(s.DesignId, out var d) && d.Modules.OfType<Control>().Any()
+        );
 
     public bool HasAnyUnits(Guid playerId) =>
         Units.TryGetValue(playerId, out var stacks) && stacks.Count > 0;
@@ -230,6 +245,10 @@ public sealed class NexusPlayerState
 
     [Id(8)]
     public bool PendingBeginNexusGate { get; set; }
+
+    /// <summary>This player's private unit design library.</summary>
+    [Id(9)]
+    public List<NexusUnitDesign> Designs { get; set; } = [];
 }
 
 [GenerateSerializer]
