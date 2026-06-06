@@ -156,14 +156,21 @@ public static class NexusHullBaselines
         };
 }
 
-/// <summary>Validates tag combinations for a given hull. Returns an error message or null.</summary>
+/// <summary>Validates tag combinations for a given hull. Returns an error message or null.
+/// <para>Module-scoped rules (hull applicability, value bounds) are delegated to each
+/// module's <see cref="NexusUnitModule.AllowedHulls"/> and <see cref="NexusUnitModule.Validate"/>.
+/// This class handles design-wide composition rules: duplicates, mutual exclusivity, slot budget.</para>
+/// </summary>
 public static class NexusDesignConstraints
 {
     public static string? Validate(NexusUnitCategory hull, IReadOnlyList<NexusUnitModule> modules)
     {
         foreach (var module in modules)
         {
-            var perModuleError = ValidateModule(hull, module);
+            if (!module.AllowedHulls.Contains(hull))
+                return $"{module.GetType().Name} module is not valid on {hull} hull designs.";
+
+            var perModuleError = module.Validate(hull);
             if (perModuleError != null)
                 return perModuleError;
         }
@@ -180,39 +187,117 @@ public static class NexusDesignConstraints
         return null;
     }
 
-    private static string? ValidateModule(NexusUnitCategory hull, NexusUnitModule module) =>
-        module switch
+    /// <summary>
+    /// Pre-flight check: would adding <paramref name="candidate"/> to
+    /// <paramref name="existingModules"/> be valid for <paramref name="hull"/>?
+    /// Returns null if valid, or an error message explaining why not.
+    /// Covers hull applicability, value bounds, singleton duplicates, mutual
+    /// exclusivity, category-scoped rules, and slot budget.
+    /// </summary>
+    public static string? CheckAdd(
+        NexusUnitCategory hull,
+        IReadOnlyList<NexusUnitModule> existingModules,
+        NexusUnitModule candidate
+    )
+    {
+        // Hull applicability
+        if (!candidate.AllowedHulls.Contains(hull))
+            return $"{candidate.GetType().Name} module is not valid on {hull} hull designs.";
+
+        // Value bounds
+        var boundsError = candidate.Validate(hull);
+        if (boundsError is not null)
+            return boundsError;
+
+        // Slot budget: existing + candidate must fit
+        var existingSlots = existingModules.Sum(NexusModuleCosts.GetSlots);
+        var candidateSlots = NexusModuleCosts.GetSlots(candidate);
+        var budget = NexusHullBaselines.SlotBudget(hull);
+        if (existingSlots + candidateSlots > budget)
+            return $"Adding this module would use {existingSlots + candidateSlots} slots (budget: {budget}).";
+
+        // Duplicate singleton checks
+        var duplicateError = ValidateAddDuplicates(existingModules, candidate);
+        if (duplicateError is not null)
+            return duplicateError;
+
+        return null;
+    }
+
+    /// <summary>
+    /// Returns module type names that are completely blocked from being added,
+    /// regardless of parameters. This covers singleton types (already present)
+    /// and the Beacon/Cloak mutual exclusivity.
+    /// Category-scoped types (Battery, Vanguard, Seeker, Scatter) are NOT in
+    /// this set even if some categories are taken — the caller should check
+    /// <see cref="GetTakenCategories"/> for per-category filtering.
+    /// </summary>
+    public static IReadOnlySet<string> GetBlockedModuleTypes(IReadOnlyList<NexusUnitModule> modules)
+    {
+        var blocked = new HashSet<string>();
+
+        if (modules.OfType<Shield>().Any())
+            blocked.Add(nameof(Shield));
+        if (modules.OfType<Disruptor>().Any())
+            blocked.Add(nameof(Disruptor));
+        if (modules.OfType<Dock>().Any())
+            blocked.Add(nameof(Dock));
+        if (modules.OfType<Control>().Any())
+            blocked.Add(nameof(Control));
+        if (modules.OfType<Repair>().Any())
+            blocked.Add(nameof(Repair));
+        if (modules.OfType<Bulkhead>().Any())
+            blocked.Add(nameof(Bulkhead));
+
+        // Beacon and Cloak are both singletons AND mutually exclusive.
+        // If either is present, both are blocked.
+        if (modules.OfType<Beacon>().Any() || modules.OfType<Cloak>().Any())
         {
-            Hangar when hull != NexusUnitCategory.Capital =>
-                "Hangar module is only valid on Capital hull designs.",
-            Hangar { Capacity: <= 0 } => "Hangar Capacity must be at least 1.",
-            Hangar { Capacity: > 8 } => "Hangar Capacity cannot exceed 8.",
-            Dock when hull == NexusUnitCategory.Capital =>
-                "Dock module is not valid on Capital hull designs.",
-            Control when hull != NexusUnitCategory.Planetary =>
-                "Control module is only valid on Planetary hull designs.",
-            Armour { N: <= 0 } => "Armour N must be at least 1.",
-            Armour { N: > 4 } => "Armour N cannot exceed 4.",
-            Drive when hull == NexusUnitCategory.Planetary =>
-                "Drive module is not valid on Planetary hull designs.",
-            Drive { N: <= 0 } => "Drive N must be at least 1.",
-            Drive { N: > 2 } => "Drive N cannot exceed 2.",
-            Seeker { Magnitude: <= 0 } => "Seeker Magnitude must be at least 1.",
-            Seeker { Magnitude: > 2 } => "Seeker Magnitude cannot exceed 2.",
-            Scatter { Magnitude: <= 0 } => "Scatter Magnitude must be at least 1.",
-            Scatter { Magnitude: > 2 } => "Scatter Magnitude cannot exceed 2.",
-            Bulkhead { N: <= 0 } => "Bulkhead N must be at least 1.",
-            Bulkhead { N: > 3 } => "Bulkhead N cannot exceed 3.",
-            Beacon { N: <= 0 } => "Beacon N must be at least 1.",
-            Beacon { N: > 1 } => "Beacon N cannot exceed 1.",
-            Cloak { N: <= 0 } => "Cloak N must be at least 1.",
-            Cloak { N: > 2 } => "Cloak N cannot exceed 2.",
-            Screen { N: <= 0 } => "Screen N must be at least 1.",
-            Screen { N: > 4 } => "Screen N cannot exceed 4.",
-            Command { N: <= 0 } => "Command N must be at least 1.",
-            Command { N: > 4 } => "Command N cannot exceed 4.",
-            _ => null,
-        };
+            blocked.Add(nameof(Beacon));
+            blocked.Add(nameof(Cloak));
+        }
+
+        return blocked;
+    }
+
+    /// <summary>
+    /// For the given module type name, returns which <see cref="NexusUnitCategory"/>
+    /// values are already taken (cannot be selected). Handles per-category singletons
+    /// (Battery, Vanguard) and per-category mutual exclusivity (Seeker/Scatter).
+    /// Returns an empty set for types without category parameters.
+    /// </summary>
+    public static IReadOnlySet<NexusUnitCategory> GetTakenCategories(
+        string moduleTypeName,
+        IReadOnlyList<NexusUnitModule> modules
+    )
+    {
+        var taken = new HashSet<NexusUnitCategory>();
+
+        if (moduleTypeName is nameof(Battery) or nameof(Vanguard))
+        {
+            foreach (var m in modules)
+            {
+                if (m is Battery b && moduleTypeName == nameof(Battery))
+                    taken.Add(b.Category);
+                if (m is Vanguard v && moduleTypeName == nameof(Vanguard))
+                    taken.Add(v.Category);
+            }
+        }
+
+        if (moduleTypeName is nameof(Seeker))
+        {
+            foreach (var m in modules.OfType<Scatter>())
+                taken.Add(m.Category);
+        }
+
+        if (moduleTypeName is nameof(Scatter))
+        {
+            foreach (var m in modules.OfType<Seeker>())
+                taken.Add(m.Category);
+        }
+
+        return taken;
+    }
 
     private static string? ValidateDuplicates(IReadOnlyList<NexusUnitModule> modules)
     {
@@ -244,6 +329,74 @@ public static class NexusDesignConstraints
             if (
                 modules.OfType<Seeker>().Any(s => s.Category == category)
                 && modules.OfType<Scatter>().Any(s => s.Category == category)
+            )
+                return $"Seeker({category}) and Scatter({category}) modules are mutually exclusive.";
+        }
+
+        return null;
+    }
+
+    private static string? ValidateAddDuplicates(
+        IReadOnlyList<NexusUnitModule> existing,
+        NexusUnitModule candidate
+    )
+    {
+        // Singleton types — no duplicates allowed
+        if (candidate is Shield && existing.OfType<Shield>().Any())
+            return "Duplicate Shield module.";
+        if (candidate is Disruptor && existing.OfType<Disruptor>().Any())
+            return "Duplicate Disruptor module.";
+        if (candidate is Dock && existing.OfType<Dock>().Any())
+            return "Duplicate Dock module.";
+        if (candidate is Control && existing.OfType<Control>().Any())
+            return "Duplicate Control module.";
+        if (candidate is Repair && existing.OfType<Repair>().Any())
+            return "Duplicate Repair module.";
+        if (candidate is Bulkhead && existing.OfType<Bulkhead>().Any())
+            return "Duplicate Bulkhead module.";
+
+        // Beacon and Cloak are both singletons AND mutually exclusive
+        if (
+            candidate is Beacon or Cloak
+            && (existing.OfType<Beacon>().Any() || existing.OfType<Cloak>().Any())
+        )
+            return "Beacon and Cloak modules are mutually exclusive.";
+
+        return ValidateAddCategoryScoped(existing, candidate);
+    }
+
+    private static string? ValidateAddCategoryScoped(
+        IReadOnlyList<NexusUnitModule> existing,
+        NexusUnitModule candidate
+    )
+    {
+        foreach (var category in Enum.GetValues<NexusUnitCategory>())
+        {
+            if (
+                candidate is Battery { Category: var bCat }
+                && bCat == category
+                && existing.OfType<Battery>().Any(b => b.Category == category)
+            )
+                return $"Duplicate Battery({category}) module.";
+
+            if (
+                candidate is Vanguard { Category: var vCat }
+                && vCat == category
+                && existing.OfType<Vanguard>().Any(v => v.Category == category)
+            )
+                return $"Duplicate Vanguard({category}) module.";
+
+            if (
+                candidate is Seeker { Category: var sCat }
+                && sCat == category
+                && existing.OfType<Scatter>().Any(s => s.Category == category)
+            )
+                return $"Seeker({category}) and Scatter({category}) modules are mutually exclusive.";
+
+            if (
+                candidate is Scatter { Category: var scCat }
+                && scCat == category
+                && existing.OfType<Seeker>().Any(s => s.Category == category)
             )
                 return $"Seeker({category}) and Scatter({category}) modules are mutually exclusive.";
         }

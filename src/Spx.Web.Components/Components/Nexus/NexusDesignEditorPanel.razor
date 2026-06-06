@@ -121,9 +121,10 @@
                             <label class="ui-label" for="add-module-category">Target</label>
                             <select id="add-module-category" class="ui-select w-full"
                                     @bind="_addModuleCategory">
-                                <option value="@NexusUnitCategory.Strike">Strike</option>
-                                <option value="@NexusUnitCategory.Capital">Capital</option>
-                                <option value="@NexusUnitCategory.Planetary">Planetary</option>
+                                @foreach (var cat in AvailableCategories)
+                                {
+                                    <option value="@cat">@cat</option>
+                                }
                             </select>
                         </div>
                     }
@@ -139,7 +140,14 @@
                     }
 
                     <button type="button" class="ui-button-secondary shrink-0 self-end"
+                            disabled="@(AddError is not null)"
+                            title="@(AddError ?? "")"
                             @onclick="AddModule">+ Add</button>
+
+                    @if (AddError is not null)
+                    {
+                        <p class="w-full text-sm text-red-400">@AddError</p>
+                    }
                 </div>
             </div>
 
@@ -233,10 +241,28 @@
         && string.IsNullOrWhiteSpace(_validationError);
 
     private IEnumerable<string> AvailableModuleTypes =>
-        (_hull == NexusUnitCategory.Capital
-            ? AllModuleTypes
-            : AllModuleTypes.Where(t => t != "Hangar"))
-        .OrderBy(x => x);
+        AllModuleTypes
+            .Where(t => BuildModule(t, NexusUnitCategory.Strike, 1).AllowedHulls.Contains(_hull))
+            .Where(t => !NexusDesignConstraints.GetBlockedModuleTypes(_modules).Contains(t))
+            .OrderBy(x => x);
+
+    private IEnumerable<NexusUnitCategory> AvailableCategories
+    {
+        get
+        {
+            var taken = NexusDesignConstraints.GetTakenCategories(_addModuleType, _modules);
+            return Enum.GetValues<NexusUnitCategory>().Where(c => !taken.Contains(c));
+        }
+    }
+
+    private string? AddError
+    {
+        get
+        {
+            var candidate = BuildModule(_addModuleType, _addModuleCategory, _addModuleN);
+            return NexusDesignConstraints.CheckAdd(_hull, _modules, candidate);
+        }
+    }
 
     private bool AddModuleNeedsCategory =>
         _addModuleType is "Battery" or "Vanguard" or "Seeker" or "Scatter" or "Screen" or "Command";

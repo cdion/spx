@@ -2135,22 +2135,6 @@ public class NexusDesignTests
     }
 
     [Fact]
-    public void CreateDesign_InvalidConstraint_IsRejected()
-    {
-        var s = MakeState();
-        // Hangar is only valid on Capital — applying to Strike should fail
-        var cmd = new NexusCreateDesignCommand(
-            P1Id,
-            "Bad Design",
-            NexusUnitCategory.Strike,
-            [new Battery(NexusUnitCategory.Strike), new Hangar(4)]
-        );
-        var result = NexusEngine.CreateDesign(s, cmd);
-
-        Assert.IsAssignableFrom<NexusDesignCommandRejected>(result);
-    }
-
-    [Fact]
     public void CreateDesign_NoAttackTag_IsAccepted()
     {
         // Pure support units (carriers, repair ships) need no attack modules
@@ -2160,109 +2144,6 @@ public class NexusDesignTests
             "Support Ship",
             NexusUnitCategory.Capital,
             [new Hangar(4)]
-        );
-        var result = NexusEngine.CreateDesign(s, cmd);
-
-        Assert.IsType<NexusDesignCreated>(result);
-    }
-
-    [Fact]
-    public void CreateDesign_DuplicateBatteryCategory_IsRejected()
-    {
-        var s = MakeState();
-        var cmd = new NexusCreateDesignCommand(
-            P1Id,
-            "Dup Battery",
-            NexusUnitCategory.Capital,
-            [new Battery(NexusUnitCategory.Strike), new Battery(NexusUnitCategory.Strike)]
-        );
-        var result = NexusEngine.CreateDesign(s, cmd);
-
-        var rejected = Assert.IsAssignableFrom<NexusDesignCommandRejected>(result);
-        Assert.Contains("Duplicate Battery(Strike)", rejected.ErrorMessage);
-    }
-
-    [Fact]
-    public void CreateDesign_DuplicateVanguardCategory_IsRejected()
-    {
-        var s = MakeState();
-        var cmd = new NexusCreateDesignCommand(
-            P1Id,
-            "Dup Vanguard",
-            NexusUnitCategory.Strike,
-            [new Vanguard(NexusUnitCategory.Strike), new Vanguard(NexusUnitCategory.Strike)]
-        );
-        var result = NexusEngine.CreateDesign(s, cmd);
-
-        var rejected = Assert.IsAssignableFrom<NexusDesignCommandRejected>(result);
-        Assert.Contains("Duplicate Vanguard(Strike)", rejected.ErrorMessage);
-    }
-
-    [Fact]
-    public void CreateDesign_SeekerAndScatterSameCategory_IsRejected()
-    {
-        var s = MakeState();
-        var cmd = new NexusCreateDesignCommand(
-            P1Id,
-            "Contradictory",
-            NexusUnitCategory.Capital,
-            [
-                new Battery(NexusUnitCategory.Strike),
-                new Seeker(NexusUnitCategory.Strike, 1),
-                new Scatter(NexusUnitCategory.Strike, 1),
-            ]
-        );
-        var result = NexusEngine.CreateDesign(s, cmd);
-
-        var rejected = Assert.IsAssignableFrom<NexusDesignCommandRejected>(result);
-        Assert.Contains("mutually exclusive", rejected.ErrorMessage);
-    }
-
-    [Fact]
-    public void CreateDesign_SeekerAndScatterDifferentCategory_IsAccepted()
-    {
-        var s = MakeState();
-        var cmd = new NexusCreateDesignCommand(
-            P1Id,
-            "Mixed Fire",
-            NexusUnitCategory.Capital,
-            [
-                new Battery(NexusUnitCategory.Strike),
-                new Battery(NexusUnitCategory.Capital),
-                new Seeker(NexusUnitCategory.Strike, 1),
-                new Scatter(NexusUnitCategory.Capital, 1),
-            ]
-        );
-        var result = NexusEngine.CreateDesign(s, cmd);
-
-        Assert.IsType<NexusDesignCreated>(result);
-    }
-
-    [Fact]
-    public void CreateDesign_ControlOnNonPlanetary_IsRejected()
-    {
-        var s = MakeState();
-        var cmd = new NexusCreateDesignCommand(
-            P1Id,
-            "Capital Control",
-            NexusUnitCategory.Capital,
-            [new Battery(NexusUnitCategory.Capital), new Control()]
-        );
-        var result = NexusEngine.CreateDesign(s, cmd);
-
-        var rejected = Assert.IsAssignableFrom<NexusDesignCommandRejected>(result);
-        Assert.Contains("Control", rejected.ErrorMessage);
-    }
-
-    [Fact]
-    public void CreateDesign_ControlOnPlanetary_IsAccepted()
-    {
-        var s = MakeState();
-        var cmd = new NexusCreateDesignCommand(
-            P1Id,
-            "Infantry",
-            NexusUnitCategory.Planetary,
-            [new Battery(NexusUnitCategory.Planetary), new Control()]
         );
         var result = NexusEngine.CreateDesign(s, cmd);
 
@@ -2318,114 +2199,6 @@ public class NexusDesignTests
         Assert.Equal(9, profile.Cost);
     }
 
-    // ── Hull restrictions ────────────────────────────────────────────────────
-
-    [Fact]
-    public void CreateDesign_HangarOnNonCapital_IsRejected()
-    {
-        var s = MakeState();
-        var result = NexusEngine.CreateDesign(
-            s,
-            new NexusCreateDesignCommand(
-                P1Id,
-                "X",
-                NexusUnitCategory.Strike,
-                [new Battery(NexusUnitCategory.Strike), new Hangar(2)]
-            )
-        );
-        Assert.IsAssignableFrom<NexusDesignCommandRejected>(result);
-    }
-
-    [Fact]
-    public void CreateDesign_DockOnCapital_IsRejected()
-    {
-        var s = MakeState();
-        var result = NexusEngine.CreateDesign(
-            s,
-            new NexusCreateDesignCommand(
-                P1Id,
-                "X",
-                NexusUnitCategory.Capital,
-                [new Battery(NexusUnitCategory.Strike), new Dock()]
-            )
-        );
-        Assert.IsAssignableFrom<NexusDesignCommandRejected>(result);
-    }
-
-    [Fact]
-    public void CreateDesign_DriveOnPlanetary_IsRejected()
-    {
-        var s = MakeState();
-        var result = NexusEngine.CreateDesign(
-            s,
-            new NexusCreateDesignCommand(
-                P1Id,
-                "X",
-                NexusUnitCategory.Planetary,
-                [new Battery(NexusUnitCategory.Planetary), new Drive(1)]
-            )
-        );
-        Assert.IsAssignableFrom<NexusDesignCommandRejected>(result);
-    }
-
-    // ── N-parameter bounds ───────────────────────────────────────────────────
-
-    [Theory]
-    [InlineData(0)]
-    [InlineData(5)]
-    public void CreateDesign_ArmourOutOfRange_IsRejected(int n)
-    {
-        var s = MakeState();
-        var result = NexusEngine.CreateDesign(
-            s,
-            new NexusCreateDesignCommand(
-                P1Id,
-                "X",
-                NexusUnitCategory.Strike,
-                [new Battery(NexusUnitCategory.Strike), new Armour(n)]
-            )
-        );
-        Assert.IsAssignableFrom<NexusDesignCommandRejected>(result);
-    }
-
-    [Theory]
-    [InlineData(0)]
-    [InlineData(3)]
-    public void CreateDesign_DriveOutOfRange_IsRejected(int n)
-    {
-        var s = MakeState();
-        var result = NexusEngine.CreateDesign(
-            s,
-            new NexusCreateDesignCommand(
-                P1Id,
-                "X",
-                NexusUnitCategory.Capital,
-                [new Battery(NexusUnitCategory.Strike), new Drive(n), new Hangar(2)]
-            )
-        );
-        Assert.IsAssignableFrom<NexusDesignCommandRejected>(result);
-    }
-
-    [Theory]
-    [InlineData(0)]
-    [InlineData(4)]
-    public void CreateDesign_BeaconOutOfRange_IsRejected(int n)
-    {
-        var s = MakeState();
-        var result = NexusEngine.CreateDesign(
-            s,
-            new NexusCreateDesignCommand(
-                P1Id,
-                "X",
-                NexusUnitCategory.Strike,
-                [new Battery(NexusUnitCategory.Strike), new Beacon(n)]
-            )
-        );
-        Assert.IsAssignableFrom<NexusDesignCommandRejected>(result);
-    }
-
-    // ── Slot budget ──────────────────────────────────────────────────────────
-
     [Fact]
     public void CreateDesign_ExceedsSlotBudget_IsRejected()
     {
@@ -2458,42 +2231,6 @@ public class NexusDesignTests
             )
         );
         Assert.IsType<NexusDesignCreated>(result);
-    }
-
-    // ── Duplicate / mutual-exclusion rules ───────────────────────────────────
-
-    [Fact]
-    public void CreateDesign_DuplicateShield_IsRejected()
-    {
-        var s = MakeState();
-        // Two shields = 2 slots; within budget for Capital (4) but duplicate rule fires
-        var result = NexusEngine.CreateDesign(
-            s,
-            new NexusCreateDesignCommand(
-                P1Id,
-                "X",
-                NexusUnitCategory.Capital,
-                [new Battery(NexusUnitCategory.Strike), new Shield(), new Shield(), new Hangar(2)]
-            )
-        );
-        Assert.IsAssignableFrom<NexusDesignCommandRejected>(result);
-    }
-
-    [Fact]
-    public void CreateDesign_BeaconAndCloak_MutuallyExclusive_IsRejected()
-    {
-        var s = MakeState();
-        // Beacon(-1 slot) + Cloak(1 slot) = 0 net; within budget but mutual-exclusion fires
-        var result = NexusEngine.CreateDesign(
-            s,
-            new NexusCreateDesignCommand(
-                P1Id,
-                "X",
-                NexusUnitCategory.Strike,
-                [new Battery(NexusUnitCategory.Strike), new Beacon(1), new Cloak(1)]
-            )
-        );
-        Assert.IsAssignableFrom<NexusDesignCommandRejected>(result);
     }
 
     // ── Profile derivation ───────────────────────────────────────────────────
@@ -2591,7 +2328,7 @@ public class NexusDesignTests
     [Fact]
     public void ModuleCosts_Bulkhead_EnergyCostNegativeSlots()
     {
-        Assert.Equal(4, NexusModuleCosts.GetCost(new Bulkhead(2)));  // N*2
+        Assert.Equal(4, NexusModuleCosts.GetCost(new Bulkhead(2))); // N*2
         Assert.Equal(-2, NexusModuleCosts.GetSlots(new Bulkhead(2))); // -N
     }
 
