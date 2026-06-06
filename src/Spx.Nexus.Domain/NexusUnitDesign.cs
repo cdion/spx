@@ -67,7 +67,7 @@ public static class NexusHullBaselines
             ),
             NexusUnitCategory.Capital => new(
                 NexusUnitCategory.Capital,
-                Hits: 1,
+                Hits: 2,
                 Silhouette: 2,
                 Attacks: new Dictionary<NexusUnitCategory, NexusAttackSpec>(),
                 Cost: CapitalBaseCost,
@@ -103,9 +103,7 @@ public static class NexusHullBaselines
 
         NexusAttackSpec? DeriveSpec(NexusUnitCategory cat)
         {
-            var battle =
-                design.Modules.OfType<Battery>().Count(b => b.Category == cat)
-                + design.Modules.OfType<Barrage>().Count(b => b.Category == cat);
+            var battle = design.Modules.OfType<Battery>().Count(b => b.Category == cat);
             var contact = design.Modules.OfType<Vanguard>().Count(v => v.Category == cat);
             if (battle + contact == 0)
                 return null;
@@ -172,10 +170,6 @@ public static class NexusDesignConstraints
         var duplicateError = ValidateDuplicates(modules);
         if (duplicateError != null)
             return duplicateError;
-
-        var crossModuleError = ValidateCrossModuleRules(modules);
-        if (crossModuleError != null)
-            return crossModuleError;
 
         var usedSlots = modules.Sum(NexusModuleCosts.GetSlots);
         var budget = NexusHullBaselines.SlotBudget(hull);
@@ -249,16 +243,6 @@ public static class NexusDesignConstraints
                 return $"Seeker({category}) and Scatter({category}) modules are mutually exclusive.";
         }
 
-        return null;
-    }
-
-    private static string? ValidateCrossModuleRules(IReadOnlyList<NexusUnitModule> modules)
-    {
-        foreach (var barrage in modules.OfType<Barrage>())
-        {
-            if (!modules.OfType<Battery>().Any(b => b.Category == barrage.Category))
-                return $"Barrage({barrage.Category}) requires a Battery({barrage.Category}) module.";
-        }
         return null;
     }
 }

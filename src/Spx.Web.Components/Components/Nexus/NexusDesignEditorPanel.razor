@@ -186,7 +186,7 @@
 
     private static readonly string[] AllModuleTypes =
     [
-        "Battery", "Vanguard", "Barrage", "Seeker", "Scatter",
+        "Battery", "Vanguard", "Seeker", "Scatter",
         "Shield", "Disruptor", "Armour",
         "Screen", "Command",
         "Dock", "Hangar",
@@ -234,7 +234,7 @@
             : AllModuleTypes.Where(t => t != "Hangar");
 
     private bool AddModuleNeedsCategory =>
-        _addModuleType is "Battery" or "Vanguard" or "Barrage" or "Seeker" or "Scatter" or "Screen" or "Command";
+        _addModuleType is "Battery" or "Vanguard" or "Seeker" or "Scatter" or "Screen" or "Command";
 
     private bool AddModuleNeedsN =>
         _addModuleType is "Armour" or "Drive" or "Screen" or "Command" or "Seeker" or "Scatter" or "Beacon" or "Cloak" or "Hangar";
@@ -321,7 +321,6 @@
             "Repair" => new Repair(),
             "Battery" => new Battery(category),
             "Vanguard" => new Vanguard(category),
-            "Barrage" => new Barrage(category),
             "Hangar" => new Hangar(n),
             "Armour" => new Armour(n),
             "Drive" => new Drive(n),

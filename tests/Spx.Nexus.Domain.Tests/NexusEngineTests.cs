@@ -46,7 +46,7 @@ internal static class TestDesigns
         NexusUnitCategory.Capital,
         new Battery(NexusUnitCategory.Strike),
         new Battery(NexusUnitCategory.Capital),
-        new Barrage(NexusUnitCategory.Strike),
+        new Armour(1),
         new Hangar(2)
     );
 
@@ -139,19 +139,22 @@ internal static class TestState
                 player.PlayerId,
                 TestDesigns.Carrier.DesignId,
                 NexusUnitCategory.Capital,
-                1
+                1,
+                designHits: NexusHullBaselines.GetProfile(TestDesigns.Carrier).Hits
             );
             home.AddUnits(
                 player.PlayerId,
                 TestDesigns.Infantry.DesignId,
                 NexusUnitCategory.Planetary,
-                4
+                4,
+                designHits: NexusHullBaselines.GetProfile(TestDesigns.Infantry).Hits
             );
             home.AddUnits(
                 player.PlayerId,
                 TestDesigns.Fighter.DesignId,
                 NexusUnitCategory.Strike,
-                2
+                2,
+                designHits: NexusHullBaselines.GetProfile(TestDesigns.Fighter).Hits
             );
         }
     }
@@ -577,7 +580,7 @@ public class NexusMoveValidationTests
                 .Select(unit => new NexusUnitStackGroup(
                     unit.Design.DesignId,
                     unit.Design.Hull,
-                    NexusHullBaselines.GetBaseline(unit.Design.Hull).Hits,
+                    NexusHullBaselines.GetProfile(unit.Design).Hits,
                     unit.Count
                 ))
                 .ToImmutableArray()
@@ -588,7 +591,7 @@ public class NexusMoveValidationTests
     {
         var s = MakeState();
         var result = Submit(s, P1Id, [Move(P1Home, new HexCoord(0, -2), (TestDesigns.Carrier, 1))]);
-        Assert.IsType<NexusTurnOrdersRejected>(result);
+        Assert.IsAssignableFrom<NexusTurnOrdersRejected>(result);
     }
 
     [Fact]
@@ -601,7 +604,7 @@ public class NexusMoveValidationTests
             ImmutableArray<NexusUnitStackGroup>.Empty
         );
         var result = Submit(s, P1Id, [order]);
-        Assert.IsType<NexusTurnOrdersRejected>(result);
+        Assert.IsAssignableFrom<NexusTurnOrdersRejected>(result);
     }
 
     [Fact]
@@ -609,7 +612,7 @@ public class NexusMoveValidationTests
     {
         var s = MakeState();
         var result = Submit(s, P1Id, [Move(P1Home, Adjacent1, (TestDesigns.Infantry, 5))]);
-        Assert.IsType<NexusTurnOrdersRejected>(result);
+        Assert.IsAssignableFrom<NexusTurnOrdersRejected>(result);
     }
 
     [Fact]
@@ -619,7 +622,7 @@ public class NexusMoveValidationTests
 
         var result = Submit(s, P1Id, [Move(P1Home, Adjacent1, (TestDesigns.Infantry, 5))]);
 
-        var rejected = Assert.IsType<NexusTurnOrdersRejected>(result);
+        var rejected = Assert.IsAssignableFrom<NexusTurnOrdersRejected>(result);
         Assert.Equal(
             "Insufficient Infantry at Your Home System: need 5, have 4.",
             rejected.ErrorMessage
@@ -633,7 +636,7 @@ public class NexusMoveValidationTests
 
         var result = Submit(s, P1Id, [Move(P2Home, P2Adjacent, (TestDesigns.Carrier, 1))]);
 
-        var rejected = Assert.IsType<NexusTurnOrdersRejected>(result);
+        var rejected = Assert.IsAssignableFrom<NexusTurnOrdersRejected>(result);
         Assert.Equal(
             "Insufficient Fleet Capacity at Opponent Home System: need 4, have 0.",
             rejected.ErrorMessage
@@ -648,7 +651,7 @@ public class NexusMoveValidationTests
             .RemoveUnits(P1Id, TestDesigns.Carrier.DesignId, 1);
         var result = Submit(s, P1Id, [Move(P1Home, Adjacent1, (TestDesigns.Fighter, 1))]);
 
-        var rejected = Assert.IsType<NexusTurnOrdersRejected>(result);
+        var rejected = Assert.IsAssignableFrom<NexusTurnOrdersRejected>(result);
         Assert.Equal(
             "Insufficient Fleet Capacity for move from Your Home System to Pi: need 1, have 0.",
             rejected.ErrorMessage
@@ -675,7 +678,7 @@ public class NexusMoveValidationTests
 
         var result = Submit(s, P1Id, [Move(P1Home, Adjacent1, (noDockStrike, 1))]);
 
-        Assert.IsType<NexusTurnOrdersRejected>(result);
+        Assert.IsAssignableFrom<NexusTurnOrdersRejected>(result);
     }
 
     [Fact]
@@ -710,7 +713,7 @@ public class NexusMoveValidationTests
                 Move(P1Home, Adjacent2, (TestDesigns.Infantry, 3)),
             ]
         );
-        Assert.IsType<NexusTurnOrdersRejected>(result);
+        Assert.IsAssignableFrom<NexusTurnOrdersRejected>(result);
     }
 
     [Fact]
@@ -726,7 +729,7 @@ public class NexusMoveValidationTests
         );
         NexusEngine.SubmitOrders(s, cmd, new Random(42));
         var result = NexusEngine.SubmitOrders(s, cmd, new Random(42));
-        Assert.IsType<NexusTurnOrdersRejected>(result);
+        Assert.IsAssignableFrom<NexusTurnOrdersRejected>(result);
     }
 
     [Fact]
@@ -740,7 +743,9 @@ public class NexusMoveValidationTests
             ImmutableArray<NexusBuildOrder>.Empty,
             false
         );
-        Assert.IsType<NexusTurnOrdersRejected>(NexusEngine.SubmitOrders(s, cmd, new Random(42)));
+        Assert.IsAssignableFrom<NexusTurnOrdersRejected>(
+            NexusEngine.SubmitOrders(s, cmd, new Random(42))
+        );
     }
 }
 
@@ -808,7 +813,7 @@ public class NexusRoundResolutionTests
                 .Select(unit => new NexusUnitStackGroup(
                     unit.Design.DesignId,
                     unit.Design.Hull,
-                    NexusHullBaselines.GetBaseline(unit.Design.Hull).Hits,
+                    NexusHullBaselines.GetProfile(unit.Design).Hits,
                     unit.Count
                 ))
                 .ToImmutableArray()
@@ -945,7 +950,13 @@ public class NexusRoundResolutionTests
         var s = MakeState();
         var alpha = s.Systems.First(sys => sys.Coord == new HexCoord(1, -1));
 
-        alpha.AddUnits(P1Id, TestDesigns.Carrier.DesignId, NexusUnitCategory.Capital, 1);
+        alpha.AddUnits(
+            P1Id,
+            TestDesigns.Carrier.DesignId,
+            NexusUnitCategory.Capital,
+            1,
+            designHits: NexusHullBaselines.GetProfile(TestDesigns.Carrier).Hits
+        );
         alpha.AddUnits(P1Id, TestDesigns.Infantry.DesignId, NexusUnitCategory.Planetary, 2);
         alpha.ControlOwner = P1Id;
 
@@ -1209,7 +1220,7 @@ public class NexusPersistentDamageTests
                 .Select(unit => new NexusUnitStackGroup(
                     unit.Design.DesignId,
                     unit.Design.Hull,
-                    NexusHullBaselines.GetBaseline(unit.Design.Hull).Hits,
+                    NexusHullBaselines.GetProfile(unit.Design).Hits,
                     unit.Count
                 ))
                 .ToImmutableArray()
@@ -1395,7 +1406,7 @@ public class NexusGateTests
             new Random(42)
         );
 
-        Assert.IsType<NexusTurnOrdersRejected>(result);
+        Assert.IsAssignableFrom<NexusTurnOrdersRejected>(result);
     }
 
     [Fact]
@@ -1412,7 +1423,7 @@ public class NexusGateTests
             new Random(42)
         );
 
-        Assert.IsType<NexusTurnOrdersRejected>(result);
+        Assert.IsAssignableFrom<NexusTurnOrdersRejected>(result);
     }
 
     [Fact]
@@ -1519,7 +1530,7 @@ public class NexusGateTests
             new Random(42)
         );
 
-        Assert.IsType<NexusTurnOrdersRejected>(result);
+        Assert.IsAssignableFrom<NexusTurnOrdersRejected>(result);
     }
 
     [Fact]
@@ -1530,7 +1541,13 @@ public class NexusGateTests
         var nexus = s.Systems.Single(sys => sys.IsNexus);
         nexus.AddUnits(P1Id, TestDesigns.Infantry.DesignId, NexusUnitCategory.Planetary, 1);
         var staging = s.Systems.Single(sys => sys.Coord == new HexCoord(0, -1));
-        staging.AddUnits(P2Id, TestDesigns.Carrier.DesignId, NexusUnitCategory.Capital, 1);
+        staging.AddUnits(
+            P2Id,
+            TestDesigns.Carrier.DesignId,
+            NexusUnitCategory.Capital,
+            1,
+            designHits: NexusHullBaselines.GetProfile(TestDesigns.Carrier).Hits
+        );
         staging.AddUnits(P2Id, TestDesigns.Fighter.DesignId, NexusUnitCategory.Strike, 1);
 
         NexusEngine.SubmitOrders(
@@ -1671,7 +1688,7 @@ public class NexusCommittedPlanetaryTests
             new Random(42)
         );
 
-        Assert.IsType<NexusTurnOrdersRejected>(result);
+        Assert.IsAssignableFrom<NexusTurnOrdersRejected>(result);
     }
 
     [Fact]
@@ -1679,7 +1696,13 @@ public class NexusCommittedPlanetaryTests
     {
         var s = MakeState();
         var alpha = s.Systems.First(sys => sys.Coord == new HexCoord(1, -1));
-        alpha.AddUnits(P1Id, TestDesigns.Carrier.DesignId, NexusUnitCategory.Capital, 1);
+        alpha.AddUnits(
+            P1Id,
+            TestDesigns.Carrier.DesignId,
+            NexusUnitCategory.Capital,
+            1,
+            designHits: NexusHullBaselines.GetProfile(TestDesigns.Carrier).Hits
+        );
         alpha.AddUnits(P1Id, TestDesigns.Infantry.DesignId, NexusUnitCategory.Planetary, 1);
 
         var result = NexusEngine.SubmitOrders(
@@ -1713,7 +1736,7 @@ public class NexusCommittedPlanetaryTests
             new Random(42)
         );
 
-        Assert.IsNotType<NexusTurnOrdersRejected>(result);
+        Assert.IsType<NexusTurnOrdersAccepted>(result);
     }
 }
 
@@ -2034,28 +2057,6 @@ public class NexusTagBehaviorTests
         Assert.Equal(0, shieldedHits);
     }
 
-    // ── Barrage ───────────────────────────────────────────────────────────
-
-    [Fact]
-    public void BarrageVsStrike_GeneratesExtraAttacks()
-    {
-        var s = MakeState();
-        var alpha = s.Systems.First(sys => sys.Coord == new HexCoord(1, -1));
-
-        AddUnits(alpha, P1Id, TestDesigns.Destroyer, 1);
-        AddUnits(alpha, P2Id, TestDesigns.Fighter, 3);
-
-        SubmitRound(s);
-
-        var attackRolls = GetAttackRolls(s);
-        var destroyerAttacks = attackRolls.Count(r => r.AttackerDesignName == "Destroyer");
-
-        Assert.True(
-            destroyerAttacks >= 3,
-            $"Expected at least 3 Destroyer attacks, got {destroyerAttacks}"
-        );
-    }
-
     // ── Screen (via public API) ───────────────────────────────────────────────
 
     [Fact]
@@ -2146,7 +2147,7 @@ public class NexusDesignTests
         );
         var result = NexusEngine.CreateDesign(s, cmd);
 
-        Assert.IsType<NexusDesignCommandRejected>(result);
+        Assert.IsAssignableFrom<NexusDesignCommandRejected>(result);
     }
 
     [Fact]
@@ -2166,37 +2167,6 @@ public class NexusDesignTests
     }
 
     [Fact]
-    public void CreateDesign_BarrageWithoutBattery_IsRejected()
-    {
-        var s = MakeState();
-        var cmd = new NexusCreateDesignCommand(
-            P1Id,
-            "Bad Barrage",
-            NexusUnitCategory.Capital,
-            [new Battery(NexusUnitCategory.Capital), new Barrage(NexusUnitCategory.Strike)]
-        );
-        var result = NexusEngine.CreateDesign(s, cmd);
-
-        var rejected = Assert.IsType<NexusDesignCommandRejected>(result);
-        Assert.Contains("Barrage(Strike)", rejected.ErrorMessage);
-    }
-
-    [Fact]
-    public void CreateDesign_BarrageWithMatchingBattery_IsAccepted()
-    {
-        var s = MakeState();
-        var cmd = new NexusCreateDesignCommand(
-            P1Id,
-            "Gunship",
-            NexusUnitCategory.Capital,
-            [new Battery(NexusUnitCategory.Strike), new Barrage(NexusUnitCategory.Strike)]
-        );
-        var result = NexusEngine.CreateDesign(s, cmd);
-
-        Assert.IsType<NexusDesignCreated>(result);
-    }
-
-    [Fact]
     public void CreateDesign_DuplicateBatteryCategory_IsRejected()
     {
         var s = MakeState();
@@ -2208,7 +2178,7 @@ public class NexusDesignTests
         );
         var result = NexusEngine.CreateDesign(s, cmd);
 
-        var rejected = Assert.IsType<NexusDesignCommandRejected>(result);
+        var rejected = Assert.IsAssignableFrom<NexusDesignCommandRejected>(result);
         Assert.Contains("Duplicate Battery(Strike)", rejected.ErrorMessage);
     }
 
@@ -2224,7 +2194,7 @@ public class NexusDesignTests
         );
         var result = NexusEngine.CreateDesign(s, cmd);
 
-        var rejected = Assert.IsType<NexusDesignCommandRejected>(result);
+        var rejected = Assert.IsAssignableFrom<NexusDesignCommandRejected>(result);
         Assert.Contains("Duplicate Vanguard(Strike)", rejected.ErrorMessage);
     }
 
@@ -2244,7 +2214,7 @@ public class NexusDesignTests
         );
         var result = NexusEngine.CreateDesign(s, cmd);
 
-        var rejected = Assert.IsType<NexusDesignCommandRejected>(result);
+        var rejected = Assert.IsAssignableFrom<NexusDesignCommandRejected>(result);
         Assert.Contains("mutually exclusive", rejected.ErrorMessage);
     }
 
@@ -2280,7 +2250,7 @@ public class NexusDesignTests
         );
         var result = NexusEngine.CreateDesign(s, cmd);
 
-        var rejected = Assert.IsType<NexusDesignCommandRejected>(result);
+        var rejected = Assert.IsAssignableFrom<NexusDesignCommandRejected>(result);
         Assert.Contains("Control", rejected.ErrorMessage);
     }
 
@@ -2337,7 +2307,7 @@ public class NexusDesignTests
         var deleteCmd = new NexusDeleteDesignCommand(P1Id, created.Design.DesignId);
         var result = NexusEngine.DeleteDesign(s, deleteCmd);
 
-        Assert.IsType<NexusDesignCommandRejected>(result);
+        Assert.IsAssignableFrom<NexusDesignCommandRejected>(result);
     }
 
     [Fact]
@@ -2363,7 +2333,7 @@ public class NexusDesignTests
                 [new Battery(NexusUnitCategory.Strike), new Hangar(2)]
             )
         );
-        Assert.IsType<NexusDesignCommandRejected>(result);
+        Assert.IsAssignableFrom<NexusDesignCommandRejected>(result);
     }
 
     [Fact]
@@ -2379,7 +2349,7 @@ public class NexusDesignTests
                 [new Battery(NexusUnitCategory.Strike), new Dock()]
             )
         );
-        Assert.IsType<NexusDesignCommandRejected>(result);
+        Assert.IsAssignableFrom<NexusDesignCommandRejected>(result);
     }
 
     [Fact]
@@ -2395,7 +2365,7 @@ public class NexusDesignTests
                 [new Battery(NexusUnitCategory.Planetary), new Drive(1)]
             )
         );
-        Assert.IsType<NexusDesignCommandRejected>(result);
+        Assert.IsAssignableFrom<NexusDesignCommandRejected>(result);
     }
 
     // ── N-parameter bounds ───────────────────────────────────────────────────
@@ -2415,7 +2385,7 @@ public class NexusDesignTests
                 [new Battery(NexusUnitCategory.Strike), new Armour(n)]
             )
         );
-        Assert.IsType<NexusDesignCommandRejected>(result);
+        Assert.IsAssignableFrom<NexusDesignCommandRejected>(result);
     }
 
     [Theory]
@@ -2433,7 +2403,7 @@ public class NexusDesignTests
                 [new Battery(NexusUnitCategory.Strike), new Drive(n), new Hangar(2)]
             )
         );
-        Assert.IsType<NexusDesignCommandRejected>(result);
+        Assert.IsAssignableFrom<NexusDesignCommandRejected>(result);
     }
 
     [Theory]
@@ -2451,7 +2421,7 @@ public class NexusDesignTests
                 [new Battery(NexusUnitCategory.Strike), new Beacon(n)]
             )
         );
-        Assert.IsType<NexusDesignCommandRejected>(result);
+        Assert.IsAssignableFrom<NexusDesignCommandRejected>(result);
     }
 
     // ── Slot budget ──────────────────────────────────────────────────────────
@@ -2470,7 +2440,7 @@ public class NexusDesignTests
                 [new Battery(NexusUnitCategory.Strike), new Armour(2)]
             )
         );
-        Assert.IsType<NexusDesignCommandRejected>(result);
+        Assert.IsAssignableFrom<NexusDesignCommandRejected>(result);
     }
 
     [Fact]
@@ -2506,7 +2476,7 @@ public class NexusDesignTests
                 [new Battery(NexusUnitCategory.Strike), new Shield(), new Shield(), new Hangar(2)]
             )
         );
-        Assert.IsType<NexusDesignCommandRejected>(result);
+        Assert.IsAssignableFrom<NexusDesignCommandRejected>(result);
     }
 
     [Fact]
@@ -2523,7 +2493,7 @@ public class NexusDesignTests
                 [new Battery(NexusUnitCategory.Strike), new Beacon(1), new Cloak(1)]
             )
         );
-        Assert.IsType<NexusDesignCommandRejected>(result);
+        Assert.IsAssignableFrom<NexusDesignCommandRejected>(result);
     }
 
     // ── Profile derivation ───────────────────────────────────────────────────

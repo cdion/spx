@@ -35,7 +35,6 @@ public static class NexusDomainLabels
         {
             Battery { Category: var c } => $"Battery ({c})",
             Vanguard { Category: var c } => $"Vanguard ({c})",
-            Barrage { Category: var c } => $"Barrage ({c})",
             Seeker { Category: var c, Magnitude: var m } => $"Seeker ({c}) ×{m}",
             Scatter { Category: var c, Magnitude: var m } => $"Scatter ({c}) ×{m}",
             Screen { Category: var c, N: var n } => $"Screen ({c}) ×{n}",

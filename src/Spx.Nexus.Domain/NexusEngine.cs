@@ -73,19 +73,20 @@ public static class NexusEngine
         ArgumentNullException.ThrowIfNull(rng);
 
         if (state.Completion is not null)
-            return new NexusTurnOrdersRejected("Game is already over.");
+            return NexusTurnOrdersRejected.GameOver();
         if (command.ExpectedRoundNumber != state.RoundNumber)
-            return new NexusTurnOrdersRejected(
-                $"Round mismatch: submitted {command.ExpectedRoundNumber}, current is {state.RoundNumber}."
+            return NexusTurnOrdersRejected.RoundMismatch(
+                command.ExpectedRoundNumber,
+                state.RoundNumber
             );
 
         var player = GetPlayer(state, command.PlayerId);
         if (player is null)
-            return new NexusTurnOrdersRejected("Player not found.");
+            return NexusTurnOrdersRejected.PlayerNotFound();
         if (!player.IsActive)
-            return new NexusTurnOrdersRejected("Player is not active.");
+            return NexusTurnOrdersRejected.PlayerInactive();
         if (player.HasSubmittedOrders)
-            return new NexusTurnOrdersRejected("Orders already submitted this round.");
+            return NexusTurnOrdersRejected.AlreadySubmitted();
 
         var designs = BuildDesignLookup(state);
 
@@ -175,12 +176,12 @@ public static class NexusEngine
 
         var player = GetPlayer(state, command.PlayerId);
         if (player is null)
-            return new NexusDesignCommandRejected("Player not found.");
+            return NexusDesignCommandRejected.PlayerNotFound();
 
         var tags = command.Modules.ToList();
         var validationError = NexusDesignConstraints.Validate(command.Hull, tags);
         if (validationError is not null)
-            return new NexusDesignCommandRejected(validationError);
+            return NexusDesignCommandRejected.Validation(validationError);
 
         var design = new NexusUnitDesign
         {
@@ -204,20 +205,18 @@ public static class NexusEngine
 
         var player = GetPlayer(state, command.PlayerId);
         if (player is null)
-            return new NexusDesignCommandRejected("Player not found.");
+            return NexusDesignCommandRejected.PlayerNotFound();
 
         var design = player.Designs.FirstOrDefault(d => d.DesignId == command.DesignId);
         if (design is null)
-            return new NexusDesignCommandRejected("Design not found.");
+            return NexusDesignCommandRejected.NotFound(command.DesignId);
 
         // Cannot delete a design while units of that design are on the map.
         var unitsExist = state.Systems.Any(s =>
             s.Units.Values.Any(stacks => stacks.Any(st => st.DesignId == command.DesignId))
         );
         if (unitsExist)
-            return new NexusDesignCommandRejected(
-                "Cannot delete a design while units of that design are on the map."
-            );
+            return NexusDesignCommandRejected.InUse(command.DesignId);
 
         player.Designs.Remove(design);
         return new NexusDesignDeleted();
@@ -239,29 +238,32 @@ public static class NexusEngine
         foreach (var order in orders)
         {
             if (!NexusMap.IsValidCoord(order.From))
-                return new NexusTurnOrdersRejected("Selected Source System is not on the map.");
+                return NexusTurnOrdersRejected.InvalidCoord(order.From, "Source");
             if (!NexusMap.IsValidCoord(order.To))
-                return new NexusTurnOrdersRejected(
-                    "Selected Destination System is not on the map."
-                );
+                return NexusTurnOrdersRejected.InvalidCoord(order.To, "Destination");
             if (!NexusMap.AreAdjacent(order.From, order.To))
-                return new NexusTurnOrdersRejected(
-                    $"{FormatSystem(state, playerId, order.To)} is not adjacent to {FormatSystem(state, playerId, order.From)}."
+                return NexusTurnOrdersRejected.NonAdjacent(
+                    order.From,
+                    FormatSystem(state, playerId, order.From),
+                    order.To,
+                    FormatSystem(state, playerId, order.To)
                 );
             if (order.Stacks.Length == 0)
-                return new NexusTurnOrdersRejected("A move order must include at least one unit.");
+                return NexusTurnOrdersRejected.EmptyMove();
 
             var system = GetSystem(state, order.From);
             if (system is null)
-                return new NexusTurnOrdersRejected(
-                    $"Source System {FormatSystem(state, playerId, order.From)} was not found in the current game state."
+                return NexusTurnOrdersRejected.SystemNotFound(
+                    order.From,
+                    FormatSystem(state, playerId, order.From)
                 );
 
             if (IsSystemContested(system, playerId, opponentId))
                 foreach (var stack in order.Stacks)
                     if (stack.Category == NexusUnitCategory.Planetary)
-                        return new NexusTurnOrdersRejected(
-                            $"Planetary units cannot move from a contested system ({FormatSystem(state, playerId, order.From)})."
+                        return NexusTurnOrdersRejected.PlanetaryMoveFromContested(
+                            order.From,
+                            FormatSystem(state, playerId, order.From)
                         );
 
             if (!committed.TryGetValue(order.From, out var fromCommitted))
@@ -276,20 +278,18 @@ public static class NexusEngine
             foreach (var stack in order.Stacks)
             {
                 if (stack.Count <= 0)
-                    return new NexusTurnOrdersRejected(
-                        $"Unit count for design {stack.DesignId} must be positive."
-                    );
+                    return NexusTurnOrdersRejected.InvalidUnitCount(stack.DesignId);
 
                 if (!designs.TryGetValue(stack.DesignId, out var design))
-                    return new NexusTurnOrdersRejected(
-                        $"Unknown design {stack.DesignId} in move order."
-                    );
+                    return NexusTurnOrdersRejected.UnknownDesign(stack.DesignId, "move");
 
                 var profile = NexusHullBaselines.GetProfile(design);
 
                 if (stack.RemainingHits <= 0 || stack.RemainingHits > profile.Hits)
-                    return new NexusTurnOrdersRejected(
-                        $"Remaining hits for {design.Name} must be between 1 and {profile.Hits}."
+                    return NexusTurnOrdersRejected.InvalidRemainingHits(
+                        design.Name,
+                        stack.RemainingHits,
+                        profile.Hits
                     );
 
                 var key = (stack.DesignId, stack.RemainingHits);
@@ -315,15 +315,20 @@ public static class NexusEngine
                             GetCommittedCarryCapacity(fromCommitted, designs)
                             + GetRequestedCarryCapacity(order.Stacks, designs);
 
-                        return new NexusTurnOrdersRejected(
-                            $"Insufficient Fleet Capacity at {FormatSystem(state, playerId, order.From)}: "
-                                + $"need {requestedCapacity}, have {availableCapacity}."
+                        return NexusTurnOrdersRejected.InsufficientFleetCapacity(
+                            requestedCapacity,
+                            availableCapacity,
+                            order.From,
+                            FormatSystem(state, playerId, order.From)
                         );
                     }
 
-                    return new NexusTurnOrdersRejected(
-                        $"Insufficient {FormatStack(stack, designs)} at {FormatSystem(state, playerId, order.From)}: "
-                            + $"need {alreadyCommitted + stack.Count}, have {available}."
+                    return NexusTurnOrdersRejected.InsufficientUnits(
+                        FormatStack(stack, designs),
+                        alreadyCommitted + stack.Count,
+                        available,
+                        order.From,
+                        FormatSystem(state, playerId, order.From)
                     );
                 }
 
@@ -333,9 +338,13 @@ public static class NexusEngine
             }
 
             if (capacityNeeded > capacityProvided)
-                return new NexusTurnOrdersRejected(
-                    $"Insufficient Fleet Capacity for move from {FormatSystem(state, playerId, order.From)} to {FormatSystem(state, playerId, order.To)}: "
-                        + $"need {capacityNeeded}, have {capacityProvided}."
+                return NexusTurnOrdersRejected.InsufficientFleetCapacityForMove(
+                    capacityNeeded,
+                    capacityProvided,
+                    order.From,
+                    FormatSystem(state, playerId, order.From),
+                    order.To,
+                    FormatSystem(state, playerId, order.To)
                 );
         }
 
@@ -414,15 +423,11 @@ public static class NexusEngine
         foreach (var order in command.BuildOrders)
         {
             if (!designs.TryGetValue(order.DesignId, out var design))
-                return new NexusTurnOrdersRejected(
-                    $"Unknown design {order.DesignId} in build order."
-                );
+                return NexusTurnOrdersRejected.UnknownDesign(order.DesignId, "build");
 
             // Ensure the design belongs to this player
             if (!player.Designs.Any(d => d.DesignId == order.DesignId))
-                return new NexusTurnOrdersRejected(
-                    $"Design '{design.Name}' does not belong to this player."
-                );
+                return NexusTurnOrdersRejected.DesignNotOwned(design.Name);
 
             buildCost += NexusHullBaselines.GetProfile(design).Cost * order.Count;
         }
@@ -430,26 +435,20 @@ public static class NexusEngine
         var gateCost = command.BeginNexusGate ? GateCost : 0;
 
         if (player.Energy < buildCost + gateCost)
-            return new NexusTurnOrdersRejected(
-                $"Insufficient Energy: need {buildCost + gateCost}, have {player.Energy}."
-            );
+            return NexusTurnOrdersRejected.InsufficientEnergy(buildCost + gateCost, player.Energy);
 
         if (command.BeginNexusGate)
         {
             if (player.GateProgress == NexusGateProgress.Completed)
-                return new NexusTurnOrdersRejected("Nexus Gate is already completed.");
+                return NexusTurnOrdersRejected.GateAlreadyCompleted();
 
             var nexusSystem = GetSystem(state, NexusMap.NexusCoord);
             if (nexusSystem is null || !nexusSystem.HasPlanetaryUnits(player.PlayerId))
-                return new NexusTurnOrdersRejected(
-                    "Cannot begin Nexus Gate: no planetary units on the Nexus."
-                );
+                return NexusTurnOrdersRejected.NoPlanetaryOnNexus();
 
             var opponentId = state.Players.First(p => p.PlayerId != player.PlayerId).PlayerId;
             if (nexusSystem.HasAnyUnits(opponentId))
-                return new NexusTurnOrdersRejected(
-                    "Cannot begin Nexus Gate: the Nexus is contested."
-                );
+                return NexusTurnOrdersRejected.NexusContested();
         }
 
         return null;

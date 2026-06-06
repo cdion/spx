@@ -77,10 +77,6 @@ public sealed record Battery([property: Id(0)] NexusUnitCategory Category) : Nex
 [GenerateSerializer]
 public sealed record Vanguard([property: Id(0)] NexusUnitCategory Category) : NexusUnitModule;
 
-/// <summary>One extra attack each step that only targets <see cref="Category"/> units.</summary>
-[GenerateSerializer]
-public sealed record Barrage([property: Id(0)] NexusUnitCategory Category) : NexusUnitModule;
-
 /// <summary>Hit threshold reduced by <see cref="Magnitude"/> vs <see cref="Category"/> targets.</summary>
 [GenerateSerializer]
 public sealed record Seeker(
@@ -133,7 +129,6 @@ public static class NexusModuleCosts
             Hangar { Capacity: var c } => c,
             Battery => 1,
             Vanguard => 2,
-            Barrage => 3,
             Seeker { Magnitude: var m } => m * 2,
             Scatter { Magnitude: var m } => -m,
             Cloak { N: var n } => n * 2,
@@ -150,7 +145,6 @@ public static class NexusModuleCosts
         {
             Battery => 1,
             Vanguard => 1,
-            Barrage => 1,
             Seeker { Magnitude: var m } => m,
             Scatter => 0,
             Shield => 1,
