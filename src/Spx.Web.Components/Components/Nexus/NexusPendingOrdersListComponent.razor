@@ -91,7 +91,7 @@ else
         var unitSummary = string.Join(
             ", ",
             order.Stacks.Select(stack =>
-                $"{stack.Count}× {GetDesignLabel(stack)} ({stack.RemainingHits} hits)"
+                $"{stack.Count}× {NexusDomainLabels.GetDesignLabel(stack)} ({stack.RemainingHits} hits)"
             )
         );
         return $"{GetSystemDisplayName(order.From)} → {GetSystemDisplayName(order.To)}: {unitSummary}";
@@ -102,9 +102,6 @@ else
         var design = Designs.FirstOrDefault(d => d.DesignId == designId);
         return design?.Name ?? designId.ToString("N")[..8];
     }
-
-    private static string GetDesignLabel(NexusUnitStackGroup stack) =>
-        stack.DesignName.Length > 0 ? stack.DesignName : stack.Category.ToString();
 
     private string GetSystemDisplayName(HexCoord coord)
         => NexusHomeSystemNames.GetSystemDisplayName(

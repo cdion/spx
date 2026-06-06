@@ -1,13 +1,13 @@
 <div class="grid gap-3 sm:grid-cols-3">
     <article class="ui-panel-row items-start">
         <div class="space-y-1">
-            <p class="@PlayerNameClass(CurrentPlayerFaction)">@CurrentPlayerName</p>
-            <p class="text-2xl font-semibold text-yellow-400">@CurrentPlayerEnergy⚡</p>
-            <p class="text-sm text-slate-300">@CurrentPlayerCapitalCount / @CurrentPlayerSupplyPool ⚓</p>
+            <p class="@FactionCss.PlayerNameClass(CurrentPlayer.Faction)">@CurrentPlayer.PlayerName</p>
+            <p class="text-2xl font-semibold text-yellow-400">@CurrentPlayer.Energy⚡</p>
+            <p class="text-sm text-slate-300">@CurrentPlayer.CapitalCount / @CurrentPlayer.SupplyPool ⚓</p>
         </div>
         <div class="flex flex-col items-end gap-1 pt-1">
-            <StatusBadge Tone="@SubmissionTone(CurrentPlayerHasSubmittedOrders)">
-                @SubmissionLabel(CurrentPlayerHasSubmittedOrders)</StatusBadge>
+            <StatusBadge Tone="@SubmissionTone(CurrentPlayer.HasSubmittedOrders)">
+                @SubmissionLabel(CurrentPlayer.HasSubmittedOrders)</StatusBadge>
             </div>
         </article>
 
@@ -20,12 +20,12 @@
 
         <article class="ui-panel-row items-start">
             <div class="space-y-1">
-                <p class="@PlayerNameClass(OpponentFaction)">@OpponentPlayerName</p>
-                <p class="text-2xl font-semibold text-yellow-400">@OpponentPlayerEnergy⚡</p>
-                <p class="text-sm text-slate-300">@OpponentCapitalCount / @OpponentSupplyPool ⚓</p>
+                <p class="@FactionCss.PlayerNameClass(Opponent.Faction)">@Opponent.PlayerName</p>
+                <p class="text-2xl font-semibold text-yellow-400">@Opponent.Energy⚡</p>
+                <p class="text-sm text-slate-300">@Opponent.CapitalCount / @Opponent.SupplyPool ⚓</p>
             </div>
             <div class="flex flex-col items-end gap-1 pt-1">
-                <StatusBadge Tone="@SubmissionTone(OpponentHasSubmittedOrders)">@SubmissionLabel(OpponentHasSubmittedOrders)
+                <StatusBadge Tone="@SubmissionTone(Opponent.HasSubmittedOrders)">@SubmissionLabel(Opponent.HasSubmittedOrders)
                 </StatusBadge>
             </div>
         </article>
@@ -36,52 +36,14 @@
     public int RoundNumber { get; set; }
 
     [Parameter, EditorRequired]
-    public string CurrentPlayerName { get; set; } = string.Empty;
+    public PlayerInfoBarModel CurrentPlayer { get; set; } = default!;
 
     [Parameter, EditorRequired]
-    public string OpponentPlayerName { get; set; } = string.Empty;
-
-    [Parameter]
-    public NexusFactionColor CurrentPlayerFaction { get; set; }
-
-    [Parameter]
-    public int CurrentPlayerEnergy { get; set; }
-
-    [Parameter]
-    public int CurrentPlayerSupplyPool { get; set; }
-
-    [Parameter]
-    public int CurrentPlayerCapitalCount { get; set; }
-
-    [Parameter]
-    public bool CurrentPlayerHasSubmittedOrders { get; set; }
-
-    [Parameter]
-    public NexusFactionColor OpponentFaction { get; set; }
-
-    [Parameter]
-    public int OpponentPlayerEnergy { get; set; }
-
-    [Parameter]
-    public int OpponentSupplyPool { get; set; }
-
-    [Parameter]
-    public int OpponentCapitalCount { get; set; }
-
-    [Parameter]
-    public bool OpponentHasSubmittedOrders { get; set; }
+    public PlayerInfoBarModel Opponent { get; set; } = default!;
 
     private static string SubmissionLabel(bool hasSubmittedOrders) =>
         hasSubmittedOrders ? "Orders in" : "Orders pending";
 
     private static StatusBadge.BadgeTone SubmissionTone(bool hasSubmittedOrders) =>
         hasSubmittedOrders ? StatusBadge.BadgeTone.Success : StatusBadge.BadgeTone.Warning;
-
-    private static string PlayerNameClass(NexusFactionColor faction) =>
-        faction switch
-        {
-            NexusFactionColor.Red => "text-lg font-semibold tracking-wide text-red-300",
-            NexusFactionColor.Blue => "text-lg font-semibold tracking-wide text-sky-300",
-            _ => "text-lg font-semibold tracking-wide text-slate-200",
-        };
 }

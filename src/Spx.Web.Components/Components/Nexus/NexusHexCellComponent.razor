@@ -89,6 +89,8 @@
 
             var myColor = CurrentPlayerFaction == NexusFactionColor.Red ? "#f87171" : "#60a5fa";
             var opColor = CurrentPlayerFaction == NexusFactionColor.Red ? "#60a5fa" : "#f87171";
+            var myDim = CurrentPlayerFaction == NexusFactionColor.Red ? "rgba(248,113,113,0.25)" : "rgba(96,165,250,0.25)";
+            var opDim = CurrentPlayerFaction == NexusFactionColor.Red ? "rgba(96,165,250,0.25)" : "rgba(248,113,113,0.25)";
 
             var (myC, myS, myP) = NexusHexHelpers.GetUnitCounts(System, CurrentPlayerId);
             var hasMyUnits = myC + myS + myP > 0;
@@ -102,35 +104,36 @@
             }
 
             // When both factions present, offset left/right; when only one, center it.
-            var myOffsetX = hasMyUnits && hasOpUnits ? Center.X - 13 : Center.X;
-            var opOffsetX = hasMyUnits && hasOpUnits ? Center.X + 13 : Center.X;
+            var myOffsetX = hasMyUnits && hasOpUnits ? Center.X - 16 : Center.X;
+            var opOffsetX = hasMyUnits && hasOpUnits ? Center.X + 16 : Center.X;
+            var pipY = Center.Y + 10;
+
+            // Three pips per faction: Strike ▲, Capital ◆, Planetary ●
+            // Spaced 8px apart horizontally
+            static void RenderFactionPips(
+                StringBuilder sb,
+                double originX,
+                double y,
+                string activeColor,
+                string dimColor,
+                int c,
+                int s,
+                int p
+            )
+            {
+                NexusHexHelpers.AppendCategoryPip(sb, originX - 8, y, NexusUnitCategory.Strike, activeColor, dimColor, s);
+                NexusHexHelpers.AppendCategoryPip(sb, originX, y, NexusUnitCategory.Capital, activeColor, dimColor, c);
+                NexusHexHelpers.AppendCategoryPip(sb, originX + 8, y, NexusUnitCategory.Planetary, activeColor, dimColor, p);
+            }
 
             if (hasMyUnits)
             {
-                var cx = NexusHexHelpers.Fmt(myOffsetX);
-                var cy = NexusHexHelpers.Fmt(Center.Y + 10);
-                var cy4 = NexusHexHelpers.Fmt(Center.Y + 6);
-                var cy8 = NexusHexHelpers.Fmt(Center.Y + 14);
-                var cx4l = NexusHexHelpers.Fmt(myOffsetX - 4);
-                var cx4r = NexusHexHelpers.Fmt(myOffsetX + 4);
-                sb.Append(
-                    $"<polygon points=\"{cx},{cy4} {cx4r},{cy} {cx},{cy8} {cx4l},{cy}\" "
-                    + $"fill=\"{myColor}\" stroke=\"rgba(255,255,255,0.15)\" stroke-width=\"0.5\"/>"
-                );
+                RenderFactionPips(sb, myOffsetX, pipY, myColor, myDim, myC, myS, myP);
             }
 
-            if (hasOpUnits)
+            if (hasOpUnits && OpponentPlayerId.HasValue)
             {
-                var cx = NexusHexHelpers.Fmt(opOffsetX);
-                var cy = NexusHexHelpers.Fmt(Center.Y + 10);
-                var cy4 = NexusHexHelpers.Fmt(Center.Y + 6);
-                var cy8 = NexusHexHelpers.Fmt(Center.Y + 14);
-                var cx4l = NexusHexHelpers.Fmt(opOffsetX - 4);
-                var cx4r = NexusHexHelpers.Fmt(opOffsetX + 4);
-                sb.Append(
-                    $"<polygon points=\"{cx},{cy4} {cx4r},{cy} {cx},{cy8} {cx4l},{cy}\" "
-                    + $"fill=\"{opColor}\" stroke=\"rgba(255,255,255,0.15)\" stroke-width=\"0.5\"/>"
-                );
+                RenderFactionPips(sb, opOffsetX, pipY, opColor, opDim, opC, opS, opP);
             }
 
             return sb.ToString();

@@ -173,6 +173,79 @@ internal static class NexusHexHelpers
         return string.Join(" ", parts);
     }
 
+    // ── Category pips ─────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Appends SVG for one category pip to the builder.
+    /// Strike = triangle ▲, Capital = diamond ◆, Planetary = circle ●.
+    /// When <paramref name="count"/> is 0, the pip renders as an outlined (dim) shape.
+    /// </summary>
+    public static void AppendCategoryPip(
+        StringBuilder sb,
+        double cx,
+        double cy,
+        NexusUnitCategory category,
+        string activeColor,
+        string dimColor,
+        int count
+    )
+    {
+        var fill = count > 0 ? activeColor : "transparent";
+        var stroke = count > 0 ? "rgba(255,255,255,0.25)" : dimColor;
+        var strokeWidth = count > 0 ? "0.5" : "1";
+
+        var (points, isCircle, r) = category switch
+        {
+            NexusUnitCategory.Strike => (
+                $"{Fmt(cx)},{Fmt(cy - 4)} {Fmt(cx + 4)},{Fmt(cy + 3.5)} {Fmt(cx - 4)},{Fmt(cy + 3.5)}",
+                false,
+                0.0
+            ),
+            NexusUnitCategory.Capital => (
+                $"{Fmt(cx)},{Fmt(cy - 3.5)} {Fmt(cx + 3.5)},{Fmt(cy)} {Fmt(cx)},{Fmt(cy + 3.5)} {Fmt(cx - 3.5)},{Fmt(cy)}",
+                false,
+                0.0
+            ),
+            NexusUnitCategory.Planetary => (string.Empty, true, 3.0),
+            _ => (string.Empty, false, 0.0),
+        };
+
+        var cxStr = Fmt(cx);
+        var cyStr = Fmt(cy);
+
+        if (isCircle)
+        {
+            sb.Append("<circle");
+            sb.Append(" cx=\"");
+            sb.Append(cxStr);
+            sb.Append('"');
+            sb.Append(" cy=\"");
+            sb.Append(cyStr);
+            sb.Append('"');
+            sb.Append(" r=\"");
+            sb.Append(Fmt(r));
+            sb.Append('"');
+        }
+        else
+        {
+            sb.Append("<polygon");
+            sb.Append(" points=\"");
+            sb.Append(points);
+            sb.Append('"');
+        }
+
+        sb.Append(" fill=\"");
+        sb.Append(fill);
+        sb.Append('"');
+        sb.Append(" stroke=\"");
+        sb.Append(stroke);
+        sb.Append('"');
+        sb.Append(" stroke-width=\"");
+        sb.Append(strokeWidth);
+        sb.Append('"');
+        sb.Append("/>");
+    }
+
     // ── Formatting ────────────────────────────────────────────────────────────
 
     public static string Fmt(double v) =>

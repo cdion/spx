@@ -25,9 +25,9 @@ public static class NexusGameplayPanelState
         {
             EventFocusRequestKind.Preview => state with
             {
-                Preview = GetEventFocus(request.ResolveEvent!),
+                Current = GetEventFocus(request.ResolveEvent!),
             },
-            EventFocusRequestKind.ClearPreview => state with { Preview = NexusEventFocus.None },
+            EventFocusRequestKind.ClearPreview => state with { Current = NexusEventFocus.None },
             EventFocusRequestKind.Dismiss => EventFocusState.Empty,
             _ => state,
         };
@@ -93,7 +93,7 @@ public static class NexusGameplayPanelState
         EventFocusState eventFocusState
     )
     {
-        var activeFocus = eventFocusState.Active;
+        var activeFocus = eventFocusState.Current;
         if (activeFocus.Primary.HasValue)
         {
             return state with
@@ -313,162 +313,4 @@ public static class NexusGameplayPanelState
             ),
             _ => NexusEventFocus.None,
         };
-}
-
-public enum EventFocusRequestKind
-{
-    Preview,
-    ClearPreview,
-    Dismiss,
-}
-
-public enum SelectionRequestKind
-{
-    SelectSystem,
-    ClearSelection,
-}
-
-public enum OrderDraftRequestKind
-{
-    MoveDraftChanged,
-    BuildDraftAdjusted,
-    NexusGateDraftChanged,
-}
-
-public enum BuildDraftAdjustmentKind
-{
-    AddOne,
-    AddMax,
-    RemoveOne,
-    RemoveAll,
-}
-
-public enum PendingOrderRequestKind
-{
-    RemoveMoveOrder,
-    RemoveBuildOrder,
-    ClearNexusGate,
-}
-
-public sealed record EventFocusRequest(
-    EventFocusRequestKind Kind,
-    NexusResolveEvent? ResolveEvent = null
-)
-{
-    public static EventFocusRequest PreviewRequested(NexusResolveEvent resolveEvent) =>
-        new(EventFocusRequestKind.Preview, resolveEvent);
-
-    public static EventFocusRequest PreviewCleared() => new(EventFocusRequestKind.ClearPreview);
-
-    public static EventFocusRequest Dismissed() => new(EventFocusRequestKind.Dismiss);
-}
-
-public sealed record SelectionRequest(SelectionRequestKind Kind, HexCoord? System = null)
-{
-    public static SelectionRequest SystemSelected(HexCoord system) =>
-        new(SelectionRequestKind.SelectSystem, system);
-
-    public static SelectionRequest SelectionCleared() => new(SelectionRequestKind.ClearSelection);
-}
-
-public sealed record OrderDraftRequest(
-    OrderDraftRequestKind Kind,
-    ImmutableArray<NexusUnitStackGroup> MoveDraftStacks = default,
-    Guid? DesignId = null,
-    BuildDraftAdjustmentKind? BuildAdjustment = null,
-    bool? BeginNexusGate = null
-)
-{
-    public static OrderDraftRequest MoveDraftChanged(ImmutableArray<NexusUnitStackGroup> stacks) =>
-        new(OrderDraftRequestKind.MoveDraftChanged, MoveDraftStacks: stacks);
-
-    public static OrderDraftRequest BuildDraftAdjusted(
-        Guid designId,
-        BuildDraftAdjustmentKind adjustment
-    ) =>
-        new(
-            OrderDraftRequestKind.BuildDraftAdjusted,
-            DesignId: designId,
-            BuildAdjustment: adjustment
-        );
-
-    public static OrderDraftRequest NexusGateDraftChanged(bool beginNexusGate) =>
-        new(OrderDraftRequestKind.NexusGateDraftChanged, BeginNexusGate: beginNexusGate);
-}
-
-public sealed record PendingOrderRequest(
-    PendingOrderRequestKind Kind,
-    NexusMoveOrder? MoveOrder = null,
-    NexusBuildOrder? BuildOrder = null
-)
-{
-    public static PendingOrderRequest MoveOrderRemovalRequested(NexusMoveOrder moveOrder) =>
-        new(PendingOrderRequestKind.RemoveMoveOrder, MoveOrder: moveOrder);
-
-    public static PendingOrderRequest BuildOrderRemovalRequested(NexusBuildOrder buildOrder) =>
-        new(PendingOrderRequestKind.RemoveBuildOrder, BuildOrder: buildOrder);
-
-    public static PendingOrderRequest NexusGateCleared() =>
-        new(PendingOrderRequestKind.ClearNexusGate);
-}
-
-public sealed record EventFocusState(NexusEventFocus Preview)
-{
-    public static EventFocusState Empty { get; } = new(NexusEventFocus.None);
-
-    public NexusEventFocus Active => Preview;
-}
-
-public sealed record SelectionState(
-    HexCoord? SelectedSystem,
-    ImmutableArray<NexusUnitStackGroup> StagedMoveStacks,
-    IReadOnlyList<HexCoord> ValidMoveTargets,
-    bool EventFocusOwnsSelection
-)
-{
-    public static SelectionState Empty { get; } =
-        new(null, ImmutableArray<NexusUnitStackGroup>.Empty, [], false);
-}
-
-public sealed record OrderDraftState(
-    ImmutableArray<NexusMoveOrder> PendingMoveOrders,
-    ImmutableArray<NexusBuildOrder> PendingBuildOrders,
-    bool PendingBeginNexusGate
-)
-{
-    public static OrderDraftState Empty { get; } = new([], [], false);
-
-    public int ComputeProjectedSpend(IReadOnlyList<NexusUnitDesign> designs)
-    {
-        var lookup = designs.ToDictionary(d => d.DesignId);
-        return NexusEngine.ComputeProjectedSpend(PendingBuildOrders, PendingBeginNexusGate, lookup);
-    }
-
-    public int ComputeProjectedSpend(Dictionary<Guid, NexusUnitDesign> lookup) =>
-        NexusEngine.ComputeProjectedSpend(PendingBuildOrders, PendingBeginNexusGate, lookup);
-}
-
-public sealed record SidebarState(NexusGameplayTab ActiveTab)
-{
-    public static SidebarState Default { get; } = new(NexusGameplayTab.Orders);
-}
-
-public sealed record NexusEventFocus(
-    IReadOnlyList<HexCoord> Systems,
-    HexCoord? From = null,
-    HexCoord? To = null,
-    HexCoord? Primary = null
-)
-{
-    public static NexusEventFocus None { get; } = new([]);
-
-    public bool HasTarget => Systems.Count > 0 || From.HasValue || To.HasValue || Primary.HasValue;
-
-    public bool Matches(NexusEventFocus other)
-    {
-        if (!HasTarget || !other.HasTarget)
-            return false;
-
-        return Primary == other.Primary && From == other.From && To == other.To;
-    }
 }

@@ -509,5 +509,95 @@ public sealed class NexusGameplayPanelInteractionTests : TestContext
         Assert.Empty(cut.FindAll(playerOneOrderSelector));
     }
 
+    [Fact]
+    public void BuildingOneUnitOnHomeSystem_AddsBuildOrder()
+    {
+        var gameId = Guid.Parse("99999999-9999-9999-9999-999999999991");
+        var session = GamePageCoordinatorTestData.CreateGameplayPanelSession(
+            gameId,
+            currentPlayerEnergy: 20
+        );
+
+        var cut = RenderComponent<NexusGameplayPanel>(parameters =>
+            parameters
+                .Add(x => x.Session, session)
+                .Add(x => x.Lobby, GamePageCoordinatorTestData.CreateLobby(gameId))
+                .Add(x => x.SelectedTab, NexusGameplayTab.Orders)
+        );
+
+        // Click home system to select it
+        cut.Find(
+                TestIdSelector(
+                    NexusGameplayPanelTestIds.System(
+                        GamePageCoordinatorTestData.CurrentPlayerHomeCoord
+                    )
+                )
+            )
+            .Click();
+
+        // Click build button for Fighter (costs 3, we have 20 energy)
+        cut.Find(TestIdSelector(NexusGameplayPanelTestIds.BuildUnit("Fighter"))).Click();
+
+        // Verify build order appears in pending orders
+        var buildOrder = cut.Find(
+            TestIdSelector(NexusGameplayPanelTestIds.PendingBuildOrder("Fighter"))
+        );
+
+        Assert.Contains("Build 1", buildOrder.TextContent);
+    }
+
+    [Fact]
+    public void BuildingUnitWithZeroEnergy_BuildButtonHasDisabledClass()
+    {
+        var gameId = Guid.Parse("99999999-9999-9999-9999-999999999992");
+        var session = GamePageCoordinatorTestData.CreateGameplayPanelSession(
+            gameId,
+            currentPlayerEnergy: 0
+        );
+
+        var cut = RenderComponent<NexusGameplayPanel>(parameters =>
+            parameters
+                .Add(x => x.Session, session)
+                .Add(x => x.Lobby, GamePageCoordinatorTestData.CreateLobby(gameId))
+                .Add(x => x.SelectedTab, NexusGameplayTab.Orders)
+        );
+
+        // Click home system to select it
+        cut.Find(
+                TestIdSelector(
+                    NexusGameplayPanelTestIds.System(
+                        GamePageCoordinatorTestData.CurrentPlayerHomeCoord
+                    )
+                )
+            )
+            .Click();
+
+        // Build button for Fighter (costs 1, we have 0 energy) should have disabled class
+        var buildButton = cut.Find(TestIdSelector(NexusGameplayPanelTestIds.BuildUnit("Fighter")));
+
+        Assert.Contains("ui-button-row-disabled", buildButton.GetAttribute("class"));
+    }
+
+    [Fact]
+    public void EventsTab_WhenNoEvents_RedirectsToOrdersTab()
+    {
+        var gameId = Guid.Parse("99999999-9999-9999-9999-999999999993");
+        var session = GamePageCoordinatorTestData.CreateGameplayPanelSession(
+            gameId,
+            lastResolveEvents: []
+        );
+
+        var cut = RenderComponent<NexusGameplayPanel>(parameters =>
+            parameters
+                .Add(x => x.Session, session)
+                .Add(x => x.Lobby, GamePageCoordinatorTestData.CreateLobby(gameId))
+                .Add(x => x.SelectedTab, NexusGameplayTab.Events)
+        );
+
+        // Events tab has no events, so it's disabled and selection redirects to Orders
+        Assert.Equal("true", cut.Find("#nexus-sidebar-tab-orders").GetAttribute("aria-selected"));
+        Assert.Equal("false", cut.Find("#nexus-sidebar-tab-events").GetAttribute("aria-selected"));
+    }
+
     private static string TestIdSelector(string testId) => $"[data-testid='{testId}']";
 }

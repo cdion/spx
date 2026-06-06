@@ -1,0 +1,179 @@
+@using System.Collections.Immutable
+@using Spx.Nexus.Domain
+
+@if (Stacks.Length == 0)
+{
+    return;
+}
+
+<section class="space-y-1">
+    @foreach (var group in UnitGroups)
+    {
+        var categoryStacks = GetStacksForCategory(group.Category);
+        if (categoryStacks.Count == 0)
+        {
+            continue;
+        }
+
+        <div class="ui-panel-card-tight">
+            @if (!HideGroupLabels)
+            {
+                <p class="ui-type-overline mb-1 text-slate-500">
+                    <CategoryPip Category="group.Category" Size="PipSize.Small" /> @group.Label
+                </p>
+            }
+            <div class="space-y-1">
+                @foreach (var stack in categoryStacks)
+                {
+                    var design = _designLookup.GetValueOrDefault(stack.DesignId);
+
+                    <HoverTooltip>
+                        <Trigger>
+                            <div class="@GetRowClass(stack)">
+                                @if (IsEditable)
+                                {
+                                    <button type="button"
+                                            class="flex min-w-0 flex-1 items-center gap-2 text-left disabled:cursor-default"
+                                            data-testid="@GetTestId?.Invoke(stack)" disabled="@(!IsEditable)"
+                                            @onclick="() => ToggleWholeStackAsync(stack)">
+                                        <span class="text-sm font-semibold @GetStackNameClass(stack)">@NexusDomainLabels.GetDesignLabel(stack)</span>
+                                        <span class="ui-hits-pill @NexusDomainLabels.GetHitsPillClass(stack)">@stack.RemainingHits/@NexusHullBaselines.GetBaseline(stack.Category).Hits hits</span>
+                                    </button>
+                                    <div class="flex shrink-0 items-center gap-1">
+                                        <button type="button" class="ui-button-icon" disabled="@(GetSelectedCount(stack) <= 0)"
+                                                @onclick="() => AdjustStackAsync(stack, -1)">−</button>
+                                        <span class="w-10 text-center text-sm font-semibold tabular-nums @SelectedCountClass">@GetSelectedCount(stack)<span class="font-normal text-slate-400">/</span>@stack.Count</span>
+                                        <button type="button" class="ui-button-icon" disabled="@(GetSelectedCount(stack) >= stack.Count)"
+                                                @onclick="() => AdjustStackAsync(stack, 1)">+</button>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="flex min-w-0 flex-1 items-center gap-2">
+                                        <span class="text-sm font-semibold text-slate-200">@NexusDomainLabels.GetDesignLabel(stack)</span>
+                                        <span class="ui-hits-pill @NexusDomainLabels.GetHitsPillClass(stack)">@stack.RemainingHits/@NexusHullBaselines.GetBaseline(stack.Category).Hits hits</span>
+                                    </div>
+                                    <span class="shrink-0 text-sm font-semibold text-slate-400">×@stack.Count</span>
+                                }
+                            </div>
+                        </Trigger>
+                        <Content>
+                            @if (design is not null)
+                            {
+                                <NexusUnitProfileCard
+                                    Category="stack.Category"
+                                    Design="design"
+                                    Name="stack.DesignName" />
+                            }
+                        </Content>
+                    </HoverTooltip>
+                }
+            </div>
+        </div>
+    }
+</section>
+
+@code {
+    private static readonly UnitGroup[] UnitGroups =
+    [
+        new("Strike", NexusUnitCategory.Strike),
+        new("Capital", NexusUnitCategory.Capital),
+        new("Planetary", NexusUnitCategory.Planetary),
+    ];
+
+    [Parameter, EditorRequired]
+    public ImmutableArray<NexusUnitStackGroup> Stacks { get; set; } = [];
+
+    [Parameter]
+    public ImmutableDictionary<Guid, NexusUnitDesign> DesignLookup { get; set; } = ImmutableDictionary<Guid, NexusUnitDesign>.Empty;
+
+    [Parameter]
+    public string RowClass { get; set; } = "ui-button-row-available";
+
+    [Parameter]
+    public string ActiveRowClass { get; set; } = "ui-button-row-active-info";
+
+    [Parameter]
+    public string StackNameClass { get; set; } = "text-slate-200";
+
+    [Parameter]
+    public string ActiveStackNameClass { get; set; } = "text-sky-200";
+
+    [Parameter]
+    public string SelectedCountClass { get; set; } = "text-sky-300";
+
+    [Parameter]
+    public bool IsEditable { get; set; }
+
+    [Parameter]
+    public bool HideGroupLabels { get; set; }
+
+    /// <summary>
+    /// Optional function to generate a data-testid for each stack row.
+    /// </summary>
+    [Parameter]
+    public Func<NexusUnitStackGroup, string?>? GetTestId { get; set; }
+
+    /// <summary>
+    /// Maps stack key (DesignId + RemainingHits) to selected count.
+    /// Only meaningful when <see cref="IsEditable"/> is true.
+    /// </summary>
+    [Parameter]
+    public IReadOnlyDictionary<StackKey, int> Selection { get; set; } = new Dictionary<StackKey, int>();
+
+    [Parameter]
+    public EventCallback<StackAdjustment> OnAdjustment { get; set; }
+
+    [Parameter]
+    public EventCallback<StackKey> OnToggleWholeStack { get; set; }
+
+    private ImmutableDictionary<Guid, NexusUnitDesign> _designLookup = ImmutableDictionary<Guid, NexusUnitDesign>.Empty;
+
+    protected override void OnParametersSet()
+    {
+        _designLookup = DesignLookup;
+    }
+
+    private IReadOnlyList<NexusUnitStackGroup> GetStacksForCategory(NexusUnitCategory category) =>
+        Stacks
+            .Where(stack => stack.Category == category)
+            .OrderBy(stack => stack.DesignName)
+            .ThenByDescending(stack => stack.RemainingHits)
+            .ToList();
+
+    private int GetSelectedCount(NexusUnitStackGroup stack)
+    {
+        var key = new StackKey(stack.DesignId, stack.RemainingHits);
+        return Selection.GetValueOrDefault(key);
+    }
+
+    private string GetRowClass(NexusUnitStackGroup stack)
+    {
+        var selected = GetSelectedCount(stack);
+        return selected > 0 ? ActiveRowClass : RowClass;
+    }
+
+    private string GetStackNameClass(NexusUnitStackGroup stack)
+    {
+        var selected = GetSelectedCount(stack);
+        return selected > 0 ? ActiveStackNameClass : StackNameClass;
+    }
+
+    private Task ToggleWholeStackAsync(NexusUnitStackGroup stack)
+    {
+        var key = new StackKey(stack.DesignId, stack.RemainingHits);
+        return OnToggleWholeStack.InvokeAsync(key);
+    }
+
+    private Task AdjustStackAsync(NexusUnitStackGroup stack, int delta)
+    {
+        var key = new StackKey(stack.DesignId, stack.RemainingHits);
+        return OnAdjustment.InvokeAsync(new StackAdjustment(key, delta));
+    }
+
+    private sealed record UnitGroup(string Label, NexusUnitCategory Category);
+
+    public sealed record StackKey(Guid DesignId, int RemainingHits);
+
+    public sealed record StackAdjustment(StackKey Key, int Delta);
+}

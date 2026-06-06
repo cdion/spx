@@ -1,4 +1,5 @@
 @using System.Collections.Immutable
+@using Spx.Nexus.Domain
 
 <section class="ui-surface-section h-full min-h-0 space-y-4 overflow-y-auto p-3 lg:p-4">
     <div class="flex flex-wrap items-start justify-between gap-3">
@@ -7,7 +8,7 @@
                 <p class="@GetSystemLabelClass()">@GetSystemLabel()</p>
                 @if (System.IncomeValue > 0)
                 {
-                    <span class="ui-type-meta text-yellow-400/80">+@System.IncomeValue⚡</span>
+                    <span class="ui-type-meta text-yellow-400/80">+@System.IncomeValue ⚡</span>
                 }
                 @if (System.HomePlayerId.HasValue)
                 {
@@ -25,266 +26,138 @@
     </div>
 
     <div class="space-y-4">
+        @* My fleet --- editable selection *@
         @if (_myStacks.Length > 0)
         {
             <section class="space-y-3">
                 <div class="flex items-center gap-3">
-                    <p class="ui-type-overline mb-1 @MyForcesClass">Fleet</p>
+                    <p class="ui-type-overline mb-1 @FactionCss.ForcesClass(CurrentPlayerFaction)">Fleet</p>
                     @if (IsEditable && HasSelection)
                     {
                         <span class="text-xs tabular-nums @(SelectionIsValid ? "text-slate-400" : "text-red-400")">Capacity:
                             @SlotsNeeded / @CarryCapacity</span>
-                        }
-                        @if (IsEditable)
-                        {
-                            <button type="button" class="text-xs text-slate-500 transition-colors hover:text-slate-300"
-                                    @onclick="@(HasSelection ? ClearSelectionAsync : SelectWholeFleetAsync)">
-                                @(HasSelection ? "Clear" : "Select All")
-                            </button>
-                        }
-                    </div>
-                    @foreach (var group in UnitGroups)
-                    {
-                        var stacks = GetStacksForCategory(_myStacks, group.Category).ToList();
-                        if (stacks.Count == 0)
-                        {
-                            continue;
-                        }
-
-                        <div class="ui-panel-card-tight">
-                            <p class="ui-type-overline mb-1 text-slate-500">@group.Label</p>
-                            <div class="space-y-1">
-                                @foreach (var stack in stacks)
-                                {
-                                    var stackKey = GetStackKey(stack);
-                                    var selected = _selection.GetValueOrDefault(stackKey);
-                                    var stackDesign = _designLookup[stack.DesignId];
-
-                                    <HoverTooltip>
-                                        <Trigger>
-                                            <div class="@GetFleetRowClass(selected)">
-                                                <button type="button"
-                                                        class="flex min-w-0 flex-1 items-center gap-2 text-left disabled:cursor-default"
-                                                        data-testid="@GetFleetButtonTestId(stack)" disabled="@(!IsEditable)"
-                                                        @onclick="() => ToggleWholeStackAsync(stackKey)">
-                                                    <span class="text-sm font-semibold @GetStackNameClass(selected)">@GetDesignLabel(stack)</span>
-                                                    <span class="ui-hits-pill @GetHitsPillClass(stack)">@stack.RemainingHits/@NexusHullBaselines.GetBaseline(stack.Category).Hits hits</span>
-                                                </button>
-                                                @if (IsEditable)
-                                                {
-                                                    <div class="flex shrink-0 items-center gap-1">
-                                                        <button type="button" class="ui-button-icon" disabled="@(selected <= 0)"
-                                                                @onclick="() => AdjustStackAsync(stackKey, -1)">−</button>
-                                                        <span class="w-10 text-center text-sm font-semibold tabular-nums @GetSelectedCountClass(selected)">@selected<span class="font-normal text-slate-400">/</span>@stack.Count</span>
-                                                        <button type="button" class="ui-button-icon" disabled="@(selected >= stack.Count)"
-                                                                @onclick="() => AdjustStackAsync(stackKey, 1)">+</button>
-                                                    </div>
-                                                }
-                                                @if (!IsEditable)
-                                                {
-                                                    <span class="shrink-0 text-sm text-slate-400">×@stack.Count</span>
-                                                }
-                                            </div>
-                                        </Trigger>
-                                        <Content>
-                                            <NexusUnitProfileCard
-                                                Category="stack.Category"
-                                                Design="stackDesign"
-                                                Name="stack.DesignName" />
-                                        </Content>
-                                    </HoverTooltip>
-                                }
-                            </div>
-                        </div>
                     }
-                </section>
-            }
-        else
+                    @if (IsEditable)
                     {
-                        <div class="rounded-xl border border-white/10 bg-slate-950/35 p-3 text-base text-slate-500">No movable units in
-                            this system.</div>
-                        }
+                        <button type="button" class="text-xs text-slate-500 transition-colors hover:text-slate-300"
+                                @onclick="@(HasSelection ? ClearSelectionAsync : SelectWholeFleetAsync)">
+                            @(HasSelection ? "Clear" : "Select All")
+                        </button>
+                    }
+                </div>
 
-                        @if (_myCommittedStacks.Length > 0)
-                        {
-                            <section class="space-y-3 ui-panel-separator">
-                                @foreach (var group in UnitGroups)
-                                {
-                                    var stacks = GetStacksForCategory(_myCommittedStacks, group.Category).ToList();
-                                    if (stacks.Count == 0)
-                                    {
-                                        continue;
-                                    }
+                <UnitStackList Stacks="@_myStacks"
+                               DesignLookup="@_designLookupImmutable"
+                               RowClass="ui-button-row-available"
+                               ActiveRowClass="@FactionCss.ButtonActiveRow(CurrentPlayerFaction)"
+                               StackNameClass="text-slate-200"
+                               ActiveStackNameClass="@FactionCss.ActiveStackNameClass(CurrentPlayerFaction)"
+                               SelectedCountClass="@FactionCss.SelectedCountClass(CurrentPlayerFaction)"
+                               IsEditable="@IsEditable"
+                               Selection="@_selection"
+                               OnAdjustment="HandleStackAdjustment"
+                               OnToggleWholeStack="HandleToggleWholeStack"
+                               GetTestId="GetFleetTestId" />
+            </section>
+        }
 
-                                    <div class="ui-panel-card-tight">
-                                        <p class="ui-type-overline mb-1 @MyForcesClass">Your Committed Planetary
-                                        </p>
-                                        <div class="space-y-1">
-                                            @foreach (var stack in stacks)
-                                            {
-                                                var stackDesign = _designLookup[stack.DesignId];
-                                                <HoverTooltip>
-                                                    <Trigger>
-                                                        <div class="ui-button-row-available cursor-default">
-                                                            <div class="flex min-w-0 flex-1 items-center gap-2">
-                                                                <span class="text-sm font-semibold text-slate-200">@GetDesignLabel(stack)</span>
-                                                                <span class="ui-hits-pill @GetHitsPillClass(stack)">@stack.RemainingHits/@NexusHullBaselines.GetBaseline(stack.Category).Hits hits</span>
-                                                            </div>
-                                                            <span class="shrink-0 text-sm font-semibold text-slate-400">×@stack.Count</span>
-                                                        </div>
-                                                    </Trigger>
-                                                    <Content>
-                                                        <NexusUnitProfileCard
-                                                            Category="stack.Category"
-                                                            Design="stackDesign"
-                                                            Name="stack.DesignName" />
-                                                    </Content>
-                                                </HoverTooltip>
-                                            }
-                                            </div>
-                                        </div>
-                                    }
-                                </section>
-                            }
+        @if (_myStacks.Length == 0)
+        {
+            <div class="rounded-xl border border-white/10 bg-slate-950/35 p-3 text-base text-slate-500">No movable units in this system.</div>
+        }
 
-                            @if (_enemyStacks.Length > 0)
+        @* My committed planetary --- read-only *@
+        @if (_myCommittedStacks.Length > 0)
+        {
+            <section class="space-y-3 ui-panel-separator">
+                <p class="ui-type-overline mb-1 @FactionCss.ForcesClass(CurrentPlayerFaction)">Your Committed Planetary</p>
+                <UnitStackList Stacks="@_myCommittedStacks"
+                               DesignLookup="@_designLookupImmutable"
+                               RowClass="ui-button-row-available cursor-default"
+                               HideGroupLabels="true" />
+            </section>
+        }
+
+        @* Enemy fleet --- read-only *@
+        @if (_enemyStacks.Length > 0)
+        {
+            <section class="space-y-3 ui-panel-separator">
+                <p class="ui-type-overline mb-1 @FactionCss.ForcesClass(OpponentFactionColor)">Enemy Fleet</p>
+                <UnitStackList Stacks="@_enemyStacks"
+                               DesignLookup="@_designLookupImmutable"
+                               RowClass="ui-button-row-available cursor-default"
+                               HideGroupLabels="true" />
+            </section>
+        }
+
+        @* Enemy committed planetary --- read-only *@
+        @if (_enemyCommittedStacks.Length > 0)
+        {
+            <section class="space-y-3 ui-panel-separator">
+                <p class="ui-type-overline mb-1 @FactionCss.ForcesClass(OpponentFactionColor)">Enemy Committed Planetary</p>
+                <UnitStackList Stacks="@_enemyCommittedStacks"
+                               DesignLookup="@_designLookupImmutable"
+                               RowClass="ui-button-row-available cursor-default"
+                               HideGroupLabels="true" />
+            </section>
+        }
+    </div>
+
+    @* Build orders *@
+    @if (IsEditable && System.HomePlayerId == CurrentPlayerId)
+    {
+        <div class="space-y-2 ui-panel-separator">
+            <p class="text-base font-semibold text-slate-300">Build units</p>
+            <div class="grid gap-2">
+                @foreach (var group in UnitGroups)
+                {
+                    <div class="ui-panel-card-tight">
+                        <p class="mb-1 text-base font-semibold uppercase tracking-wide text-slate-400">
+                    <CategoryPip Category="group.Category" Size="PipSize.Small" /> @group.Label
+                </p>
+                        <div class="space-y-1">
+                            @foreach (var design in PlayerDesigns.Where(d => d.Hull == group.Category))
                             {
-                                <section class="space-y-3 ui-panel-separator">
-                                    <p class="ui-type-overline mb-1 @EnemyForcesClass">Enemy Fleet</p>
-                                    @foreach (var group in UnitGroups)
-                                    {
-                                        var stacks = GetStacksForCategory(_enemyStacks, group.Category).ToList();
-                                        if (stacks.Count == 0)
-                                        {
-                                            continue;
-                                        }
+                                var cost = NexusHullBaselines.GetProfile(design).Cost;
+                                var count = PendingBuildOrders.FirstOrDefault(o => o.DesignId == design.DesignId)?.Count ?? 0;
+                                var canAdd = ProjectedEnergy >= cost;
 
-                                        <div class="ui-panel-card-tight">
-                                            <p class="ui-type-overline mb-1 text-slate-500">@group.Label</p>
-                                            <div class="space-y-1">
-                                                @foreach (var stack in stacks)
-                                                {
-                                                    var stackDesign = _designLookup[stack.DesignId];
-                                                    <HoverTooltip>
-                                                        <Trigger>
-                                                            <div class="ui-button-row-available cursor-default">
-                                                                <div class="flex min-w-0 flex-1 items-center gap-2">
-                                                                    <span class="text-sm font-semibold text-slate-200">@GetDesignLabel(stack)</span>
-                                                                    <span class="ui-hits-pill @GetHitsPillClass(stack)">@stack.RemainingHits/@NexusHullBaselines.GetBaseline(stack.Category).Hits hits</span>
-                                                                </div>
-                                                                <span class="shrink-0 text-sm font-semibold text-slate-400">×@stack.Count</span>
-                                                            </div>
-                                                        </Trigger>
-                                                        <Content>
-                                                            <NexusUnitProfileCard
-                                                                Category="stack.Category"
-                                                                Design="stackDesign"
-                                                                Name="stack.DesignName" />
-                                                        </Content>
-                                                    </HoverTooltip>
-                                                }
-                                            </div>
-                                        </div>
-                                    }
-                                </section>
+                                <button type="button" class="@GetBuildRowClass(design, count, canAdd)"
+                                        data-testid="@GetBuildButtonTestId(design)" @onclick="e => OnBuildRowClickAsync(design, e)"
+                                        @ondblclick="() => OnOrderDraftRequested.InvokeAsync(OrderDraftRequest.BuildDraftAdjusted(design.DesignId, BuildDraftAdjustmentKind.AddMax))"
+                                        @oncontextmenu:preventDefault="true"
+                                        @oncontextmenu="() => OnOrderDraftRequested.InvokeAsync(OrderDraftRequest.BuildDraftAdjusted(design.DesignId, BuildDraftAdjustmentKind.RemoveOne))">
+                                    <span class="min-w-0 flex-1 whitespace-nowrap text-base text-slate-100">@design.Name <span class="ml-1 text-yellow-400">@cost ⚡</span></span>
+                                    <span class="shrink-0 whitespace-nowrap pl-3 text-base text-slate-400">@count</span>
+                                </button>
                             }
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    }
 
-                                @if (_enemyCommittedStacks.Length > 0)
-                                {
-                                    <section class="space-y-3 ui-panel-separator">
-                                        @foreach (var group in UnitGroups)
-                                        {
-                                            var stacks = GetStacksForCategory(_enemyCommittedStacks, group.Category).ToList();
-                                            if (stacks.Count == 0)
-                                            {
-                                                continue;
-                                            }
-
-                                            <div class="ui-panel-card-tight">
-                                                <p class="ui-type-overline mb-1 @EnemyForcesClass">Enemy Committed Planetary</p>
-                                                <div class="space-y-1">
-                                                    @foreach (var stack in stacks)
-                                                    {
-                                                        var stackDesign = _designLookup[stack.DesignId];
-                                                        <HoverTooltip>
-                                                            <Trigger>
-                                                                <div class="ui-button-row-available cursor-default">
-                                                                    <div class="flex min-w-0 flex-1 items-center gap-2">
-                                                                        <span class="text-sm font-semibold text-slate-200">@GetDesignLabel(stack)</span>
-                                                                        <span class="ui-hits-pill @GetHitsPillClass(stack)">@stack.RemainingHits/@NexusHullBaselines.GetBaseline(stack.Category).Hits hits</span>
-                                                                    </div>
-                                                                    <span class="shrink-0 text-sm font-semibold text-slate-400">×@stack.Count</span>
-                                                                </div>
-                                                            </Trigger>
-                                                            <Content>
-                                                                <NexusUnitProfileCard
-                                                                    Category="stack.Category"
-                                                                    Design="stackDesign"
-                                                                    Name="stack.DesignName" />
-                                                            </Content>
-                                                        </HoverTooltip>
-                                                    }
-                                                </div>
-                                            </div>
-                                        }
-                                    </section>
-                                }
-                                    </div>
-
-
-
-                                    @if (IsEditable && System.HomePlayerId == CurrentPlayerId)
-                                    {
-                                        <div class="space-y-2 ui-panel-separator">
-                                            <p class="text-base font-semibold text-slate-300">Build units</p>
-                                            <div class="grid gap-2">
-                                                @foreach (var group in UnitGroups)
-                                                {
-                                                    <div class="ui-panel-card-tight">
-                                                        <p class="mb-1 text-base font-semibold uppercase tracking-wide text-slate-400">@group.Label</p>
-                                                        <div class="space-y-1">
-                                                            @foreach (var design in PlayerDesigns.Where(d => d.Hull == group.Category))
-                                                            {
-                                                                var cost = NexusHullBaselines.GetProfile(design).Cost;
-                                                                var count = PendingBuildOrders.FirstOrDefault(o => o.DesignId == design.DesignId)?.Count ?? 0;
-                                                                var canAdd = ProjectedEnergy >= cost;
-
-                                                                <button type="button" class="@GetBuildRowClass(design, count, canAdd)"
-                                                                        data-testid="@GetBuildButtonTestId(design)" @onclick="e => OnBuildRowClickAsync(design, e)"
-                                                                        @ondblclick="() => OnOrderDraftRequested.InvokeAsync(OrderDraftRequest.BuildDraftAdjusted(design.DesignId, BuildDraftAdjustmentKind.AddMax))"
-                                                                        @oncontextmenu:preventDefault="true"
-                                                                        @oncontextmenu="() => OnOrderDraftRequested.InvokeAsync(OrderDraftRequest.BuildDraftAdjusted(design.DesignId, BuildDraftAdjustmentKind.RemoveOne))">
-                                                                    <span class="min-w-0 flex-1 whitespace-nowrap text-base text-slate-100">@design.Name <span
-                                                                        class="ml-1 text-yellow-400">@cost⚡</span></span>
-                                                                        <span class="shrink-0 whitespace-nowrap pl-3 text-base text-slate-400">@count</span>
-                                                                    </button>
-                                                                }
-                                                            </div>
-                                                        </div>
-                                                    }
-                                                </div>
-                                            </div>
-                                        }
-
-                                        @if (IsEditable && CanShowGateOption)
-                                        {
-                                            <div class="space-y-2 ui-panel-separator">
-                                                <p class="text-base font-semibold text-slate-300">Nexus Gate</p>
-                                                <button class="@GateButtonClass" data-testid="@NexusGameplayPanelTestIds.NexusGateDraftToggle"
-                                                        @onclick="OnNexusGateDraftChangedAsync" disabled="@(!CanAffordGate && !PendingBeginNexusGate)">
-                                                    <span>Begin Nexus Gate</span>
-                                                    <span class="text-yellow-400">@NexusEngine.GateCost⚡</span>
-                                                </button>
-                                            </div>
-                                        }
-                                    </section>
+    @* Nexus gate *@
+    @if (IsEditable && CanShowGateOption)
+    {
+        <div class="space-y-2 ui-panel-separator">
+            <p class="text-base font-semibold text-slate-300">Nexus Gate</p>
+            <button class="@GateButtonClass" data-testid="@NexusGameplayPanelTestIds.NexusGateDraftToggle"
+                    @onclick="OnNexusGateDraftChangedAsync" disabled="@(!CanAffordGate && !PendingBeginNexusGate)">
+                <span>Begin Nexus Gate</span>
+                <span class="text-yellow-400">@NexusEngine.GateCost ⚡</span>
+            </button>
+        </div>
+    }
+</section>
 
 @code {
-    private static readonly UnitGroup[] UnitGroups =
+    private static readonly (NexusUnitCategory Category, string Label)[] UnitGroups =
     [
-        new("Strike", NexusUnitCategory.Strike),
-        new("Capital", NexusUnitCategory.Capital),
-        new("Planetary", NexusUnitCategory.Planetary),
+        (NexusUnitCategory.Strike, "Strike"),
+        (NexusUnitCategory.Capital, "Capital"),
+        (NexusUnitCategory.Planetary, "Planetary"),
     ];
 
     [Parameter, EditorRequired]
@@ -332,7 +205,8 @@
     [Parameter]
     public EventCallback<OrderDraftRequest> OnOrderDraftRequested { get; set; }
 
-    private readonly Dictionary<StackKey, int> _selection = [];
+    private readonly Dictionary<UnitStackList.StackKey, int> _selection = [];
+    private ImmutableDictionary<Guid, NexusUnitDesign> _designLookupImmutable = ImmutableDictionary<Guid, NexusUnitDesign>.Empty;
     private Dictionary<Guid, NexusUnitDesign> _designLookup = [];
     private HexCoord _previousCoord;
     private ImmutableArray<NexusUnitStackGroup> _myStacks = [];
@@ -355,7 +229,7 @@
     private bool HasSelection => _selection.Values.Any(value => value > 0);
 
     private IEnumerable<NexusUnitStackGroup> SelectedStacks => _myStacks
-        .Select(stack => stack with { Count = _selection.GetValueOrDefault(GetStackKey(stack)) })
+        .Select(stack => stack with { Count = _selection.GetValueOrDefault(new UnitStackList.StackKey(stack.DesignId, stack.RemainingHits)) })
         .Where(stack => stack.Count > 0);
 
     private bool SelectionIsValid => HasSelection && SlotsNeeded <= CarryCapacity;
@@ -368,14 +242,8 @@
 
     private bool CanAffordGate => ProjectedEnergy >= NexusEngine.GateCost;
 
-    private string MyForcesClass =>
-        CurrentPlayerFaction == NexusFactionColor.Red ? "text-red-400" : "text-sky-400";
-
-    private string EnemyForcesClass =>
-        CurrentPlayerFaction == NexusFactionColor.Red ? "text-sky-400" : "text-red-400";
-
-    private string SelectionCountClass =>
-        CurrentPlayerFaction == NexusFactionColor.Red ? "text-red-300" : "text-sky-300";
+    private NexusFactionColor OpponentFactionColor =>
+        CurrentPlayerFaction == NexusFactionColor.Red ? NexusFactionColor.Blue : NexusFactionColor.Red;
 
     private string GateButtonClass =>
         PendingBeginNexusGate
@@ -384,38 +252,26 @@
                 ? "ui-button-control flex w-full justify-between gap-2"
                 : "ui-button-row-disabled flex w-full justify-between gap-2";
 
-    private NexusFactionColor OpponentFactionColor =>
-        CurrentPlayerFaction == NexusFactionColor.Red ? NexusFactionColor.Blue : NexusFactionColor.Red;
-
-    private string GetSystemLabel()
-        => NexusMapTopology.GetSectorDisplayName(System.Coord);
+    private string GetSystemLabel() => NexusMapTopology.GetSectorDisplayName(System.Coord);
 
     private string GetSystemLabelClass()
     {
         if (!System.HomePlayerId.HasValue)
         {
             if (System.ControlOwner == CurrentPlayerId)
-                return CurrentPlayerFaction == NexusFactionColor.Red
-                    ? "ui-panel-label text-red-300"
-                    : "ui-panel-label text-sky-300";
+                return FactionCss.AccentText(CurrentPlayerFaction);
 
             if (OpponentPlayerId.HasValue && System.ControlOwner == OpponentPlayerId.Value)
-                return OpponentFactionColor == NexusFactionColor.Red
-                    ? "ui-panel-label text-red-300"
-                    : "ui-panel-label text-sky-300";
+                return FactionCss.AccentText(OpponentFactionColor);
 
             return "ui-panel-label";
         }
 
         if (System.HomePlayerId == CurrentPlayerId)
-            return CurrentPlayerFaction == NexusFactionColor.Red
-                ? "ui-panel-label text-red-300"
-                : "ui-panel-label text-sky-300";
+            return FactionCss.AccentText(CurrentPlayerFaction);
 
         if (OpponentPlayerId.HasValue && System.HomePlayerId == OpponentPlayerId.Value)
-            return OpponentFactionColor == NexusFactionColor.Red
-                ? "ui-panel-label text-red-300"
-                : "ui-panel-label text-sky-300";
+            return FactionCss.AccentText(OpponentFactionColor);
 
         return "ui-panel-label";
     }
@@ -425,6 +281,7 @@
         _designLookup = PlayerDesigns.Concat(OpponentDesigns)
             .GroupBy(d => d.DesignId)
             .ToDictionary(g => g.Key, g => g.First());
+        _designLookupImmutable = _designLookup.ToImmutableDictionary();
         _myStacks = AvailableStacks;
         var isContested =
             OpponentPlayerId.HasValue
@@ -477,55 +334,12 @@
             await PublishSelectionAsync();
     }
 
-    private static IEnumerable<NexusUnitStackGroup> GetStacksForCategory(
-        ImmutableArray<NexusUnitStackGroup> stacks,
-        NexusUnitCategory category
-    ) =>
-        stacks
-            .Where(stack => stack.Category == category)
-            .OrderBy(stack => stack.DesignName)
-            .ThenByDescending(stack => stack.RemainingHits);
-
-    private string GetFleetRowClass(int selected)
-    {
-        if (selected > 0)
-        {
-            return CurrentPlayerFaction == NexusFactionColor.Red
-                ? "ui-button-row-active-danger"
-                : "ui-button-row-active-info";
-        }
-
-        return "ui-button-row-available";
-    }
-
-    private string GetStackNameClass(int selected) =>
-        selected > 0
-            ? (CurrentPlayerFaction == NexusFactionColor.Red ? "text-red-200" : "text-sky-200")
-            : "text-slate-200";
-
-    private static string GetHitsPillClass(NexusUnitStackGroup stack)
-    {
-        if (stack.RemainingHits >= NexusHullBaselines.GetBaseline(stack.Category).Hits)
-            return "border-emerald-400/30 bg-emerald-500/10 text-emerald-200";
-
-        if (stack.RemainingHits > 1)
-            return "border-amber-400/30 bg-amber-500/10 text-amber-200";
-
-        return "border-rose-400/30 bg-rose-500/10 text-rose-200";
-    }
-
-    private string GetSelectedCountClass(int selectedCount) =>
-        selectedCount <= 0 ? "text-slate-400" : SelectionCountClass;
-
-    private int GetAvailableCount(StackKey stackKey) =>
+    private int GetAvailableCount(UnitStackList.StackKey stackKey) =>
         _myStacks
             .Where(stack => stack.DesignId == stackKey.DesignId && stack.RemainingHits == stackKey.RemainingHits)
             .Sum(stack => stack.Count);
 
-    private static StackKey GetStackKey(NexusUnitStackGroup stack) =>
-        new(stack.DesignId, stack.RemainingHits);
-
-    private Task ToggleWholeStackAsync(StackKey stackKey)
+    private Task HandleToggleWholeStack(UnitStackList.StackKey stackKey)
     {
         var available = GetAvailableCount(stackKey);
         if (available <= 0)
@@ -540,17 +354,17 @@
         return PublishSelectionAsync();
     }
 
-    private Task AdjustStackAsync(StackKey stackKey, int delta)
+    private Task HandleStackAdjustment(UnitStackList.StackAdjustment adjustment)
     {
-        var available = GetAvailableCount(stackKey);
+        var available = GetAvailableCount(adjustment.Key);
         if (available <= 0)
             return Task.CompletedTask;
 
-        var next = Math.Clamp(_selection.GetValueOrDefault(stackKey) + delta, 0, available);
+        var next = Math.Clamp(_selection.GetValueOrDefault(adjustment.Key) + adjustment.Delta, 0, available);
         if (next <= 0)
-            _selection.Remove(stackKey);
+            _selection.Remove(adjustment.Key);
         else
-            _selection[stackKey] = next;
+            _selection[adjustment.Key] = next;
 
         return PublishSelectionAsync();
     }
@@ -560,7 +374,7 @@
         _selection.Clear();
         foreach (var stack in _myStacks)
         {
-            _selection[GetStackKey(stack)] = stack.Count;
+            _selection[new UnitStackList.StackKey(stack.DesignId, stack.RemainingHits)] = stack.Count;
         }
 
         return PublishSelectionAsync();
@@ -578,11 +392,7 @@
     private string GetBuildRowClass(NexusUnitDesign design, int count, bool canAdd)
     {
         if (count > 0)
-        {
-            return CurrentPlayerFaction == NexusFactionColor.Red
-                ? "ui-button-row-active-danger"
-                : "ui-button-row-active-info";
-        }
+            return FactionCss.ButtonActiveRow(CurrentPlayerFaction);
 
         if (!canAdd)
             return "ui-button-row-disabled";
@@ -623,16 +433,9 @@
             OrderDraftRequest.NexusGateDraftChanged(!PendingBeginNexusGate)
         );
 
-    private static string GetFleetButtonTestId(NexusUnitStackGroup stack) =>
+    private static string GetFleetTestId(NexusUnitStackGroup stack) =>
         NexusGameplayPanelTestIds.FleetStack(stack.DesignName, stack.RemainingHits);
 
     private static string GetBuildButtonTestId(NexusUnitDesign design) =>
         NexusGameplayPanelTestIds.BuildUnit(design.Name);
-
-    private sealed record UnitGroup(string Label, NexusUnitCategory Category);
-
-    private static string GetDesignLabel(NexusUnitStackGroup stack) =>
-        stack.DesignName.Length > 0 ? stack.DesignName : stack.Category.ToString();
-
-    private sealed record StackKey(Guid DesignId, int RemainingHits);
 }

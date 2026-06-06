@@ -1,0 +1,48 @@
+@using Spx.Nexus.Domain
+
+@{
+    var s = Size switch
+    {
+        PipSize.Medium => 2.0,
+        _ => 1.5,
+    };
+}
+
+<svg viewBox="-8 -8 16 16" class="@Class" aria-hidden="true" focusable="false"
+     style="display:inline-block;vertical-align:middle;width:@(s*12)px;height:@(s*12)px">
+    @switch (Category)
+    {
+        case NexusUnitCategory.Strike:
+            <polygon points="@Fmt(0),@Fmt(-3.5*s) @Fmt(3.5*s),@Fmt(3.5*s) @Fmt(-3.5*s),@Fmt(3.5*s)"
+                     fill="@Fill" stroke="@Stroke" stroke-width="@(0.5*s)" />
+            break;
+        case NexusUnitCategory.Capital:
+            <polygon points="@Fmt(0),@Fmt(-3.5*s) @Fmt(3.5*s),@Fmt(0) @Fmt(0),@Fmt(3.5*s) @Fmt(-3.5*s),@Fmt(0)"
+                     fill="@Fill" stroke="@Stroke" stroke-width="@(0.5*s)" />
+            break;
+        case NexusUnitCategory.Planetary:
+            <circle cx="@Fmt(0)" cy="@Fmt(0)" r="@Fmt(3*s)"
+                    fill="@Fill" stroke="@Stroke" stroke-width="@(0.5*s)" />
+            break;
+    }
+</svg>
+
+@code {
+    [Parameter, EditorRequired]
+    public NexusUnitCategory Category { get; set; }
+
+    [Parameter]
+    public PipSize Size { get; set; } = PipSize.Small;
+
+    [Parameter]
+    public string Fill { get; set; } = "rgba(148,163,184,0.7)";
+
+    [Parameter]
+    public string Stroke { get; set; } = "rgba(255,255,255,0.3)";
+
+    [Parameter]
+    public string Class { get; set; } = "";
+
+    private static string Fmt(double v) =>
+        v.ToString("F1", System.Globalization.CultureInfo.InvariantCulture);
+}

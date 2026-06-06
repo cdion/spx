@@ -40,6 +40,15 @@ applyTo: 'tests/**'
 
 Class names change with Tailwind refactors and carry no semantic contract. Use `data-testid` exclusively.
 
+### Boundary: UI tests vs domain logic tests
+
+Component tests in `Spx.Web.Tests` verify UI behavior: rendering, click routing, tab switching, and state transitions through the component layer. They must **not** re-test domain rules that are already covered by domain test projects (`Spx.Game.Domain.Tests`, `Spx.Game.Application.Tests`).
+
+- **UI layer owns**: component rendering, event callback invocation, state machine transitions (`NexusGameplayPanelState.*`), layout logic, CSS class selection, data-testid presence.
+- **Domain layer owns**: cost calculations, combat formulas, movement rules, victory conditions, gate progress mechanics.
+
+When writing a UI test that depends on a domain value (e.g., a unit's energy cost), use soft assertions (`Assert.True(count > 0)`) rather than hard-coding the expected domain value (`Assert.Equal(6, count)`). If a test's primary assertion is about a domain calculation result, the test belongs in a domain test project, not in `Spx.Web.Tests`.
+
 ### Pattern: TestIds class + local selector helper
 
 Every testable component in `Spx.Web.Components` has a companion `{Name}TestIds.cs` static class (same folder, same namespace) owning all test ID strings:

@@ -13,7 +13,9 @@
                 if (groupDesigns.Count == 0) continue;
 
                 <div class="ui-panel-card-tight">
-                    <p class="ui-type-overline mb-1 text-slate-500">@group.Label</p>
+                    <p class="ui-type-overline mb-1 text-slate-500">
+                        <CategoryPip Category="group.Hull" Size="PipSize.Small" /> @group.Label
+                    </p>
                     <ul class="space-y-1">
                         @foreach (var design in groupDesigns)
                         {
@@ -65,7 +67,7 @@
                             <input type="radio" name="design-hull" class="accent-indigo-400"
                                    checked="@(_hull == hull)"
                                    @onchange="() => SetHull(hull)" />
-                            @group.Label
+                            <CategoryPip Category="hull" Size="PipSize.Small" /> @group.Label
                         </label>
                     }
                 </div>

@@ -5,14 +5,9 @@
     <AlertBanner>@FormattedGameplayError</AlertBanner>
 }
 
-<NexusGameplayTopInfoBar RoundNumber="@Session.RoundNumber" CurrentPlayerName="@CurrentPlayerName"
-                         OpponentPlayerName="@OpponentPlayerName" CurrentPlayerFaction="@Session.CurrentPlayer.Faction"
-                         CurrentPlayerEnergy="@Session.CurrentPlayer.Energy" CurrentPlayerSupplyPool="@Session.CurrentPlayer.SupplyPool"
-                         CurrentPlayerCapitalCount="@Session.CurrentPlayer.CapitalCount"
-                         CurrentPlayerHasSubmittedOrders="@Session.CurrentPlayer.HasSubmittedOrders"
-                         OpponentFaction="@Session.Opponent.Faction" OpponentPlayerEnergy="@Session.Opponent.Energy"
-                         OpponentSupplyPool="@Session.Opponent.SupplyPool" OpponentCapitalCount="@Session.Opponent.CapitalCount"
-                         OpponentHasSubmittedOrders="@Session.Opponent.HasSubmittedOrders" />
+<NexusGameplayTopInfoBar RoundNumber="@Session.RoundNumber"
+                         CurrentPlayer="@CurrentPlayerInfo"
+                         Opponent="@OpponentInfo" />
 
 @if (Session.Completion is not null)
 {
@@ -92,14 +87,14 @@
                             _orderDraftState.PendingBuildOrders.Length > 0 ||
                             _orderDraftState.PendingBeginNexusGate)
                                 {
-                                    <NexusOrdersPanel MoveOrders="@_orderDraftState.PendingMoveOrders"
-                                                      BuildOrders="@_orderDraftState.PendingBuildOrders"
-                                                      Designs="@(Session.CurrentPlayer.Designs ?? [])"
-                                                      CurrentPlayerName="@CurrentPlayerName" CurrentPlayerHomeCoord="@CurrentPlayerHomeCoord"
-                                                      OpponentPlayerName="@OpponentPlayerName"
-                                                      OpponentPlayerHomeCoord="@OpponentPlayerHomeCoord"
-                                                      BeginNexusGate="@_orderDraftState.PendingBeginNexusGate" IsEditable="@ShowOrdersForm"
-                                                      OnPendingOrderRequested="HandlePendingOrderRequest" />
+                                    <NexusPendingOrdersListComponent MoveOrders="@_orderDraftState.PendingMoveOrders"
+                                                                     BuildOrders="@_orderDraftState.PendingBuildOrders"
+                                                                     Designs="@(Session.CurrentPlayer.Designs ?? [])"
+                                                                     CurrentPlayerName="@CurrentPlayerName" CurrentPlayerHomeCoord="@CurrentPlayerHomeCoord"
+                                                                     OpponentPlayerName="@OpponentPlayerName"
+                                                                     OpponentPlayerHomeCoord="@OpponentPlayerHomeCoord"
+                                                                     BeginNexusGate="@_orderDraftState.PendingBeginNexusGate" IsEditable="@ShowOrdersForm"
+                                                                     OnPendingOrderRequested="HandlePendingOrderRequest" />
                                 }
                             </div>
                         }
@@ -211,6 +206,26 @@
         Lobby.IsCurrentUserActive
         && !Session.CurrentPlayer.HasSubmittedOrders
         && Session.Completion is null;
+
+    private PlayerInfoBarModel CurrentPlayerInfo => new()
+    {
+        PlayerName = CurrentPlayerName,
+        Faction = Session.CurrentPlayer.Faction,
+        Energy = Session.CurrentPlayer.Energy,
+        SupplyPool = Session.CurrentPlayer.SupplyPool,
+        CapitalCount = Session.CurrentPlayer.CapitalCount,
+        HasSubmittedOrders = Session.CurrentPlayer.HasSubmittedOrders,
+    };
+
+    private PlayerInfoBarModel OpponentInfo => new()
+    {
+        PlayerName = OpponentPlayerName,
+        Faction = Session.Opponent.Faction,
+        Energy = Session.Opponent.Energy,
+        SupplyPool = Session.Opponent.SupplyPool,
+        CapitalCount = Session.Opponent.CapitalCount,
+        HasSubmittedOrders = Session.Opponent.HasSubmittedOrders,
+    };
 
     private string CurrentPlayerName => Lobby.CurrentPlayerName;
 
@@ -474,7 +489,7 @@
         if (!focus.HasTarget)
             return neutralRowClass;
 
-        if (_eventFocusState.Preview.Matches(focus))
+        if (_eventFocusState.Current.Matches(focus))
             return activeRowClass;
 
         return neutralRowClass;
@@ -486,17 +501,17 @@
         if (!focus.HasTarget)
             return "inactive";
 
-        return _eventFocusState.Preview.Matches(focus) ? "active" : "inactive";
+        return _eventFocusState.Current.Matches(focus) ? "active" : "inactive";
     }
 
     private IReadOnlyList<HexCoord> ActiveEventFocusSystems =>
-        _eventFocusState.Active.Systems;
+        _eventFocusState.Current.Systems;
 
     private HexCoord? ActiveEventFocusFrom =>
-        _eventFocusState.Active.From;
+        _eventFocusState.Current.From;
 
     private HexCoord? ActiveEventFocusTo =>
-        _eventFocusState.Active.To;
+        _eventFocusState.Current.To;
 
     private string GetCompletionMessage()
     {

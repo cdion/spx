@@ -1,0 +1,61 @@
+@using Spx.Nexus.Domain
+
+@{
+    var fromCenter = NexusHexHelpers.HexCenter(From);
+    var toCenter = NexusHexHelpers.HexCenter(To);
+    var dx = toCenter.X - fromCenter.X;
+    var dy = toCenter.Y - fromCenter.Y;
+    var len = Math.Sqrt(dx * dx + dy * dy);
+}
+
+@if (len >= 1)
+{
+    var ux = dx / len;
+    var uy = dy / len;
+    var px = -uy;
+    var py = ux;
+    var mx = (fromCenter.X + toCenter.X) / 2.0;
+    var my = (fromCenter.Y + toCenter.Y) / 2.0;
+    const double h = 4.5;
+    const double w = 7;
+    var lx = mx - ux * h - px * w;
+    var ly = my - uy * h - py * w;
+    var tx = mx + ux * h;
+    var ty = my + uy * h;
+    var rx = mx - ux * h + px * w;
+    var ry = my - uy * h + py * w;
+    var outlinePts = $"{Fmt(lx)},{Fmt(ly)} "
+               + $"{Fmt(tx)},{Fmt(ty)} "
+               + $"{Fmt(rx)},{Fmt(ry)}";
+    var mlx = tx + (lx - tx) * 0.5;
+    var mly = ty + (ly - ty) * 0.5;
+    var mrx = tx + (rx - tx) * 0.5;
+    var mry = ty + (ry - ty) * 0.5;
+    var fillPts = $"{Fmt(mlx)},{Fmt(mly)} "
+            + $"{Fmt(tx)},{Fmt(ty)} "
+            + $"{Fmt(mrx)},{Fmt(mry)}";
+
+    <polygon points="@fillPts" fill="@Color" fill-opacity="@FillOpacity" stroke="none" pointer-events="none" />
+    <polyline points="@outlinePts" fill="none" stroke="@Color" stroke-width="@StrokeWidth" stroke-linecap="round"
+              stroke-linejoin="round" pointer-events="none" />
+}
+
+@code {
+    [Parameter, EditorRequired]
+    public HexCoord From { get; set; }
+
+    [Parameter, EditorRequired]
+    public HexCoord To { get; set; }
+
+    [Parameter]
+    public string Color { get; set; } = "rgba(245,158,11,0.9)";
+
+    [Parameter]
+    public double FillOpacity { get; set; } = 0.7;
+
+    [Parameter]
+    public double StrokeWidth { get; set; } = 2;
+
+    private static string Fmt(double v) =>
+        v.ToString("F1", System.Globalization.CultureInfo.InvariantCulture);
+}
