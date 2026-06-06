@@ -4,11 +4,16 @@
     "keepRecentTokens": 15000,
     "reserveTokens": 16384
   },
-  "skills": [
-    "skills/spx-orleans-conventions",
-    "skills/spx-type-placement",
-    "skills/spx-component-testing",
-    "skills/spx-blazor-ui-patterns",
-    "skills/spx-css-tailwind"
+  "instructions": [
+    "../.claude/instructions/spx-apphost-devloop.instructions.md",
+    "../.claude/instructions/spx-application-outcomes.instructions.md",
+    "../.claude/instructions/spx-change-routing.instructions.md",
+    "../.claude/instructions/spx-data-persistence.instructions.md",
+    "../.claude/instructions/spx-orleans-boundaries.instructions.md",
+    "../.claude/instructions/spx-testing.instructions.md",
+    "../.claude/instructions/spx-type-placement.instructions.md",
+    "../.claude/instructions/spx-web-css.instructions.md",
+    "../.claude/instructions/spx-verification.instructions.md",
+    "../.claude/instructions/spx-blazor-ui-patterns.instructions.md"
   ]
 }

@@ -1,7 +1,7 @@
 ---
 name: spx-blazor-ui-patterns
-description: 'Choose the right Blazor component or page state pattern. Use when deciding inline @code vs static reducer vs coordinator, or when a component or page is growing complex. Trigger words: component state, page state, static reducer, coordinator, parameter bag, inline @code, state extraction, @code block too large.'
-argument-hint: 'Describe the component or page, its concerns, and what feels unwieldy.'
+description: 'Choose the right Blazor component or page state pattern.'
+applyTo: '{src/Spx.Web/**/*.razor,src/Spx.Web.Components/**/*.razor}'
 ---
 
 # Spx Blazor UI Patterns

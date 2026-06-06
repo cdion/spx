@@ -1,7 +1,15 @@
 ---
-name: spx-css-tailwind
-description: 'Apply Spx Tailwind v4 conventions — color palette, dynamic classes, @apply rules, and arbitrary values. Use when adding CSS to Blazor components or editing app.css. Trigger words: Tailwind, app.css, ui- class, @apply, dynamic class, resource color, tone palette, arbitrary value, tailwindcss, color palette.'
-argument-hint: 'Describe the UI element and its visual treatment.'
+description: 'Use when writing or editing Blazor components, adding CSS classes, styling game UI, or deciding between named utilities and inline Tailwind classes in Spx.Web.'
+name: 'Spx Web CSS and Tailwind'
+applyTo:
+  - 'src/Spx.Web/Components/**/*.razor'
+  - 'src/Spx.Web/Components/**/*.css'
+  - 'src/Spx.Web/Components/**/*.cs'
+  - 'src/Spx.Web.Components/Styles/**'
+  - 'src/Spx.Web.Components/Components/**/*.razor'
+  - 'src/Spx.Web.Components/Components/**/*.css'
+  - 'src/Spx.Web.Components/Components/**/*.cs'
+  - 'src/Spx.Web.Playground/Components/**/*.razor'
 ---
 
 # Spx CSS & Tailwind

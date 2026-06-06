@@ -1,7 +1,7 @@
 ---
 name: spx-type-placement
-description: 'Decide whether to define a type in Domain, Application, or Contracts. Use when deciding where a type belongs, whether to create a surrogate, or how to flow a domain type through layers. Trigger words: where does this type go, Domain vs Application, should I define a surrogate, type placement, Contracts type, cross-layer type, mirrored type.'
-argument-hint: 'Describe the type, its purpose, and which boundary it crosses.'
+description: 'Decide whether to define a type in Domain, Application, or Contracts.'
+applyTo: '{src/Spx.*.Domain/**,src/Spx.*.Application/**,src/Spx.Contracts/**,src/Spx.Grains/**}'
 ---
 
 # Spx Type Placement (Domain / Application / Contracts)
