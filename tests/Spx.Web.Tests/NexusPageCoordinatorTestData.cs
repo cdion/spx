@@ -18,6 +18,39 @@ internal static class GamePageCoordinatorTestData
         "aaaaaaaa-0000-0000-0000-000000000003"
     );
 
+    public static readonly ImmutableArray<NexusUnitDesign> CurrentPlayerDesigns =
+    [
+        new()
+        {
+            DesignId = CarrierDesignId,
+            Name = "Carrier",
+            Hull = NexusUnitCategory.Capital,
+            Modules = [new Hangar(4)],
+        },
+        new()
+        {
+            DesignId = FighterDesignId,
+            Name = "Fighter",
+            Hull = NexusUnitCategory.Strike,
+        },
+        new()
+        {
+            DesignId = InfantryDesignId,
+            Name = "Infantry",
+            Hull = NexusUnitCategory.Planetary,
+        },
+    ];
+
+    public static readonly ImmutableArray<NexusUnitDesign> OpponentDesigns =
+    [
+        new()
+        {
+            DesignId = FighterDesignId,
+            Name = "Fighter",
+            Hull = NexusUnitCategory.Strike,
+        },
+    ];
+
     private static ImmutableArray<NexusUnitStackGroup> FullHitsStacks(
         params (Guid DesignId, NexusUnitCategory Category, string Name, int Count)[] units
     ) =>
@@ -80,7 +113,8 @@ internal static class GamePageCoordinatorTestData
                 null,
                 false,
                 0,
-                0
+                0,
+                CurrentPlayerDesigns
             ),
             new NexusPlayerView(
                 OpponentPlayerId,
@@ -93,7 +127,8 @@ internal static class GamePageCoordinatorTestData
                 null,
                 false,
                 0,
-                0
+                0,
+                OpponentDesigns
             ),
             [],
             null

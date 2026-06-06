@@ -69,7 +69,6 @@ public sealed record NexusPlayerView(
     [property: Id(8)] bool PendingBeginNexusGate,
     [property: Id(9)] int SupplyPool,
     [property: Id(10)] int CapitalCount,
-    // Own player only
     [property: Id(11)] ImmutableArray<NexusUnitDesign>? Designs = null
 );
 

@@ -1177,7 +1177,7 @@ public static class NexusEngine
             isSelf && player.PendingBeginNexusGate,
             ComputeSupplyPool(state, player.PlayerId),
             ComputeCapitalCount(state, player.PlayerId),
-            isSelf ? player.Designs.ToImmutableArray() : null
+            player.Designs.ToImmutableArray()
         );
 
     private static ImmutableDictionary<Guid, ImmutableArray<NexusUnitStackGroup>> ProjectUnitStacks(

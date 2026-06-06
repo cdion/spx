@@ -19,7 +19,10 @@
                        CurrentPlayerName="Captain Red" OpponentPlayerId="@NexusStoryFixtures.Player2Id" OpponentPlayerName="Captain Blue"
                        CurrentPlayerFaction="NexusFactionColor.Red" CurrentPlayerGateProgress="@_active.GateProgress" IsEditable="true"
                        ProjectedEnergy="15" AvailableStacks="@_active.System.GetPlayerMovableStacks(NexusStoryFixtures.Player1Id)"
-                       PendingBuildOrders="@_pendingBuildOrders" OnOrderDraftRequested="HandleOrderDraftRequested" />
+                       PendingBuildOrders="@_pendingBuildOrders"
+                       PlayerDesigns="@NexusStoryFixtures.Player1Designs"
+                       OpponentDesigns="@NexusStoryFixtures.Player2Designs"
+                       OnOrderDraftRequested="HandleOrderDraftRequested" />
 
 @if (_lastOrder is not null)
 {

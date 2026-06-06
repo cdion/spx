@@ -85,6 +85,7 @@
                                                            AvailableStacks="@GetAvailableMoveStacks(selectedSystem.Coord)"
                                                            PendingBuildOrders="@_orderDraftState.PendingBuildOrders"
                                                            PlayerDesigns="@(Session.CurrentPlayer.Designs ?? [])"
+                                                           OpponentDesigns="@(Session.Opponent.Designs ?? [])"
                                                            OnOrderDraftRequested="HandleOrderDraftRequest" />
                                 }
                                 @if (_orderDraftState.PendingMoveOrders.Length > 0 ||

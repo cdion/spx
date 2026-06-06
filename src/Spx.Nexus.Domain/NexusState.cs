@@ -188,7 +188,8 @@ public sealed class NexusSystemState
                     requestedStack.DesignId,
                     requestedStack.Category,
                     requestedStack.RemainingHits,
-                    take
+                    take,
+                    requestedStack.DesignName
                 )
             );
         }

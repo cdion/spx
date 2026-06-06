@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using Spx.Game.Application;
 using Spx.Game.Application.Nexus;
 using Spx.Nexus.Domain;
@@ -15,6 +16,68 @@ internal static class NexusStoryFixtures
     private static readonly Guid CruiserId = Guid.Parse("bbbbbbbb-0000-0000-0000-000000000005");
     private static readonly Guid BomberId = Guid.Parse("bbbbbbbb-0000-0000-0000-000000000006");
     private static readonly Guid ArmorId = Guid.Parse("bbbbbbbb-0000-0000-0000-000000000007");
+
+    public static readonly ImmutableArray<NexusUnitDesign> Player1Designs =
+    [
+        new()
+        {
+            DesignId = CarrierId,
+            Name = "Carrier",
+            Hull = NexusUnitCategory.Capital,
+        },
+        new()
+        {
+            DesignId = FighterId,
+            Name = "Fighter",
+            Hull = NexusUnitCategory.Strike,
+        },
+        new()
+        {
+            DesignId = InfantryId,
+            Name = "Infantry",
+            Hull = NexusUnitCategory.Planetary,
+        },
+        new()
+        {
+            DesignId = DestroyerId,
+            Name = "Destroyer",
+            Hull = NexusUnitCategory.Capital,
+        },
+        new()
+        {
+            DesignId = ArmorId,
+            Name = "Armor",
+            Hull = NexusUnitCategory.Planetary,
+        },
+    ];
+
+    public static readonly ImmutableArray<NexusUnitDesign> Player2Designs =
+    [
+        new()
+        {
+            DesignId = CruiserId,
+            Name = "Cruiser",
+            Hull = NexusUnitCategory.Capital,
+        },
+        new()
+        {
+            DesignId = DestroyerId,
+            Name = "Destroyer",
+            Hull = NexusUnitCategory.Capital,
+        },
+        new()
+        {
+            DesignId = BomberId,
+            Name = "Bomber",
+            Hull = NexusUnitCategory.Strike,
+        },
+        new()
+        {
+            DesignId = InfantryId,
+            Name = "Infantry",
+            Hull = NexusUnitCategory.Planetary,
+        },
+    ];
 
     public static readonly Guid Player1Id = Spx.Web.Playground.Nexus.PlaygroundNexusUsers.Player1Id;
     public static readonly Guid Player2Id = Spx.Web.Playground.Nexus.PlaygroundNexusUsers.Player2Id;

@@ -67,7 +67,7 @@ public static class NexusSessionEventFormatter
     }
 
     private static string FormatUnits(ImmutableArray<NexusUnitStackGroup> stacks) =>
-        string.Join(", ", stacks.Select(stack => $"{stack.Count}× (design {stack.DesignId})"));
+        string.Join(", ", stacks.Select(stack => $"{stack.Count}× {stack.DesignName}"));
 
     private static string FormatCombatResult(
         NexusCombatResultEvent e,

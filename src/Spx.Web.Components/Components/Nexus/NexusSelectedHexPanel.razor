@@ -58,7 +58,7 @@
                                 {
                                     var stackKey = GetStackKey(stack);
                                     var selected = _selection.GetValueOrDefault(stackKey);
-                                    var stackDesign = _designLookup.GetValueOrDefault(stack.DesignId);
+                                    var stackDesign = _designLookup[stack.DesignId];
 
                                     <HoverTooltip>
                                         <Trigger>
@@ -122,7 +122,7 @@
                                         <div class="space-y-1">
                                             @foreach (var stack in stacks)
                                             {
-                                                var stackDesign = _designLookup.GetValueOrDefault(stack.DesignId);
+                                                var stackDesign = _designLookup[stack.DesignId];
                                                 <HoverTooltip>
                                                     <Trigger>
                                                         <div class="ui-button-row-available cursor-default">
@@ -164,7 +164,7 @@
                                             <div class="space-y-1">
                                                 @foreach (var stack in stacks)
                                                 {
-                                                    var stackDesign = _designLookup.GetValueOrDefault(stack.DesignId);
+                                                    var stackDesign = _designLookup[stack.DesignId];
                                                     <HoverTooltip>
                                                         <Trigger>
                                                             <div class="ui-button-row-available cursor-default">
@@ -205,7 +205,7 @@
                                                 <div class="space-y-1">
                                                     @foreach (var stack in stacks)
                                                     {
-                                                        var stackDesign = _designLookup.GetValueOrDefault(stack.DesignId);
+                                                        var stackDesign = _designLookup[stack.DesignId];
                                                         <HoverTooltip>
                                                             <Trigger>
                                                                 <div class="ui-button-row-available cursor-default">
@@ -327,6 +327,9 @@
     public ImmutableArray<NexusUnitDesign> PlayerDesigns { get; set; } = [];
 
     [Parameter]
+    public ImmutableArray<NexusUnitDesign> OpponentDesigns { get; set; } = [];
+
+    [Parameter]
     public EventCallback<OrderDraftRequest> OnOrderDraftRequested { get; set; }
 
     private readonly Dictionary<StackKey, int> _selection = [];
@@ -419,9 +422,9 @@
 
     protected override async Task OnParametersSetAsync()
     {
-        _designLookup = PlayerDesigns.IsDefaultOrEmpty
-            ? []
-            : PlayerDesigns.ToDictionary(d => d.DesignId);
+        _designLookup = PlayerDesigns.Concat(OpponentDesigns)
+            .GroupBy(d => d.DesignId)
+            .ToDictionary(g => g.Key, g => g.First());
         _myStacks = AvailableStacks;
         var isContested =
             OpponentPlayerId.HasValue
