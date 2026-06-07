@@ -20,7 +20,7 @@
     <div class="ui-lobby-row">
         <h1 class="ui-page-title">@Lobby.Name</h1>
 
-        <StatusBadge Tone="StatusBadge.BadgeTone.Success">
+        <StatusBadge Tone="@StatusBadge.BadgeTone.Success">
             @Lobby.Players.Count / @Lobby.MaxPlayers players
         </StatusBadge>
     </div>
@@ -34,16 +34,16 @@
 
                     @if (Presence.OnlinePlayerIds.Contains(player.PlayerId))
                     {
-                        <StatusBadge Tone="StatusBadge.BadgeTone.Success">Online</StatusBadge>
+                        <StatusBadge Tone="@StatusBadge.BadgeTone.Success">Online</StatusBadge>
                     }
                     else
                     {
-                        <StatusBadge Tone="StatusBadge.BadgeTone.Offline">Offline</StatusBadge>
+                        <StatusBadge Tone="@StatusBadge.BadgeTone.Offline">Offline</StatusBadge>
                     }
 
                     @if (player.PlayerId == Lobby.CurrentPlayerId)
                     {
-                        <StatusBadge Tone="StatusBadge.BadgeTone.Info">You</StatusBadge>
+                        <StatusBadge Tone="@StatusBadge.BadgeTone.Info">You</StatusBadge>
                     }
                 </div>
             }

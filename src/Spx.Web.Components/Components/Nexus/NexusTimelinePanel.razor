@@ -52,19 +52,19 @@
                                     <p class="text-sm font-semibold @GetTitleClass(item)">@GetTimelineTitle(item)</p>
                                     @if (IsPrivate(item))
                                     {
-                                        <StatusBadge Tone="StatusBadge.BadgeTone.Warning" Inline>
+                                        <StatusBadge Tone="@StatusBadge.BadgeTone.Warning" Inline>
                                             @GetPrivateBadgeText(item)
                                         </StatusBadge>
                                     }
                                     @if (IsPending(item))
                                     {
-                                        <StatusBadge Tone="StatusBadge.BadgeTone.Info" Inline>
+                                        <StatusBadge Tone="@StatusBadge.BadgeTone.Info" Inline>
                                             Pending
                                         </StatusBadge>
                                     }
                                     @if (IsFailed(item))
                                     {
-                                        <StatusBadge Tone="StatusBadge.BadgeTone.Danger" Inline>
+                                        <StatusBadge Tone="@StatusBadge.BadgeTone.Danger" Inline>
                                             Failed
                                         </StatusBadge>
                                     }

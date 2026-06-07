@@ -14,19 +14,19 @@
 
                 <div class="ui-panel-card-tight">
                     <p class="ui-type-overline mb-1 text-slate-500">
-                        <NexusCategoryPip Category="group.Hull" Size="NexusPipSize.Small" /> @group.Label
+                        <NexusCategoryPip Category="@group.Hull" Size="@NexusPipSize.Small" /> @group.Label
                     </p>
                     <ul class="space-y-1">
                         @foreach (var design in groupDesigns)
                         {
                             var profile = NexusHullBaselines.GetProfile(design);
-                            <li class="flex items-center justify-between gap-2 rounded-xl border border-white/10 bg-slate-950/60 px-3 py-2">
+                            <li class="ui-list-item-row">
                                 <HoverTooltip>
                                     <Trigger>
                                         <span class="flex min-w-0 flex-1 items-center gap-2">
                                             <span class="truncate text-base text-slate-200">@design.Name</span>
-                                            <span class="ui-inline-badge shrink-0 border-amber-400/30 bg-amber-500/10 text-amber-200">@profile.Cost⚡</span>
-                                            <span class="ui-inline-badge shrink-0 border-sky-400/30 bg-sky-400/10 text-sky-200">@design.Modules.Sum(NexusModuleCosts.GetSlots)◻</span>
+                                            <span class="ui-badge-energy shrink-0">@profile.Cost⚡</span>
+                                            <span class="ui-badge-slots shrink-0">@design.Modules.Sum(NexusModuleCosts.GetSlots)◻</span>
                                             <span class="ml-auto shrink-0 text-sm text-slate-500">@GetModuleSummary(design)</span>
                                         </span>
                                     </Trigger>
@@ -73,7 +73,7 @@
                             <input type="radio" name="design-hull" class="accent-indigo-400"
                                    checked="@(_hull == hull)"
                                    @onchange="() => SetHull(hull)" />
-                            <NexusCategoryPip Category="hull" Size="NexusPipSize.Small" /> @group.Label
+                            <NexusCategoryPip Category="@hull" Size="@NexusPipSize.Small" /> @group.Label
                         </label>
                     }
                 </div>
@@ -95,11 +95,11 @@
                         {
                             var idx = i;
                             var mod = _modules[i];
-                            <li class="flex items-center justify-between gap-2 rounded-xl border border-white/10 bg-slate-950/60 px-3 py-2">
+                            <li class="ui-list-item-row">
                                 <span class="text-base text-slate-300">@GetModuleLabel(mod)</span>
                                 <span class="ml-auto flex shrink-0 items-center gap-1.5">
-                                    <span class="ui-inline-badge border-amber-400/30 bg-amber-500/10 text-amber-200">@NexusModuleCosts.GetCost(mod)⚡</span>
-                                    <span class="ui-inline-badge border-sky-400/30 bg-sky-400/10 text-sky-200">@FormatSlotCost(NexusModuleCosts.GetSlots(mod))</span>
+                                    <span class="ui-badge-energy">@NexusModuleCosts.GetCost(mod)⚡</span>
+                                    <span class="ui-badge-slots">@FormatSlotCost(NexusModuleCosts.GetSlots(mod))</span>
                                 </span>
                                 <button type="button" class="ui-button-icon-danger shrink-0" title="Remove module"
                                         @onclick="() => RemoveModule(idx)">×</button>
@@ -149,8 +149,8 @@
                         var draftModule = BuildModule(_addModuleType, _addModuleCategory, Math.Clamp(_addModuleN, AddModuleNMin, AddModuleNMax));
                     }
                     <div class="flex shrink-0 items-center gap-1 self-end pb-1.5">
-                        <span class="ui-inline-badge border-amber-400/30 bg-amber-500/10 text-amber-200">@NexusModuleCosts.GetCost(draftModule)⚡</span>
-                        <span class="ui-inline-badge border-sky-400/30 bg-sky-400/10 text-sky-200">@FormatSlotCost(NexusModuleCosts.GetSlots(draftModule))</span>
+                        <span class="ui-badge-energy">@NexusModuleCosts.GetCost(draftModule)⚡</span>
+                        <span class="ui-badge-slots">@FormatSlotCost(NexusModuleCosts.GetSlots(draftModule))</span>
                     </div>
 
                     <button type="button" class="ui-button-secondary shrink-0 self-end"

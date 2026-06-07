@@ -3,7 +3,7 @@
 <span>
     <span class="font-semibold @Context.PlayerNameClass(Event.PlayerId)">@Context.PlayerName(Event.PlayerId)</span>
     took control of
-    <NexusSystemBadge Coord="Event.System"
+    <NexusSystemBadge Coord="@Event.System"
                        CurrentPlayer="@Context.CurrentPlayer"
                        Opponent="@Context.Opponent" />
 </span>

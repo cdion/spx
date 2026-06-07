@@ -19,7 +19,7 @@
             @if (!HideGroupLabels)
             {
                 <p class="ui-type-overline mb-1 text-slate-500">
-                    <NexusCategoryPip Category="group.Category" Size="NexusPipSize.Small" /> @group.Label
+                    <NexusCategoryPip Category="@group.Category" Size="@NexusPipSize.Small" /> @group.Label
                 </p>
             }
             <div class="space-y-1">
@@ -61,8 +61,8 @@
                             @if (design is not null)
                             {
                                 <NexusUnitProfileCard
-                                    Category="stack.Category"
-                                    Design="design"
+                                    Category="@stack.Category"
+                                    Design="@design"
                                     Name="@stack.DesignName" />
                             }
                         </Content>

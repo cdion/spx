@@ -6,16 +6,16 @@
 
 <span>
     <span class="font-semibold @Context.PlayerNameClass(Event.PlayerId)">@Context.PlayerName(Event.PlayerId)</span>'s units @direction
-    <NexusSystemBadge Coord="Event.From"
+    <NexusSystemBadge Coord="@Event.From"
                        CurrentPlayer="@Context.CurrentPlayer"
                        Opponent="@Context.Opponent" />
     to
-    <NexusSystemBadge Coord="Event.To"
+    <NexusSystemBadge Coord="@Event.To"
                        CurrentPlayer="@Context.CurrentPlayer"
                        Opponent="@Context.Opponent" />:
     @foreach (var stack in Event.Stacks)
     {
-        <NexusUnitBadge Category="stack.Category"
+        <NexusUnitBadge Category="@stack.Category"
                          DesignName="@stack.DesignName"
                          Count="@stack.Count"
                          RemainingHits="@stack.RemainingHits" />

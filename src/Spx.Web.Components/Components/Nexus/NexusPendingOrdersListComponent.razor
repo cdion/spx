@@ -8,7 +8,7 @@ else
         @for (var index = 0; index < MoveOrders.Count; index++)
         {
             var order = MoveOrders[index];
-            <li class="flex items-center justify-between gap-2 rounded-xl border border-white/10 bg-slate-950/60 px-3 py-2"
+            <li class="ui-list-item-row"
                 data-testid="@NexusGameplayPanelTestIds.PendingMoveOrder(index, order.From, order.To)">
                 <span class="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-sm text-slate-300">
                     <span class="font-semibold text-slate-200">@GetSystemDisplayName(order.From)</span>
@@ -17,11 +17,11 @@ else
                     @foreach (var stack in order.Stacks)
                     {
                         var design = Designs.FirstOrDefault(d => d.DesignId == stack.DesignId);
-                        <NexusUnitBadge Category="stack.Category"
+                        <NexusUnitBadge Category="@stack.Category"
                                          DesignName="@stack.DesignName"
                                          Count="@stack.Count"
                                          RemainingHits="@stack.RemainingHits"
-                                         Design="design"
+                                         Design="@design"
                                          FactionColor="@CurrentPlayer?.Faction" />
                     }
                 </span>
@@ -38,7 +38,7 @@ else
         @foreach (var order in BuildOrders)
         {
             var designName = GetDesignName(order.DesignId);
-            <li class="flex items-center justify-between gap-2 rounded-xl border border-white/10 bg-slate-950/60 px-3 py-2"
+            <li class="ui-list-item-row"
                 data-testid="@NexusGameplayPanelTestIds.PendingBuildOrder(designName)">
                 <span class="text-base text-slate-300">Build @order.Count× @designName</span>
                     @if (IsEditable)
@@ -53,7 +53,7 @@ else
             }
             @if (BeginNexusGate)
             {
-                <li class="flex items-center justify-between gap-2 rounded-xl border border-white/10 bg-slate-950/60 px-3 py-2"
+                <li class="ui-list-item-row"
                     data-testid="@NexusGameplayPanelTestIds.PendingGateOrder">
                     <span class="text-base text-slate-300">Begin Nexus Gate (@NexusEngine.GateCost⚡)</span>
                     @if (IsEditable)

@@ -96,6 +96,26 @@ public sealed record SelectionRequest(SelectionRequestKind Kind, HexCoord? Syste
 - `*Request` lives in `Spx.Web.Components` (no DI, no I/O). `*Command` lives in `Spx.Nexus.Domain` (or `Spx.Game.Application`).
 - Never pass a domain command directly as an `EventCallback` parameter — that couples the component to the application layer.
 
+## Blazor component parameter: always `@`-prefix C# expressions
+
+When passing a C# expression (variable, property, method call, etc.) to a **component parameter**, always prefix it with `@`:
+
+```razor
+{{! good — @ makes it a C# expression }}
+<NexusUnitBadge Category="@design.Hull" DesignName="@design.Name" />
+
+{{! bad — without @, value may be treated as a literal string }}
+<NexusUnitBadge Category="design.Hull" DesignName="design.Name" />
+```
+
+This rule applies to **all component tags** (capitalized tag names). HTML-element attributes (`class`, `style`, `placeholder`, etc.) correctly use bare strings, but component parameter values should always carry `@` when they reference C# symbols.
+
+Common patterns that need `@`:
+- Dotted expressions: `Category="@group.Hull"`, `DesignName="@design.Name"`
+- Enum values: `Tone="@StatusBadge.BadgeTone.Success"`, `Size="@NexusPipSize.Small"`
+- Local variables: `Design="@design"`, `Event="@e"`, `Context="@ctx"`
+- Method calls: `Cost="@GetCost(design)"`
+
 ## What does NOT warrant extraction
 
 - Large component with a single concern (complex JS interop): keep inline.

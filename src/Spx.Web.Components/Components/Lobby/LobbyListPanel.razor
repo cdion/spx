@@ -33,8 +33,8 @@ else if (Games is not null)
             <div class="space-y-6">
                 <section class="ui-surface-form">
                     <div class="ui-lobby-row items-start">
-                        <SectionHeader Eyebrow="Open" Title="Active seats" Tone="SectionHeader.EyebrowTone.Accent" />
-                        <StatusBadge Tone="StatusBadge.BadgeTone.Success">
+                        <SectionHeader Eyebrow="Open" Title="Active seats" Tone="@SectionHeader.EyebrowTone.Accent" />
+                        <StatusBadge Tone="@StatusBadge.BadgeTone.Success">
                             @Games.OpenGames.Count game(s)
                         </StatusBadge>
                     </div>
@@ -68,7 +68,7 @@ else if (Games is not null)
 
                 <section class="ui-surface-form">
                     <div class="ui-lobby-row items-start">
-                        <SectionHeader Eyebrow="Ended" Title="History" Tone="SectionHeader.EyebrowTone.Muted" />
+                        <SectionHeader Eyebrow="Ended" Title="History" Tone="@SectionHeader.EyebrowTone.Muted" />
                         <StatusBadge>
                             @Games.EndedGames.Count game(s)
                         </StatusBadge>

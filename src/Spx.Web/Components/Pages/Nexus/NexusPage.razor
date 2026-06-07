@@ -65,7 +65,7 @@ else
 
         @if (!lobby.IsCurrentUserActive)
         {
-            <AlertBanner Tone="AlertBanner.AlertTone.Warning" Role="status">
+            <AlertBanner Tone="@AlertBanner.AlertTone.Warning" Role="status">
                 You are viewing this game as a former player. Timeline history is limited to the point when you left.
             </AlertBanner>
         }

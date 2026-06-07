@@ -11,7 +11,7 @@
 
 @if (Session.Completion is not null)
 {
-    <AlertBanner Tone="AlertBanner.AlertTone.Success" Role="status">
+    <AlertBanner Tone="@AlertBanner.AlertTone.Success" Role="status">
         @GetCompletionMessage()
 
     </AlertBanner>
@@ -73,7 +73,7 @@
                             ==
                             _selectionState.SelectedSystem.Value) is { } selectedSystem)
                                 {
-                                    <NexusSelectedHexPanel System="selectedSystem"
+                                    <NexusSelectedHexPanel System="@selectedSystem"
                                                            CurrentPlayer="@CurrentPlayerContext"
                                                            Opponent="@OpponentContext"
                                                            CurrentPlayerGateProgress="@Session.CurrentPlayer.GateProgress"

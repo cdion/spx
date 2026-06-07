@@ -5,7 +5,7 @@
     <div class="flex flex-wrap items-start justify-between gap-3">
         <div class="space-y-1">
             <div class="flex items-center gap-2">
-                <NexusSystemBadge Coord="System.Coord"
+                <NexusSystemBadge Coord="@System.Coord"
                                    CurrentPlayer="@CurrentPlayer"
                                    Opponent="@Opponent"
                                    HomePlayerId="@System.HomePlayerId"
@@ -105,7 +105,7 @@
                 {
                     <div class="ui-panel-card-tight">
                         <p class="mb-1 text-base font-semibold uppercase tracking-wide text-slate-400">
-                    <NexusCategoryPip Category="group.Category" Size="NexusPipSize.Small" /> @group.Label
+                    <NexusCategoryPip Category="@group.Category" Size="@NexusPipSize.Small" /> @group.Label
                 </p>
                         <div class="space-y-1">
                             @foreach (var design in PlayerDesigns.Where(d => d.Hull == group.Category))

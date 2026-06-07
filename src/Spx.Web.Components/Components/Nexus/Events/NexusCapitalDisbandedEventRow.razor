@@ -6,12 +6,12 @@
 
 <span>
     <span class="font-semibold @Context.PlayerNameClass(Event.PlayerId)">@Context.PlayerName(Event.PlayerId)</span>'s
-    <NexusUnitBadge Category="design.Hull"
+    <NexusUnitBadge Category="@design.Hull"
                      DesignName="@Event.DesignName"
-                     Design="design"
-                     Count="Event.Count" />
+                     Design="@design"
+                     Count="@Event.Count" />
     at
-    <NexusSystemBadge Coord="Event.System"
+    <NexusSystemBadge Coord="@Event.System"
                        CurrentPlayer="@Context.CurrentPlayer"
                        Opponent="@Context.Opponent" />
     was disbanded (over supply limit)

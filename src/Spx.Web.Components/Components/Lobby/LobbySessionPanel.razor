@@ -38,7 +38,7 @@
                 }
                 else if (ResolvedSessionState.Session is not null)
                 {
-                    <NexusGameplayPanel Session="ResolvedSessionState.Session" Lobby="ResolvedSessionState.Lobby"
+                    <NexusGameplayPanel Session="@ResolvedSessionState.Session" Lobby="@ResolvedSessionState.Lobby"
                                         IsSubmittingAction="@ResolvedSessionState.IsSubmittingGameplayAction"
                                         GameplayError="@ResolvedSessionState.GameplayError" OnSubmitOrders="OnSubmitOrders"
                                         OnCreateDesign="OnCreateDesign" OnDeleteDesign="OnDeleteDesign"
