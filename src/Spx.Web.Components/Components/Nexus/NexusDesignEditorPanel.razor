@@ -21,13 +21,17 @@
                         {
                             var profile = NexusHullBaselines.GetProfile(design);
                             <li class="flex items-center justify-between gap-2 rounded-xl border border-white/10 bg-slate-950/60 px-3 py-2">
-                                <span class="min-w-0 flex-1 truncate text-base text-slate-200">
-                                    @design.Name
-                                    <span class="ml-1 text-yellow-400/80">@profile.Cost⚡</span>
-                                </span>
-                                <span class="shrink-0 text-sm text-slate-500">
-                                    @GetModuleSummary(design)
-                                </span>
+                                <HoverTooltip>
+                                    <Trigger>
+                                        <span class="flex min-w-0 flex-1 items-center gap-2">
+                                            <span class="min-w-0 flex-1 truncate text-base text-slate-200">@design.Name <span class="ml-1 text-yellow-400/80">@profile.Cost⚡</span></span>
+                                            <span class="shrink-0 text-sm text-slate-500">@GetModuleSummary(design)</span>
+                                        </span>
+                                    </Trigger>
+                                    <Content>
+                                        <NexusUnitProfileCard Category="design.Hull" Design="design" Name="@design.Name" />
+                                    </Content>
+                                </HoverTooltip>
                                 <button type="button" class="ui-button-icon-danger shrink-0" title="Delete design"
                                         disabled="@IsSubmitting"
                                         @onclick="() => DeleteDesignAsync(design.DesignId)">
@@ -138,6 +142,14 @@
                                    @bind="_addModuleN" />
                         </div>
                     }
+
+                    @{
+                        var draftModule = BuildModule(_addModuleType, _addModuleCategory, Math.Clamp(_addModuleN, AddModuleNMin, AddModuleNMax));
+                    }
+                    <div class="flex shrink-0 items-center gap-1 self-end pb-1.5">
+                        <span class="ui-inline-badge border-amber-400/30 bg-amber-500/10 text-amber-200">⚡@NexusModuleCosts.GetCost(draftModule)</span>
+                        <span class="ui-inline-badge border-sky-400/30 bg-sky-400/10 text-sky-200">@FormatSlotCost(NexusModuleCosts.GetSlots(draftModule))</span>
+                    </div>
 
                     <button type="button" class="ui-button-secondary shrink-0 self-end"
                             disabled="@(AddError is not null)"
@@ -375,13 +387,6 @@
     private static string GetModuleSummary(NexusUnitDesign design)
     {
         if (design.Modules.Count == 0) return "";
-        var parts = design.Modules.OrderBy(m => m.GetType().Name).Select(m =>
-        {
-            var name = m.GetType().Name;
-            var cost = NexusModuleCosts.GetCost(m);
-            var slots = NexusModuleCosts.GetSlots(m);
-            return $"{name} ⚡{cost} {FormatSlotCost(slots)}";
-        });
-        return string.Join(", ", parts);
+        return string.Join(", ", design.Modules.OrderBy(m => m.GetType().Name).Select(NexusDomainLabels.GetModuleLabel));
     }
 }
