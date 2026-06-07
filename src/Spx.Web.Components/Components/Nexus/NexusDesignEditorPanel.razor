@@ -98,7 +98,16 @@
                             var idx = i;
                             var mod = _modules[i];
                             <li class="ui-list-item-row">
-                                <span class="text-base text-slate-300">@GetModuleLabel(mod)</span>
+                                <HoverTooltip>
+                                    <Trigger>
+                                        <span class="cursor-default text-base text-slate-300">@GetModuleLabel(mod)</span>
+                                    </Trigger>
+                                    <Content>
+                                        <div class="ui-panel-card-tight max-w-xs text-sm text-slate-300">
+                                            @GetModuleDescription(mod)
+                                        </div>
+                                    </Content>
+                                </HoverTooltip>
                                 <span class="ml-auto flex shrink-0 items-center gap-1.5">
                                     <span class="ui-badge-energy">@NexusModuleCosts.GetCost(mod)⚡</span>
                                     <span class="ui-badge-slots">@FormatSlotCost(NexusModuleCosts.GetSlots(mod))</span>
@@ -165,6 +174,8 @@
                         <p class="w-full text-sm text-red-400">@AddError</p>
                     }
                 </div>
+
+                <p class="text-sm text-slate-500">@NexusDomainLabels.GetModuleTypeDescription(_addModuleType)</p>
             </div>
 
             @* Validation / error *@
@@ -399,6 +410,9 @@
 
     private static string GetModuleLabel(NexusUnitModule module) =>
         NexusDomainLabels.GetModuleLabel(module);
+
+    private static string GetModuleDescription(NexusUnitModule module) =>
+        NexusDomainLabels.GetModuleDescription(module);
 
     private static string FormatSlotCost(int slots) => slots < 0 ? $"+{-slots}◻" : $"{slots}◻";
 

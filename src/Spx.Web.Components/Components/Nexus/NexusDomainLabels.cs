@@ -34,6 +34,39 @@ public static class NexusDomainLabels
     public static string GetHitsPillClass(NexusUnitStackGroup stack) =>
         GetHitsPillClass(stack.Category, stack.RemainingHits);
 
+    public static string GetModuleTypeDescription(string moduleType) =>
+        moduleType switch
+        {
+            "Battery" => "Base attacks against the target category resolve in the Battle phase.",
+            "Vanguard" =>
+                "Base attacks against the target category resolve in the Contact phase, before return fire.",
+            "Seeker" =>
+                "Reduces hit threshold by the magnitude vs. the target category — easier to score hits.",
+            "Scatter" =>
+                "Increases hit threshold by the magnitude vs. the target category — harder to score hits.",
+            "Shield" => "Absorbs the first hit each combat on a 4+ save.",
+            "Disruptor" => "This unit's attacks bypass Shield saves entirely.",
+            "Armour" => "Increases this unit's hit points by N.",
+            "Screen" =>
+                "Reduces effective silhouette of up to N friendly ships by 1 when attacked by the target category.",
+            "Command" =>
+                "Reduces hit threshold by 1 for up to N friendly units of the target category when they attack.",
+            "Dock" =>
+                "This unit can be transported by a Capital unit with Hangar. Consumes one carry slot.",
+            "Hangar" => "Provides carry capacity for Dock units. Capital hull only.",
+            "Control" => "This unit can contest and hold system control. Planetary hull only.",
+            "Drive" => "Increases this unit's move range by N hexes.",
+            "Repair" => "Restores one lost hit at the end of each turn's resolution.",
+            "Bulkhead" => "Grants N extra module slots at the cost of increased silhouette.",
+            "Beacon" => "Increases silhouette by N, making this unit more likely to be targeted.",
+            "Cloak" =>
+                "Reduces silhouette by N (minimum 1), making this unit less likely to be targeted.",
+            _ => "",
+        };
+
+    public static string GetModuleDescription(NexusUnitModule module) =>
+        GetModuleTypeDescription(module.GetType().Name);
+
     public static string GetModuleLabel(NexusUnitModule module) =>
         module switch
         {
