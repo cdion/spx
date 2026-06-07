@@ -39,6 +39,16 @@ applyTo: '{src/Spx.Account.Application/**,src/Spx.Game.Application/**}'
 - Use `[LoggerMessage]` static partial methods for all structured logging. Direct `ILogger.Log*` calls violate CA1848, which is a build error under `AnalysisMode=Recommended`. There is no `// warning suppress` escape hatch — use the pattern.
 - Adapters in `Spx.Data`, `Spx.Web`, and `Spx.Grains` follow the same `internal sealed partial class` convention when they log.
 
+## Queries vs commands
+
+- Handlers that **mutate state** return an outcome type (discriminated union or status record).
+- Handlers that **retrieve data** return the view or list directly — no outcome wrapper. Examples: `GetNexusPageHandler` returns `NexusGameView`, `GetMessagesHandler` returns `GameTimelinePageView`.
+- Never wrap a pure read result in a success/failure union unless the read can fail for a business reason (not just infrastructure exceptions).
+
+## Support classes
+
+Static helper classes ending in `Support` (e.g., `GameMessageSupport`) own shared validation, normalization, or mapping logic used by multiple handlers in the same layer. Keep them in the same project as their consumers. Methods follow `static bool TryNormalize(...)` or `static T Map(...)` conventions.
+
 ## References
 
 - `src/Spx.Account.Application/AccountOutcomes.cs`

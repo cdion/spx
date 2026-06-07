@@ -10,7 +10,21 @@ else
             var order = MoveOrders[index];
             <li class="flex items-center justify-between gap-2 rounded-xl border border-white/10 bg-slate-950/60 px-3 py-2"
                 data-testid="@NexusGameplayPanelTestIds.PendingMoveOrder(index, order.From, order.To)">
-                <span class="text-base text-slate-300">@GetMoveDescription(order)</span>
+                <span class="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-sm text-slate-300">
+                    <span class="font-semibold text-slate-200">@GetSystemDisplayName(order.From)</span>
+                    <span class="text-slate-500">→</span>
+                    <span class="font-semibold text-slate-200">@GetSystemDisplayName(order.To)</span>
+                    @foreach (var stack in order.Stacks)
+                    {
+                        var design = Designs.FirstOrDefault(d => d.DesignId == stack.DesignId);
+                        <NexusUnitBadge Category="stack.Category"
+                                         DesignName="@stack.DesignName"
+                                         Count="@stack.Count"
+                                         RemainingHits="@stack.RemainingHits"
+                                         Design="design"
+                                         FactionColor="@CurrentPlayer?.Faction" />
+                    }
+                </span>
                 @if (IsEditable)
                 {
                     <button class="ui-button-icon-danger" title="Remove order"
@@ -57,13 +71,13 @@ else
 
 @code {
     [Parameter]
-    public string CurrentPlayerName { get; set; } = "Player";
+    public NexusPlayerContext? CurrentPlayer { get; set; }
 
     [Parameter]
     public HexCoord? CurrentPlayerHomeCoord { get; set; }
 
     [Parameter]
-    public string OpponentPlayerName { get; set; } = "Opponent";
+    public NexusPlayerContext? Opponent { get; set; }
 
     [Parameter]
     public HexCoord? OpponentPlayerHomeCoord { get; set; }
@@ -86,17 +100,6 @@ else
     [Parameter]
     public EventCallback<PendingOrderRequest> OnPendingOrderRequested { get; set; }
 
-    private string GetMoveDescription(NexusMoveOrder order)
-    {
-        var unitSummary = string.Join(
-            ", ",
-            order.Stacks.Select(stack =>
-                $"{stack.Count}× {NexusDomainLabels.GetDesignLabel(stack)} ({stack.RemainingHits} hits)"
-            )
-        );
-        return $"{GetSystemDisplayName(order.From)} → {GetSystemDisplayName(order.To)}: {unitSummary}";
-    }
-
     private string GetDesignName(Guid designId)
     {
         var design = Designs.FirstOrDefault(d => d.DesignId == designId);
@@ -107,8 +110,8 @@ else
         => NexusHomeSystemNames.GetSystemDisplayName(
             coord,
             CurrentPlayerHomeCoord,
-            CurrentPlayerName,
+            CurrentPlayer?.DisplayName ?? "Player",
             OpponentPlayerHomeCoord,
-            OpponentPlayerName
+            Opponent?.DisplayName ?? "Opponent"
         );
 }

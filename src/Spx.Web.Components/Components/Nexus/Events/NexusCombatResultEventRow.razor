@@ -1,0 +1,84 @@
+@using Spx.Nexus.Domain
+
+<div class="space-y-1">
+    @* Header *@
+    <p>
+        Combat at
+        <NexusSystemBadge Coord="Event.System"
+                           CurrentPlayer="@Context.CurrentPlayer"
+                           Opponent="@Context.Opponent" />
+        —
+        <span class="font-semibold @Context.PlayerNameClass(Event.Player1Id)">@Context.PlayerName(Event.Player1Id)</span>
+        vs
+        <span class="font-semibold @Context.PlayerNameClass(Event.Player2Id)">@Context.PlayerName(Event.Player2Id)</span>
+    </p>
+
+    @* Phases *@
+    @foreach (var phase in Event.Phases)
+    {
+        <div class="ml-3 space-y-0.5 border-l border-white/10 pl-3">
+            <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">@phase.Phase.DisplayName()</p>
+
+            @* Attack rolls *@
+            @foreach (var roll in phase.AttackRolls)
+            {
+                var hitResult = roll.WasShielded
+                    ? "absorbed"
+                    : (roll.IsHit ? "hit" : "miss");
+                var attackerDesign = Context.DesignLookup[roll.AttackerDesignId];
+                var targetDesign = Context.DesignLookup[roll.TargetDesignId];
+                <p class="text-xs text-slate-400">
+                    <span class="font-semibold @Context.PlayerNameClass(roll.AttackingPlayerId)">@Context.PlayerName(roll.AttackingPlayerId)</span>
+                    <NexusUnitBadge Category="attackerDesign.Hull"
+                                     DesignName="@roll.AttackerDesignName"
+                                     Design="attackerDesign"
+                                     RemainingHits="roll.AttackerRemainingHits" />
+                    →
+                    <span class="font-semibold @Context.PlayerNameClass(roll.TargetPlayerId.GetValueOrDefault())">@Context.PlayerName(roll.TargetPlayerId.GetValueOrDefault())</span>
+                    <NexusUnitBadge Category="targetDesign.Hull"
+                                     DesignName="@roll.TargetDesignName"
+                                     Design="targetDesign"
+                                     RemainingHits="roll.TargetRemainingHits" />
+                    — rolled <span class="tabular-nums">@roll.Roll</span> vs <span class="tabular-nums">@roll.Threshold</span>
+                    <span class="font-semibold @(roll.IsHit ? "text-red-400" : "text-slate-500")">@hitResult</span>
+                </p>
+            }
+
+            @* Losses *@
+            @{
+                var lossGroups = phase.Losses.GroupBy(l => l.PlayerId).ToList();
+            }
+            @if (lossGroups.Count > 0)
+            {
+                <p class="text-xs text-slate-500">
+                    Losses:
+                    @foreach (var group in lossGroups)
+                    {
+                        <span class="@Context.PlayerNameClass(group.Key)">@Context.PlayerName(group.Key)</span>
+                        @foreach (var loss in group)
+                        {
+                            var lossDesign = Context.DesignLookup[loss.DesignId];
+                            <NexusUnitBadge Category="lossDesign.Hull"
+                                             DesignName="@loss.DesignName"
+                                             Design="lossDesign"
+                                             Count="loss.Count" />
+                        }
+                        @if (group != lossGroups.Last()) { <text>; </text> }
+                    }
+                </p>
+            }
+            else
+            {
+                <p class="text-xs text-slate-500">Losses: none</p>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public NexusCombatResultEvent Event { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public EventRowContext Context { get; set; } = default!;
+}

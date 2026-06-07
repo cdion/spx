@@ -1,0 +1,195 @@
+@page "/stories/nexus/components/unit-stack-list"
+@rendermode InteractiveServer
+@using System.Collections.Immutable
+@using Spx.Nexus.Domain
+@using Spx.Web.Components.Nexus
+
+<StoryHeader Title="Unit Stack List">
+    <code class="text-sky-300">UnitStackList</code> in read-only and editable modes —
+    empty, single-category, mixed-fleet, with tooltip profiles.
+</StoryHeader>
+
+<div class="grid gap-6 md:grid-cols-2">
+
+    @* ——— Read-only variants ——— *@
+    <section class="ui-panel-card space-y-3">
+        <p class="ui-type-overline text-slate-500">Read-only — single category</p>
+        <NexusUnitStackList Stacks="@SingleCategory"
+                       DesignLookup="@DesignLookup"
+                       RowClass="ui-button-row-available cursor-default"
+                       HideGroupLabels="false" />
+    </section>
+
+    <section class="ui-panel-card space-y-3">
+        <p class="ui-type-overline text-slate-500">Read-only — mixed fleet (all categories)</p>
+        <NexusUnitStackList Stacks="@MixedFleet"
+                       DesignLookup="@DesignLookup"
+                       RowClass="ui-button-row-available cursor-default"
+                       HideGroupLabels="false" />
+    </section>
+
+    <section class="ui-panel-card space-y-3">
+        <p class="ui-type-overline text-slate-500">Read-only — hidden group labels</p>
+        <NexusUnitStackList Stacks="@SingleCategory"
+                       DesignLookup="@DesignLookup"
+                       RowClass="ui-button-row-available cursor-default"
+                       HideGroupLabels="true" />
+    </section>
+
+    <section class="ui-panel-card space-y-3">
+        <p class="ui-type-overline text-slate-500">Read-only — empty (renders nothing)</p>
+        <div class="rounded-xl border border-white/10 bg-slate-950/35 p-3 text-sm text-slate-500">
+            (empty list renders no markup)
+        </div>
+        <NexusUnitStackList Stacks="@EmptyStacks"
+                       DesignLookup="@DesignLookup"
+                       RowClass="ui-button-row-available cursor-default" />
+    </section>
+
+    @* ——— Editable variants ——— *@
+    <section class="ui-panel-card space-y-3">
+        <p class="ui-type-overline text-slate-500">Editable — no selection</p>
+        <NexusUnitStackList Stacks="@MixedFleet"
+                       DesignLookup="@DesignLookup"
+                       RowClass="ui-button-row-available"
+                       IsEditable="true"
+                       Selection="@EmptySelection"
+                       OnAdjustment="HandleAdjustment"
+                       OnToggleWholeStack="HandleToggle" />
+    </section>
+
+    <section class="ui-panel-card space-y-3">
+        <p class="ui-type-overline text-slate-500">Editable — partial selection</p>
+        <NexusUnitStackList Stacks="@MixedFleet"
+                       DesignLookup="@DesignLookup"
+                       RowClass="ui-button-row-available"
+                       ActiveRowClass="@NexusFactionCss.ButtonActiveRow(Faction)"
+                       StackNameClass="text-slate-200"
+                       ActiveStackNameClass="@NexusFactionCss.ActiveStackNameClass(Faction)"
+                       SelectedCountClass="@NexusFactionCss.SelectedCountClass(Faction)"
+                       IsEditable="true"
+                       Selection="@PartialSelection"
+                       OnAdjustment="HandleAdjustment"
+                       OnToggleWholeStack="HandleToggle" />
+    </section>
+
+    <section class="ui-panel-card space-y-3">
+        <p class="ui-type-overline text-slate-500">Editable — fully selected</p>
+        <NexusUnitStackList Stacks="@MixedFleet"
+                       DesignLookup="@DesignLookup"
+                       RowClass="ui-button-row-available"
+                       ActiveRowClass="@NexusFactionCss.ButtonActiveRow(Faction)"
+                       StackNameClass="text-slate-200"
+                       ActiveStackNameClass="@NexusFactionCss.ActiveStackNameClass(Faction)"
+                       SelectedCountClass="@NexusFactionCss.SelectedCountClass(Faction)"
+                       IsEditable="true"
+                       Selection="@FullSelection"
+                       OnAdjustment="HandleAdjustment"
+                       OnToggleWholeStack="HandleToggle" />
+    </section>
+
+    <section class="ui-panel-card space-y-3">
+        <p class="ui-type-overline text-slate-500">Editable — damaged stacks (hits)</p>
+        <NexusUnitStackList Stacks="@DamagedStacks"
+                       DesignLookup="@DesignLookup"
+                       RowClass="ui-button-row-available"
+                       IsEditable="true"
+                       Selection="@EmptySelection"
+                       OnAdjustment="HandleAdjustment"
+                       OnToggleWholeStack="HandleToggle" />
+    </section>
+</div>
+
+@code {
+    private const NexusFactionColor Faction = NexusFactionColor.Blue;
+
+    // Stable design IDs
+    private static readonly Guid FighterId = Guid.Parse("dddddddd-0000-0000-0000-000000000001");
+    private static readonly Guid BomberId = Guid.Parse("dddddddd-0000-0000-0000-000000000002");
+    private static readonly Guid CarrierId = Guid.Parse("dddddddd-0000-0000-0000-000000000003");
+    private static readonly Guid DestroyerId = Guid.Parse("dddddddd-0000-0000-0000-000000000004");
+    private static readonly Guid InfantryId = Guid.Parse("dddddddd-0000-0000-0000-000000000005");
+    private static readonly Guid ArmorId = Guid.Parse("dddddddd-0000-0000-0000-000000000006");
+
+    private static readonly ImmutableDictionary<Guid, NexusUnitDesign> DesignLookup =
+        new Dictionary<Guid, NexusUnitDesign>
+        {
+            [FighterId] = new() { DesignId = FighterId, Name = "Fighter", Hull = NexusUnitCategory.Strike },
+            [BomberId] = new() { DesignId = BomberId, Name = "Bomber", Hull = NexusUnitCategory.Strike },
+            [CarrierId] = new() { DesignId = CarrierId, Name = "Carrier", Hull = NexusUnitCategory.Capital },
+            [DestroyerId] = new() { DesignId = DestroyerId, Name = "Destroyer", Hull = NexusUnitCategory.Capital },
+            [InfantryId] = new() { DesignId = InfantryId, Name = "Infantry", Hull = NexusUnitCategory.Planetary },
+            [ArmorId] = new() { DesignId = ArmorId, Name = "Armor", Hull = NexusUnitCategory.Planetary },
+        }.ToImmutableDictionary();
+
+    private static readonly ImmutableArray<NexusUnitStackGroup> EmptyStacks = [];
+
+    private static readonly ImmutableArray<NexusUnitStackGroup> SingleCategory =
+    [
+        new(FighterId, NexusUnitCategory.Strike, 1, 3, "Fighter"),
+        new(BomberId, NexusUnitCategory.Strike, 1, 1, "Bomber"),
+    ];
+
+    private static readonly ImmutableArray<NexusUnitStackGroup> MixedFleet =
+    [
+        new(FighterId, NexusUnitCategory.Strike, 1, 2, "Fighter"),
+        new(BomberId, NexusUnitCategory.Strike, 1, 1, "Bomber"),
+        new(CarrierId, NexusUnitCategory.Capital, 1, 1, "Carrier"),
+        new(DestroyerId, NexusUnitCategory.Capital, 1, 2, "Destroyer"),
+        new(InfantryId, NexusUnitCategory.Planetary, 1, 4, "Infantry"),
+        new(ArmorId, NexusUnitCategory.Planetary, 1, 1, "Armor"),
+    ];
+
+    private static readonly ImmutableArray<NexusUnitStackGroup> DamagedStacks =
+    [
+        new(FighterId, NexusUnitCategory.Strike, 1, 1, "Fighter"),
+        new(FighterId, NexusUnitCategory.Strike, 2, 1, "Fighter"),    // damaged
+        new(CarrierId, NexusUnitCategory.Capital, 1, 1, "Carrier"),
+        new(CarrierId, NexusUnitCategory.Capital, 2, 1, "Carrier"),   // damaged
+        new(CarrierId, NexusUnitCategory.Capital, 3, 1, "Carrier"),   // heavily damaged
+    ];
+
+    // Reusable selection dictionaries (DesignId + RemainingHits → count)
+    private static readonly IReadOnlyDictionary<NexusUnitStackList.StackKey, int> EmptySelection =
+        new Dictionary<NexusUnitStackList.StackKey, int>();
+
+    private static readonly IReadOnlyDictionary<NexusUnitStackList.StackKey, int> PartialSelection =
+        new Dictionary<NexusUnitStackList.StackKey, int>
+        {
+            [new NexusUnitStackList.StackKey(FighterId, 1)] = 2,    // fully selected
+            [new NexusUnitStackList.StackKey(CarrierId, 1)] = 1,    // fully selected
+            [new NexusUnitStackList.StackKey(InfantryId, 1)] = 2,   // partially selected (of 4)
+        };
+
+    private static readonly IReadOnlyDictionary<NexusUnitStackList.StackKey, int> FullSelection =
+        new Dictionary<NexusUnitStackList.StackKey, int>
+        {
+            [new NexusUnitStackList.StackKey(FighterId, 1)] = 2,
+            [new NexusUnitStackList.StackKey(BomberId, 1)] = 1,
+            [new NexusUnitStackList.StackKey(CarrierId, 1)] = 1,
+            [new NexusUnitStackList.StackKey(DestroyerId, 1)] = 2,
+            [new NexusUnitStackList.StackKey(InfantryId, 1)] = 4,
+            [new NexusUnitStackList.StackKey(ArmorId, 1)] = 1,
+        };
+
+    private NexusUnitStackList.StackKey? _lastToggle;
+    private NexusUnitStackList.StackAdjustment? _lastAdjustment;
+    private int _eventCounter;
+
+    // No-ops for interactive demo — just log that events fire
+    private Task HandleAdjustment(NexusUnitStackList.StackAdjustment adj)
+    {
+        _lastAdjustment = adj;
+        _eventCounter++;
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    private Task HandleToggle(NexusUnitStackList.StackKey key)
+    {
+        _lastToggle = key;
+        _eventCounter++;
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+}

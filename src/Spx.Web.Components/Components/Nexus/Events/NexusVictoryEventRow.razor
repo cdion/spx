@@ -1,0 +1,14 @@
+@using Spx.Nexus.Domain
+
+<span>
+    <span class="font-semibold @Context.PlayerNameClass(Event.WinnerId)">@Context.PlayerName(Event.WinnerId)</span>
+    activated the Nexus Gate — victory!
+</span>
+
+@code {
+    [Parameter, EditorRequired]
+    public NexusVictoryEvent Event { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public EventRowContext Context { get; set; } = default!;
+}

@@ -27,7 +27,9 @@
 
                     <div class="grid gap-4 lg:grid-cols-[1.35fr_0.85fr] lg:gap-5">
                         <NexusTimelinePanel @key="GetTimelinePanelKey()" @ref="timelinePanel"
-                                            State="@ResolvedMessagesState" Callbacks="@ResolvedMessagesCallbacks" />
+                                            State="@ResolvedMessagesState" Callbacks="@ResolvedMessagesCallbacks"
+                                            CurrentPlayer="@TimelineCurrentPlayer"
+                                            Opponent="@TimelineOpponent" />
 
                         <LobbyMessageComposer @key="GetMessageComposerKey()"
                                               State="@ResolvedMessagesState"
@@ -117,6 +119,16 @@ else
 
     private LobbySessionTab _selectedTab = LobbySessionTab.Timeline;
     private NexusTimelinePanel? timelinePanel;
+
+    private NexusPlayerContext? TimelineCurrentPlayer =>
+        ResolvedSessionState.Session is { } s
+            ? new NexusPlayerContext(s.CurrentPlayer.PlayerId, string.Empty, s.CurrentPlayer.Faction)
+            : null;
+
+    private NexusPlayerContext? TimelineOpponent =>
+        ResolvedSessionState.Session?.Opponent is { } o
+            ? new NexusPlayerContext(o.PlayerId, string.Empty, o.Faction)
+            : null;
 
     private bool HasMessagesShell => MessagesState is not null && MessagesCallbacks is not null;
 

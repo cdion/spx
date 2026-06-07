@@ -1,0 +1,140 @@
+@page "/stories/nexus/components/design-editor-panel"
+@rendermode InteractiveServer
+@using System.Collections.Immutable
+@using Spx.Nexus.Domain
+@using Spx.Web.Components.Nexus
+
+<StoryHeader Title="Design Editor Panel">
+    <code class="text-sky-300">NexusDesignEditorPanel</code> — create and manage unit designs.
+    Pre-populated with example designs across all three hull types.
+</StoryHeader>
+
+<div class="grid gap-6 lg:grid-cols-2">
+
+    @* Panel with existing designs *@
+    <section class="space-y-2">
+        <p class="ui-type-overline text-slate-500">With existing designs</p>
+        <div class="h-[36rem] overflow-hidden rounded-xl border border-white/10">
+            <NexusDesignEditorPanel Designs="@_existingDesigns"
+                                    IsSubmitting="@_isSubmitting"
+                                    OnCreateDesign="HandleCreateDesign"
+                                    OnDeleteDesign="HandleDeleteDesign"
+                                    PlayerId="@_playerId" />
+        </div>
+    </section>
+
+    @* Panel with no designs yet *@
+    <section class="space-y-2">
+        <p class="ui-type-overline text-slate-500">Empty state (no designs)</p>
+        <div class="h-[36rem] overflow-hidden rounded-xl border border-white/10">
+            <NexusDesignEditorPanel Designs="@_emptyDesigns"
+                                    IsSubmitting="false"
+                                    OnCreateDesign="HandleCreateDesign"
+                                    OnDeleteDesign="HandleDeleteDesign"
+                                    PlayerId="@_playerId" />
+        </div>
+    </section>
+
+</div>
+
+@if (_lastEvent is not null)
+{
+    <div class="mt-4 rounded-lg border border-white/10 bg-slate-950/40 p-3 text-xs text-slate-500">
+        Last event: @_lastEvent
+    </div>
+}
+
+@code {
+    private static readonly Guid _playerId = Guid.Parse("eeeeeeee-0000-0000-0000-000000000001");
+
+    private static readonly Guid InterceptorId = Guid.Parse("eeeeeeee-0000-0000-0000-000000000101");
+    private static readonly Guid BomberId = Guid.Parse("eeeeeeee-0000-0000-0000-000000000102");
+    private static readonly Guid FrigateId = Guid.Parse("eeeeeeee-0000-0000-0000-000000000103");
+    private static readonly Guid CarrierId = Guid.Parse("eeeeeeee-0000-0000-0000-000000000104");
+    private static readonly Guid MarineId = Guid.Parse("eeeeeeee-0000-0000-0000-000000000105");
+    private static readonly Guid SiegeTankId = Guid.Parse("eeeeeeee-0000-0000-0000-000000000106");
+
+    private static readonly ImmutableArray<NexusUnitDesign> _emptyDesigns = [];
+    private ImmutableArray<NexusUnitDesign> _existingDesigns = CreateSampleDesigns();
+    private bool _isSubmitting;
+    private string? _lastEvent;
+
+    private Task HandleCreateDesign(NexusCreateDesignCommand command)
+    {
+        _lastEvent = $"Created: \"{command.Name}\" ({command.Hull}) with {command.Modules.Length} module(s)";
+        _isSubmitting = true;
+        StateHasChanged();
+
+        // Simulate async creation, then add the design to the list
+        var design = new NexusUnitDesign
+        {
+            DesignId = Guid.NewGuid(),
+            Name = command.Name,
+            Hull = command.Hull,
+            Modules = [.. command.Modules],
+        };
+
+        _existingDesigns = _existingDesigns.Add(design);
+        _isSubmitting = false;
+
+        return Task.CompletedTask;
+    }
+
+    private Task HandleDeleteDesign(Guid designId)
+    {
+        var removed = _existingDesigns.FirstOrDefault(d => d.DesignId == designId);
+        _lastEvent = removed is not null ? $"Deleted: \"{removed.Name}\"" : $"Delete: {designId}";
+        _existingDesigns = _existingDesigns.RemoveAll(d => d.DesignId == designId);
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    private static ImmutableArray<NexusUnitDesign> CreateSampleDesigns()
+    {
+        return
+        [
+            new()
+            {
+                DesignId = InterceptorId,
+                Name = "Interceptor",
+                Hull = NexusUnitCategory.Strike,
+                Modules = [new Battery(NexusUnitCategory.Strike)],
+            },
+            new()
+            {
+                DesignId = BomberId,
+                Name = "Bomber",
+                Hull = NexusUnitCategory.Strike,
+                Modules = [new Vanguard(NexusUnitCategory.Capital), new Vanguard(NexusUnitCategory.Planetary)],
+            },
+            new()
+            {
+                DesignId = FrigateId,
+                Name = "Frigate",
+                Hull = NexusUnitCategory.Capital,
+                Modules = [new Battery(NexusUnitCategory.Strike), new Battery(NexusUnitCategory.Strike)],
+            },
+            new()
+            {
+                DesignId = CarrierId,
+                Name = "Carrier",
+                Hull = NexusUnitCategory.Capital,
+                Modules = [new Hangar(3), new Dock(), new Drive(1)],
+            },
+            new()
+            {
+                DesignId = MarineId,
+                Name = "Marine Pod",
+                Hull = NexusUnitCategory.Planetary,
+                Modules = [new Battery(NexusUnitCategory.Planetary), new Armour(1)],
+            },
+            new()
+            {
+                DesignId = SiegeTankId,
+                Name = "Siege Tank",
+                Hull = NexusUnitCategory.Planetary,
+                Modules = [new Vanguard(NexusUnitCategory.Capital), new Bulkhead(1)],
+            },
+        ];
+    }
+}

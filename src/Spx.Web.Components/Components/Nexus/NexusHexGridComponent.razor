@@ -7,8 +7,8 @@
         @foreach (var system in Systems)
         {
             var center = NexusHexHelpers.HexCenter(system.Coord);
-            <NexusHexCellComponent System="system" Center="center" CurrentPlayerId="CurrentPlayerId"
-                                   OpponentPlayerId="@OpponentPlayerId" CurrentPlayerFaction="CurrentPlayerFaction"
+            <NexusHexCellComponent System="system" Center="center" CurrentPlayer="CurrentPlayer"
+                                   Opponent="@Opponent"
                                    CurrentPlayerGateProgress="CurrentPlayerGateProgress" OpponentGateProgress="OpponentGateProgress"
                                    IsClickable="IsEditable" OnClicked="HandleSystemSelected" />
         }
@@ -37,15 +37,15 @@
         @* Pass 2d: Event-focus path arrows *@
         @if (EventFocusFrom.HasValue && EventFocusTo.HasValue)
         {
-            <SvgChevronArrow From="@EventFocusFrom.Value" To="@EventFocusTo.Value"
+            <NexusSvgChevronArrow From="@EventFocusFrom.Value" To="@EventFocusTo.Value"
                              Color="rgba(245,158,11,0.9)" FillOpacity="0.7" StrokeWidth="2" />
         }
 
         @* Pass 3: Move order chevrons *@
         @foreach (var order in PendingMoveOrders)
         {
-            var chevronColor = CurrentPlayerFaction == NexusFactionColor.Red ? "#f87171" : "#60a5fa";
-            <SvgChevronArrow From="@order.From" To="@order.To"
+            var chevronColor = NexusFactionCss.SvgFill(CurrentPlayer.Faction);
+            <NexusSvgChevronArrow From="@order.From" To="@order.To"
                              Color="@chevronColor" FillOpacity="0.7" StrokeWidth="2" />
         }
     </svg>
@@ -56,13 +56,10 @@
     public IReadOnlyList<NexusSystemView> Systems { get; set; } = [];
 
     [Parameter, EditorRequired]
-    public Guid CurrentPlayerId { get; set; }
+    public NexusPlayerContext CurrentPlayer { get; set; } = null!;
 
     [Parameter]
-    public Guid? OpponentPlayerId { get; set; }
-
-    [Parameter]
-    public NexusFactionColor CurrentPlayerFaction { get; set; }
+    public NexusPlayerContext? Opponent { get; set; }
 
     [Parameter]
     public NexusGateProgress CurrentPlayerGateProgress { get; set; }

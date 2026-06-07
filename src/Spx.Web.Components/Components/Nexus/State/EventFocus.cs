@@ -2,18 +2,18 @@ using Spx.Nexus.Domain;
 
 namespace Spx.Web.Components.Nexus;
 
-public sealed record NexusEventFocus(
+public sealed record EventFocus(
     IReadOnlyList<HexCoord> Systems,
     HexCoord? From = null,
     HexCoord? To = null,
     HexCoord? Primary = null
 )
 {
-    public static NexusEventFocus None { get; } = new([]);
+    public static EventFocus None { get; } = new([]);
 
     public bool HasTarget => Systems.Count > 0 || From.HasValue || To.HasValue || Primary.HasValue;
 
-    public bool Matches(NexusEventFocus other)
+    public bool Matches(EventFocus other)
     {
         if (!HasTarget || !other.HasTarget)
             return false;

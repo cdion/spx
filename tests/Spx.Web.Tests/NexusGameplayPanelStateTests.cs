@@ -503,7 +503,7 @@ public sealed class NexusGameplayPanelStateTests
     [Fact]
     public void SyncSelectedSystemToEventFocus_WhenFocusHasPrimary_SetsSelectedSystem()
     {
-        var focusState = new EventFocusState(new NexusEventFocus([CoordA], Primary: CoordA));
+        var focusState = new EventFocusState(new EventFocus([CoordA], Primary: CoordA));
 
         var nextState = NexusGameplayPanelState.SyncSelectedSystemToEventFocus(
             SelectionState.Empty,

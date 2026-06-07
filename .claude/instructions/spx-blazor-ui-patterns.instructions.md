@@ -72,6 +72,30 @@ internal sealed partial class NexusPageDataCoordinator(
 }
 ```
 
+## Parameter and callback naming
+
+- `EventCallback<T> On<Action>` — for actions the parent handles (e.g., `OnSelectionRequested`, `OnSubmitOrders`, `OnEventFocusRequested`).
+- `EventCallback On<State>Changed` or `On<State>Cleared` — for state-change signals (e.g., `SelectedTabChanged`, `GameplayErrorCleared`).
+- Use typed `EventCallback<T>` when the payload is a typed request or model; use untyped `EventCallback` only for pure signals with no data.
+
+## UI intent: Request records
+
+UI intent (user action before it becomes a domain command) is modeled as a `*Request` record with a `*Kind` enum and static factory methods:
+
+```csharp
+public enum SelectionRequestKind { SelectSystem, ClearSelection }
+
+public sealed record SelectionRequest(SelectionRequestKind Kind, HexCoord? System)
+{
+    public static SelectionRequest SystemSelected(HexCoord coord) => new(SelectionRequestKind.SelectSystem, coord);
+    public static SelectionRequest SelectionCleared() => new(SelectionRequestKind.ClearSelection, null);
+}
+```
+
+- Components raise a `*Request`; the page/coordinator translates it to a domain `*Command` before calling a handler.
+- `*Request` lives in `Spx.Web.Components` (no DI, no I/O). `*Command` lives in `Spx.Nexus.Domain` (or `Spx.Game.Application`).
+- Never pass a domain command directly as an `EventCallback` parameter — that couples the component to the application layer.
+
 ## What does NOT warrant extraction
 
 - Large component with a single concern (complex JS interop): keep inline.

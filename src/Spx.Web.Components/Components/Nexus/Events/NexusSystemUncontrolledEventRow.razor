@@ -1,0 +1,16 @@
+@using Spx.Nexus.Domain
+
+<span>
+    <NexusSystemBadge Coord="Event.System"
+                       CurrentPlayer="@Context.CurrentPlayer"
+                       Opponent="@Context.Opponent" />
+    is now uncontrolled — no planetary units present
+</span>
+
+@code {
+    [Parameter, EditorRequired]
+    public NexusSystemUncontrolledEvent Event { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public EventRowContext Context { get; set; } = default!;
+}

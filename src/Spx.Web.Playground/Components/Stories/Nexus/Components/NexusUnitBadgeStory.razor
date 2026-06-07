@@ -1,0 +1,153 @@
+@page "/stories/nexus/components/unit-badge"
+@rendermode InteractiveServer
+@using static Spx.Nexus.Domain.NexusUnitCategory
+
+<StoryHeader Title="Unit Badge">
+    <code class="text-sky-300">NexusUnitBadge</code> — inline unit display with
+    category pip, name, optional count prefix, optional hits pill, optional cost,
+    and a <code class="text-sky-300">NexusUnitProfileCard</code> tooltip on hover.
+</StoryHeader>
+
+<div class="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+
+    @* ── Strike variants ── *@
+    <section class="space-y-3">
+        <p class="ui-type-overline text-slate-500">Strike — full health</p>
+        <div class="flex flex-wrap gap-3 rounded-xl border border-white/10 bg-slate-950/30 p-3">
+            <NexusUnitBadge Category="Strike" DesignName="Fighter" />
+            <NexusUnitBadge Category="Strike" DesignName="Fighter" Count="3" />
+            <NexusUnitBadge Category="Strike" DesignName="Fighter" Count="2" RemainingHits="2" Design="@_fighter" />
+            <NexusUnitBadge Category="Strike" DesignName="Bomber" Count="3" RemainingHits="1" Design="@_bomber" />
+        </div>
+    </section>
+
+    @* ── Capital variants ── *@
+    <section class="space-y-3">
+        <p class="ui-type-overline text-slate-500">Capital — varying health</p>
+        <div class="flex flex-wrap gap-3 rounded-xl border border-white/10 bg-slate-950/30 p-3">
+            <NexusUnitBadge Category="Capital" DesignName="Carrier" RemainingHits="3" Design="@_carrier" />
+            <NexusUnitBadge Category="Capital" DesignName="Destroyer" RemainingHits="2" Design="@_destroyer" />
+            <NexusUnitBadge Category="Capital" DesignName="Cruiser" Count="2" RemainingHits="1" Design="@_cruiser" />
+        </div>
+    </section>
+
+    @* ── Planetary variants ── *@
+    <section class="space-y-3">
+        <p class="ui-type-overline text-slate-500">Planetary — with cost</p>
+        <div class="flex flex-wrap gap-3 rounded-xl border border-white/10 bg-slate-950/30 p-3">
+            <NexusUnitBadge Category="Planetary" DesignName="Infantry" ShowCost="true" Cost="1" Design="@_infantry" />
+            <NexusUnitBadge Category="Planetary" DesignName="Armor" Count="2" ShowCost="true" Cost="2" Design="@_armor" />
+        </div>
+    </section>
+
+    @* ── Hits pill states ── *@
+    <section class="space-y-3">
+        <p class="ui-type-overline text-slate-500">Hits pill states</p>
+        <div class="flex flex-wrap gap-3 rounded-xl border border-white/10 bg-slate-950/30 p-3">
+            <div class="flex w-full flex-col gap-2">
+                <span class="text-xs text-slate-500">Full (green)</span>
+                <NexusUnitBadge Category="Capital" DesignName="Carrier" RemainingHits="3" Design="@_carrier" />
+            </div>
+            <div class="flex w-full flex-col gap-2">
+                <span class="text-xs text-slate-500">Damaged (amber)</span>
+                <NexusUnitBadge Category="Capital" DesignName="Destroyer" RemainingHits="2" Design="@_destroyer" />
+            </div>
+            <div class="flex w-full flex-col gap-2">
+                <span class="text-xs text-slate-500">Critical (red)</span>
+                <NexusUnitBadge Category="Capital" DesignName="Cruiser" RemainingHits="1" Design="@_cruiser" />
+            </div>
+        </div>
+    </section>
+
+    @* ── Hover tooltip preview ── *@
+    <section class="space-y-3">
+        <p class="ui-type-overline text-slate-500">Hover for tooltip</p>
+        <div class="rounded-xl border border-white/10 bg-slate-950/30 p-3">
+            <p class="text-xs text-slate-400">
+                Hover any badge above to see the
+                <code class="text-sky-300">NexusUnitProfileCard</code> tooltip
+                showing hull stats, attacks, and modules.
+            </p>
+            <div class="mt-3">
+                <NexusUnitBadge Category="Capital"
+                                 DesignName="Carrier"
+                                 Count="2"
+                                 RemainingHits="3"
+                                 Design="@_carrier" />
+            </div>
+        </div>
+    </section>
+
+    @* ── Inline in text ── *@
+    <section class="space-y-3">
+        <p class="ui-type-overline text-slate-500">Inline in sentence</p>
+        <div class="rounded-xl border border-white/10 bg-slate-950/30 p-3 text-sm text-slate-300">
+            <p>
+                Red Commander moved
+                <NexusUnitBadge Category="Strike" DesignName="Fighter" Count="3" />
+                from
+                <span class="font-semibold text-slate-200">Home</span>
+                to
+                <span class="font-semibold text-slate-200">H-3</span>.
+            </p>
+            <p class="mt-1">
+                Blue Admiral deployed
+                <NexusUnitBadge Category="Planetary" DesignName="Infantry" Count="2" />
+                at
+                <span class="font-semibold text-slate-200">G-2</span>.
+            </p>
+        </div>
+    </section>
+
+</div>
+
+@code {
+    private static readonly NexusUnitDesign _fighter = new()
+    {
+        DesignId = Guid.Parse("dddd0000-0000-0000-0000-000000000001"),
+        Name = "Fighter",
+        Hull = Strike,
+    };
+
+    private static readonly NexusUnitDesign _bomber = new()
+    {
+        DesignId = Guid.Parse("dddd0000-0000-0000-0000-000000000002"),
+        Name = "Bomber",
+        Hull = Strike,
+    };
+
+    private static readonly NexusUnitDesign _carrier = new()
+    {
+        DesignId = Guid.Parse("dddd0000-0000-0000-0000-000000000003"),
+        Name = "Carrier",
+        Hull = Capital,
+    };
+
+    private static readonly NexusUnitDesign _destroyer = new()
+    {
+        DesignId = Guid.Parse("dddd0000-0000-0000-0000-000000000004"),
+        Name = "Destroyer",
+        Hull = Capital,
+    };
+
+    private static readonly NexusUnitDesign _cruiser = new()
+    {
+        DesignId = Guid.Parse("dddd0000-0000-0000-0000-000000000005"),
+        Name = "Cruiser",
+        Hull = Capital,
+    };
+
+    private static readonly NexusUnitDesign _infantry = new()
+    {
+        DesignId = Guid.Parse("dddd0000-0000-0000-0000-000000000006"),
+        Name = "Infantry",
+        Hull = Planetary,
+    };
+
+    private static readonly NexusUnitDesign _armor = new()
+    {
+        DesignId = Guid.Parse("dddd0000-0000-0000-0000-000000000007"),
+        Name = "Armor",
+        Hull = Planetary,
+    };
+}

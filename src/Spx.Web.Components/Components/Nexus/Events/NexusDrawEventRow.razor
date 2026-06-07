@@ -1,0 +1,13 @@
+@using Spx.Nexus.Domain
+
+<span>
+    The game ended in a draw: <span class="text-slate-400">@Event.Reason</span>
+</span>
+
+@code {
+    [Parameter, EditorRequired]
+    public NexusDrawEvent Event { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public EventRowContext Context { get; set; } = default!;
+}

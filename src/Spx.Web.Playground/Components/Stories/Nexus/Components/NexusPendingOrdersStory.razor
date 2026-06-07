@@ -1,5 +1,6 @@
 @page "/stories/nexus/components/pending-orders"
 @rendermode InteractiveServer
+@using Spx.Nexus.Domain
 
 <StoryHeader Title="Nexus Pending Orders">
     <code class="text-sky-300">NexusPendingOrdersListComponent</code> — your pending orders list.
@@ -11,11 +12,19 @@
     </div>
 
     <NexusPendingOrdersListComponent MoveOrders="@_moveOrders" BuildOrders="@_buildOrders" BeginNexusGate="@_gate"
-                                     CurrentPlayerName="Player One" CurrentPlayerHomeCoord="@NexusMapTopology.Player1HomeCoord" IsEditable
+                                     CurrentPlayer="@(new NexusPlayerContext(default, "Player One", NexusFactionColor.Red))"
+                                     CurrentPlayerHomeCoord="@NexusMapTopology.Player1HomeCoord"
+                                     Designs="@_designs" IsEditable
                                      OnPendingOrderRequested="HandlePendingOrderRequest" />
 </section>
 
 @code {
+    private static readonly ImmutableArray<NexusUnitDesign> _designs =
+    [
+        new() { DesignId = Guid.Parse("bbbbbbbb-0000-0000-0000-000000000001"), Name = "Carrier", Hull = NexusUnitCategory.Capital },
+        new() { DesignId = Guid.Parse("bbbbbbbb-0000-0000-0000-000000000003"), Name = "Infantry", Hull = NexusUnitCategory.Planetary },
+    ];
+
     // Editable state
     private readonly List<NexusMoveOrder> _moveOrders =
     [

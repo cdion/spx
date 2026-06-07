@@ -21,8 +21,9 @@
 <div class="mt-4 flex min-h-0 flex-col gap-4 xl:flex-row">
     <section class="ui-surface-section flex min-h-0 min-w-0 flex-col p-4 lg:p-5 xl:flex-[3_1_0%]">
         <div class="min-h-0 flex-1">
-            <NexusHexGridComponent Systems="@Session.Systems" CurrentPlayerId="@Session.CurrentPlayer.PlayerId"
-                                   OpponentPlayerId="@Session.Opponent.PlayerId" CurrentPlayerFaction="@Session.CurrentPlayer.Faction"
+            <NexusHexGridComponent Systems="@Session.Systems"
+                                   CurrentPlayer="@CurrentPlayerContext"
+                                   Opponent="@OpponentContext"
                                    CurrentPlayerGateProgress="@Session.CurrentPlayer.GateProgress"
                                    OpponentGateProgress="@Session.Opponent.GateProgress" IsEditable="@ShowOrdersForm"
                                    PendingMoveOrders="@_orderDraftState.PendingMoveOrders" SelectedSystem="@_selectionState.SelectedSystem"
@@ -49,14 +50,17 @@
                     <div id="@ActiveSidebarPanelId" role="tabpanel" aria-labelledby="@ActiveSidebarTabId">
                         @if (_sidebarState.ActiveTab == NexusGameplayTab.Events)
                         {
-                            <NexusResolveEventsPanel Events="@Session.LastResolveEvents" PlayerNames="@GetPlayerNames()"
-                                                     CurrentPlayerName="@CurrentPlayerName" OpponentPlayerName="@OpponentPlayerName"
-                                                     ViewingPlayerId="@Session.CurrentPlayer.PlayerId" RowClassSelector="GetEventRowClass"
-                                                     RowStateSelector="GetEventRowState" OnEventFocusRequested="HandleEventFocusRequest" />
+                            <NexusResolveEventsPanel Events="@Session.LastResolveEvents"
+                                                     CurrentPlayer="@CurrentPlayerContext"
+                                                     Opponent="@OpponentContext"
+                                                     Designs="@AllDesigns"
+                                                     RowClassSelector="GetEventRowClass"
+                                                     RowStateSelector="GetEventRowState"
+                                                     OnEventFocusRequested="HandleEventFocusRequest" />
                         }
                         else if (_sidebarState.ActiveTab == NexusGameplayTab.Designs)
                         {
-                            <NexusDesignEditorPanel Designs="@(Session.CurrentPlayer.Designs ?? [])"
+                            <NexusDesignEditorPanel Designs="@ActivePlayerDesigns"
                                                     IsSubmitting="@IsSubmittingAction"
                                                     PlayerId="@Session.CurrentPlayer.PlayerId"
                                                     OnCreateDesign="OnCreateDesign"
@@ -70,17 +74,15 @@
                             _selectionState.SelectedSystem.Value) is { } selectedSystem)
                                 {
                                     <NexusSelectedHexPanel System="selectedSystem"
-                                                           CurrentPlayerId="@Session.CurrentPlayer.PlayerId" CurrentPlayerName="@CurrentPlayerName"
-                                                           OpponentPlayerId="@Session.Opponent.PlayerId"
-                                                           CurrentPlayerFaction="@Session.CurrentPlayer.Faction"
-                                                           OpponentPlayerName="@OpponentPlayerName"
+                                                           CurrentPlayer="@CurrentPlayerContext"
+                                                           Opponent="@OpponentContext"
                                                            CurrentPlayerGateProgress="@Session.CurrentPlayer.GateProgress"
                                                            PendingBeginNexusGate="@_orderDraftState.PendingBeginNexusGate"
                                                            IsEditable="@ShowOrdersForm" ProjectedEnergy="@ProjectedEnergy"
                                                            AvailableStacks="@GetAvailableMoveStacks(selectedSystem.Coord)"
                                                            PendingBuildOrders="@_orderDraftState.PendingBuildOrders"
-                                                           PlayerDesigns="@(Session.CurrentPlayer.Designs ?? [])"
-                                                           OpponentDesigns="@(Session.Opponent.Designs ?? [])"
+                                                           PlayerDesigns="@ActivePlayerDesigns"
+                                                           OpponentDesigns="@ActiveOpponentDesigns"
                                                            OnOrderDraftRequested="HandleOrderDraftRequest" />
                                 }
                                 @if (_orderDraftState.PendingMoveOrders.Length > 0 ||
@@ -89,9 +91,10 @@
                                 {
                                     <NexusPendingOrdersListComponent MoveOrders="@_orderDraftState.PendingMoveOrders"
                                                                      BuildOrders="@_orderDraftState.PendingBuildOrders"
-                                                                     Designs="@(Session.CurrentPlayer.Designs ?? [])"
-                                                                     CurrentPlayerName="@CurrentPlayerName" CurrentPlayerHomeCoord="@CurrentPlayerHomeCoord"
-                                                                     OpponentPlayerName="@OpponentPlayerName"
+                                                                     Designs="@ActivePlayerDesigns"
+                                                                     CurrentPlayer="@CurrentPlayerContext"
+                                                                     Opponent="@OpponentContext"
+                                                                     CurrentPlayerHomeCoord="@CurrentPlayerHomeCoord"
                                                                      OpponentPlayerHomeCoord="@OpponentPlayerHomeCoord"
                                                                      BeginNexusGate="@_orderDraftState.PendingBeginNexusGate" IsEditable="@ShowOrdersForm"
                                                                      OnPendingOrderRequested="HandlePendingOrderRequest" />
@@ -207,7 +210,7 @@
         && !Session.CurrentPlayer.HasSubmittedOrders
         && Session.Completion is null;
 
-    private PlayerInfoBarModel CurrentPlayerInfo => new()
+    private NexusPlayerInfoBarModel CurrentPlayerInfo => new()
     {
         PlayerName = CurrentPlayerName,
         Faction = Session.CurrentPlayer.Faction,
@@ -217,7 +220,7 @@
         HasSubmittedOrders = Session.CurrentPlayer.HasSubmittedOrders,
     };
 
-    private PlayerInfoBarModel OpponentInfo => new()
+    private NexusPlayerInfoBarModel OpponentInfo => new()
     {
         PlayerName = OpponentPlayerName,
         Faction = Session.Opponent.Faction,
@@ -226,6 +229,12 @@
         CapitalCount = Session.Opponent.CapitalCount,
         HasSubmittedOrders = Session.Opponent.HasSubmittedOrders,
     };
+
+    private NexusPlayerContext CurrentPlayerContext =>
+        new(Session.CurrentPlayer.PlayerId, CurrentPlayerName, Session.CurrentPlayer.Faction);
+
+    private NexusPlayerContext? OpponentContext =>
+        Session.Opponent is { } opp ? new(opp.PlayerId, OpponentPlayerName, opp.Faction) : null;
 
     private string CurrentPlayerName => Lobby.CurrentPlayerName;
 
@@ -239,6 +248,23 @@
     private HexCoord? OpponentPlayerHomeCoord =>
         Session.Systems.FirstOrDefault(s => s.HomePlayerId == Session.Opponent.PlayerId)?.Coord;
 
+    private ImmutableArray<NexusUnitDesign> ActivePlayerDesigns =>
+        Session.CurrentPlayer.Designs.Where(d => !d.IsDeleted).ToImmutableArray();
+
+    private ImmutableArray<NexusUnitDesign> ActiveOpponentDesigns =>
+        Session.Opponent.Designs.Where(d => !d.IsDeleted).ToImmutableArray();
+
+    private IReadOnlyDictionary<Guid, NexusUnitDesign> AllDesigns
+    {
+        get
+        {
+            var lookup = new Dictionary<Guid, NexusUnitDesign>();
+            foreach (var d in Session.CurrentPlayer.Designs.Concat(Session.Opponent.Designs))
+                lookup.TryAdd(d.DesignId, d);
+            return lookup;
+        }
+    }
+
     private string? FormattedGameplayError =>
         GameplayError is null
             ? null
@@ -247,13 +273,6 @@
                 CurrentPlayerName,
                 OpponentPlayerName
             );
-
-    private IReadOnlyDictionary<Guid, string> GetPlayerNames() =>
-        new Dictionary<Guid, string>
-        {
-            [Session.CurrentPlayer.PlayerId] = CurrentPlayerName,
-            [Session.Opponent.PlayerId] = OpponentPlayerName,
-        };
 
     private void HandleSelectionRequest(SelectionRequest request)
     {
@@ -317,7 +336,7 @@
                     request.DesignId!.Value,
                     request.BuildAdjustment!.Value,
                     ProjectedEnergy,
-                    Session.CurrentPlayer.Designs ?? []
+                    ActivePlayerDesigns
                 );
                 return;
             case OrderDraftRequestKind.NexusGateDraftChanged:
@@ -396,7 +415,7 @@
             && system.GetPlayerStacks(Session.Opponent.PlayerId).Length > 0;
     }
 
-    private int ProjectedSpend => _orderDraftState.ComputeProjectedSpend(Session.CurrentPlayer.Designs ?? []);
+    private int ProjectedSpend => _orderDraftState.ComputeProjectedSpend(ActivePlayerDesigns);
 
     private int ProjectedEnergy => Session.CurrentPlayer.Energy - ProjectedSpend;
 

@@ -208,7 +208,7 @@ public static class NexusEngine
             return NexusDesignCommandRejected.PlayerNotFound();
 
         var design = player.Designs.FirstOrDefault(d => d.DesignId == command.DesignId);
-        if (design is null)
+        if (design is null || design.IsDeleted)
             return NexusDesignCommandRejected.NotFound(command.DesignId);
 
         // Cannot delete a design while units of that design are on the map.
@@ -218,7 +218,7 @@ public static class NexusEngine
         if (unitsExist)
             return NexusDesignCommandRejected.InUse(command.DesignId);
 
-        player.Designs.Remove(design);
+        design.IsDeleted = true;
         return new NexusDesignDeleted();
     }
 
@@ -426,7 +426,7 @@ public static class NexusEngine
                 return NexusTurnOrdersRejected.UnknownDesign(order.DesignId, "build");
 
             // Ensure the design belongs to this player
-            if (!player.Designs.Any(d => d.DesignId == order.DesignId))
+            if (!player.Designs.Any(d => d.DesignId == order.DesignId && !d.IsDeleted))
                 return NexusTurnOrdersRejected.DesignNotOwned(design.Name);
 
             buildCost += NexusHullBaselines.GetProfile(design).Cost * order.Count;

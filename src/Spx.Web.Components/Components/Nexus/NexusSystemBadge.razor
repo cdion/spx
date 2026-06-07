@@ -1,0 +1,70 @@
+@using Spx.Nexus.Domain
+
+@{
+    var displayName = NexusMapTopology.GetSectorDisplayName(Coord);
+    var accentClass = GetAccentClass();
+}
+
+<span class="inline-flex items-center gap-1 @accentClass">
+    @if (ShowHomeStar && HomePlayerId.HasValue)
+    {
+        <span class="inline-flex h-4 w-4 items-center justify-center rounded-full border border-white/15 bg-white/5"
+              aria-label="Home system">
+            <svg viewBox="-5 -5 10 10" class="h-3 w-3 fill-white/85" aria-hidden="true" focusable="false">
+                <polygon points="0,-4 1.1,-1.5 3.8,-1.2 1.8,0.8 2.4,3.6 0,2.2 -2.4,3.6 -1.8,0.8 -3.8,-1.2 -1.1,-1.5" />
+            </svg>
+        </span>
+    }
+    <span class="font-semibold">@displayName</span>
+    @if (ShowIncome && IncomeValue > 0)
+    {
+        <span class="ui-type-meta text-yellow-400/80">+@IncomeValue ⚡</span>
+    }
+</span>
+
+@code {
+    [Parameter, EditorRequired]
+    public HexCoord Coord { get; set; }
+
+    [Parameter]
+    public string? DisplayName { get; set; }
+
+    [Parameter]
+    public Guid? HomePlayerId { get; set; }
+
+    [Parameter]
+    public Guid? ControlOwner { get; set; }
+
+    [Parameter, EditorRequired]
+    public NexusPlayerContext CurrentPlayer { get; set; } = null!;
+
+    [Parameter]
+    public NexusPlayerContext? Opponent { get; set; }
+
+    [Parameter]
+    public bool ShowIncome { get; set; }
+
+    [Parameter]
+    public int IncomeValue { get; set; }
+
+    [Parameter]
+    public bool ShowHomeStar { get; set; }
+
+    private string GetAccentClass()
+    {
+        // Home system takes priority over control owner
+        if (HomePlayerId == CurrentPlayer.PlayerId)
+            return NexusFactionCss.AccentText(CurrentPlayer.Faction);
+
+        if (Opponent is not null && HomePlayerId == Opponent.PlayerId)
+            return NexusFactionCss.AccentText(Opponent.Faction);
+
+        if (ControlOwner == CurrentPlayer.PlayerId)
+            return NexusFactionCss.AccentText(CurrentPlayer.Faction);
+
+        if (Opponent is not null && ControlOwner == Opponent.PlayerId)
+            return NexusFactionCss.AccentText(Opponent.Faction);
+
+        return "text-slate-300";
+    }
+}

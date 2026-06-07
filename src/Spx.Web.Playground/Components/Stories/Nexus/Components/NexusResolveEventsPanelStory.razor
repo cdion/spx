@@ -1,0 +1,231 @@
+@page "/stories/nexus/components/resolve-events-panel"
+@rendermode InteractiveServer
+@using System.Collections.Immutable
+@using Spx.Nexus.Domain
+@using Spx.Web.Components.Nexus
+
+<StoryHeader Title="Resolve Events Panel">
+    <code class="text-sky-300">NexusResolveEventsPanel</code> showing all event types
+    from a round of combat, movement, income, gate construction, and more.
+</StoryHeader>
+
+<div class="grid gap-6 md:grid-cols-2">
+
+    @* ── All event types ── *@
+    <section class="space-y-2">
+        <p class="ui-type-overline text-slate-500">All event types — player 1 perspective</p>
+        <div class="rounded-xl border border-white/10 bg-slate-950/30 p-3">
+            <NexusResolveEventsPanel Events="@_allEvents"
+                                     CurrentPlayer="@_player1Context"
+                                     Opponent="@_player2Context"
+                                     Designs="_designs"
+                                     RowClassSelector="@GetDefaultRowClass"
+                                     RowStateSelector="@GetDefaultRowState"
+                                     OnEventFocusRequested="HandleFocus" />
+        </div>
+    </section>
+
+    @* ── Combat detail ── *@
+    <section class="space-y-2">
+        <p class="ui-type-overline text-slate-500">Combat detail — attack rolls & losses</p>
+        <div class="rounded-xl border border-white/10 bg-slate-950/30 p-3">
+            <NexusResolveEventsPanel Events="@_combatEvents"
+                                     CurrentPlayer="@_player1Context"
+                                     Opponent="@_player2Context"
+                                     Designs="_designs"
+                                     RowClassSelector="@GetDefaultRowClass"
+                                     RowStateSelector="@GetDefaultRowState"
+                                     OnEventFocusRequested="HandleFocus" />
+        </div>
+    </section>
+
+    @* ── Empty state ── *@
+    <section class="space-y-2">
+        <p class="ui-type-overline text-slate-500">Empty state</p>
+        <div class="rounded-xl border border-white/10 bg-slate-950/30 p-3">
+            <NexusResolveEventsPanel Events="@_emptyEvents"
+                                     CurrentPlayer="@_player1Context"
+                                     Designs="_designs"
+                                     RowClassSelector="@GetDefaultRowClass"
+                                     RowStateSelector="@GetDefaultRowState"
+                                     OnEventFocusRequested="HandleFocus" />
+        </div>
+    </section>
+
+    @* ── Perspective labels ── *@
+    <section class="space-y-2">
+        <p class="ui-type-overline text-slate-500">Perspective-aware home system labels</p>
+        <div class="rounded-xl border border-white/10 bg-slate-950/30 p-3">
+            <NexusResolveEventsPanel Events="@_homeSystemEvents"
+                                     CurrentPlayer="@_player2Context"
+                                     Opponent="@_player1Context"
+                                     Designs="_designs"
+                                     RowClassSelector="@GetDefaultRowClass"
+                                     RowStateSelector="@GetDefaultRowState"
+                                     OnEventFocusRequested="HandleFocus" />
+        </div>
+    </section>
+</div>
+
+@if (_lastFocusEvent is not null)
+{
+    <div class="mt-4 rounded-lg border border-white/10 bg-slate-950/40 p-3 text-xs text-slate-500">
+        Last focus: @_lastFocusEvent
+    </div>
+}
+
+@code {
+    private static readonly Guid _player1Id = Guid.Parse("aaaa0000-0000-0000-0000-000000000001");
+    private static readonly Guid _player2Id = Guid.Parse("bbbb0000-0000-0000-0000-000000000002");
+
+    private static readonly NexusPlayerContext _player1Context =
+        new(_player1Id, "Red Commander", NexusFactionColor.Red);
+    private static readonly NexusPlayerContext _player2Context =
+        new(_player2Id, "Blue Admiral", NexusFactionColor.Blue);
+
+    private static readonly Guid FighterId = Guid.Parse("cccc0000-0000-0000-0000-000000000001");
+    private static readonly Guid CarrierId = Guid.Parse("cccc0000-0000-0000-0000-000000000002");
+    private static readonly Guid DestroyerId = Guid.Parse("cccc0000-0000-0000-0000-000000000003");
+    private static readonly Guid InfantryId = Guid.Parse("cccc0000-0000-0000-0000-000000000004");
+    private static readonly Guid CruiserId = Guid.Parse("cccc0000-0000-0000-0000-000000000005");
+    private static readonly Guid BomberId = Guid.Parse("cccc0000-0000-0000-0000-000000000006");
+
+    private static readonly IReadOnlyDictionary<Guid, NexusUnitDesign> _designs =
+        new Dictionary<Guid, NexusUnitDesign>
+        {
+            [FighterId] = new() { DesignId = FighterId, Name = "Fighter", Hull = NexusUnitCategory.Strike },
+            [CarrierId] = new() { DesignId = CarrierId, Name = "Carrier", Hull = NexusUnitCategory.Capital },
+            [DestroyerId] = new() { DesignId = DestroyerId, Name = "Destroyer", Hull = NexusUnitCategory.Capital },
+            [InfantryId] = new() { DesignId = InfantryId, Name = "Infantry", Hull = NexusUnitCategory.Planetary },
+            [CruiserId] = new() { DesignId = CruiserId, Name = "Cruiser", Hull = NexusUnitCategory.Capital },
+            [BomberId] = new() { DesignId = BomberId, Name = "Bomber", Hull = NexusUnitCategory.Strike },
+        };
+
+    private static readonly HexCoord Home1 = new(0, 0);
+    private static readonly HexCoord Home2 = new(1, -1);
+    private static readonly HexCoord Frontline = new(0, -1);
+    private static readonly HexCoord NexusCoord = new(0, 1);
+
+    private string? _lastFocusEvent;
+
+    private static readonly IReadOnlyList<NexusResolveEvent> _emptyEvents =
+        new List<NexusResolveEvent>();
+
+    // ── Row class/state selectors ──────────────────────────────────────────
+
+    private static string GetDefaultRowClass(NexusResolveEvent evt) =>
+        "w-full rounded-lg border border-white/10 bg-slate-950/40 px-3 py-2 text-left text-sm text-slate-300";
+
+    private static string GetDefaultRowState(NexusResolveEvent evt) =>
+        "inactive";
+
+    private void HandleFocus(EventFocusRequest request)
+    {
+        _lastFocusEvent = request.Kind switch
+        {
+            EventFocusRequestKind.Preview => "Preview requested",
+            EventFocusRequestKind.ClearPreview => "Preview cleared",
+            EventFocusRequestKind.Dismiss => "Dismissed",
+            _ => request.ToString(),
+        };
+    }
+
+    // ── All event types ──────────────────────────────────────────────────────
+
+    private static readonly IReadOnlyList<NexusResolveEvent> _allEvents =
+        new List<NexusResolveEvent>
+        {
+            new NexusUnitsMovedEvent(
+                _player1Id, Home1, Frontline,
+                Stacks2((FighterId, "Fighter", 2), (CarrierId, "Carrier", 1)),
+                IsRetreat: false
+            ),
+            new NexusPlanetaryControlEvent(Frontline, _player1Id),
+            new NexusIncomeEvent(_player1Id, 7,
+                ImmutableArray.Create(Home1, Frontline)),
+            new NexusUnitsMovedEvent(
+                _player2Id, Home2, Frontline,
+                Stacks2((DestroyerId, "Destroyer", 1), (InfantryId, "Infantry", 1)),
+                IsRetreat: false
+            ),
+            new NexusSystemContestedEvent(Frontline),
+            new NexusGateStartedEvent(_player1Id, NexusCoord),
+            new NexusIncomeEvent(_player2Id, 5,
+                ImmutableArray.Create(Home2)),
+            new NexusUnitDeployedEvent(_player2Id, BomberId, "Bomber", Home2, 2),
+            new NexusGateCancelledEvent(_player1Id, NexusCoord),
+            new NexusCapitalDisbandedEvent(_player2Id, CruiserId, "Cruiser", Home2, 1),
+        };
+
+    // ── Combat events ────────────────────────────────────────────────────────
+
+    private static readonly IReadOnlyList<NexusResolveEvent> _combatEvents =
+        new List<NexusResolveEvent>
+        {
+            new NexusCombatResultEvent(
+                Frontline, _player1Id, _player2Id,
+                [
+                    new NexusPhaseResult(
+                        NexusCombatPhase.Battle,
+                        [],
+                        [
+                            new NexusCombatAttackRoll(
+                                _player1Id, CarrierId, "Carrier", DestroyerId, "Destroyer",
+                                Roll: 4, Threshold: 4, IsHit: true,
+                                AttackerRemainingHits: 2, TargetPlayerId: _player2Id, TargetRemainingHits: 1
+                            ),
+                            new NexusCombatAttackRoll(
+                                _player2Id, DestroyerId, "Destroyer", CarrierId, "Carrier",
+                                Roll: 3, Threshold: 4, IsHit: false,
+                                AttackerRemainingHits: 1, TargetPlayerId: _player1Id, TargetRemainingHits: 2
+                            ),
+                        ]
+                    ),
+                    new NexusPhaseResult(
+                        NexusCombatPhase.Contact,
+                        Losses2((_player2Id, DestroyerId, "Destroyer", 1)),
+                        [
+                            new NexusCombatAttackRoll(
+                                _player1Id, FighterId, "Fighter", InfantryId, "Infantry",
+                                Roll: 5, Threshold: 4, IsHit: true,
+                                AttackerRemainingHits: 1, TargetPlayerId: _player2Id, TargetRemainingHits: 1
+                            ),
+                        ]
+                    ),
+                ]
+            ),
+            new NexusSystemClearedEvent(Frontline, _player1Id),
+            new NexusVictoryEvent(_player1Id),
+        };
+
+    // ── Home system perspective ───────────────────────────────────────────────
+
+    private static readonly IReadOnlyList<NexusResolveEvent> _homeSystemEvents =
+        new List<NexusResolveEvent>
+        {
+            new NexusUnitsMovedEvent(
+                _player1Id, Home1, Frontline,
+                Stacks2((FighterId, "Fighter", 3)),
+                IsRetreat: false
+            ),
+            new NexusPlanetaryControlEvent(Home1, _player1Id),
+            new NexusUnitsMovedEvent(
+                _player2Id, Home2, Frontline,
+                Stacks2((InfantryId, "Infantry", 2)),
+                IsRetreat: false
+            ),
+            new NexusPlanetaryControlEvent(Home2, _player2Id),
+        };
+
+    // ── Helpers ───────────────────────────────────────────────────────────────
+
+    private static ImmutableArray<NexusUnitStackGroup> Stacks2(
+        params (Guid DesignId, string Name, int Count)[] items) =>
+        items.Select(i => new NexusUnitStackGroup(i.DesignId, NexusUnitCategory.Capital, 1, i.Count, i.Name))
+             .ToImmutableArray();
+
+    private static ImmutableArray<NexusCombatLoss> Losses2(
+        params (Guid PlayerId, Guid DesignId, string Name, int Count)[] items) =>
+        items.Select(i => new NexusCombatLoss(i.PlayerId, i.DesignId, i.Name, i.Count))
+             .ToImmutableArray();
+}

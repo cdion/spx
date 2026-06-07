@@ -27,7 +27,7 @@ public static class NexusGameplayPanelState
             {
                 Current = GetEventFocus(request.ResolveEvent!),
             },
-            EventFocusRequestKind.ClearPreview => state with { Current = NexusEventFocus.None },
+            EventFocusRequestKind.ClearPreview => state with { Current = EventFocus.None },
             EventFocusRequestKind.Dismiss => EventFocusState.Empty,
             _ => state,
         };
@@ -294,23 +294,23 @@ public static class NexusGameplayPanelState
         return -1;
     }
 
-    public static NexusEventFocus GetEventFocus(NexusResolveEvent evt) =>
+    public static EventFocus GetEventFocus(NexusResolveEvent evt) =>
         evt switch
         {
-            NexusUnitsMovedEvent e => new NexusEventFocus([e.From, e.To], e.From, e.To, e.To),
-            NexusPlanetaryControlEvent e => new NexusEventFocus([e.System], Primary: e.System),
-            NexusSystemContestedEvent e => new NexusEventFocus([e.System], Primary: e.System),
-            NexusSystemUncontrolledEvent e => new NexusEventFocus([e.System], Primary: e.System),
-            NexusCombatResultEvent e => new NexusEventFocus([e.System], Primary: e.System),
-            NexusSystemClearedEvent e => new NexusEventFocus([e.System], Primary: e.System),
-            NexusUnitDeployedEvent e => new NexusEventFocus([e.HomeSystem], Primary: e.HomeSystem),
-            NexusGateStartedEvent e => new NexusEventFocus([e.System], Primary: e.System),
-            NexusGateCompletedEvent e => new NexusEventFocus([e.System], Primary: e.System),
-            NexusGateCancelledEvent e => new NexusEventFocus([e.System], Primary: e.System),
-            NexusIncomeEvent e when e.Sources.Length > 0 => new NexusEventFocus(
+            NexusUnitsMovedEvent e => new EventFocus([e.From, e.To], e.From, e.To, e.To),
+            NexusPlanetaryControlEvent e => new EventFocus([e.System], Primary: e.System),
+            NexusSystemContestedEvent e => new EventFocus([e.System], Primary: e.System),
+            NexusSystemUncontrolledEvent e => new EventFocus([e.System], Primary: e.System),
+            NexusCombatResultEvent e => new EventFocus([e.System], Primary: e.System),
+            NexusSystemClearedEvent e => new EventFocus([e.System], Primary: e.System),
+            NexusUnitDeployedEvent e => new EventFocus([e.HomeSystem], Primary: e.HomeSystem),
+            NexusGateStartedEvent e => new EventFocus([e.System], Primary: e.System),
+            NexusGateCompletedEvent e => new EventFocus([e.System], Primary: e.System),
+            NexusGateCancelledEvent e => new EventFocus([e.System], Primary: e.System),
+            NexusIncomeEvent e when e.Sources.Length > 0 => new EventFocus(
                 e.Sources.ToArray(),
                 Primary: e.Sources[0]
             ),
-            _ => NexusEventFocus.None,
+            _ => EventFocus.None,
         };
 }

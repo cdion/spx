@@ -1,7 +1,7 @@
 <div class="grid gap-3 sm:grid-cols-3">
     <article class="ui-panel-row items-start">
         <div class="space-y-1">
-            <p class="@FactionCss.PlayerNameClass(CurrentPlayer.Faction)">@CurrentPlayer.PlayerName</p>
+            <p class="@NexusFactionCss.PlayerNameClass(CurrentPlayer.Faction)">@CurrentPlayer.PlayerName</p>
             <p class="text-2xl font-semibold text-yellow-400">@CurrentPlayer.Energy⚡</p>
             <p class="text-sm text-slate-300">@CurrentPlayer.CapitalCount / @CurrentPlayer.SupplyPool ⚓</p>
         </div>
@@ -20,7 +20,7 @@
 
         <article class="ui-panel-row items-start">
             <div class="space-y-1">
-                <p class="@FactionCss.PlayerNameClass(Opponent.Faction)">@Opponent.PlayerName</p>
+                <p class="@NexusFactionCss.PlayerNameClass(Opponent.Faction)">@Opponent.PlayerName</p>
                 <p class="text-2xl font-semibold text-yellow-400">@Opponent.Energy⚡</p>
                 <p class="text-sm text-slate-300">@Opponent.CapitalCount / @Opponent.SupplyPool ⚓</p>
             </div>
@@ -36,10 +36,10 @@
     public int RoundNumber { get; set; }
 
     [Parameter, EditorRequired]
-    public PlayerInfoBarModel CurrentPlayer { get; set; } = default!;
+    public NexusPlayerInfoBarModel CurrentPlayer { get; set; } = default!;
 
     [Parameter, EditorRequired]
-    public PlayerInfoBarModel Opponent { get; set; } = default!;
+    public NexusPlayerInfoBarModel Opponent { get; set; } = default!;
 
     private static string SubmissionLabel(bool hasSubmittedOrders) =>
         hasSubmittedOrders ? "Orders in" : "Orders pending";

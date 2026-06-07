@@ -6,7 +6,7 @@ namespace Spx.Web.Components.Nexus;
 /// Parameter bag for <see cref="NexusGameplayTopInfoBar"/>.
 /// Collates the 6+ related player-display parameters into one init-only model.
 /// </summary>
-public sealed class PlayerInfoBarModel
+public sealed class NexusPlayerInfoBarModel
 {
     public required string PlayerName { get; init; }
     public required NexusFactionColor Faction { get; init; }

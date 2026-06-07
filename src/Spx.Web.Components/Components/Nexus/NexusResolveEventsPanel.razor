@@ -1,3 +1,6 @@
+@using Spx.Nexus.Domain
+@using Spx.Web.Components.Nexus.Events
+
 <div>
     @if (Events.Count == 0)
     {
@@ -5,15 +8,62 @@
     }
     else
     {
+        var ctx = new EventRowContext(CurrentPlayer, Opponent, Designs);
+
         <div class="space-y-2">
             @for (var index = 0; index < Events.Count; index++)
             {
                 var evt = Events[index];
-                <div class="whitespace-pre-line @GetRowClass(evt)"
-                     data-testid="@NexusGameplayPanelTestIds.ResolveEventRow(index)" data-focus-state="@GetRowState(evt)"
+                <div class="whitespace-pre-line @RowClassSelector(evt)"
+                     data-testid="@NexusGameplayPanelTestIds.ResolveEventRow(index)"
+                     data-focus-state="@RowStateSelector(evt)"
                      @onmouseenter="() => OnEventFocusRequested.InvokeAsync(EventFocusRequest.PreviewRequested(evt))"
                      @onmouseleave="() => OnEventFocusRequested.InvokeAsync(EventFocusRequest.PreviewCleared())">
-                    @FormatEvent(evt)
+                    @switch (evt)
+                    {
+                        case NexusUnitsMovedEvent e:
+                            <NexusUnitsMovedEventRow Event="e" Context="ctx" />
+                            break;
+                        case NexusPlanetaryControlEvent e:
+                            <NexusPlanetaryControlEventRow Event="e" Context="ctx" />
+                            break;
+                        case NexusSystemContestedEvent e:
+                            <NexusSystemContestedEventRow Event="e" Context="ctx" />
+                            break;
+                        case NexusSystemUncontrolledEvent e:
+                            <NexusSystemUncontrolledEventRow Event="e" Context="ctx" />
+                            break;
+                        case NexusCombatResultEvent e:
+                            <NexusCombatResultEventRow Event="e" Context="ctx" />
+                            break;
+                        case NexusSystemClearedEvent e:
+                            <NexusSystemClearedEventRow Event="e" Context="ctx" />
+                            break;
+                        case NexusIncomeEvent e:
+                            <NexusIncomeEventRow Event="e" Context="ctx" />
+                            break;
+                        case NexusUnitDeployedEvent e:
+                            <NexusUnitDeployedEventRow Event="e" Context="ctx" />
+                            break;
+                        case NexusGateStartedEvent e:
+                            <NexusGateStartedEventRow Event="e" Context="ctx" />
+                            break;
+                        case NexusGateCompletedEvent e:
+                            <NexusGateCompletedEventRow Event="e" Context="ctx" />
+                            break;
+                        case NexusGateCancelledEvent e:
+                            <NexusGateCancelledEventRow Event="e" Context="ctx" />
+                            break;
+                        case NexusCapitalDisbandedEvent e:
+                            <NexusCapitalDisbandedEventRow Event="e" Context="ctx" />
+                            break;
+                        case NexusVictoryEvent e:
+                            <NexusVictoryEventRow Event="e" Context="ctx" />
+                            break;
+                        case NexusDrawEvent e:
+                            <NexusDrawEventRow Event="e" Context="ctx" />
+                            break;
+                    }
                 </div>
             }
         </div>
@@ -25,17 +75,10 @@
     public IReadOnlyList<NexusResolveEvent> Events { get; set; } = [];
 
     [Parameter, EditorRequired]
-    public IReadOnlyDictionary<Guid, string> PlayerNames { get; set; } =
-        new Dictionary<Guid, string>();
+    public NexusPlayerContext CurrentPlayer { get; set; } = null!;
 
-    [Parameter, EditorRequired]
-    public Guid ViewingPlayerId { get; set; }
-
-    [Parameter, EditorRequired]
-    public string CurrentPlayerName { get; set; } = string.Empty;
-
-    [Parameter, EditorRequired]
-    public string OpponentPlayerName { get; set; } = string.Empty;
+    [Parameter]
+    public NexusPlayerContext? Opponent { get; set; }
 
     [Parameter, EditorRequired]
     public Func<NexusResolveEvent, string> RowClassSelector { get; set; } =
@@ -44,17 +87,13 @@
     [Parameter, EditorRequired]
     public Func<NexusResolveEvent, string> RowStateSelector { get; set; } = _ => "inactive";
 
+    [Parameter, EditorRequired]
+    public IReadOnlyDictionary<Guid, NexusUnitDesign> Designs { get; set; } = null!;
+
     [Parameter]
     public EventCallback<EventFocusRequest> OnEventFocusRequested { get; set; }
 
-    private string GetRowClass(NexusResolveEvent evt) => RowClassSelector(evt);
+    private string RowClassFor(NexusResolveEvent evt) => RowClassSelector(evt);
 
-    private string GetRowState(NexusResolveEvent evt) => RowStateSelector(evt);
-
-    private string FormatEvent(NexusResolveEvent evt) =>
-        NexusHomeSystemNames.ReplacePerspectiveLabels(
-            NexusSessionEventFormatter.Format(evt, PlayerNames, ViewingPlayerId),
-            CurrentPlayerName,
-            OpponentPlayerName
-        );
+    private string RowStateFor(NexusResolveEvent evt) => RowStateSelector(evt);
 }

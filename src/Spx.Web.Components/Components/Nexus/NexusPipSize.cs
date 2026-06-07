@@ -1,6 +1,6 @@
 namespace Spx.Web.Components.Nexus;
 
-public enum PipSize
+public enum NexusPipSize
 {
     Small,
     Medium,

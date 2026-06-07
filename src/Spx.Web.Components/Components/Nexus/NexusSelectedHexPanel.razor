@@ -5,22 +5,14 @@
     <div class="flex flex-wrap items-start justify-between gap-3">
         <div class="space-y-1">
             <div class="flex items-center gap-2">
-                <p class="@GetSystemLabelClass()">@GetSystemLabel()</p>
-                @if (System.IncomeValue > 0)
-                {
-                    <span class="ui-type-meta text-yellow-400/80">+@System.IncomeValue ⚡</span>
-                }
-                @if (System.HomePlayerId.HasValue)
-                {
-                    <span
-                        class="inline-flex h-6 w-6 items-center justify-center rounded-full border border-white/15 bg-white/5"
-                        aria-label="Home system">
-                        <svg viewBox="-5 -5 10 10" class="h-3.5 w-3.5 fill-white/85" aria-hidden="true" focusable="false">
-                            <polygon
-                            points="0,-4 1.1,-1.5 3.8,-1.2 1.8,0.8 2.4,3.6 0,2.2 -2.4,3.6 -1.8,0.8 -3.8,-1.2 -1.1,-1.5" />
-                        </svg>
-                    </span>
-                }
+                <NexusSystemBadge Coord="System.Coord"
+                                   CurrentPlayer="@CurrentPlayer"
+                                   Opponent="@Opponent"
+                                   HomePlayerId="@System.HomePlayerId"
+                                   ControlOwner="@System.ControlOwner"
+                                   ShowIncome="true"
+                                   IncomeValue="@System.IncomeValue"
+                                   ShowHomeStar="true" />
             </div>
         </div>
     </div>
@@ -31,7 +23,7 @@
         {
             <section class="space-y-3">
                 <div class="flex items-center gap-3">
-                    <p class="ui-type-overline mb-1 @FactionCss.ForcesClass(CurrentPlayerFaction)">Fleet</p>
+                    <p class="ui-type-overline mb-1 @NexusFactionCss.ForcesClass(CurrentPlayer.Faction)">Fleet</p>
                     @if (IsEditable && HasSelection)
                     {
                         <span class="text-xs tabular-nums @(SelectionIsValid ? "text-slate-400" : "text-red-400")">Capacity:
@@ -46,13 +38,13 @@
                     }
                 </div>
 
-                <UnitStackList Stacks="@_myStacks"
+                <NexusUnitStackList Stacks="@_myStacks"
                                DesignLookup="@_designLookupImmutable"
                                RowClass="ui-button-row-available"
-                               ActiveRowClass="@FactionCss.ButtonActiveRow(CurrentPlayerFaction)"
+                               ActiveRowClass="@NexusFactionCss.ButtonActiveRow(CurrentPlayer.Faction)"
                                StackNameClass="text-slate-200"
-                               ActiveStackNameClass="@FactionCss.ActiveStackNameClass(CurrentPlayerFaction)"
-                               SelectedCountClass="@FactionCss.SelectedCountClass(CurrentPlayerFaction)"
+                               ActiveStackNameClass="@NexusFactionCss.ActiveStackNameClass(CurrentPlayer.Faction)"
+                               SelectedCountClass="@NexusFactionCss.SelectedCountClass(CurrentPlayer.Faction)"
                                IsEditable="@IsEditable"
                                Selection="@_selection"
                                OnAdjustment="HandleStackAdjustment"
@@ -70,8 +62,8 @@
         @if (_myCommittedStacks.Length > 0)
         {
             <section class="space-y-3 ui-panel-separator">
-                <p class="ui-type-overline mb-1 @FactionCss.ForcesClass(CurrentPlayerFaction)">Your Committed Planetary</p>
-                <UnitStackList Stacks="@_myCommittedStacks"
+                <p class="ui-type-overline mb-1 @NexusFactionCss.ForcesClass(CurrentPlayer.Faction)">Your Committed Planetary</p>
+                <NexusUnitStackList Stacks="@_myCommittedStacks"
                                DesignLookup="@_designLookupImmutable"
                                RowClass="ui-button-row-available cursor-default"
                                HideGroupLabels="true" />
@@ -82,8 +74,8 @@
         @if (_enemyStacks.Length > 0)
         {
             <section class="space-y-3 ui-panel-separator">
-                <p class="ui-type-overline mb-1 @FactionCss.ForcesClass(OpponentFactionColor)">Enemy Fleet</p>
-                <UnitStackList Stacks="@_enemyStacks"
+                <p class="ui-type-overline mb-1 @NexusFactionCss.ForcesClass(Opponent!.Faction)">Enemy Fleet</p>
+                <NexusUnitStackList Stacks="@_enemyStacks"
                                DesignLookup="@_designLookupImmutable"
                                RowClass="ui-button-row-available cursor-default"
                                HideGroupLabels="true" />
@@ -94,8 +86,8 @@
         @if (_enemyCommittedStacks.Length > 0)
         {
             <section class="space-y-3 ui-panel-separator">
-                <p class="ui-type-overline mb-1 @FactionCss.ForcesClass(OpponentFactionColor)">Enemy Committed Planetary</p>
-                <UnitStackList Stacks="@_enemyCommittedStacks"
+                <p class="ui-type-overline mb-1 @NexusFactionCss.ForcesClass(Opponent!.Faction)">Enemy Committed Planetary</p>
+                <NexusUnitStackList Stacks="@_enemyCommittedStacks"
                                DesignLookup="@_designLookupImmutable"
                                RowClass="ui-button-row-available cursor-default"
                                HideGroupLabels="true" />
@@ -104,7 +96,7 @@
     </div>
 
     @* Build orders *@
-    @if (IsEditable && System.HomePlayerId == CurrentPlayerId)
+    @if (IsEditable && System.HomePlayerId == CurrentPlayer.PlayerId)
     {
         <div class="space-y-2 ui-panel-separator">
             <p class="text-base font-semibold text-slate-300">Build units</p>
@@ -113,7 +105,7 @@
                 {
                     <div class="ui-panel-card-tight">
                         <p class="mb-1 text-base font-semibold uppercase tracking-wide text-slate-400">
-                    <CategoryPip Category="group.Category" Size="PipSize.Small" /> @group.Label
+                    <NexusCategoryPip Category="group.Category" Size="NexusPipSize.Small" /> @group.Label
                 </p>
                         <div class="space-y-1">
                             @foreach (var design in PlayerDesigns.Where(d => d.Hull == group.Category))
@@ -122,14 +114,29 @@
                                 var count = PendingBuildOrders.FirstOrDefault(o => o.DesignId == design.DesignId)?.Count ?? 0;
                                 var canAdd = ProjectedEnergy >= cost;
 
-                                <button type="button" class="@GetBuildRowClass(design, count, canAdd)"
-                                        data-testid="@GetBuildButtonTestId(design)" @onclick="e => OnBuildRowClickAsync(design, e)"
-                                        @ondblclick="() => OnOrderDraftRequested.InvokeAsync(OrderDraftRequest.BuildDraftAdjusted(design.DesignId, BuildDraftAdjustmentKind.AddMax))"
-                                        @oncontextmenu:preventDefault="true"
-                                        @oncontextmenu="() => OnOrderDraftRequested.InvokeAsync(OrderDraftRequest.BuildDraftAdjusted(design.DesignId, BuildDraftAdjustmentKind.RemoveOne))">
-                                    <span class="min-w-0 flex-1 whitespace-nowrap text-base text-slate-100">@design.Name <span class="ml-1 text-yellow-400">@cost ⚡</span></span>
-                                    <span class="shrink-0 whitespace-nowrap pl-3 text-base text-slate-400">@count</span>
-                                </button>
+                                <div class="flex items-center gap-2 @GetBuildRowClass(design, count, canAdd)"
+                                     data-testid="@GetBuildButtonTestId(design)">
+                                    <div class="min-w-0 flex-1">
+                                        <NexusUnitBadge Category="design.Hull"
+                                                         DesignName="design.Name"
+                                                         Design="design"
+                                                         ShowCost="true"
+                                                         Cost="cost" />
+                                    </div>
+                                    <div class="flex shrink-0 items-center gap-1">
+                                        <button type="button" class="ui-button-icon" disabled="@(count <= 0)"
+                                                @onclick="() => OnOrderDraftRequested.InvokeAsync(OrderDraftRequest.BuildDraftAdjusted(design.DesignId, BuildDraftAdjustmentKind.RemoveOne))">
+                                            −
+                                        </button>
+                                        <span class="w-10 text-center text-sm font-semibold tabular-nums @NexusFactionCss.SelectedCountClass(CurrentPlayer.Faction)">
+                                            @count
+                                        </span>
+                                        <button type="button" class="ui-button-icon" disabled="@(!canAdd)"
+                                                @onclick="() => OnOrderDraftRequested.InvokeAsync(OrderDraftRequest.BuildDraftAdjusted(design.DesignId, BuildDraftAdjustmentKind.AddOne))">
+                                            +
+                                        </button>
+                                    </div>
+                                </div>
                             }
                         </div>
                     </div>
@@ -164,19 +171,10 @@
     public NexusSystemView System { get; set; } = default!;
 
     [Parameter, EditorRequired]
-    public Guid CurrentPlayerId { get; set; }
+    public NexusPlayerContext CurrentPlayer { get; set; } = null!;
 
     [Parameter]
-    public string CurrentPlayerName { get; set; } = "You";
-
-    [Parameter]
-    public Guid? OpponentPlayerId { get; set; }
-
-    [Parameter]
-    public string OpponentPlayerName { get; set; } = "Opponent";
-
-    [Parameter]
-    public NexusFactionColor CurrentPlayerFaction { get; set; }
+    public NexusPlayerContext? Opponent { get; set; }
 
     [Parameter]
     public NexusGateProgress CurrentPlayerGateProgress { get; set; }
@@ -205,7 +203,7 @@
     [Parameter]
     public EventCallback<OrderDraftRequest> OnOrderDraftRequested { get; set; }
 
-    private readonly Dictionary<UnitStackList.StackKey, int> _selection = [];
+    private readonly Dictionary<NexusUnitStackList.StackKey, int> _selection = [];
     private ImmutableDictionary<Guid, NexusUnitDesign> _designLookupImmutable = ImmutableDictionary<Guid, NexusUnitDesign>.Empty;
     private Dictionary<Guid, NexusUnitDesign> _designLookup = [];
     private HexCoord _previousCoord;
@@ -229,7 +227,7 @@
     private bool HasSelection => _selection.Values.Any(value => value > 0);
 
     private IEnumerable<NexusUnitStackGroup> SelectedStacks => _myStacks
-        .Select(stack => stack with { Count = _selection.GetValueOrDefault(new UnitStackList.StackKey(stack.DesignId, stack.RemainingHits)) })
+        .Select(stack => stack with { Count = _selection.GetValueOrDefault(new NexusUnitStackList.StackKey(stack.DesignId, stack.RemainingHits)) })
         .Where(stack => stack.Count > 0);
 
     private bool SelectionIsValid => HasSelection && SlotsNeeded <= CarryCapacity;
@@ -237,13 +235,10 @@
     private bool CanShowGateOption =>
         CurrentPlayerGateProgress != NexusGateProgress.Completed
         && System.IsNexus
-        && System.GetPlayerStacks(CurrentPlayerId).Any(stack => stack.Category == NexusUnitCategory.Planetary && stack.Count > 0)
-        && (!OpponentPlayerId.HasValue || System.GetPlayerStacks(OpponentPlayerId.Value).Length == 0);
+        && System.GetPlayerStacks(CurrentPlayer.PlayerId).Any(stack => stack.Category == NexusUnitCategory.Planetary && stack.Count > 0)
+        && (Opponent is null || System.GetPlayerStacks(Opponent.PlayerId).Length == 0);
 
     private bool CanAffordGate => ProjectedEnergy >= NexusEngine.GateCost;
-
-    private NexusFactionColor OpponentFactionColor =>
-        CurrentPlayerFaction == NexusFactionColor.Red ? NexusFactionColor.Blue : NexusFactionColor.Red;
 
     private string GateButtonClass =>
         PendingBeginNexusGate
@@ -251,30 +246,6 @@
             : CanAffordGate
                 ? "ui-button-control flex w-full justify-between gap-2"
                 : "ui-button-row-disabled flex w-full justify-between gap-2";
-
-    private string GetSystemLabel() => NexusMapTopology.GetSectorDisplayName(System.Coord);
-
-    private string GetSystemLabelClass()
-    {
-        if (!System.HomePlayerId.HasValue)
-        {
-            if (System.ControlOwner == CurrentPlayerId)
-                return FactionCss.AccentText(CurrentPlayerFaction);
-
-            if (OpponentPlayerId.HasValue && System.ControlOwner == OpponentPlayerId.Value)
-                return FactionCss.AccentText(OpponentFactionColor);
-
-            return "ui-panel-label";
-        }
-
-        if (System.HomePlayerId == CurrentPlayerId)
-            return FactionCss.AccentText(CurrentPlayerFaction);
-
-        if (OpponentPlayerId.HasValue && System.HomePlayerId == OpponentPlayerId.Value)
-            return FactionCss.AccentText(OpponentFactionColor);
-
-        return "ui-panel-label";
-    }
 
     protected override async Task OnParametersSetAsync()
     {
@@ -284,22 +255,22 @@
         _designLookupImmutable = _designLookup.ToImmutableDictionary();
         _myStacks = AvailableStacks;
         var isContested =
-            OpponentPlayerId.HasValue
-            && System.GetPlayerStacks(CurrentPlayerId).Length > 0
-            && System.GetPlayerStacks(OpponentPlayerId.Value).Length > 0;
+            Opponent is not null
+            && System.GetPlayerStacks(CurrentPlayer.PlayerId).Length > 0
+            && System.GetPlayerStacks(Opponent.PlayerId).Length > 0;
         _myCommittedStacks = isContested
             ? System
-                .GetPlayerStacks(CurrentPlayerId)
+                .GetPlayerStacks(CurrentPlayer.PlayerId)
                 .Where(s => s.Category == NexusUnitCategory.Planetary)
                 .ToImmutableArray()
             : ImmutableArray<NexusUnitStackGroup>.Empty;
-        _enemyStacks = OpponentPlayerId.HasValue
-            ? System.GetPlayerMovableStacks(OpponentPlayerId.Value)
+        _enemyStacks = Opponent is not null
+            ? System.GetPlayerMovableStacks(Opponent.PlayerId)
             : [];
         _enemyCommittedStacks =
-            isContested && OpponentPlayerId.HasValue
+            isContested && Opponent is not null
                 ? System
-                    .GetPlayerStacks(OpponentPlayerId.Value)
+                    .GetPlayerStacks(Opponent.PlayerId)
                     .Where(s => s.Category == NexusUnitCategory.Planetary)
                     .ToImmutableArray()
                 : ImmutableArray<NexusUnitStackGroup>.Empty;
@@ -334,12 +305,12 @@
             await PublishSelectionAsync();
     }
 
-    private int GetAvailableCount(UnitStackList.StackKey stackKey) =>
+    private int GetAvailableCount(NexusUnitStackList.StackKey stackKey) =>
         _myStacks
             .Where(stack => stack.DesignId == stackKey.DesignId && stack.RemainingHits == stackKey.RemainingHits)
             .Sum(stack => stack.Count);
 
-    private Task HandleToggleWholeStack(UnitStackList.StackKey stackKey)
+    private Task HandleToggleWholeStack(NexusUnitStackList.StackKey stackKey)
     {
         var available = GetAvailableCount(stackKey);
         if (available <= 0)
@@ -354,7 +325,7 @@
         return PublishSelectionAsync();
     }
 
-    private Task HandleStackAdjustment(UnitStackList.StackAdjustment adjustment)
+    private Task HandleStackAdjustment(NexusUnitStackList.StackAdjustment adjustment)
     {
         var available = GetAvailableCount(adjustment.Key);
         if (available <= 0)
@@ -374,7 +345,7 @@
         _selection.Clear();
         foreach (var stack in _myStacks)
         {
-            _selection[new UnitStackList.StackKey(stack.DesignId, stack.RemainingHits)] = stack.Count;
+            _selection[new NexusUnitStackList.StackKey(stack.DesignId, stack.RemainingHits)] = stack.Count;
         }
 
         return PublishSelectionAsync();
@@ -392,26 +363,12 @@
     private string GetBuildRowClass(NexusUnitDesign design, int count, bool canAdd)
     {
         if (count > 0)
-            return FactionCss.ButtonActiveRow(CurrentPlayerFaction);
+            return NexusFactionCss.ButtonActiveRow(CurrentPlayer.Faction);
 
         if (!canAdd)
             return "ui-button-row-disabled";
 
         return "ui-button-row-available";
-    }
-
-    private Task OnBuildRowClickAsync(NexusUnitDesign design, MouseEventArgs e)
-    {
-        if (e.ShiftKey)
-        {
-            return OnOrderDraftRequested.InvokeAsync(
-                OrderDraftRequest.BuildDraftAdjusted(design.DesignId, BuildDraftAdjustmentKind.RemoveAll)
-            );
-        }
-
-        return OnOrderDraftRequested.InvokeAsync(
-            OrderDraftRequest.BuildDraftAdjusted(design.DesignId, BuildDraftAdjustmentKind.AddOne)
-        );
     }
 
     private Task PublishSelectionAsync()

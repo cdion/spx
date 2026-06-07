@@ -1,0 +1,62 @@
+@using Spx.Nexus.Domain
+
+@{
+    var baselineHits = NexusHullBaselines.GetBaseline(Category).Hits;
+    var hitsPillClass = RemainingHits.HasValue ? NexusDomainLabels.GetHitsPillClass(Category, RemainingHits.Value) : "";
+    var pipFill = FactionColor.HasValue ? NexusFactionCss.PipFill(FactionColor.Value) : "rgba(148,163,184,0.7)";
+    var pipStroke = FactionColor.HasValue ? NexusFactionCss.PipStroke(FactionColor.Value) : "rgba(255,255,255,0.3)";
+}
+
+<HoverTooltip>
+    <Trigger>
+        <span class="inline-flex items-center gap-1 align-middle text-sm">
+            <NexusCategoryPip Category="Category" Size="NexusPipSize.Small" Fill="@pipFill" Stroke="@pipStroke" />
+            @if (Count > 1)
+            {
+                <span class="tabular-nums text-slate-400">@Count×</span>
+            }
+            <span class="font-semibold text-slate-200">@DesignName</span>
+            @if (RemainingHits.HasValue)
+            {
+                <span class="ui-hits-pill @hitsPillClass">@RemainingHits/@baselineHits hits</span>
+            }
+            @if (ShowCost && Cost.HasValue)
+            {
+                <span class="text-yellow-400/80">@Cost.Value⚡</span>
+            }
+        </span>
+    </Trigger>
+    <Content>
+        @if (Design is not null)
+        {
+            <NexusUnitProfileCard Category="Category" Design="Design" Name="@DesignName" />
+        }
+    </Content>
+</HoverTooltip>
+
+@code {
+    [Parameter, EditorRequired]
+    public NexusUnitCategory Category { get; set; }
+
+    [Parameter, EditorRequired]
+    public string DesignName { get; set; } = string.Empty;
+
+    [Parameter]
+    public int Count { get; set; }
+
+    [Parameter]
+    public int? RemainingHits { get; set; }
+
+    [Parameter]
+    public NexusUnitDesign? Design { get; set; }
+
+    [Parameter]
+    public bool ShowCost { get; set; }
+
+    [Parameter]
+    public int? Cost { get; set; }
+
+    [Parameter]
+    public NexusFactionColor? FactionColor { get; set; }
+
+}

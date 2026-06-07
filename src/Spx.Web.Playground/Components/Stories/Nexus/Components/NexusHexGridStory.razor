@@ -9,8 +9,10 @@
     <section class="ui-surface-section flex flex-col p-4 lg:p-5">
         <p class="ui-panel-label mb-4">Map — P1 perspective (@_view.CurrentPlayer.Faction)</p>
         <div class="w-full" style="aspect-ratio: 300/280">
-            <NexusHexGridComponent Systems="@_view.Systems" CurrentPlayerId="@P1" OpponentPlayerId="@P2"
-                                   CurrentPlayerFaction="@_view.CurrentPlayer.Faction" CurrentPlayerGateProgress="@_gateProgress"
+            <NexusHexGridComponent Systems="@_view.Systems"
+                                   CurrentPlayer="@(new NexusPlayerContext(P1, "Player 1", _view.CurrentPlayer.Faction))"
+                                   Opponent="@(new NexusPlayerContext(P2, "Player 2", _view.CurrentPlayer.Faction == NexusFactionColor.Red ? NexusFactionColor.Blue : NexusFactionColor.Red))"
+                                   CurrentPlayerGateProgress="@_gateProgress"
                                    IsEditable="true" PendingMoveOrders="@_pendingMoves" SelectedSystem="@_selected"
                                    ValidMoveTargets="@_validTargets" OnSelectionRequested="HandleSelectionRequest" />
         </div>

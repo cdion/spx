@@ -1,0 +1,17 @@
+@using Spx.Nexus.Domain
+
+<span>
+    <span class="font-semibold @Context.PlayerNameClass(Event.VictorId)">@Context.PlayerName(Event.VictorId)</span>
+    cleared
+    <NexusSystemBadge Coord="Event.System"
+                       CurrentPlayer="@Context.CurrentPlayer"
+                       Opponent="@Context.Opponent" />
+</span>
+
+@code {
+    [Parameter, EditorRequired]
+    public NexusSystemClearedEvent Event { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public EventRowContext Context { get; set; } = default!;
+}

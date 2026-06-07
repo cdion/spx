@@ -98,6 +98,19 @@ page.get_by_text('Submit Orders')  # acceptable only when no testid exists
 
 If the element lacks a `data-testid`, add one (and the TestIds class) before writing the browser test.
 
+## Test Method Naming
+
+Follow `<Method>_<Condition>_<Expected>` in snake_case:
+
+```csharp
+HandleAsync_returns_validation_failure_for_short_game_name()
+ShouldResetUiState_WhenGameIdChangesWithSameRound_ReturnsTrue()
+ApplySelectionRequest_WhenClearSelection_ResetsSelectedSystem()
+```
+
+- Use `[Fact]` for single-case tests.
+- Use `[Theory]` + `[InlineData]` for parameterized cases.
+
 ## Test Doubles
 
 - Prefer `NSubstitute` for lightweight mocking in unit-style tests when it is clearer than a hand-rolled fake or stub.

@@ -1,0 +1,17 @@
+@using Spx.Nexus.Domain
+
+<span>
+    <span class="font-semibold @Context.PlayerNameClass(Event.PlayerId)">@Context.PlayerName(Event.PlayerId)</span>
+    began Nexus Gate construction at
+    <NexusSystemBadge Coord="Event.System"
+                       CurrentPlayer="@Context.CurrentPlayer"
+                       Opponent="@Context.Opponent" />
+</span>
+
+@code {
+    [Parameter, EditorRequired]
+    public NexusGateStartedEvent Event { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public EventRowContext Context { get; set; } = default!;
+}

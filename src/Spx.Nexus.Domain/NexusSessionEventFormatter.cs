@@ -1,8 +1,18 @@
 using System.Collections.Immutable;
-using Spx.Nexus.Domain;
 
-namespace Spx.Game.Application.Nexus;
+namespace Spx.Nexus.Domain;
 
+/// <summary>
+/// Formats <see cref="NexusResolveEvent"/> subtypes into human-readable strings.
+///
+/// <para>
+/// When <paramref name="viewingPlayerId"/> is provided, sector names for home systems
+/// are emitted as the magic strings <c>"Your Home System"</c> and <c>"Opponent Home System"</c>.
+/// The caller (typically <c>NexusResolveEventsPanel</c>) is expected to post-process these with
+/// <c>NexusHomeSystemNames.ReplacePerspectiveLabels()</c> to inject actual player names.
+/// When <paramref name="viewingPlayerId"/> is <c>null</c>, raw sector names are used.
+/// </para>
+/// </summary>
 public static class NexusSessionEventFormatter
 {
     public static string Format(

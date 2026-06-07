@@ -2167,7 +2167,7 @@ public class NexusDesignTests
 
         Assert.IsType<NexusDesignDeleted>(result);
         var player = s.Players.First(p => p.PlayerId == P1Id);
-        Assert.DoesNotContain(player.Designs, d => d.DesignId == created.Design.DesignId);
+        Assert.Contains(player.Designs, d => d.DesignId == created.Design.DesignId && d.IsDeleted);
     }
 
     [Fact]

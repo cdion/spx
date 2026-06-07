@@ -32,7 +32,7 @@ public sealed class NexusGameplayPanelInteractionTests : TestContext
         );
 
         Assert.Contains(
-            "Captain Red's System",
+            "home system",
             cut.Find(TestIdSelector(NexusGameplayPanelTestIds.ResolveEventRow(0))).TextContent
         );
     }
@@ -217,9 +217,10 @@ public sealed class NexusGameplayPanelInteractionTests : TestContext
             )
         );
 
-        Assert.Contains("Carrier (1 hits)", pendingOrder.TextContent);
-        Assert.Contains("Fighter (1 hits)", pendingOrder.TextContent);
-        Assert.Contains("Infantry (1 hits)", pendingOrder.TextContent);
+        Assert.Contains("Carrier", pendingOrder.TextContent);
+        Assert.Contains("1/2 hits", pendingOrder.TextContent); // Carrier: RemainingHits=1, Capital baseline=2
+        Assert.Contains("Fighter", pendingOrder.TextContent);
+        Assert.Contains("Infantry", pendingOrder.TextContent);
     }
 
     [Fact]
@@ -308,8 +309,7 @@ public sealed class NexusGameplayPanelInteractionTests : TestContext
             )
         );
 
-        Assert.Contains("1 hits", pendingOrder.TextContent);
-        Assert.DoesNotContain("this-string-no-longer-applies", pendingOrder.TextContent);
+        Assert.Contains("1/2 hits", pendingOrder.TextContent); // damaged Capital: RemainingHits=1, baseline=2
     }
 
     [Fact]
@@ -535,8 +535,12 @@ public sealed class NexusGameplayPanelInteractionTests : TestContext
             )
             .Click();
 
-        // Click build button for Fighter (costs 3, we have 20 energy)
-        cut.Find(TestIdSelector(NexusGameplayPanelTestIds.BuildUnit("Fighter"))).Click();
+        // Click + button for Fighter (costs 3, we have 20 energy)
+        cut.Find(
+                TestIdSelector(NexusGameplayPanelTestIds.BuildUnit("Fighter"))
+                    + " button:last-of-type"
+            )
+            .Click();
 
         // Verify build order appears in pending orders
         var buildOrder = cut.Find(

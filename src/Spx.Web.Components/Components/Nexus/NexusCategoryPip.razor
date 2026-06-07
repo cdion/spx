@@ -3,7 +3,7 @@
 @{
     var s = Size switch
     {
-        PipSize.Medium => 2.0,
+        NexusPipSize.Medium => 2.0,
         _ => 1.5,
     };
 }
@@ -32,7 +32,7 @@
     public NexusUnitCategory Category { get; set; }
 
     [Parameter]
-    public PipSize Size { get; set; } = PipSize.Small;
+    public NexusPipSize Size { get; set; } = NexusPipSize.Small;
 
     [Parameter]
     public string Fill { get; set; } = "rgba(148,163,184,0.7)";

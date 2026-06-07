@@ -24,6 +24,12 @@ applyTo: '{src/Spx.*.Domain/**,src/Spx.*.Application/**,src/Spx.Contracts/**,src
 - A Domain type must cross an Orleans grain boundary: add a `[GenerateSerializer]` surrogate struct + `[RegisterConverter]` converter in `GameSessionDomainSurrogates.cs`.
 - The type is a grain-specific result carrying grain-infrastructure fields (`PendingGameplayEventBatchId`) that Application does not know about.
 
+## Domain view types vs view query helpers
+
+- **View records** (`NexusGameView`, `NexusSystemView`, etc.) in `NexusViews.cs`: immutable `[GenerateSerializer]` + `[Immutable]` records that carry data across grain boundaries. Add instance helpers (simple projections of the type's own fields) directly on the record.
+- **View query helpers** in `NexusViewQueries.cs`: static class with pure functions that require cross-type reasoning (e.g., `GetValidMoveDestinations(NexusGameView, Guid, HexCoord)`).
+- Never add cross-type view logic to a view record's instance methods — put it in `NexusViewQueries`.
+
 ## Define a Grain state type when
 
 - Persisting game session state inside a grain: grain state must be mutable classes with `[GenerateSerializer]` + `[Id]` attributes for Orleans storage compatibility and stable schema evolution — Domain records cannot substitute here.

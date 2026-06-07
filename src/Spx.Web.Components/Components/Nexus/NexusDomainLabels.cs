@@ -19,16 +19,20 @@ public static class NexusDomainLabels
     /// <summary>
     /// CSS class for the hits pill badge based on remaining vs. baseline hits.
     /// </summary>
-    public static string GetHitsPillClass(NexusUnitStackGroup stack)
+    public static string GetHitsPillClass(NexusUnitCategory category, int remainingHits)
     {
-        if (stack.RemainingHits >= NexusHullBaselines.GetBaseline(stack.Category).Hits)
+        var baselineHits = NexusHullBaselines.GetBaseline(category).Hits;
+        if (remainingHits >= baselineHits)
             return "border-emerald-400/30 bg-emerald-500/10 text-emerald-200";
 
-        if (stack.RemainingHits > 1)
+        if (remainingHits > 1)
             return "border-amber-400/30 bg-amber-500/10 text-amber-200";
 
         return "border-rose-400/30 bg-rose-500/10 text-rose-200";
     }
+
+    public static string GetHitsPillClass(NexusUnitStackGroup stack) =>
+        GetHitsPillClass(stack.Category, stack.RemainingHits);
 
     public static string GetModuleLabel(NexusUnitModule module) =>
         module switch

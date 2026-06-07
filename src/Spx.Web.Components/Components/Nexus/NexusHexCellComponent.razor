@@ -3,11 +3,11 @@
 <g @onclick="HandleClick" @onclick:stopPropagation="true" class="@(IsClickable ? "cursor-pointer" : "")"
    data-testid="@NexusGameplayPanelTestIds.System(System.Coord)">
     <polygon points="@NexusHexHelpers.HexPoints(Center)"
-             fill="@NexusHexHelpers.GetHexFill(System, CurrentPlayerId, CurrentPlayerFaction)"
+             fill="@NexusHexHelpers.GetHexFill(System, CurrentPlayer.PlayerId, CurrentPlayer.Faction)"
              stroke="rgba(255,255,255,0.12)" stroke-width="1" opacity="0.92" />
 
     @* Triangle cap — home system indicator or Nexus gold *@
-    @if (NexusHexHelpers.GetCapFill(System, CurrentPlayerId, CurrentPlayerFaction) is { } capFill)
+    @if (NexusHexHelpers.GetCapFill(System, CurrentPlayer.PlayerId, CurrentPlayer.Faction) is { } capFill)
     {
         <polygon points="@NexusHexHelpers.CapPoints(Center)" fill="@capFill" />
     }
@@ -33,19 +33,16 @@
     public (double X, double Y) Center { get; set; }
 
     [Parameter, EditorRequired]
-    public Guid CurrentPlayerId { get; set; }
+    public NexusPlayerContext CurrentPlayer { get; set; } = null!;
 
     [Parameter]
-    public Guid? OpponentPlayerId { get; set; }
+    public NexusPlayerContext? Opponent { get; set; }
 
     [Parameter]
     public NexusGateProgress CurrentPlayerGateProgress { get; set; }
 
     [Parameter]
     public NexusGateProgress OpponentGateProgress { get; set; }
-
-    [Parameter]
-    public NexusFactionColor CurrentPlayerFaction { get; set; }
 
     [Parameter]
     public bool IsClickable { get; set; }
@@ -87,19 +84,19 @@
         {
             var sb = new StringBuilder();
 
-            var myColor = CurrentPlayerFaction == NexusFactionColor.Red ? "#f87171" : "#60a5fa";
-            var opColor = CurrentPlayerFaction == NexusFactionColor.Red ? "#60a5fa" : "#f87171";
-            var myDim = CurrentPlayerFaction == NexusFactionColor.Red ? "rgba(248,113,113,0.25)" : "rgba(96,165,250,0.25)";
-            var opDim = CurrentPlayerFaction == NexusFactionColor.Red ? "rgba(96,165,250,0.25)" : "rgba(248,113,113,0.25)";
+            var myColor = NexusFactionCss.SvgFill(CurrentPlayer.Faction);
+            var opColor = NexusFactionCss.SvgFill(OpponentFaction);
+            var myDim = NexusFactionCss.SvgUnitDim(CurrentPlayer.Faction);
+            var opDim = NexusFactionCss.SvgUnitDim(OpponentFaction);
 
-            var (myC, myS, myP) = NexusHexHelpers.GetUnitCounts(System, CurrentPlayerId);
+            var (myC, myS, myP) = NexusHexHelpers.GetUnitCounts(System, CurrentPlayer.PlayerId);
             var hasMyUnits = myC + myS + myP > 0;
 
             var hasOpUnits = false;
             int opC = 0, opS = 0, opP = 0;
-            if (OpponentPlayerId.HasValue)
+            if (Opponent is not null)
             {
-                (opC, opS, opP) = NexusHexHelpers.GetUnitCounts(System, OpponentPlayerId.Value);
+                (opC, opS, opP) = NexusHexHelpers.GetUnitCounts(System, Opponent.PlayerId);
                 hasOpUnits = opC + opS + opP > 0;
             }
 
@@ -131,7 +128,7 @@
                 RenderFactionPips(sb, myOffsetX, pipY, myColor, myDim, myC, myS, myP);
             }
 
-            if (hasOpUnits && OpponentPlayerId.HasValue)
+            if (hasOpUnits && Opponent is not null)
             {
                 RenderFactionPips(sb, opOffsetX, pipY, opColor, opDim, opC, opS, opP);
             }
@@ -153,12 +150,8 @@
             )
                 return string.Empty;
 
-            var currentColorPair = CurrentPlayerFaction == NexusFactionColor.Red
-                ? ("#f87171", "rgba(248,113,113,0.18)")
-                : ("#60a5fa", "rgba(96,165,250,0.18)");
-            var opponentColorPair = CurrentPlayerFaction == NexusFactionColor.Red
-                ? ("#60a5fa", "rgba(96,165,250,0.18)")
-                : ("#f87171", "rgba(248,113,113,0.18)");
+            var currentColorPair = (NexusFactionCss.SvgFill(CurrentPlayer.Faction), NexusFactionCss.SvgGateDim(CurrentPlayer.Faction));
+            var opponentColorPair = (NexusFactionCss.SvgFill(OpponentFaction), NexusFactionCss.SvgGateDim(OpponentFaction));
 
             var showCurrent = CurrentPlayerGateProgress != NexusGateProgress.None;
             var showOpponent = OpponentGateProgress != NexusGateProgress.None;
@@ -190,6 +183,10 @@
         return $"<circle cx=\"{cx1}\" cy=\"{cy}\" r=\"3.5\" fill=\"{colors.ActiveFill}\"/>"
             + $"<circle cx=\"{cx2}\" cy=\"{cy}\" r=\"3.5\" fill=\"{pip2Fill}\"/>";
     }
+
+    private NexusFactionColor OpponentFaction =>
+        Opponent?.Faction
+        ?? (CurrentPlayer.Faction == NexusFactionColor.Red ? NexusFactionColor.Blue : NexusFactionColor.Red);
 
     private Task HandleClick() =>
         IsClickable ? OnClicked.InvokeAsync(System.Coord) : Task.CompletedTask;

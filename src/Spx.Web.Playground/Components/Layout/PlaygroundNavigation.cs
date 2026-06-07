@@ -22,12 +22,26 @@ internal static class PlaygroundNavigation
                         new NavItem("Hex Grid", "/stories/nexus/components/hex-grid"),
                         new NavItem("Gameplay Panel", "/stories/nexus/components/gameplay-panel"),
                         new NavItem("Live Gameplay", "/stories/nexus/components/live-gameplay"),
+                        new NavItem(
+                            "Resolve Events Panel",
+                            "/stories/nexus/components/resolve-events-panel"
+                        ),
                         new NavItem("Top Info Bar", "/stories/nexus/components/top-info-bar"),
                         new NavItem(
                             "Selected Hex Panel",
                             "/stories/nexus/components/selected-hex-panel"
                         ),
+                        new NavItem(
+                            "  Unit Stack List",
+                            "/stories/nexus/components/unit-stack-list"
+                        ),
+                        new NavItem("  Category Pip", "/stories/nexus/components/category-pip"),
+                        new NavItem(
+                            "Design Editor Panel",
+                            "/stories/nexus/components/design-editor-panel"
+                        ),
                         new NavItem("Pending Orders", "/stories/nexus/components/pending-orders"),
+                        new NavItem("Unit Badge", "/stories/nexus/components/unit-badge"),
                         new NavItem("Hex Cell States", "/stories/nexus/components/hex-cell-states"),
                     ]
                 ),

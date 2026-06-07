@@ -1,0 +1,26 @@
+@using Spx.Nexus.Domain
+
+@{
+    var design = Context.DesignLookup[Event.DesignId];
+}
+
+<span>
+    <span class="font-semibold @Context.PlayerNameClass(Event.PlayerId)">@Context.PlayerName(Event.PlayerId)</span>
+    deployed
+    <NexusUnitBadge Category="design.Hull"
+                     DesignName="@Event.DesignName"
+                     Design="design"
+                     Count="Event.Count" />
+    at
+    <NexusSystemBadge Coord="Event.HomeSystem"
+                       CurrentPlayer="@Context.CurrentPlayer"
+                       Opponent="@Context.Opponent" />
+</span>
+
+@code {
+    [Parameter, EditorRequired]
+    public NexusUnitDeployedEvent Event { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public EventRowContext Context { get; set; } = default!;
+}

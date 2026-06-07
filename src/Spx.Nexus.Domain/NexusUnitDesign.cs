@@ -25,6 +25,9 @@ public sealed class NexusUnitDesign
 
     [Id(3)]
     public List<NexusUnitModule> Modules { get; set; } = [];
+
+    [Id(4)]
+    public bool IsDeleted { get; set; }
 }
 
 /// <summary>
