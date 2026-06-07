@@ -24,30 +24,39 @@ internal static class NexusStoryFixtures
             DesignId = CarrierId,
             Name = "Carrier",
             Hull = NexusUnitCategory.Capital,
+            Modules = [new Hangar(4)],
         },
         new()
         {
             DesignId = FighterId,
             Name = "Fighter",
             Hull = NexusUnitCategory.Strike,
+            Modules = [new Battery(NexusUnitCategory.Strike)],
         },
         new()
         {
             DesignId = InfantryId,
             Name = "Infantry",
             Hull = NexusUnitCategory.Planetary,
+            Modules = [new Vanguard(NexusUnitCategory.Planetary)],
         },
         new()
         {
             DesignId = DestroyerId,
             Name = "Destroyer",
             Hull = NexusUnitCategory.Capital,
+            Modules =
+            [
+                new Battery(NexusUnitCategory.Capital),
+                new Screen(NexusUnitCategory.Capital, 1),
+            ],
         },
         new()
         {
             DesignId = ArmorId,
             Name = "Armor",
             Hull = NexusUnitCategory.Planetary,
+            Modules = [new Armour(2)],
         },
     ];
 
@@ -58,24 +67,32 @@ internal static class NexusStoryFixtures
             DesignId = CruiserId,
             Name = "Cruiser",
             Hull = NexusUnitCategory.Capital,
+            Modules = [new Battery(NexusUnitCategory.Capital), new Drive(1)],
         },
         new()
         {
             DesignId = DestroyerId,
             Name = "Destroyer",
             Hull = NexusUnitCategory.Capital,
+            Modules =
+            [
+                new Battery(NexusUnitCategory.Capital),
+                new Scatter(NexusUnitCategory.Capital, 1),
+            ],
         },
         new()
         {
             DesignId = BomberId,
             Name = "Bomber",
             Hull = NexusUnitCategory.Strike,
+            Modules = [new Battery(NexusUnitCategory.Capital)],
         },
         new()
         {
             DesignId = InfantryId,
             Name = "Infantry",
             Hull = NexusUnitCategory.Planetary,
+            Modules = [new Armour(1)],
         },
     ];
 
