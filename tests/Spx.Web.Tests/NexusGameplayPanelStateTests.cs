@@ -488,7 +488,7 @@ public sealed class NexusGameplayPanelStateTests
         var nextState = NexusGameplayPanelState.QueueMoveOrder(
             OrderDraftState.Empty,
             CoordA,
-            CoordB,
+            ImmutableArray.Create(CoordB),
             stacks
         );
 
@@ -723,7 +723,7 @@ public sealed class NexusGameplayPanelStateTests
     {
         var moveOrder = new NexusMoveOrder(
             CoordA,
-            CoordB,
+            ImmutableArray.Create(CoordB),
             ImmutableArray.Create(
                 new NexusUnitStackGroup(CarrierDesignId, NexusUnitCategory.Capital, 4, 1)
             )

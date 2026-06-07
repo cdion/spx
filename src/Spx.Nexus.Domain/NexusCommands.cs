@@ -20,16 +20,20 @@ public sealed record InitializeNexusGameCommand(
 public sealed record NexusBuildOrder([property: Id(0)] Guid DesignId, [property: Id(1)] int Count);
 
 /// <summary>
-/// A single fleet move: pick a subset of units from <see cref="From"/> and move them to
-/// the adjacent system <see cref="To"/>. Carrier capacity rules are enforced by the engine.
+/// A single fleet move: pick a subset of units from <see cref="From"/> and move them through
+/// the specified <see cref="Waypoints"/> (each step adjacent to the previous). The last
+/// waypoint is the destination. Carrier capacity and fleet move rules are enforced by the engine.
 /// </summary>
 [GenerateSerializer]
 [Immutable]
 public sealed record NexusMoveOrder(
     [property: Id(0)] HexCoord From,
-    [property: Id(1)] HexCoord To,
+    [property: Id(1)] ImmutableArray<HexCoord> Waypoints,
     [property: Id(2)] ImmutableArray<NexusUnitStackGroup> Stacks
-);
+)
+{
+    public HexCoord To => Waypoints[^1];
+};
 
 /// <summary>
 /// All orders a player submits for one round. Stored in grain state until both players
@@ -81,6 +85,9 @@ public abstract record NexusTurnOrdersRejected(string ErrorMessage) : NexusTurnO
         HexCoord to,
         string toLabel
     ) => new NexusRejectedNonAdjacent(from, fromLabel, to, toLabel);
+
+    public static NexusTurnOrdersRejected InvalidMovePath(string reason) =>
+        new NexusRejectedInvalidMovePath(reason);
 
     public static NexusTurnOrdersRejected EmptyMove() => new NexusRejectedEmptyMove();
 
@@ -196,6 +203,11 @@ public sealed record NexusRejectedInvalidCoord(
     [property: Id(0)] HexCoord Coord,
     [property: Id(1)] string Label
 ) : NexusTurnOrdersRejected($"Selected {Label} System is not on the map.");
+
+[GenerateSerializer]
+[Immutable]
+public sealed record NexusRejectedInvalidMovePath([property: Id(0)] string Reason)
+    : NexusTurnOrdersRejected($"Invalid move path: {Reason}");
 
 [GenerateSerializer]
 [Immutable]

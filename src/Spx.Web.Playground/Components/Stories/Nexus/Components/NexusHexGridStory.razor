@@ -110,7 +110,7 @@
                 {
                     _pendingMoves.Add(new NexusMoveOrder(
                         _pendingFrom.Value,
-                        coord,
+                        ImmutableArray.Create(coord),
                         units
                             .Select(unit => new NexusUnitStackGroup(unit.Key, NexusUnitCategory.Capital, 1, unit.Value))
                             .ToImmutableArray()));

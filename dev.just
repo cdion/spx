@@ -1,5 +1,9 @@
 # Development — build, test, coverage, tailwind, run, watch
 
+# Format all C# source files in the solution
+dev-format:
+    dotnet csharpier format .
+
 # Build a specific project (e.g.: just dev-build-project src/Spx.Web)
 dev-build-project project:
     dotnet build {{project}}

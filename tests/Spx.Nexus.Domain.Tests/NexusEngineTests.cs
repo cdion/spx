@@ -609,7 +609,7 @@ public class NexusMoveValidationTests
     ) =>
         new(
             from,
-            to,
+            ImmutableArray.Create(to),
             units
                 .Select(unit => new NexusUnitStackGroup(
                     unit.Design.DesignId,
@@ -634,7 +634,7 @@ public class NexusMoveValidationTests
         var s = MakeState();
         var order = new NexusMoveOrder(
             P1Home,
-            Adjacent1,
+            ImmutableArray.Create(Adjacent1),
             ImmutableArray<NexusUnitStackGroup>.Empty
         );
         var result = Submit(s, P1Id, [order]);
@@ -842,7 +842,7 @@ public class NexusRoundResolutionTests
     ) =>
         new(
             from,
-            to,
+            ImmutableArray.Create(to),
             units
                 .Select(unit => new NexusUnitStackGroup(
                     unit.Design.DesignId,
@@ -860,7 +860,7 @@ public class NexusRoundResolutionTests
     ) =>
         new(
             from,
-            to,
+            ImmutableArray.Create(to),
             stacks
                 .Select(stack => new NexusUnitStackGroup(
                     stack.Design.DesignId,
@@ -1249,7 +1249,7 @@ public class NexusPersistentDamageTests
     ) =>
         new(
             from,
-            to,
+            ImmutableArray.Create(to),
             units
                 .Select(unit => new NexusUnitStackGroup(
                     unit.Design.DesignId,
@@ -1267,7 +1267,7 @@ public class NexusPersistentDamageTests
     ) =>
         new(
             from,
-            to,
+            ImmutableArray.Create(to),
             stacks
                 .Select(stack => new NexusUnitStackGroup(
                     stack.Design.DesignId,
@@ -1610,7 +1610,7 @@ public class NexusGateTests
                 [
                     new NexusMoveOrder(
                         staging.Coord,
-                        NexusMap.NexusCoord,
+                        ImmutableArray.Create(NexusMap.NexusCoord),
                         [
                             new NexusUnitStackGroup(
                                 TestDesigns.Carrier.DesignId,
@@ -1705,7 +1705,7 @@ public class NexusCommittedPlanetaryTests
                 [
                     new NexusMoveOrder(
                         alpha.Coord,
-                        new HexCoord(1, 0),
+                        ImmutableArray.Create(new HexCoord(1, 0)),
                         [
                             new NexusUnitStackGroup(
                                 TestDesigns.Infantry.DesignId,
@@ -1747,7 +1747,7 @@ public class NexusCommittedPlanetaryTests
                 [
                     new NexusMoveOrder(
                         alpha.Coord,
-                        new HexCoord(1, 0),
+                        ImmutableArray.Create(new HexCoord(1, 0)),
                         [
                             new NexusUnitStackGroup(
                                 TestDesigns.Carrier.DesignId,

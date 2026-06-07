@@ -52,6 +52,8 @@ public static class NexusGameplayPanelState
             StagedMoveStacks = ImmutableArray<NexusUnitStackGroup>.Empty,
             ValidMoveTargets = [],
             EventFocusOwnsSelection = false,
+            DraftPath = ImmutableArray<HexCoord>.Empty,
+            FleetMove = 0,
         };
 
     public static SelectionState ApplySelectionRequest(
@@ -64,6 +66,8 @@ public static class NexusGameplayPanelState
             StagedMoveStacks = ImmutableArray<NexusUnitStackGroup>.Empty,
             ValidMoveTargets = [],
             EventFocusOwnsSelection = false,
+            DraftPath = ImmutableArray<HexCoord>.Empty,
+            FleetMove = 0,
         };
 
     public static SelectionState ApplyMoveDraft(
@@ -71,22 +75,120 @@ public static class NexusGameplayPanelState
         ImmutableArray<NexusUnitStackGroup> stacks,
         NexusGameView session,
         Guid playerId
-    ) =>
-        state.SelectedSystem is null || stacks.IsDefaultOrEmpty
-            ? state with
+    )
+    {
+        if (state.SelectedSystem is null || stacks.IsDefaultOrEmpty)
+            return state with
             {
                 StagedMoveStacks = stacks,
                 ValidMoveTargets = [],
-            }
-            : state with
-            {
-                StagedMoveStacks = stacks,
-                ValidMoveTargets = NexusViewQueries.GetValidMoveDestinations(
+                DraftPath = ImmutableArray<HexCoord>.Empty,
+                FleetMove = 0,
+            };
+
+        var fleetMove = ComputeFleetMove(stacks, session.CurrentPlayer.Designs);
+        var validTargets =
+            fleetMove > 0
+                ? NexusViewQueries.GetValidNextHops(
                     session,
                     playerId,
-                    state.SelectedSystem.Value
-                ),
-            };
+                    state.SelectedSystem.Value,
+                    ImmutableArray<HexCoord>.Empty,
+                    fleetMove
+                )
+                : (IReadOnlyList<HexCoord>)[];
+
+        return state with
+        {
+            StagedMoveStacks = stacks,
+            ValidMoveTargets = validTargets,
+            DraftPath = ImmutableArray<HexCoord>.Empty,
+            FleetMove = fleetMove,
+        };
+    }
+
+    public static SelectionState ApplyPathStep(
+        SelectionState state,
+        HexCoord step,
+        NexusGameView session,
+        Guid playerId
+    )
+    {
+        var newPath = state.DraftPath.IsDefaultOrEmpty
+            ? ImmutableArray.Create(step)
+            : [.. state.DraftPath, step];
+
+        var remainingMove = state.FleetMove - newPath.Length;
+
+        var opponentId = session.Opponent.PlayerId;
+        var stepSystem = session.Systems.FirstOrDefault(s => s.Coord == step);
+        var enemyBlocksExtension =
+            stepSystem is not null
+            && stepSystem
+                .GetPlayerStacks(opponentId)
+                .Any(s => s.Category is NexusUnitCategory.Strike or NexusUnitCategory.Capital);
+
+        IReadOnlyList<HexCoord> validNextHops;
+        if (remainingMove <= 0 || enemyBlocksExtension)
+        {
+            validNextHops = [];
+        }
+        else
+        {
+            validNextHops = NexusViewQueries.GetValidNextHops(
+                session,
+                playerId,
+                state.SelectedSystem!.Value,
+                newPath,
+                remainingMove
+            );
+        }
+
+        return state with
+        {
+            DraftPath = newPath,
+            ValidMoveTargets = validNextHops,
+        };
+    }
+
+    public static SelectionState UndoPathStep(
+        SelectionState state,
+        NexusGameView session,
+        Guid playerId
+    )
+    {
+        if (state.DraftPath.IsDefaultOrEmpty)
+            return state;
+
+        var newPath = state.DraftPath.RemoveAt(state.DraftPath.Length - 1);
+        var remainingMove = state.FleetMove - newPath.Length;
+
+        var validNextHops =
+            state.SelectedSystem.HasValue && remainingMove > 0
+                ? NexusViewQueries.GetValidNextHops(
+                    session,
+                    playerId,
+                    state.SelectedSystem.Value,
+                    newPath,
+                    remainingMove
+                )
+                : (IReadOnlyList<HexCoord>)[];
+
+        return state with
+        {
+            DraftPath = newPath,
+            ValidMoveTargets = validNextHops,
+        };
+    }
+
+    public static SelectionState ClearDraftPath(SelectionState state) =>
+        state with
+        {
+            DraftPath = ImmutableArray<HexCoord>.Empty,
+            ValidMoveTargets = [],
+            StagedMoveStacks = ImmutableArray<NexusUnitStackGroup>.Empty,
+            FleetMove = 0,
+        };
 
     public static SelectionState SyncSelectedSystemToEventFocus(
         SelectionState state,
@@ -100,6 +202,8 @@ public static class NexusGameplayPanelState
             {
                 SelectedSystem = activeFocus.Primary.Value,
                 EventFocusOwnsSelection = true,
+                DraftPath = ImmutableArray<HexCoord>.Empty,
+                FleetMove = 0,
             };
         }
 
@@ -108,6 +212,8 @@ public static class NexusGameplayPanelState
             {
                 SelectedSystem = null,
                 EventFocusOwnsSelection = false,
+                DraftPath = ImmutableArray<HexCoord>.Empty,
+                FleetMove = 0,
             }
             : state;
     }
@@ -115,12 +221,16 @@ public static class NexusGameplayPanelState
     public static OrderDraftState QueueMoveOrder(
         OrderDraftState state,
         HexCoord from,
-        HexCoord to,
+        ImmutableArray<HexCoord> waypoints,
         ImmutableArray<NexusUnitStackGroup> stacks
     ) =>
         state with
         {
-            PendingMoveOrders = [.. state.PendingMoveOrders, new NexusMoveOrder(from, to, stacks)],
+            PendingMoveOrders =
+            [
+                .. state.PendingMoveOrders,
+                new NexusMoveOrder(from, waypoints, stacks),
+            ],
         };
 
     public static OrderDraftState ApplyBuildDraftAdjustment(
@@ -292,6 +402,28 @@ public static class NexusGameplayPanelState
         }
 
         return -1;
+    }
+
+    private static int ComputeFleetMove(
+        ImmutableArray<NexusUnitStackGroup> stacks,
+        ImmutableArray<NexusUnitDesign> designs
+    )
+    {
+        var designLookup = designs.ToDictionary(d => d.DesignId);
+        var minMove = int.MaxValue;
+        var found = false;
+        foreach (var stack in stacks)
+        {
+            if (!designLookup.TryGetValue(stack.DesignId, out var design))
+                continue;
+            var move = NexusHullBaselines.GetProfile(design).Move;
+            if (move > 0)
+            {
+                minMove = Math.Min(minMove, move);
+                found = true;
+            }
+        }
+        return found ? minMove : 0;
     }
 
     public static EventFocus GetEventFocus(NexusResolveEvent evt) =>

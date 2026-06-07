@@ -7,9 +7,18 @@ public sealed record SelectionState(
     HexCoord? SelectedSystem,
     ImmutableArray<NexusUnitStackGroup> StagedMoveStacks,
     IReadOnlyList<HexCoord> ValidMoveTargets,
-    bool EventFocusOwnsSelection
+    bool EventFocusOwnsSelection,
+    ImmutableArray<HexCoord> DraftPath,
+    int FleetMove
 )
 {
     public static SelectionState Empty { get; } =
-        new(null, ImmutableArray<NexusUnitStackGroup>.Empty, [], false);
+        new(
+            null,
+            ImmutableArray<NexusUnitStackGroup>.Empty,
+            [],
+            false,
+            ImmutableArray<HexCoord>.Empty,
+            0
+        );
 }

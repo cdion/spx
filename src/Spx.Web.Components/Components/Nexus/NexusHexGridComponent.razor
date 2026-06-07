@@ -41,12 +41,34 @@
                              Color="rgba(245,158,11,0.9)" FillOpacity="0.7" StrokeWidth="2" />
         }
 
+        @* Pass 2e: Draft path arrows + waypoint labels *@
+        @if (SelectedSystem.HasValue && DraftPath.Count > 0)
+        {
+            var prev = SelectedSystem.Value;
+            var stepIndex = 1;
+            foreach (var step in DraftPath)
+            {
+                <NexusSvgChevronArrow From="@prev" To="@step"
+                                 Color="rgba(226,232,240,0.55)" FillOpacity="0.4" StrokeWidth="1.5" />
+                var c = NexusHexHelpers.HexCenter(step);
+                @((MarkupString)$"<text x=\"{NexusHexHelpers.Fmt(c.X)}\" y=\"{NexusHexHelpers.Fmt(c.Y + 3.5)}\" text-anchor=\"middle\" font-size=\"7\" font-weight=\"bold\" fill=\"white\" fill-opacity=\"0.85\" pointer-events=\"none\">{stepIndex}</text>")
+                prev = step;
+                stepIndex++;
+            }
+        }
+
         @* Pass 3: Move order chevrons *@
         @foreach (var order in PendingMoveOrders)
         {
             var chevronColor = NexusFactionCss.SvgFill(CurrentPlayer.Faction);
-            <NexusSvgChevronArrow From="@order.From" To="@order.To"
-                             Color="@chevronColor" FillOpacity="0.7" StrokeWidth="2" />
+            var pathPoints = new List<HexCoord> { order.From };
+            pathPoints.AddRange(order.Waypoints);
+            for (var i = 0; i < pathPoints.Count - 1; i++)
+            {
+                var segOpacity = i < pathPoints.Count - 2 ? 0.45 : 0.7;
+                <NexusSvgChevronArrow From="@pathPoints[i]" To="@pathPoints[i + 1]"
+                                 Color="@chevronColor" FillOpacity="@segOpacity" StrokeWidth="2" />
+            }
         }
     </svg>
 </div>
@@ -87,6 +109,9 @@
 
     [Parameter]
     public HexCoord? EventFocusTo { get; set; }
+
+    [Parameter]
+    public IReadOnlyList<HexCoord> DraftPath { get; set; } = [];
 
     [Parameter]
     public EventCallback<SelectionRequest> OnSelectionRequested { get; set; }

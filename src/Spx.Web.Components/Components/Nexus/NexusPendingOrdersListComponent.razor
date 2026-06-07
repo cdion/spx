@@ -12,8 +12,15 @@ else
                 data-testid="@NexusGameplayPanelTestIds.PendingMoveOrder(index, order.From, order.To)">
                 <span class="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-sm text-slate-300">
                     <span class="font-semibold text-slate-200">@GetSystemDisplayName(order.From)</span>
-                    <span class="text-slate-500">→</span>
-                    <span class="font-semibold text-slate-200">@GetSystemDisplayName(order.To)</span>
+                    @foreach (var waypoint in order.Waypoints)
+                    {
+                        <span class="text-slate-500">→</span>
+                        <span class="font-semibold text-slate-200">@GetSystemDisplayName(waypoint)</span>
+                    }
+                    @if (order.Waypoints.Length > 1)
+                    {
+                        <span class="text-xs text-slate-500">(@order.Waypoints.Length sectors)</span>
+                    }
                     @foreach (var stack in order.Stacks)
                     {
                         var design = Designs.FirstOrDefault(d => d.DesignId == stack.DesignId);

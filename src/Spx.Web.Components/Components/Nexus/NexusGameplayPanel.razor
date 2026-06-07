@@ -28,6 +28,7 @@
                                    PendingMoveOrders="@_orderDraftState.PendingMoveOrders" SelectedSystem="@_selectionState.SelectedSystem"
                                    ValidMoveTargets="@_selectionState.ValidMoveTargets" EventFocusSystems="@ActiveEventFocusSystems"
                                    EventFocusFrom="@ActiveEventFocusFrom" EventFocusTo="@ActiveEventFocusTo"
+                                   DraftPath="@_selectionState.DraftPath"
                                    OnSelectionRequested="HandleSelectionRequest" />
     </section>
 
@@ -67,6 +68,20 @@
                         else
                         {
                             <div class="space-y-4">
+                                @if (!_selectionState.DraftPath.IsDefaultOrEmpty && ShowOrdersForm)
+                                {
+                                    <div class="ui-surface-section space-y-3 p-3">
+                                        <div>
+                                            <p class="ui-type-overline mb-1 text-sky-400">Move in Progress</p>
+                                            <p class="text-sm text-slate-200">@GetPathDisplayString()</p>
+                                        </div>
+                                        <div class="flex gap-2">
+                                            <button class="ui-button-primary flex-1" @onclick="ConfirmMove">Confirm Move</button>
+                                            <button class="ui-button-control" @onclick="UndoMove">Undo</button>
+                                            <button class="ui-button-control" @onclick="CancelDraftPath">Cancel</button>
+                                        </div>
+                                    </div>
+                                }
                                 @if (_selectionState.SelectedSystem.HasValue && Session.Systems.FirstOrDefault(s => s.Coord
                             ==
                             _selectionState.SelectedSystem.Value) is { } selectedSystem)
@@ -294,21 +309,71 @@
             && !_selectionState.StagedMoveStacks.IsDefaultOrEmpty
             && _selectionState.ValidMoveTargets.Contains(coord))
         {
-            _orderDraftState = NexusGameplayPanelState.QueueMoveOrder(
-                _orderDraftState,
-                _selectionState.SelectedSystem.Value,
+            _selectionState = NexusGameplayPanelState.ApplyPathStep(
+                _selectionState,
                 coord,
-                _selectionState.StagedMoveStacks
+                Session,
+                Session.CurrentPlayer.PlayerId
             );
-            _selectionState = _selectionState with
-            {
-                StagedMoveStacks = ImmutableArray<NexusUnitStackGroup>.Empty,
-                ValidMoveTargets = [],
-            };
+
+            // Auto-confirm when no more valid hops (path complete or destination forced)
+            if (_selectionState.ValidMoveTargets.Count == 0)
+                ConfirmMove();
+
             return;
         }
 
         _selectionState = NexusGameplayPanelState.ApplySelectionRequest(_selectionState, request);
+    }
+
+    private void ConfirmMove()
+    {
+        if (_selectionState.DraftPath.IsDefaultOrEmpty || _selectionState.SelectedSystem is null)
+            return;
+
+        _orderDraftState = NexusGameplayPanelState.QueueMoveOrder(
+            _orderDraftState,
+            _selectionState.SelectedSystem.Value,
+            _selectionState.DraftPath,
+            _selectionState.StagedMoveStacks
+        );
+        _selectionState = NexusGameplayPanelState.ClearDraftPath(_selectionState);
+    }
+
+    private void UndoMove()
+    {
+        _selectionState = NexusGameplayPanelState.UndoPathStep(
+            _selectionState,
+            Session,
+            Session.CurrentPlayer.PlayerId
+        );
+    }
+
+    private void CancelDraftPath()
+    {
+        _selectionState = NexusGameplayPanelState.ClearDraftPath(_selectionState);
+    }
+
+    private string GetPathDisplayString()
+    {
+        if (_selectionState.SelectedSystem is null)
+            return "";
+
+        var parts = new List<string> { GetSystemDisplayName(_selectionState.SelectedSystem.Value) };
+        foreach (var coord in _selectionState.DraftPath)
+            parts.Add(GetSystemDisplayName(coord));
+
+        var suffix = _selectionState.ValidMoveTargets.Count > 0 ? " → ?" : "";
+        return string.Join(" → ", parts) + suffix;
+    }
+
+    private string GetSystemDisplayName(HexCoord coord)
+    {
+        if (CurrentPlayerContext.HomeCoord == coord)
+            return NexusHomeSystemNames.GetDisplayName(CurrentPlayerContext.DisplayName);
+        if (OpponentContext?.HomeCoord == coord)
+            return NexusHomeSystemNames.GetDisplayName(OpponentContext.DisplayName);
+        return NexusMapTopology.GetSectorDisplayName(coord);
     }
 
     private void HandleOrderDraftRequest(OrderDraftRequest request)

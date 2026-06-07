@@ -240,15 +240,12 @@ public static class NexusEngine
         {
             if (!NexusMap.IsValidCoord(order.From))
                 return NexusTurnOrdersRejected.InvalidCoord(order.From, "Source");
-            if (!NexusMap.IsValidCoord(order.To))
-                return NexusTurnOrdersRejected.InvalidCoord(order.To, "Destination");
-            if (!NexusMap.AreAdjacent(order.From, order.To))
-                return NexusTurnOrdersRejected.NonAdjacent(
-                    order.From,
-                    FormatSystem(state, playerId, order.From),
-                    order.To,
-                    FormatSystem(state, playerId, order.To)
-                );
+
+            // ── Path structure (adjacency, no cycles, no enemy waypoints) ──
+            var pathError = ValidateMovePath(state, order, opponentId);
+            if (pathError is not null)
+                return pathError;
+
             if (order.Stacks.Length == 0)
                 return NexusTurnOrdersRejected.EmptyMove();
 
@@ -346,6 +343,60 @@ public static class NexusEngine
                     FormatSystem(state, playerId, order.From),
                     order.To,
                     FormatSystem(state, playerId, order.To)
+                );
+
+            // ── Fleet move range ─────────────────────────────────────────────
+            var fleetMove = ComputeFleetMove(order.Stacks, designs);
+            if (order.Waypoints.Length > fleetMove)
+                return NexusTurnOrdersRejected.InvalidMovePath(
+                    $"Fleet can only move {fleetMove} sector(s), but path has {order.Waypoints.Length} step(s)."
+                );
+        }
+
+        return null;
+    }
+
+    private static NexusTurnOrdersRejected? ValidateMovePath(
+        NexusState state,
+        NexusMoveOrder order,
+        Guid opponentId
+    )
+    {
+        if (order.Waypoints.IsDefaultOrEmpty)
+            return NexusTurnOrdersRejected.InvalidMovePath(
+                "Path must contain at least one waypoint."
+            );
+
+        var visitedCoords = new HashSet<HexCoord> { order.From };
+        var prevCoord = order.From;
+        foreach (var waypoint in order.Waypoints)
+        {
+            if (!NexusMap.IsValidCoord(waypoint))
+                return NexusTurnOrdersRejected.InvalidCoord(waypoint, "waypoint");
+            if (!NexusMap.AreAdjacent(prevCoord, waypoint))
+                return NexusTurnOrdersRejected.InvalidMovePath(
+                    $"Step from {NexusMap.GetSectorDisplayName(prevCoord)} to {NexusMap.GetSectorDisplayName(waypoint)} is not adjacent."
+                );
+            if (!visitedCoords.Add(waypoint))
+                return NexusTurnOrdersRejected.InvalidMovePath("Path cannot revisit a system.");
+            prevCoord = waypoint;
+        }
+
+        for (var wi = 0; wi < order.Waypoints.Length - 1; wi++)
+        {
+            var waypointSystem = GetSystem(state, order.Waypoints[wi]);
+            if (waypointSystem is null)
+                return NexusTurnOrdersRejected.SystemNotFound(
+                    order.Waypoints[wi],
+                    NexusMap.GetSectorDisplayName(order.Waypoints[wi])
+                );
+            if (
+                waypointSystem
+                    .GetPlayerStacks(opponentId)
+                    .Any(s => s.Category is NexusUnitCategory.Strike or NexusUnitCategory.Capital)
+            )
+                return NexusTurnOrdersRejected.InvalidMovePath(
+                    $"Cannot move through {NexusMap.GetSectorDisplayName(order.Waypoints[wi])}: enemy fleet present."
                 );
         }
 
@@ -1240,6 +1291,27 @@ public static class NexusEngine
         foreach (var design in state.Players.SelectMany(p => p.Designs))
             lookup.TryAdd(design.DesignId, design);
         return lookup;
+    }
+
+    private static int ComputeFleetMove(
+        ImmutableArray<NexusUnitStackGroup> stacks,
+        Dictionary<Guid, NexusUnitDesign> designs
+    )
+    {
+        var minMove = int.MaxValue;
+        var found = false;
+        foreach (var stack in stacks)
+        {
+            if (!designs.TryGetValue(stack.DesignId, out var design))
+                continue;
+            var move = NexusHullBaselines.GetProfile(design).Move;
+            if (move > 0)
+            {
+                minMove = Math.Min(minMove, move);
+                found = true;
+            }
+        }
+        return found ? minMove : 0;
     }
 
     private static NexusPlayerState? GetPlayer(NexusState state, Guid playerId) =>
