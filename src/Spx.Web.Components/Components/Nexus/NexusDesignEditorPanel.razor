@@ -20,14 +20,16 @@
                         @foreach (var design in groupDesigns)
                         {
                             var profile = NexusHullBaselines.GetProfile(design);
-                            <li class="ui-list-item-row">
+                            <li class="ui-list-item-row items-start">
                                 <HoverTooltip>
                                     <Trigger>
-                                        <span class="flex min-w-0 flex-1 items-center gap-2">
-                                            <span class="truncate text-base text-slate-200">@design.Name</span>
-                                            <span class="ui-badge-energy shrink-0">@profile.Cost⚡</span>
-                                            <span class="ui-badge-slots shrink-0">@design.Modules.Sum(NexusModuleCosts.GetSlots)◻</span>
-                                            <span class="ml-auto shrink-0 text-sm text-slate-500">@GetModuleSummary(design)</span>
+                                        <span class="flex min-w-0 flex-1 flex-col gap-0.5">
+                                            <span class="flex items-center gap-2">
+                                                <span class="truncate text-base text-slate-200">@design.Name</span>
+                                                <span class="ui-badge-energy shrink-0">@profile.Cost⚡</span>
+                                                <span class="ui-badge-slots shrink-0">@design.Modules.Sum(NexusModuleCosts.GetSlots)◻</span>
+                                            </span>
+                                            <span class="text-sm text-slate-500">@GetModuleSummary(design)</span>
                                         </span>
                                     </Trigger>
                                     <Content>

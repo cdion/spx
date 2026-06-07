@@ -38,6 +38,30 @@ infra-reset-orleansdb:
         psql -h localhost -U "$username" -d orleansdb -c "TRUNCATE TABLE orleansstorage;" && \
     echo "==> Storage cleared. Restart the AppHost to drop in-memory activations."
 
+# Clear application tables from the prod appdb (preserves EF migration history)
+infra-prod-reset-appdb:
+    @echo "==> Clearing application tables from prod appdb on {{vm}}..."
+    ssh {{vm}} " \
+        PGUSER=\$(sudo {{container_cli}} exec systemd-postgres printenv POSTGRES_USER) && \
+        PGPASS=\$(sudo {{container_cli}} exec systemd-postgres printenv POSTGRES_PASSWORD) && \
+        sudo {{container_cli}} exec -e PGPASSWORD=\"\$PGPASS\" systemd-postgres \
+            psql -h localhost -U \"\$PGUSER\" -d appdb -c \
+            \"DO \\\$\\\$ DECLARE truncate_sql text; BEGIN SELECT 'TRUNCATE TABLE ' || string_agg(format('%I.%I', schemaname, tablename), ', ') || ' RESTART IDENTITY CASCADE;' INTO truncate_sql FROM pg_tables WHERE schemaname = 'public' AND tablename <> '__EFMigrationsHistory'; IF truncate_sql IS NOT NULL THEN EXECUTE truncate_sql; END IF; END \\\$\\\$;\""
+    @echo "==> Prod appdb cleared."
+
+# Clear Orleans grain storage from the prod orleansdb
+infra-prod-reset-orleansdb:
+    @echo "==> Clearing Orleans grain storage from prod orleansdb on {{vm}}..."
+    ssh {{vm}} " \
+        PGUSER=\$(sudo {{container_cli}} exec systemd-postgres printenv POSTGRES_USER) && \
+        PGPASS=\$(sudo {{container_cli}} exec systemd-postgres printenv POSTGRES_PASSWORD) && \
+        sudo {{container_cli}} exec -e PGPASSWORD=\"\$PGPASS\" systemd-postgres \
+            psql -h localhost -U \"\$PGUSER\" -d orleansdb -c \"TRUNCATE TABLE orleansstorage;\""
+    @echo "==> Prod orleansdb cleared."
+
+# Reset both prod databases — run this before a fresh deploy to wipe all state
+infra-prod-reset: infra-prod-reset-appdb infra-prod-reset-orleansdb
+
 # ── Bootstrap ──────────────────────────────────────────────────────────────────
 
 # Install Quadlet and config files onto the VM, then enable all services

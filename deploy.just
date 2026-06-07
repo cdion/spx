@@ -32,16 +32,12 @@ deploy-promote-prod:
     @{{container_cli}} image exists {{silo_image}} || {{container_cli}} pull {{silo_image}}
     {{container_cli}} tag {{silo_image}} {{deploy_silo_image}}
 
-# Publish and deliver the current build to the VM as the stable deployment tags
-deploy-release-prod: deploy-publish
-    @echo "==> Delivered {{app_version}} as {{deploy_tag}} to {{vm}}."
-
-# Send images to the VM over SSH (compress → pipe → load)
+# Send images to the VM over SSH (gzip compressed pipe)
 deploy-pull-images:
     @echo "==> Sending {{deploy_web_image}} to {{vm}}..."
-    {{container_cli}} save --compress {{deploy_web_image}} | ssh {{vm}} "sudo {{container_cli}} load"
+    {{container_cli}} save {{deploy_web_image}} | gzip | ssh {{vm}} "sudo {{container_cli}} load"
     @echo "==> Sending {{deploy_silo_image}} to {{vm}}..."
-    {{container_cli}} save --compress {{deploy_silo_image}} | ssh {{vm}} "sudo {{container_cli}} load"
+    {{container_cli}} save {{deploy_silo_image}} | gzip | ssh {{vm}} "sudo {{container_cli}} load"
 
 # Run pending EF Core migrations against appdb using the bundled efbundle executable
 deploy-migrate:
@@ -57,6 +53,6 @@ deploy-restart-app:
     @echo "==> Restarting services on {{vm}}..."
     ssh {{vm}} "sudo systemctl restart spx-silo spx-web caddy"
 
-# Full deploy: send images to the VM, run migrations, restart services
-deploy: deploy-pull-images deploy-migrate deploy-restart-app
+# Full deploy: build images, push to VM, run migrations, restart services
+deploy: deploy-publish deploy-migrate deploy-restart-app
     @echo "==> Done. https://mostlyhuman.ca"
