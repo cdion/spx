@@ -107,11 +107,13 @@ else
     }
 
     private string GetSystemDisplayName(HexCoord coord)
-        => NexusHomeSystemNames.GetSystemDisplayName(
-            coord,
-            CurrentPlayerHomeCoord,
-            CurrentPlayer?.DisplayName ?? "Player",
-            OpponentPlayerHomeCoord,
-            Opponent?.DisplayName ?? "Opponent"
-        );
+    {
+        if (CurrentPlayerHomeCoord.HasValue && coord == CurrentPlayerHomeCoord.Value)
+            return NexusHomeSystemNames.GetDisplayName(CurrentPlayer?.DisplayName ?? "Player");
+
+        if (OpponentPlayerHomeCoord.HasValue && coord == OpponentPlayerHomeCoord.Value)
+            return NexusHomeSystemNames.GetDisplayName(Opponent?.DisplayName ?? "Opponent");
+
+        return NexusMapTopology.GetSectorDisplayName(coord);
+    }
 }

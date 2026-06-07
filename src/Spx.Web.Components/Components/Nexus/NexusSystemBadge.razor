@@ -55,7 +55,13 @@
         if (!string.IsNullOrEmpty(DisplayName))
             return DisplayName;
 
-        return NexusHomeSystemNames.GetDisplayName(Coord, HomePlayerId, CurrentPlayer, Opponent);
+        if (HomePlayerId == CurrentPlayer.PlayerId)
+            return NexusHomeSystemNames.GetDisplayName(CurrentPlayer.DisplayName);
+
+        if (Opponent is not null && HomePlayerId == Opponent.PlayerId)
+            return NexusHomeSystemNames.GetDisplayName(Opponent.DisplayName);
+
+        return NexusMapTopology.GetSectorDisplayName(Coord);
     }
 
     private string GetAccentClass()
