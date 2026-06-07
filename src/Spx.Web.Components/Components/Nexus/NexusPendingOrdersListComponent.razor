@@ -10,28 +10,32 @@ else
             var order = MoveOrders[index];
             <li class="ui-list-item-row"
                 data-testid="@NexusGameplayPanelTestIds.PendingMoveOrder(index, order.From, order.To)">
-                <span class="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-sm text-slate-300">
-                    <span class="font-semibold text-slate-200">@GetSystemDisplayName(order.From)</span>
-                    @foreach (var waypoint in order.Waypoints)
-                    {
-                        <span class="text-slate-500">→</span>
-                        <span class="font-semibold text-slate-200">@GetSystemDisplayName(waypoint)</span>
-                    }
-                    @if (order.Waypoints.Length > 1)
-                    {
-                        <span class="text-xs text-slate-500">(@order.Waypoints.Length sectors)</span>
-                    }
-                    @foreach (var stack in order.Stacks)
-                    {
-                        var design = Designs.FirstOrDefault(d => d.DesignId == stack.DesignId);
-                        <NexusUnitBadge Category="@stack.Category"
-                                         DesignName="@stack.DesignName"
-                                         Count="@stack.Count"
-                                         RemainingHits="@stack.RemainingHits"
-                                         Design="@design"
-                                         FactionColor="@CurrentPlayer?.Faction" />
-                    }
-                </span>
+                <div class="flex flex-col gap-1 text-sm text-slate-300">
+                    <span class="flex flex-wrap items-center gap-x-1.5">
+                        <span class="font-semibold text-slate-200">@GetSystemDisplayName(order.From)</span>
+                        @foreach (var waypoint in order.Waypoints)
+                        {
+                            <span class="text-slate-500">→</span>
+                            <span class="font-semibold text-slate-200">@GetSystemDisplayName(waypoint)</span>
+                        }
+                        @if (order.Waypoints.Length > 1)
+                        {
+                            <span class="text-xs text-slate-500">(@order.Waypoints.Length sectors)</span>
+                        }
+                    </span>
+                    <div class="flex flex-col gap-0.5">
+                        @foreach (var stack in order.Stacks)
+                        {
+                            var design = Designs.FirstOrDefault(d => d.DesignId == stack.DesignId);
+                            <NexusUnitBadge Category="@stack.Category"
+                                             DesignName="@stack.DesignName"
+                                             Count="@stack.Count"
+                                             RemainingHits="@stack.RemainingHits"
+                                             Design="@design"
+                                             Player="@CurrentPlayer" />
+                        }
+                    </div>
+                </div>
                 @if (IsEditable)
                 {
                     <button class="ui-button-icon-danger" title="Remove order"
@@ -44,10 +48,19 @@ else
         }
         @foreach (var order in BuildOrders)
         {
-            var designName = GetDesignName(order.DesignId);
+            var buildDesign = Designs.FirstOrDefault(d => d.DesignId == order.DesignId);
+            var designName = buildDesign?.Name ?? order.DesignId.ToString("N")[..8];
             <li class="ui-list-item-row"
                 data-testid="@NexusGameplayPanelTestIds.PendingBuildOrder(designName)">
-                <span class="text-base text-slate-300">Build @order.Count× @designName</span>
+                <span class="text-sm text-slate-400">Build
+                    <NexusUnitBadge Category="@(buildDesign?.Hull ?? NexusUnitCategory.Capital)"
+                                     DesignName="@designName"
+                                     Design="@buildDesign"
+                                     Count="@order.Count"
+                                     ShowCost="true"
+                                     Cost="@(buildDesign is not null ? NexusHullBaselines.GetProfile(buildDesign).Cost * order.Count : null)"
+                                     Player="@CurrentPlayer" />
+                </span>
                     @if (IsEditable)
                     {
                         <button class="ui-button-icon-danger" title="Remove order"

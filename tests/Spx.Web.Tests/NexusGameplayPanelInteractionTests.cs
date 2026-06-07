@@ -547,7 +547,7 @@ public sealed class NexusGameplayPanelInteractionTests : TestContext
             TestIdSelector(NexusGameplayPanelTestIds.PendingBuildOrder("Fighter"))
         );
 
-        Assert.Contains("Build 1", buildOrder.TextContent);
+        Assert.Contains("Fighter", buildOrder.TextContent);
     }
 
     [Fact]

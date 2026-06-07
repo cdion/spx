@@ -3,8 +3,8 @@
 @{
     var baselineHits = NexusHullBaselines.GetBaseline(Category).Hits;
     var hitsPillClass = RemainingHits.HasValue ? NexusDomainLabels.GetHitsPillClass(Category, RemainingHits.Value) : "";
-    var pipFill = FactionColor.HasValue ? NexusFactionCss.PipFill(FactionColor.Value) : "rgba(148,163,184,0.7)";
-    var pipStroke = FactionColor.HasValue ? NexusFactionCss.PipStroke(FactionColor.Value) : "rgba(255,255,255,0.3)";
+    var pipFill = Player is not null ? NexusFactionCss.PipFill(Player.Faction) : "rgba(148,163,184,0.7)";
+    var pipStroke = Player is not null ? NexusFactionCss.PipStroke(Player.Faction) : "rgba(255,255,255,0.3)";
 }
 
 <HoverTooltip>
@@ -57,6 +57,6 @@
     public int? Cost { get; set; }
 
     [Parameter]
-    public NexusFactionColor? FactionColor { get; set; }
+    public NexusPlayerContext? Player { get; set; }
 
 }

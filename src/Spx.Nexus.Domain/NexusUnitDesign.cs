@@ -24,7 +24,7 @@ public static class NexusDefaultDesigns
                 DesignId = Guid.NewGuid(),
                 Name = "Light Freighter",
                 Hull = NexusUnitCategory.Capital,
-                Modules = [new Hangar(4)],
+                Modules = [new Hangar(2)],
             },
             new()
             {

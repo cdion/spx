@@ -9,7 +9,8 @@
     <NexusUnitBadge Category="@design.Hull"
                      DesignName="@Event.DesignName"
                      Design="@design"
-                     Count="@Event.Count" />
+                     Count="@Event.Count"
+                     Player="@Context.PlayerContext(Event.PlayerId)" />
     at
     <NexusSystemBadge Coord="@Event.System"
                        CurrentPlayer="@Context.CurrentPlayer"

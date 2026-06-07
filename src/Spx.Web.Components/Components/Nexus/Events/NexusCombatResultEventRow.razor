@@ -33,14 +33,16 @@
                         <NexusUnitBadge Category="@attackerDesign.Hull"
                                          DesignName="@roll.AttackerDesignName"
                                          Design="@attackerDesign"
-                                         RemainingHits="@roll.AttackerRemainingHits" />
+                                         RemainingHits="@roll.AttackerRemainingHits"
+                                         Player="@Context.PlayerContext(roll.AttackingPlayerId)" />
                     </div>
                     <div>
                         <span class="font-semibold @Context.PlayerNameClass(roll.TargetPlayerId.GetValueOrDefault())">@Context.PlayerName(roll.TargetPlayerId.GetValueOrDefault())</span>
                         <NexusUnitBadge Category="@targetDesign.Hull"
                                          DesignName="@roll.TargetDesignName"
                                          Design="@targetDesign"
-                                         RemainingHits="@roll.TargetRemainingHits" />
+                                         RemainingHits="@roll.TargetRemainingHits"
+                                         Player="@Context.PlayerContext(roll.TargetPlayerId.GetValueOrDefault())" />
                     </div>
                     <div class="col-span-2 text-sm whitespace-nowrap">
                         Attack <span class="tabular-nums">@roll.Roll</span> vs <span class="tabular-nums">@roll.Threshold</span>
@@ -66,7 +68,8 @@
                             <NexusUnitBadge Category="@lossDesign.Hull"
                                              DesignName="@loss.DesignName"
                                              Design="@lossDesign"
-                                             Count="@loss.Count" />
+                                             Count="@loss.Count"
+                                             Player="@Context.PlayerContext(group.Key)" />
                         }
                         @if (group != lossGroups.Last()) { <text>; </text> }
                     }

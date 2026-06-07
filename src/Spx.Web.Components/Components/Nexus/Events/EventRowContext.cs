@@ -27,6 +27,15 @@ public sealed record EventRowContext(
     /// The viewing player gets the current faction color;
     /// the opponent gets the opponent color; others default to current.
     /// </summary>
+    public NexusPlayerContext? PlayerContext(Guid playerId)
+    {
+        if (playerId == CurrentPlayer.PlayerId)
+            return CurrentPlayer;
+        if (Opponent is not null && playerId == Opponent.PlayerId)
+            return Opponent;
+        return null;
+    }
+
     public string PlayerNameClass(Guid playerId)
     {
         if (playerId == CurrentPlayer.PlayerId)
