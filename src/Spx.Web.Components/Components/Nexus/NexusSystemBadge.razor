@@ -6,7 +6,7 @@
 }
 
 <span class="inline-flex items-center gap-1 @accentClass">
-    @if (ShowHomeStar && HomePlayerId.HasValue)
+    @if (ShowHomeStar && IsHomeSystem)
     {
         <span class="inline-flex h-4 w-4 items-center justify-center rounded-full border border-white/15 bg-white/5"
               aria-label="Home system">
@@ -30,9 +30,6 @@
     public string? DisplayName { get; set; }
 
     [Parameter]
-    public Guid? HomePlayerId { get; set; }
-
-    [Parameter]
     public Guid? ControlOwner { get; set; }
 
     [Parameter, EditorRequired]
@@ -50,16 +47,28 @@
     [Parameter]
     public bool ShowHomeStar { get; set; }
 
+    private bool IsHomeSystem =>
+        Coord == CurrentPlayer.HomeCoord
+        || (Opponent?.HomeCoord is { } oc && Coord == oc);
+
+    private NexusPlayerContext? HomeOwner =>
+        Coord == CurrentPlayer.HomeCoord ? CurrentPlayer
+        : Opponent is not null && Coord == Opponent.HomeCoord ? Opponent
+        : null;
+
+    private NexusPlayerContext? ControlOwnerContext =>
+        ControlOwner is null ? null
+        : ControlOwner == CurrentPlayer.PlayerId ? CurrentPlayer
+        : Opponent is not null && ControlOwner == Opponent.PlayerId ? Opponent
+        : null;
+
     private string GetDisplayName()
     {
         if (!string.IsNullOrEmpty(DisplayName))
             return DisplayName;
 
-        if (HomePlayerId == CurrentPlayer.PlayerId)
-            return NexusHomeSystemNames.GetDisplayName(CurrentPlayer.DisplayName);
-
-        if (Opponent is not null && HomePlayerId == Opponent.PlayerId)
-            return NexusHomeSystemNames.GetDisplayName(Opponent.DisplayName);
+        if (HomeOwner is { } owner)
+            return NexusHomeSystemNames.GetDisplayName(owner.DisplayName);
 
         return NexusMapTopology.GetSectorDisplayName(Coord);
     }
@@ -67,17 +76,11 @@
     private string GetAccentClass()
     {
         // Home system takes priority over control owner
-        if (HomePlayerId == CurrentPlayer.PlayerId)
-            return NexusFactionCss.AccentText(CurrentPlayer.Faction);
+        if (HomeOwner is { } home)
+            return NexusFactionCss.AccentText(home.Faction);
 
-        if (Opponent is not null && HomePlayerId == Opponent.PlayerId)
-            return NexusFactionCss.AccentText(Opponent.Faction);
-
-        if (ControlOwner == CurrentPlayer.PlayerId)
-            return NexusFactionCss.AccentText(CurrentPlayer.Faction);
-
-        if (Opponent is not null && ControlOwner == Opponent.PlayerId)
-            return NexusFactionCss.AccentText(Opponent.Faction);
+        if (ControlOwnerContext is { } control)
+            return NexusFactionCss.AccentText(control.Faction);
 
         return "text-slate-300";
     }

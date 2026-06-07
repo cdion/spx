@@ -5,5 +5,6 @@ namespace Spx.Web.Components.Nexus;
 public sealed record NexusPlayerContext(
     Guid PlayerId,
     string DisplayName,
-    NexusFactionColor Faction
+    NexusFactionColor Faction,
+    HexCoord? HomeCoord = null
 );

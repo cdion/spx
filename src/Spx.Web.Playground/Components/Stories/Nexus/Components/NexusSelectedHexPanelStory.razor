@@ -16,8 +16,8 @@
 </div>
 
 <NexusSelectedHexPanel System="@_active.System"
-                       CurrentPlayer="@(new NexusPlayerContext(NexusStoryFixtures.Player1Id, "Captain Red", NexusFactionColor.Red))"
-                       Opponent="@(new NexusPlayerContext(NexusStoryFixtures.Player2Id, "Captain Blue", NexusFactionColor.Blue))"
+                       CurrentPlayer="@(new NexusPlayerContext(NexusStoryFixtures.Player1Id, "Captain Red", NexusFactionColor.Red, HomeCoord: NexusMapTopology.Player1HomeCoord))"
+                       Opponent="@(new NexusPlayerContext(NexusStoryFixtures.Player2Id, "Captain Blue", NexusFactionColor.Blue, HomeCoord: NexusMapTopology.Player2HomeCoord))"
                        CurrentPlayerGateProgress="@_active.GateProgress" IsEditable="true"
                        ProjectedEnergy="15" AvailableStacks="@_active.System.GetPlayerMovableStacks(NexusStoryFixtures.Player1Id)"
                        PendingBuildOrders="@_pendingBuildOrders"

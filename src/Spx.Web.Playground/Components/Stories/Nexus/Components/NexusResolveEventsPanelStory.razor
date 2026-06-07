@@ -79,9 +79,9 @@
     private static readonly Guid _player2Id = Guid.Parse("bbbb0000-0000-0000-0000-000000000002");
 
     private static readonly NexusPlayerContext _player1Context =
-        new(_player1Id, "Red Commander", NexusFactionColor.Red);
+        new(_player1Id, "Red Commander", NexusFactionColor.Red, HomeCoord: NexusMapTopology.Player1HomeCoord);
     private static readonly NexusPlayerContext _player2Context =
-        new(_player2Id, "Blue Admiral", NexusFactionColor.Blue);
+        new(_player2Id, "Blue Admiral", NexusFactionColor.Blue, HomeCoord: NexusMapTopology.Player2HomeCoord);
 
     private static readonly Guid FighterId = Guid.Parse("cccc0000-0000-0000-0000-000000000001");
     private static readonly Guid CarrierId = Guid.Parse("cccc0000-0000-0000-0000-000000000002");

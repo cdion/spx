@@ -12,7 +12,7 @@
     </div>
 
     <NexusPendingOrdersListComponent MoveOrders="@_moveOrders" BuildOrders="@_buildOrders" BeginNexusGate="@_gate"
-                                     CurrentPlayer="@(new NexusPlayerContext(default, "Player One", NexusFactionColor.Red))"
+                                     CurrentPlayer="@(new NexusPlayerContext(default, "Player One", NexusFactionColor.Red, HomeCoord: NexusMapTopology.Player1HomeCoord))"
                                      CurrentPlayerHomeCoord="@NexusMapTopology.Player1HomeCoord"
                                      Designs="@_designs" IsEditable
                                      OnPendingOrderRequested="HandlePendingOrderRequest" />

@@ -74,13 +74,7 @@ else
     public NexusPlayerContext? CurrentPlayer { get; set; }
 
     [Parameter]
-    public HexCoord? CurrentPlayerHomeCoord { get; set; }
-
-    [Parameter]
     public NexusPlayerContext? Opponent { get; set; }
-
-    [Parameter]
-    public HexCoord? OpponentPlayerHomeCoord { get; set; }
 
     [Parameter]
     public ImmutableArray<NexusUnitDesign> Designs { get; set; } = [];
@@ -108,11 +102,11 @@ else
 
     private string GetSystemDisplayName(HexCoord coord)
     {
-        if (CurrentPlayerHomeCoord.HasValue && coord == CurrentPlayerHomeCoord.Value)
-            return NexusHomeSystemNames.GetDisplayName(CurrentPlayer?.DisplayName ?? "Player");
+        if (CurrentPlayer?.HomeCoord is { } hc && coord == hc)
+            return NexusHomeSystemNames.GetDisplayName(CurrentPlayer.DisplayName);
 
-        if (OpponentPlayerHomeCoord.HasValue && coord == OpponentPlayerHomeCoord.Value)
-            return NexusHomeSystemNames.GetDisplayName(Opponent?.DisplayName ?? "Opponent");
+        if (Opponent?.HomeCoord is { } oc && coord == oc)
+            return NexusHomeSystemNames.GetDisplayName(Opponent.DisplayName);
 
         return NexusMapTopology.GetSectorDisplayName(coord);
     }

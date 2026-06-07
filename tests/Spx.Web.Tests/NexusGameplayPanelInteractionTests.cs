@@ -32,7 +32,7 @@ public sealed class NexusGameplayPanelInteractionTests : TestContext
         );
 
         Assert.Contains(
-            "(2,-2)",
+            "Captain Red's Home System",
             cut.Find(TestIdSelector(NexusGameplayPanelTestIds.ResolveEventRow(0))).TextContent
         );
     }

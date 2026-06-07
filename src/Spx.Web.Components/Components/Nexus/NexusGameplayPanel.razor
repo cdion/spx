@@ -94,8 +94,7 @@
                                                                      Designs="@ActivePlayerDesigns"
                                                                      CurrentPlayer="@CurrentPlayerContext"
                                                                      Opponent="@OpponentContext"
-                                                                     CurrentPlayerHomeCoord="@CurrentPlayerHomeCoord"
-                                                                     OpponentPlayerHomeCoord="@OpponentPlayerHomeCoord"
+
                                                                      BeginNexusGate="@_orderDraftState.PendingBeginNexusGate" IsEditable="@ShowOrdersForm"
                                                                      OnPendingOrderRequested="HandlePendingOrderRequest" />
                                 }
@@ -231,10 +230,14 @@
     };
 
     private NexusPlayerContext CurrentPlayerContext =>
-        new(Session.CurrentPlayer.PlayerId, CurrentPlayerName, Session.CurrentPlayer.Faction);
+        new(Session.CurrentPlayer.PlayerId, CurrentPlayerName, Session.CurrentPlayer.Faction,
+            HomeCoord: Session.Systems.FirstOrDefault(s => s.HomePlayerId == Session.CurrentPlayer.PlayerId)?.Coord);
 
     private NexusPlayerContext? OpponentContext =>
-        Session.Opponent is { } opp ? new(opp.PlayerId, OpponentPlayerName, opp.Faction) : null;
+        Session.Opponent is { } opp
+            ? new(opp.PlayerId, OpponentPlayerName, opp.Faction,
+                HomeCoord: Session.Systems.FirstOrDefault(s => s.HomePlayerId == opp.PlayerId)?.Coord)
+            : null;
 
     private string CurrentPlayerName => Lobby.CurrentPlayerName;
 
@@ -242,11 +245,7 @@
         Lobby.Players.FirstOrDefault(p => p.PlayerId != Lobby.CurrentPlayerId)?.Name
         ?? "your opponent";
 
-    private HexCoord? CurrentPlayerHomeCoord =>
-        Session.Systems.FirstOrDefault(s => s.HomePlayerId == Session.CurrentPlayer.PlayerId)?.Coord;
 
-    private HexCoord? OpponentPlayerHomeCoord =>
-        Session.Systems.FirstOrDefault(s => s.HomePlayerId == Session.Opponent.PlayerId)?.Coord;
 
     private ImmutableArray<NexusUnitDesign> ActivePlayerDesigns =>
         Session.CurrentPlayer.Designs.Where(d => !d.IsDeleted).ToImmutableArray();
