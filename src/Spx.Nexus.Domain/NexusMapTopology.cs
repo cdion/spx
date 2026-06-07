@@ -69,8 +69,6 @@ public static class NexusMapTopology
     {
         if (coord == NexusCoord)
             return "Nexus";
-        if (coord == Player1HomeCoord || coord == Player2HomeCoord)
-            return "home system";
         return SectorNames.TryGetValue(coord, out var name) ? name : coord.ToString();
     }
 }

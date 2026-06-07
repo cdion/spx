@@ -2,8 +2,15 @@ using Spx.Nexus.Domain;
 
 namespace Spx.Web.Components.Nexus;
 
+/// <summary>
+/// Shared source of truth for home system display names.
+/// Produces "{Player Name}'s Home System" when the viewing player's
+/// home coord or a HomePlayerId is known; falls back to the sector name.
+/// </summary>
 public static class NexusHomeSystemNames
 {
+    /// <summary>Replaces "Your Home System" / "Opponent Home System" placeholders
+    /// with actual player names. Used for event feed text post-processing.</summary>
     public static string ReplacePerspectiveLabels(
         string text,
         string currentPlayerName,
@@ -11,15 +18,16 @@ public static class NexusHomeSystemNames
     ) =>
         text.Replace(
                 "Your Home System",
-                CurrentPlayerSystem(currentPlayerName),
+                CurrentPlayerHomeSystem(currentPlayerName),
                 StringComparison.Ordinal
             )
             .Replace(
                 "Opponent Home System",
-                OpponentPlayerSystem(opponentPlayerName),
+                OpponentPlayerHomeSystem(opponentPlayerName),
                 StringComparison.Ordinal
             );
 
+    /// <summary>Resolves a coord's display name by comparing against known home coords.</summary>
     public static string GetSystemDisplayName(
         HexCoord coord,
         HexCoord? currentPlayerHomeCoord,
@@ -29,17 +37,35 @@ public static class NexusHomeSystemNames
     )
     {
         if (currentPlayerHomeCoord.HasValue && coord == currentPlayerHomeCoord.Value)
-            return CurrentPlayerSystem(currentPlayerName);
+            return CurrentPlayerHomeSystem(currentPlayerName);
 
         if (opponentPlayerHomeCoord.HasValue && coord == opponentPlayerHomeCoord.Value)
-            return OpponentPlayerSystem(opponentPlayerName);
+            return OpponentPlayerHomeSystem(opponentPlayerName);
 
         return NexusMapTopology.GetSectorDisplayName(coord);
     }
 
-    public static string CurrentPlayerSystem(string currentPlayerName) =>
-        $"{currentPlayerName}'s System";
+    /// <summary>Resolves a coord's display name from HomePlayerId + player contexts.
+    /// Used by NexusSystemBadge and any component rendering a system badge.</summary>
+    public static string GetDisplayName(
+        HexCoord coord,
+        Guid? homePlayerId,
+        NexusPlayerContext currentPlayer,
+        NexusPlayerContext? opponent
+    )
+    {
+        if (homePlayerId == currentPlayer.PlayerId)
+            return CurrentPlayerHomeSystem(currentPlayer.DisplayName);
 
-    public static string OpponentPlayerSystem(string opponentPlayerName) =>
-        $"{opponentPlayerName}'s System";
+        if (opponent is not null && homePlayerId == opponent.PlayerId)
+            return OpponentPlayerHomeSystem(opponent.DisplayName);
+
+        return NexusMapTopology.GetSectorDisplayName(coord);
+    }
+
+    public static string CurrentPlayerHomeSystem(string playerName) =>
+        $"{playerName}'s Home System";
+
+    public static string OpponentPlayerHomeSystem(string playerName) =>
+        $"{playerName}'s Home System";
 }

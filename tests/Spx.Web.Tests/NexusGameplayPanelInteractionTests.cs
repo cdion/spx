@@ -32,7 +32,7 @@ public sealed class NexusGameplayPanelInteractionTests : TestContext
         );
 
         Assert.Contains(
-            "home system",
+            "(2,-2)",
             cut.Find(TestIdSelector(NexusGameplayPanelTestIds.ResolveEventRow(0))).TextContent
         );
     }
@@ -171,7 +171,7 @@ public sealed class NexusGameplayPanelInteractionTests : TestContext
             )
         );
 
-        Assert.Contains("Captain Red's System", pendingOrder.TextContent);
+        Assert.Contains("Captain Red's Home System", pendingOrder.TextContent);
         Assert.Contains("Carrier", pendingOrder.TextContent);
     }
 
@@ -328,8 +328,8 @@ public sealed class NexusGameplayPanelInteractionTests : TestContext
                 )
         );
 
-        Assert.Contains("Captain Red's System", cut.Markup);
-        Assert.Contains("Captain Blue's System", cut.Markup);
+        Assert.Contains("Captain Red's Home System", cut.Markup);
+        Assert.Contains("Captain Blue's Home System", cut.Markup);
         Assert.DoesNotContain("Your Home System", cut.Markup);
         Assert.DoesNotContain("Opponent Home System", cut.Markup);
     }
