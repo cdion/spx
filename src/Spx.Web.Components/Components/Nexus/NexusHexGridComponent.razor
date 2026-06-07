@@ -1,7 +1,7 @@
 @using System.Collections.Immutable
 
-<div class="relative h-full w-full select-none">
-    <svg viewBox="@ViewBox" class="h-full w-full" xmlns="http://www.w3.org/2000/svg"
+<div class="relative w-full select-none">
+    <svg viewBox="@ViewBox" class="w-full" xmlns="http://www.w3.org/2000/svg"
          data-testid="@NexusGameplayPanelTestIds.MapBackground" @onclick="OnBackgroundClicked">
         @* Pass 1: Hex cells *@
         @foreach (var system in Systems)

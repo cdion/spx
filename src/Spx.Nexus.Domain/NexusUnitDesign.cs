@@ -2,6 +2,40 @@ using Orleans;
 
 namespace Spx.Nexus.Domain;
 
+/// <summary>Factory for the three starter designs given to every player at game start.</summary>
+public static class NexusDefaultDesigns
+{
+    public static List<NexusUnitDesign> Create() =>
+        [
+            new()
+            {
+                DesignId = Guid.NewGuid(),
+                Name = "Fighter",
+                Hull = NexusUnitCategory.Strike,
+                Modules =
+                [
+                    new Battery(NexusUnitCategory.Strike),
+                    new Battery(NexusUnitCategory.Capital),
+                    new Dock(),
+                ],
+            },
+            new()
+            {
+                DesignId = Guid.NewGuid(),
+                Name = "Light Freighter",
+                Hull = NexusUnitCategory.Capital,
+                Modules = [new Hangar(4)],
+            },
+            new()
+            {
+                DesignId = Guid.NewGuid(),
+                Name = "Light Tank",
+                Hull = NexusUnitCategory.Planetary,
+                Modules = [new Battery(NexusUnitCategory.Planetary), new Control(), new Dock()],
+            },
+        ];
+}
+
 /// <summary>The three unit categories used for combat targeting and carry mechanics.</summary>
 public enum NexusUnitCategory
 {
@@ -326,9 +360,9 @@ public static class NexusDesignConstraints
         foreach (var category in Enum.GetValues<NexusUnitCategory>())
         {
             if (modules.OfType<Battery>().Count(b => b.Category == category) > 1)
-                return $"Duplicate Battery({category}) module.";
+                return $"Duplicate Battery ({category}) module.";
             if (modules.OfType<Vanguard>().Count(v => v.Category == category) > 1)
-                return $"Duplicate Vanguard({category}) module.";
+                return $"Duplicate Vanguard ({category}) module.";
             if (
                 modules.OfType<Seeker>().Any(s => s.Category == category)
                 && modules.OfType<Scatter>().Any(s => s.Category == category)
@@ -380,14 +414,14 @@ public static class NexusDesignConstraints
                 && bCat == category
                 && existing.OfType<Battery>().Any(b => b.Category == category)
             )
-                return $"Duplicate Battery({category}) module.";
+                return $"Duplicate Battery ({category}) module.";
 
             if (
                 candidate is Vanguard { Category: var vCat }
                 && vCat == category
                 && existing.OfType<Vanguard>().Any(v => v.Category == category)
             )
-                return $"Duplicate Vanguard({category}) module.";
+                return $"Duplicate Vanguard ({category}) module.";
 
             if (
                 candidate is Seeker { Category: var sCat }

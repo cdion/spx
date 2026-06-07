@@ -19,9 +19,8 @@
 
 @* Main layout *@
 <div class="mt-4 flex min-h-0 flex-col gap-4 xl:flex-row">
-    <section class="ui-surface-section flex min-h-0 min-w-0 flex-col p-4 lg:p-5 xl:flex-[3_1_0%]">
-        <div class="min-h-0 flex-1">
-            <NexusHexGridComponent Systems="@Session.Systems"
+    <section class="ui-surface-section p-2 xl:flex-[3_1_0%] xl:self-start">
+        <NexusHexGridComponent Systems="@Session.Systems"
                                    CurrentPlayer="@CurrentPlayerContext"
                                    Opponent="@OpponentContext"
                                    CurrentPlayerGateProgress="@Session.CurrentPlayer.GateProgress"
@@ -30,7 +29,6 @@
                                    ValidMoveTargets="@_selectionState.ValidMoveTargets" EventFocusSystems="@ActiveEventFocusSystems"
                                    EventFocusFrom="@ActiveEventFocusFrom" EventFocusTo="@ActiveEventFocusTo"
                                    OnSelectionRequested="HandleSelectionRequest" />
-        </div>
     </section>
 
     <aside class="flex min-h-0 min-w-0 flex-col gap-4 xl:flex-[2_1_0%]">

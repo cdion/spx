@@ -56,6 +56,9 @@ dev-run:
 dev-watch:
     # Kill previous scope so systemd cleans up the entire cgroup
     systemctl --user stop spx-apphost 2>/dev/null || true
+    systemctl --user stop spx-apphost.scope 2>/dev/null || true
+    systemctl --user reset-failed spx-apphost 2>/dev/null || true
+    systemctl --user reset-failed spx-apphost.scope 2>/dev/null || true
     systemd-run --user --unit=spx-apphost --scope \
         -p Delegate=yes \
         -- \
@@ -66,6 +69,9 @@ dev-watch:
 dev-watch-playground:
     # Kill previous scope so systemd cleans up the entire cgroup
     systemctl --user stop spx-playground 2>/dev/null || true
+    systemctl --user stop spx-playground.scope 2>/dev/null || true
+    systemctl --user reset-failed spx-playground 2>/dev/null || true
+    systemctl --user reset-failed spx-playground.scope 2>/dev/null || true
     systemd-run --user --unit=spx-playground --scope \
         -p Delegate=yes \
         -- \

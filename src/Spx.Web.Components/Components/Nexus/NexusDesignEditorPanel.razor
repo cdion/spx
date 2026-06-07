@@ -318,6 +318,7 @@
     {
         _hull = hull;
         _modules.Clear();
+        ReconcileAddRow();
         Revalidate();
     }
 
@@ -325,13 +326,26 @@
     {
         _modules.Add(BuildModule(_addModuleType, _addModuleCategory, Math.Clamp(_addModuleN, AddModuleNMin, AddModuleNMax)));
         _modules.Sort((a, b) => a.GetType().Name.CompareTo(b.GetType().Name));
+        ReconcileAddRow();
         Revalidate();
     }
 
     private void RemoveModule(int index)
     {
         _modules.RemoveAt(index);
+        ReconcileAddRow();
         Revalidate();
+    }
+
+    private void ReconcileAddRow()
+    {
+        var availableTypes = AvailableModuleTypes.ToList();
+        if (availableTypes.Count > 0 && !availableTypes.Contains(_addModuleType))
+            _addModuleType = availableTypes[0];
+
+        var availableCategories = AvailableCategories.ToList();
+        if (availableCategories.Count > 0 && !availableCategories.Contains(_addModuleCategory))
+            _addModuleCategory = availableCategories[0];
     }
 
     private void Revalidate()

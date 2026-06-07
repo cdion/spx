@@ -510,6 +510,40 @@ public class NexusGameEngineInitTests
     }
 
     [Fact]
+    public void Initialize_PlayersReceiveThreeDefaultDesigns()
+    {
+        var s = MakeState();
+        Assert.All(
+            s.Players,
+            p =>
+            {
+                Assert.Equal(3, p.Designs.Count);
+                Assert.Single(
+                    p.Designs,
+                    d => d.Name == "Fighter" && d.Hull == NexusUnitCategory.Strike
+                );
+                Assert.Single(
+                    p.Designs,
+                    d => d.Name == "Light Freighter" && d.Hull == NexusUnitCategory.Capital
+                );
+                Assert.Single(
+                    p.Designs,
+                    d => d.Name == "Light Tank" && d.Hull == NexusUnitCategory.Planetary
+                );
+            }
+        );
+    }
+
+    [Fact]
+    public void Initialize_DefaultDesignIdsAreDistinctAcrossPlayers()
+    {
+        var s = MakeState();
+        var p1Ids = s.Players[0].Designs.Select(d => d.DesignId).ToHashSet();
+        var p2Ids = s.Players[1].Designs.Select(d => d.DesignId).ToHashSet();
+        Assert.Empty(p1Ids.Intersect(p2Ids));
+    }
+
+    [Fact]
     public void Initialize_RequiresExactlyTwoPlayers()
     {
         var state = new NexusState();

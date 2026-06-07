@@ -51,6 +51,7 @@ public static class NexusEngine
                         Faction = factions[i],
                         Energy = 5,
                         IsActive = true,
+                        Designs = NexusDefaultDesigns.Create(),
                     }
             )
             .ToList();
