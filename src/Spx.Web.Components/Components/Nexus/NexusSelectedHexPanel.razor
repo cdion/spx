@@ -117,11 +117,11 @@
                                 <div class="flex items-center gap-2 @GetBuildRowClass(design, count, canAdd)"
                                      data-testid="@GetBuildButtonTestId(design)">
                                     <div class="min-w-0 flex-1">
-                                        <NexusUnitBadge Category="design.Hull"
-                                                         DesignName="design.Name"
-                                                         Design="design"
+                                        <NexusUnitBadge Category="@design.Hull"
+                                                         DesignName="@design.Name"
+                                                         Design="@design"
                                                          ShowCost="true"
-                                                         Cost="cost" />
+                                                         Cost="@cost" />
                                     </div>
                                     <div class="flex shrink-0 items-center gap-1">
                                         <button type="button" class="ui-button-icon" disabled="@(count <= 0)"

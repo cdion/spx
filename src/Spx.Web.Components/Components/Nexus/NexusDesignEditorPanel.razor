@@ -24,16 +24,14 @@
                                 <HoverTooltip>
                                     <Trigger>
                                         <span class="flex min-w-0 flex-1 items-center gap-2">
-                                            <span class="flex min-w-0 flex-1 items-center gap-2 truncate">
-                                                <span class="truncate text-base text-slate-200">@design.Name</span>
-                                                <span class="ui-inline-badge shrink-0 border-amber-400/30 bg-amber-500/10 text-amber-200">@profile.Cost⚡</span>
-                                                <span class="ui-inline-badge shrink-0 border-sky-400/30 bg-sky-400/10 text-sky-200">@design.Modules.Sum(NexusModuleCosts.GetSlots)◻</span>
-                                            </span>
-                                            <span class="shrink-0 text-sm text-slate-500">@GetModuleSummary(design)</span>
+                                            <span class="truncate text-base text-slate-200">@design.Name</span>
+                                            <span class="ui-inline-badge shrink-0 border-amber-400/30 bg-amber-500/10 text-amber-200">@profile.Cost⚡</span>
+                                            <span class="ui-inline-badge shrink-0 border-sky-400/30 bg-sky-400/10 text-sky-200">@design.Modules.Sum(NexusModuleCosts.GetSlots)◻</span>
+                                            <span class="ml-auto shrink-0 text-sm text-slate-500">@GetModuleSummary(design)</span>
                                         </span>
                                     </Trigger>
                                     <Content>
-                                        <NexusUnitProfileCard Category="design.Hull" Design="design" Name="@design.Name" />
+                                        <NexusUnitProfileCard Category="@design.Hull" Design="@design" Name="@design.Name" />
                                     </Content>
                                 </HoverTooltip>
                                 <button type="button" class="ui-button-icon-danger shrink-0" title="Delete design"
