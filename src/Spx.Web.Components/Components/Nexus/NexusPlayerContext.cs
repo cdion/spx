@@ -6,5 +6,5 @@ public sealed record NexusPlayerContext(
     Guid PlayerId,
     string DisplayName,
     NexusFactionColor Faction,
-    HexCoord? HomeCoord = null
+    HexCoord HomeCoord
 );

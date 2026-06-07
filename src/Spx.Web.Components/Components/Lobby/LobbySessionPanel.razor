@@ -122,12 +122,16 @@ else
 
     private NexusPlayerContext? TimelineCurrentPlayer =>
         ResolvedSessionState.Session is { } s
-            ? new NexusPlayerContext(s.CurrentPlayer.PlayerId, string.Empty, s.CurrentPlayer.Faction)
+            ? new NexusPlayerContext(
+                s.CurrentPlayer.PlayerId, string.Empty, s.CurrentPlayer.Faction,
+                s.Systems.First(sys => sys.HomePlayerId == s.CurrentPlayer.PlayerId).Coord)
             : null;
 
     private NexusPlayerContext? TimelineOpponent =>
         ResolvedSessionState.Session?.Opponent is { } o
-            ? new NexusPlayerContext(o.PlayerId, string.Empty, o.Faction)
+            ? new NexusPlayerContext(
+                o.PlayerId, string.Empty, o.Faction,
+                ResolvedSessionState.Session.Systems.First(sys => sys.HomePlayerId == o.PlayerId).Coord)
             : null;
 
     private bool HasMessagesShell => MessagesState is not null && MessagesCallbacks is not null;

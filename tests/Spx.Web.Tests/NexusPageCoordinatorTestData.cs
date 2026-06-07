@@ -101,7 +101,10 @@ internal static class GamePageCoordinatorTestData
         new(
             gameId,
             roundNumber,
-            [],
+            [
+                CreateSystem(CurrentPlayerHomeCoord, homePlayerId: CurrentPlayerId),
+                CreateSystem(NexusMapTopology.Player2HomeCoord, homePlayerId: OpponentPlayerId),
+            ],
             new NexusPlayerView(
                 CurrentPlayerId,
                 NexusFactionColor.Red,
