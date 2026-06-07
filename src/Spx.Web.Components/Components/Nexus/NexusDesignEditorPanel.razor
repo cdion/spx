@@ -6,7 +6,7 @@
     @if (Designs.Length > 0)
     {
         <section class="space-y-3">
-            <p class="ui-type-overline">Your Designs</p>
+            <p class="ui-type-overline mb-1">Your Designs</p>
             @foreach (var group in HullGroups)
             {
                 var groupDesigns = Designs.Where(d => d.Hull == group.Hull).ToList();
@@ -24,7 +24,11 @@
                                 <HoverTooltip>
                                     <Trigger>
                                         <span class="flex min-w-0 flex-1 items-center gap-2">
-                                            <span class="min-w-0 flex-1 truncate text-base text-slate-200">@design.Name <span class="ml-1 text-yellow-400/80">@profile.Cost⚡</span></span>
+                                            <span class="flex min-w-0 flex-1 items-center gap-2 truncate">
+                                                <span class="truncate text-base text-slate-200">@design.Name</span>
+                                                <span class="ui-inline-badge shrink-0 border-amber-400/30 bg-amber-500/10 text-amber-200">@profile.Cost⚡</span>
+                                                <span class="ui-inline-badge shrink-0 border-sky-400/30 bg-sky-400/10 text-sky-200">@design.Modules.Sum(NexusModuleCosts.GetSlots)◻</span>
+                                            </span>
                                             <span class="shrink-0 text-sm text-slate-500">@GetModuleSummary(design)</span>
                                         </span>
                                     </Trigger>
@@ -49,7 +53,7 @@
 
     @* Create form *@
     <section class="space-y-4">
-        <p class="ui-type-overline">New Design</p>
+        <p class="ui-type-overline mb-1">New Design</p>
 
         <div class="space-y-3">
 
@@ -96,7 +100,7 @@
                             <li class="flex items-center justify-between gap-2 rounded-xl border border-white/10 bg-slate-950/60 px-3 py-2">
                                 <span class="text-base text-slate-300">@GetModuleLabel(mod)</span>
                                 <span class="ml-auto flex shrink-0 items-center gap-1.5">
-                                    <span class="ui-inline-badge border-amber-400/30 bg-amber-500/10 text-amber-200">⚡@NexusModuleCosts.GetCost(mod)</span>
+                                    <span class="ui-inline-badge border-amber-400/30 bg-amber-500/10 text-amber-200">@NexusModuleCosts.GetCost(mod)⚡</span>
                                     <span class="ui-inline-badge border-sky-400/30 bg-sky-400/10 text-sky-200">@FormatSlotCost(NexusModuleCosts.GetSlots(mod))</span>
                                 </span>
                                 <button type="button" class="ui-button-icon-danger shrink-0" title="Remove module"
@@ -147,7 +151,7 @@
                         var draftModule = BuildModule(_addModuleType, _addModuleCategory, Math.Clamp(_addModuleN, AddModuleNMin, AddModuleNMax));
                     }
                     <div class="flex shrink-0 items-center gap-1 self-end pb-1.5">
-                        <span class="ui-inline-badge border-amber-400/30 bg-amber-500/10 text-amber-200">⚡@NexusModuleCosts.GetCost(draftModule)</span>
+                        <span class="ui-inline-badge border-amber-400/30 bg-amber-500/10 text-amber-200">@NexusModuleCosts.GetCost(draftModule)⚡</span>
                         <span class="ui-inline-badge border-sky-400/30 bg-sky-400/10 text-sky-200">@FormatSlotCost(NexusModuleCosts.GetSlots(draftModule))</span>
                     </div>
 
@@ -382,7 +386,7 @@
     private static string GetModuleLabel(NexusUnitModule module) =>
         NexusDomainLabels.GetModuleLabel(module);
 
-    private static string FormatSlotCost(int slots) => slots < 0 ? $"◻+{-slots}" : slots == 0 ? "◻0" : $"◻{slots}";
+    private static string FormatSlotCost(int slots) => slots < 0 ? $"+{-slots}◻" : $"{slots}◻";
 
     private static string GetModuleSummary(NexusUnitDesign design)
     {
