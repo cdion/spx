@@ -1,0 +1,22 @@
+@* Standard "What to review" coverage panel used in the right column of story
+   control cards. Replaces the repeated ui-panel-card + SectionHeader Eyebrow="Coverage"
+   boilerplate found across ~5 stories. *@
+
+<div class="ui-panel-card space-y-3 ui-type-body">
+    <SectionHeader Eyebrow="Coverage" Title="@Title" />
+    @ChildContent
+</div>
+
+@code {
+    /// <summary>
+    /// Panel title; defaults to "What to review".
+    /// </summary>
+    [Parameter]
+    public string Title { get; set; } = "What to review";
+
+    /// <summary>
+    /// Coverage description paragraphs.
+    /// </summary>
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+}

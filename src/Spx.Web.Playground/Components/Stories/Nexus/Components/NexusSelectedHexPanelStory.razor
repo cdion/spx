@@ -1,18 +1,11 @@
 @page "/stories/nexus/components/selected-hex-panel"
 @rendermode InteractiveServer
-@using System.Collections.Immutable
-@using Spx.Nexus.Domain
-@using Spx.Web.Components.Nexus
+@attribute [Story("Nexus", "Components", "Selected Hex Panel")]
 
-<StoryHeader Title="Selected Hex Panel">
-    The real component — fleet selection, capacity bar, build menu, and Nexus gate.
-</StoryHeader>
+<StoryShell Title="Selected Hex Panel" Description="The real component — fleet selection, capacity bar, build menu, and Nexus gate.">
 
-<div class="mb-4 flex flex-wrap gap-2">
-    @foreach (var (scenario, index) in _scenarios.Select((s, i) => (s, i)))
-    {
-        <button class="@ScenarioTabClass(index)" @onclick="() => SelectScenario(index)">@scenario.Label</button>
-    }
+<div class="mb-4">
+    <VariantPicker Variants="_scenarioLabels" SelectedIndex="_activeIndex" SelectedIndexChanged="HandleScenarioChanged" />
 </div>
 
 <NexusSelectedHexPanel System="@_active.System"
@@ -32,17 +25,24 @@
     </div>
 }
 
+</StoryShell>
+
 @code {
     private static readonly IReadOnlyList<NexusStoryFixtures.SelectedHexScenario> _scenarios =
         NexusStoryFixtures.CreateSelectedHexScenarios();
+    private static readonly string[] _scenarioLabels =
+        _scenarios.Select(s => s.Label).ToArray();
 
     private int _activeIndex;
     private NexusStoryFixtures.SelectedHexScenario _active = _scenarios[0];
     private IReadOnlyList<NexusBuildOrder> _pendingBuildOrders = [];
     private string? _lastOrder;
 
-    private string ScenarioTabClass(int index) =>
-        index == _activeIndex ? "ui-pg-tab-active" : "ui-pg-tab";
+    private Task HandleScenarioChanged(int index)
+    {
+        SelectScenario(index);
+        return Task.CompletedTask;
+    }
 
     private void SelectScenario(int index)
     {

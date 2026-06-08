@@ -1,31 +1,22 @@
 @page "/stories/account/access"
 @rendermode InteractiveServer
+@attribute [Story("Account", "Pages", "Access")]
 
-<StoryHeader Title="Account Access">
+<StoryShell Title="Account Access">
+
+<p class="text-sm text-slate-400 mb-5">
     The <code class="text-sky-300">AuthRequiredPrompt</code> component shown on the Not Authorized page. All visible
     text is parametrised so it can be adapted for different gated areas.
-</StoryHeader>
+</p>
 
-<div class="mb-6 grid gap-3 lg:grid-cols-[1.45fr_1fr]">
-    <div class="ui-panel-card space-y-4">
-        <SectionHeader Eyebrow="Story controls" Title="Variant" />
+<div class="mb-5">
+    <VariantPicker Variants="_variants" @bind-SelectedIndex="_variantIndex" />
+</div>
 
-        <div class="flex flex-wrap gap-2">
-            @foreach (var (label, index) in _variants.Select((v, i) => (v, i)))
-            {
-                <button class="@VariantBtnClass(index)" @onclick="() => _variantIndex = index">
-                    @label
-                </button>
-            }
-        </div>
-    </div>
-
-    <div class="ui-panel-card space-y-3 ui-type-body">
-        <SectionHeader Eyebrow="Coverage" Title="What to review" />
+    <StoryCoverage>
         <p>The default variant matches <code>/not-authorized</code>. The game variant shows a customised message
             for feature-gated routes.</p>
-        </div>
-    </div>
+    </StoryCoverage>
 
     @if (_variantIndex == 0)
     {
@@ -38,9 +29,9 @@
                             RegisterText="Create account" />
     }
 
+</StoryShell>
+
 @code {
     private readonly string[] _variants = ["Default (not-authorized page)", "Game-gated variant"];
     private int _variantIndex;
-
-    private string VariantBtnClass(int index) => index == _variantIndex ? "ui-pg-tab-active" : "ui-pg-tab";
 }

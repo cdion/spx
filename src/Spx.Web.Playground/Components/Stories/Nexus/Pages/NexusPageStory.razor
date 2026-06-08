@@ -1,22 +1,20 @@
 @page "/stories/nexus/pages/page"
 @rendermode InteractiveServer
+@attribute [Story("Nexus", "Pages", "Page")]
 @using Spx.Game.Application.Nexus.Features.EnsureNexusSession
 @using Spx.Game.Application.Nexus.Features.GetNexusPage
 @using Spx.Game.Application.Nexus.Features.ManageDesign
 @using Spx.Game.Application.Nexus.Features.SubmitOrders
 
-<StoryHeader Title="Nexus Page">
+<StoryShell Title="Nexus Page">
+
+<p class="text-sm text-slate-400 mb-5">
     Full lobby and gameplay composition using the extracted shared components, including the same empty and alert
     branches as the production page.
-</StoryHeader>
+</p>
 
-<div class="mb-4 flex flex-wrap gap-2">
-    @foreach (var (label, index) in _states.Select((state, i) => (state, i)))
-    {
-        <button class="@ScenarioBtnClass(index)" @onclick="() => SelectStateAsync(index)">
-            @label
-        </button>
-    }
+<div class="mb-4">
+    <VariantPicker Variants="_states" SelectedIndex="_stateIndex" SelectedIndexChanged="HandleStateChanged" />
 </div>
 
 @if (_lobby is not null)
@@ -40,18 +38,9 @@
             </SectionHeader>
 
             <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                <label class="ui-panel-card-inner flex items-center gap-2 text-xs text-slate-300">
-                    <input type="checkbox" @bind="_showPageError" disabled="@(_stateIndex is 0 or 1)" />
-                    Page error banner
-                </label>
-                <label class="ui-panel-card-inner flex items-center gap-2 text-xs text-slate-300">
-                    <input type="checkbox" @bind="_showGameplayError" disabled="@(_stateIndex is 0 or 1)" />
-                    Gameplay error
-                </label>
-                <label class="ui-panel-card-inner flex items-center gap-2 text-xs text-slate-300">
-                    <input type="checkbox" @bind="_showTimelineError" disabled="@(_stateIndex is 0 or 1)" />
-                    Timeline error
-                </label>
+                <StoryToggle @bind-Value="_showPageError" Disabled="@(_stateIndex is 0 or 1)" Label="Page error banner" />
+                <StoryToggle @bind-Value="_showGameplayError" Disabled="@(_stateIndex is 0 or 1)" Label="Gameplay error" />
+                <StoryToggle @bind-Value="_showTimelineError" Disabled="@(_stateIndex is 0 or 1)" Label="Timeline error" />
             </div>
 
             <div class="flex flex-wrap gap-2 ui-type-overline text-slate-500">
@@ -69,13 +58,12 @@
                     </div>
                 </div>
 
-                <div class="ui-panel-card space-y-3 ui-type-body">
-                    <SectionHeader Eyebrow="Coverage" Title="What this story proves" />
+                <StoryCoverage Title="What this story proves">
                     <p>It exercises the extracted header, gameplay shell, timeline, composer, roster, and current-user panels in one
                         production-like frame.</p>
                         <p>It also covers the real page's loading, unavailable, archived-seat, and inline error states so UX work can
                             stay in the playground.</p>
-                        </div>
+                        </StoryCoverage>
                     </section>
 
                     @if (_stateIndex == 0)
@@ -132,6 +120,8 @@
                             }
                         </section>
                     }
+
+</StoryShell>
 
 @code {
     private readonly string[] _states = ["Loading", "Unavailable", "Active", "Waiting", "Archived"];
@@ -221,6 +211,11 @@
     protected override async Task OnInitializedAsync()
     {
         await SelectStateAsync(2);
+    }
+
+    private async Task HandleStateChanged(int index)
+    {
+        await SelectStateAsync(index);
     }
 
     private async Task SelectStateAsync(int index)
@@ -390,6 +385,4 @@
         _presence = page?.Presence ?? GamePresenceView.Empty;
     }
 
-    private string ScenarioBtnClass(int index) =>
-        index == _stateIndex ? "ui-pg-tab-active" : "ui-pg-tab";
 }

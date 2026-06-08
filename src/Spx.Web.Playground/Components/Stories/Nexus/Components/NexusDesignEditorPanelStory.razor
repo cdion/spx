@@ -1,13 +1,13 @@
 @page "/stories/nexus/components/design-editor-panel"
 @rendermode InteractiveServer
-@using System.Collections.Immutable
-@using Spx.Nexus.Domain
-@using Spx.Web.Components.Nexus
+@attribute [Story("Nexus", "Components", "Design Editor Panel")]
 
-<StoryHeader Title="Design Editor Panel">
+<StoryShell Title="Design Editor Panel">
+
+<p class="text-sm text-slate-400 mb-5">
     <code class="text-sky-300">NexusDesignEditorPanel</code> — create and manage unit designs.
     Pre-populated with example designs across all three hull types.
-</StoryHeader>
+</p>
 
 <div class="grid gap-6 lg:grid-cols-2">
 
@@ -43,6 +43,8 @@
         Last event: @_lastEvent
     </div>
 }
+
+</StoryShell>
 
 @code {
     private static readonly Guid _playerId = Guid.Parse("eeeeeeee-0000-0000-0000-000000000001");

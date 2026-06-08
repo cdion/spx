@@ -1,0 +1,32 @@
+@* Reusable variant/tab selector that replaces the duplicated _variants + _variantIndex +
+   VariantBtnClass + @foreach pattern found across ~11 story files. *@
+
+<div class="flex flex-wrap gap-2">
+    @foreach (var (label, index) in Variants.Select((v, i) => (v, i)))
+    {
+        <button class="@(index == SelectedIndex ? "ui-pg-tab-active" : "ui-pg-tab")"
+                @onclick="() => SelectedIndexChanged.InvokeAsync(index)">
+            @label
+        </button>
+    }
+</div>
+
+@code {
+    /// <summary>
+    /// The list of tab labels to display.
+    /// </summary>
+    [Parameter, EditorRequired]
+    public IReadOnlyList<string> Variants { get; set; } = [];
+
+    /// <summary>
+    /// Index of the currently selected tab.
+    /// </summary>
+    [Parameter]
+    public int SelectedIndex { get; set; }
+
+    /// <summary>
+    /// Raised when the user clicks a different tab.
+    /// </summary>
+    [Parameter]
+    public EventCallback<int> SelectedIndexChanged { get; set; }
+}

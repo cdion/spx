@@ -1,18 +1,16 @@
 @page "/stories/nexus/pages/lobby"
 @rendermode InteractiveServer
+@attribute [Story("Nexus", "Pages", "Lobby")]
 
-<StoryHeader Title="Nexus Lobby">
+<StoryShell Title="Nexus Lobby">
+
+<p class="text-sm text-slate-400 mb-5">
     Shared <code class="text-sky-300">LobbyListPanel</code> rendered in the same high-level states as the production
     lobby page.
-</StoryHeader>
+</p>
 
-<div class="mb-4 flex flex-wrap gap-2">
-    @foreach (var (label, index) in _states.Select((state, i) => (state, i)))
-    {
-        <button class="@ScenarioBtnClass(index)" @onclick="() => _stateIndex = index">
-            @label
-        </button>
-    }
+<div class="mb-4">
+    <VariantPicker Variants="_states" @bind-SelectedIndex="_stateIndex" />
 </div>
 
 <section class="mb-6 grid gap-3 lg:grid-cols-[1.45fr_1fr]">
@@ -38,16 +36,17 @@
         </p>
     </div>
 
-    <div class="ui-panel-card space-y-3 ui-type-body">
-        <SectionHeader Eyebrow="Coverage" Title="What to review" />
+    <StoryCoverage>
         <p>Use <strong>Open only</strong> to inspect the ended-history empty state inside a populated page.</p>
         <p>Use <strong>Empty</strong> to inspect both empty sections together without falling back to a loading or error
             branch.</p>
-        </div>
+    </StoryCoverage>
     </section>
 
 <LobbyListPanel Games="CurrentGames" IsLoading="IsLoading" LoadError="@LoadError" CreateGameHref="#"
                     JoinGameHref="#" GameHrefBase="#/games" />
+
+</StoryShell>
 
 @code {
     private readonly string[] _states = ["Mixed", "Open only", "Empty", "Loading", "Error"];
@@ -68,6 +67,4 @@
 
     private string? LoadError => _stateIndex == 4 ? "We couldn't load your games right now. Try again in a moment." : null;
 
-    private string ScenarioBtnClass(int index) =>
-        index == _stateIndex ? "ui-pg-tab-active" : "ui-pg-tab";
 }

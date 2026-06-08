@@ -1,17 +1,11 @@
 @page "/stories/nexus/components/gameplay-panel"
 @rendermode InteractiveServer
+@attribute [Story("Nexus", "Components", "Gameplay Panel")]
 
-<StoryHeader Title="Nexus Gameplay Panel">
-    Full <code class="text-sky-300">NexusGameplayPanel</code> with fixture game state.
-</StoryHeader>
+<StoryShell Title="Nexus Gameplay Panel" Description="Full NexusGameplayPanel with fixture game state.">
 
-<div class="mb-5 flex flex-wrap gap-2">
-    @foreach (var (label, index) in _scenarios.Select((s, i) => (s.Label, i)))
-    {
-        <button class="@ScenarioBtnClass(index)" @onclick="() => SelectScenario(index)">
-            @label
-        </button>
-    }
+<div class="mb-5">
+    <VariantPicker Variants="_scenarioLabels" SelectedIndex="_scenarioIndex" SelectedIndexChanged="HandleScenarioChanged" />
 </div>
 
 <p class="mb-4 text-xs text-slate-500">@_scenarios[_scenarioIndex].Description</p>
@@ -30,8 +24,11 @@
     </div>
 }
 
+</StoryShell>
+
 @code {
     private IReadOnlyList<NexusStoryFixtures.GameplayScenario> _scenarios = null!;
+    private string[] _scenarioLabels = null!;
     private GameLobbyView _lobby = null!;
     private int _scenarioIndex;
     private bool _submitting;
@@ -41,7 +38,14 @@
     protected override void OnInitialized()
     {
         _scenarios = NexusStoryFixtures.CreateGameplayScenarios();
+        _scenarioLabels = _scenarios.Select(s => s.Label).ToArray();
         _lobby = NexusStoryFixtures.CreateLobby(_scenarios[0].View.GameId);
+    }
+
+    private Task HandleScenarioChanged(int index)
+    {
+        SelectScenario(index);
+        return Task.CompletedTask;
     }
 
     private void SelectScenario(int index)
@@ -60,7 +64,4 @@
         _submitting = false;
         _lastCommand = command;
     }
-
-    private string ScenarioBtnClass(int index) =>
-        index == _scenarioIndex ? "ui-pg-tab-active" : "ui-pg-tab";
 }

@@ -1,12 +1,13 @@
 @page "/stories/nexus/components/category-pip"
 @rendermode InteractiveServer
-@using Spx.Nexus.Domain
-@using Spx.Web.Components.Nexus
+@attribute [Story("Nexus", "Components", "Category Pip")]
 
-<StoryHeader Title="Category Pip">
+<StoryShell Title="Category Pip">
+
+<p class="text-sm text-slate-400 mb-5">
     <code class="text-sky-300">NexusCategoryPip</code> icons for all three hull categories at
     <code class="text-sky-300">Small</code> and <code class="text-sky-300">Medium</code> sizes.
-</StoryHeader>
+</p>
 
 <div class="grid grid-cols-3 gap-6">
 
@@ -115,3 +116,4 @@
         <span class="text-sm text-slate-300"><NexusCategoryPip Category="@NexusUnitCategory.Planetary" /> Infantry ×4</span>
     </div>
 </div>
+</StoryShell>

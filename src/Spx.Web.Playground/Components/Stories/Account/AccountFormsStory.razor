@@ -1,33 +1,24 @@
 @page "/stories/account/forms"
 @rendermode InteractiveServer
+@attribute [Story("Account", "Pages", "Forms")]
 
-<StoryHeader Title="Account Forms">
+<StoryShell Title="Account Forms">
+
+<p class="text-sm text-slate-400 mb-5">
     The five identity forms that cover registration, sign-in, and password recovery, all composed from the shared
     <code class="text-sky-300">AccountLoginForm</code>, <code class="text-sky-300">AccountRegisterForm</code>, etc.
     components.
-</StoryHeader>
+</p>
 
-<div class="mb-3 flex flex-wrap gap-2">
-    @foreach (var (label, index) in _pages.Select((page, i) => (page, i)))
-    {
-        <button class="@PageBtnClass(index)" @onclick="() => _pageIndex = index">
-            @label
-        </button>
-    }
+<div class="mb-3">
+    <VariantPicker Variants="_pages" @bind-SelectedIndex="_pageIndex" />
 </div>
 
-<div class="mb-6 grid gap-3 lg:grid-cols-[1.45fr_1fr]">
-    <div class="ui-panel-card space-y-4">
-        <SectionHeader Eyebrow="Story controls" Title="Form state" />
+    <div class="mb-6 grid gap-3 lg:grid-cols-[1.45fr_1fr]">
+        <div class="ui-panel-card space-y-4">
+            <SectionHeader Eyebrow="Story controls" Title="Form state" />
 
-        <div class="flex flex-wrap gap-2">
-            @foreach (var (label, index) in _states.Select((state, i) => (state, i)))
-            {
-                <button class="@StateBtnClass(index)" @onclick="() => _stateIndex = index">
-                    @label
-                </button>
-            }
-        </div>
+            <VariantPicker Variants="_states" @bind-SelectedIndex="_stateIndex" />
 
         <div class="flex flex-wrap gap-2 ui-type-overline text-slate-500">
             <span class="ui-badge-pill">Form: @_pages[_pageIndex]</span>
@@ -37,14 +28,13 @@
         </div>
     </div>
 
-    <div class="ui-panel-card space-y-3 ui-type-body">
-        <SectionHeader Eyebrow="Coverage" Title="What to review" />
+    <StoryCoverage>
         <p>Each tab mirrors the corresponding account page. The <strong>Error</strong> and <strong>Success</strong>
             banners
             match what the route-based outcome redirects produce.</p>
             <p>The <strong>Reset Password</strong> page also shows its broken-link warning when Email/Code are
                 cleared.</p>
-            </div>
+            </StoryCoverage>
         </div>
 
         @switch (_pageIndex)
@@ -73,6 +63,8 @@
                 break;
         }
 
+</StoryShell>
+
 @code {
     private readonly string[] _pages = ["Login", "Register", "Forgot Password", "Reset Password", "Resend"];
     private readonly string[] _states = ["Idle", "Error", "Success", "Invalid link (Reset only)"];
@@ -89,7 +81,4 @@
 
     private bool ShowInvalidLink => _stateIndex == 3;
 
-    private string PageBtnClass(int index) => index == _pageIndex ? "ui-pg-tab-active" : "ui-pg-tab";
-
-    private string StateBtnClass(int index) => index == _stateIndex ? "ui-pg-tab-active" : "ui-pg-tab";
 }

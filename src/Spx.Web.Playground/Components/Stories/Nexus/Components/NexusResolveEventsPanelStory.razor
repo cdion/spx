@@ -1,13 +1,13 @@
 @page "/stories/nexus/components/resolve-events-panel"
 @rendermode InteractiveServer
-@using System.Collections.Immutable
-@using Spx.Nexus.Domain
-@using Spx.Web.Components.Nexus
+@attribute [Story("Nexus", "Components", "Resolve Events Panel")]
 
-<StoryHeader Title="Resolve Events Panel">
+<StoryShell Title="Resolve Events Panel">
+
+<p class="text-sm text-slate-400 mb-5">
     <code class="text-sky-300">NexusResolveEventsPanel</code> showing all event types
     from a round of combat, movement, income, gate construction, and more.
-</StoryHeader>
+</p>
 
 <div class="grid gap-6 md:grid-cols-2">
 
@@ -73,6 +73,8 @@
         Last focus: @_lastFocusEvent
     </div>
 }
+
+</StoryShell>
 
 @code {
     private static readonly Guid _player1Id = Guid.Parse("aaaa0000-0000-0000-0000-000000000001");

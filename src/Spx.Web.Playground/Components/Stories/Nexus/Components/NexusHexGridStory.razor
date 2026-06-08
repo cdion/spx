@@ -1,9 +1,8 @@
 @page "/stories/nexus/components/hex-grid"
 @rendermode InteractiveServer
+@attribute [Story("Nexus", "Components", "Hex Grid")]
 
-<StoryHeader Title="Nexus Hex Grid">
-    Click a system to select it and see valid move destinations highlighted.
-</StoryHeader>
+<StoryShell Title="Nexus Hex Grid" Description="Click a system to select it and see valid move destinations highlighted.">
 
 <div class="grid gap-4 lg:grid-cols-[1fr_0.28fr]">
     <section class="ui-surface-section flex flex-col p-4 lg:p-5">
@@ -71,6 +70,8 @@
         </section>
     </aside>
 </div>
+
+</StoryShell>
 
 @code {
     private static readonly Guid P1 = NexusStoryFixtures.Player1Id;

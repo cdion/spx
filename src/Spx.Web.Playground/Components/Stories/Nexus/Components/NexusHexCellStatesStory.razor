@@ -1,9 +1,8 @@
 @page "/stories/nexus/components/hex-cell-states"
 @rendermode InteractiveServer
+@attribute [Story("Nexus", "Components", "Hex Cell States")]
 
-<StoryHeader Title="Nexus Hex Cell States">
-    Every distinct visual state a sector hex can enter.
-</StoryHeader>
+<StoryShell Title="Nexus Hex Cell States" Description="Every distinct visual state a sector hex can enter.">
 
 <div class="grid grid-cols-4 gap-x-6 gap-y-8 max-w-4xl">
     @foreach (var state in States)
@@ -19,6 +18,8 @@
         </div>
     }
 </div>
+
+</StoryShell>
 
 @code {
     private static readonly Guid P1 = Guid.Parse("aaaaaaaa-0000-0000-0000-000000000001");

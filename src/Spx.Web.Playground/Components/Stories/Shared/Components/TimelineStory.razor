@@ -1,18 +1,16 @@
 @page "/stories/shared/components/timeline"
 @rendermode InteractiveServer
+@attribute [Story("Shared", "Components", "Timeline")]
 
-<StoryHeader Title="Timeline">
+<StoryShell Title="Timeline">
+
+<p class="text-sm text-slate-400 mb-5">
     Shared <code class="text-sky-300">NexusTimelinePanel</code> rendered inside the same timeline wrapper used by the
     production Nexus page.
-</StoryHeader>
+</p>
 
-<div class="mb-4 flex flex-wrap gap-2">
-    @foreach (var (label, index) in _states.Select((state, i) => (state, i)))
-    {
-        <button class="@ScenarioBtnClass(index)" @onclick="() => SelectState(index)">
-            @label
-        </button>
-    }
+<div class="mb-4">
+    <VariantPicker Variants="_states" SelectedIndex="_stateIndex" SelectedIndexChanged="HandleStateChanged" />
 </div>
 
 <section class="mb-6 grid gap-3 lg:grid-cols-[1.45fr_1fr]">
@@ -20,14 +18,8 @@
         <SectionHeader Eyebrow="Story controls" Title="Timeline state" />
 
         <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-            <label class="ui-panel-card-inner flex items-center gap-2 text-xs text-slate-300">
-                <input type="checkbox" @bind="_hasOlderMessages" disabled="@IsLoading" />
-                Has older history
-            </label>
-            <label class="ui-panel-card-inner flex items-center gap-2 text-xs text-slate-300">
-                <input type="checkbox" @bind="_isLoadingOlderMessages" disabled="@IsLoading" />
-                Loading older
-            </label>
+            <StoryToggle @bind-Value="_hasOlderMessages" Disabled="@IsLoading" Label="Has older history" />
+            <StoryToggle @bind-Value="_isLoadingOlderMessages" Disabled="@IsLoading" Label="Loading older" />
         </div>
 
         <div class="flex flex-wrap gap-2 ui-type-overline text-slate-500">
@@ -36,13 +28,12 @@
         </div>
     </div>
 
-    <div class="ui-panel-card space-y-3 ui-type-body">
-        <SectionHeader Eyebrow="Coverage" Title="What to review" />
+    <StoryCoverage>
         <p>This story covers the production timeline header, outer alert wrapper, empty state, in-panel editing UI, and
             pending-message recovery actions.</p>
             <p>Use <strong>Empty</strong> to verify the panel body spacing and use the checkboxes to preview scroll-state
                 affordances.</p>
-            </div>
+        </StoryCoverage>
         </section>
 
         <section class="ui-surface-form-tight">
@@ -69,6 +60,8 @@
             </div>
         }
 
+</StoryShell>
+
 @code {
     private readonly string[] _states = ["Loaded", "Editing", "Empty", "Loading", "Error"];
     private int _stateIndex;
@@ -84,6 +77,12 @@
     private bool IsLoading => _stateIndex == 3;
 
     private string? CurrentError => _stateIndex == 4 ? "The timeline is temporarily unavailable." : null;
+
+    private Task HandleStateChanged(int index)
+    {
+        SelectState(index);
+        return Task.CompletedTask;
+    }
 
     private void SelectState(int index)
     {
@@ -210,6 +209,4 @@
         return Task.CompletedTask;
     }
 
-    private string ScenarioBtnClass(int index) =>
-        index == _stateIndex ? "ui-pg-tab-active" : "ui-pg-tab";
 }

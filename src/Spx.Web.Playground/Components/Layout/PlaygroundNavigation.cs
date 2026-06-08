@@ -1,73 +1,37 @@
+using System.Reflection;
+using Microsoft.AspNetCore.Components;
+using Spx.Web.Playground.Components.Shared;
+
 namespace Spx.Web.Playground.Components.Layout;
 
 internal static class PlaygroundNavigation
 {
-    public static IReadOnlyList<NavSection> Sections { get; } =
-    [
-        new NavSection(
-            "Shared",
-            [
-                new NavGroup(
-                    "Components",
-                    [new NavItem("Timeline", "/stories/shared/components/timeline")]
-                ),
-            ]
-        ),
-        new NavSection(
-            "Nexus",
-            [
-                new NavGroup(
-                    "Components",
-                    [
-                        new NavItem("Hex Grid", "/stories/nexus/components/hex-grid"),
-                        new NavItem("Gameplay Panel", "/stories/nexus/components/gameplay-panel"),
-                        new NavItem("Live Gameplay", "/stories/nexus/components/live-gameplay"),
-                        new NavItem(
-                            "Resolve Events Panel",
-                            "/stories/nexus/components/resolve-events-panel"
-                        ),
-                        new NavItem("Top Info Bar", "/stories/nexus/components/top-info-bar"),
-                        new NavItem(
-                            "Selected Hex Panel",
-                            "/stories/nexus/components/selected-hex-panel"
-                        ),
-                        new NavItem(
-                            "  Unit Stack List",
-                            "/stories/nexus/components/unit-stack-list"
-                        ),
-                        new NavItem("  Category Pip", "/stories/nexus/components/category-pip"),
-                        new NavItem(
-                            "Design Editor Panel",
-                            "/stories/nexus/components/design-editor-panel"
-                        ),
-                        new NavItem("Pending Orders", "/stories/nexus/components/pending-orders"),
-                        new NavItem("Unit Badge", "/stories/nexus/components/unit-badge"),
-                        new NavItem("Hex Cell States", "/stories/nexus/components/hex-cell-states"),
-                    ]
-                ),
-                new NavGroup(
-                    "Pages",
-                    [
-                        new NavItem("Lobby", "/stories/nexus/pages/lobby"),
-                        new NavItem("Forms", "/stories/nexus/pages/forms"),
-                        new NavItem("Page", "/stories/nexus/pages/page"),
-                    ]
-                ),
-            ]
-        ),
-        new NavSection(
-            "Account",
-            [
-                new NavGroup(
-                    "Pages",
-                    [
-                        new NavItem("Forms", "/stories/account/forms"),
-                        new NavItem("Access", "/stories/account/access"),
-                    ]
-                ),
-            ]
-        ),
-    ];
+    public static IReadOnlyList<NavSection> Sections { get; } = BuildSections();
+
+    private static List<NavSection> BuildSections() =>
+        typeof(PlaygroundNavigation)
+            .Assembly.GetTypes()
+            .Where(t => t.GetCustomAttribute<StoryAttribute>() is not null)
+            .GroupBy(t => t.GetCustomAttribute<StoryAttribute>()!.Section)
+            .Select(sectionGroup => new NavSection(
+                sectionGroup.Key,
+                sectionGroup
+                    .GroupBy(t => t.GetCustomAttribute<StoryAttribute>()!.Group)
+                    .Select(groupGroup => new NavGroup(
+                        groupGroup.Key,
+                        groupGroup
+                            .Select(t =>
+                            {
+                                var attr = t.GetCustomAttribute<StoryAttribute>()!;
+                                var route = t.GetCustomAttribute<RouteAttribute>()?.Template ?? "/";
+                                return new NavItem(attr.Label, "/" + route.TrimStart('/'));
+                            })
+                            .OrderBy(n => n.Label)
+                            .ToList()
+                    ))
+                    .ToList()
+            ))
+            .ToList();
 
     public sealed record NavSection(string Title, IReadOnlyList<NavGroup> Groups);
 

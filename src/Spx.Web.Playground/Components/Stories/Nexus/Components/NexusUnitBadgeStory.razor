@@ -1,12 +1,15 @@
 @page "/stories/nexus/components/unit-badge"
 @rendermode InteractiveServer
+@attribute [Story("Nexus", "Components", "Unit Badge")]
 @using static Spx.Nexus.Domain.NexusUnitCategory
 
-<StoryHeader Title="Unit Badge">
+<StoryShell Title="Unit Badge">
+
+<p class="text-sm text-slate-400 mb-5">
     <code class="text-sky-300">NexusUnitBadge</code> — inline unit display with
     category pip, name, optional count prefix, optional hits pill, optional cost,
     and a <code class="text-sky-300">NexusUnitProfileCard</code> tooltip on hover.
-</StoryHeader>
+</p>
 
 <div class="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
 
@@ -101,6 +104,8 @@
 
 </div>
 
+</StoryShell>
+
 @code {
     private static readonly NexusUnitDesign _fighter = new()
     {
@@ -151,3 +156,4 @@
         Hull = Planetary,
     };
 }
+

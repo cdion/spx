@@ -1,20 +1,17 @@
 @page "/stories/nexus/components/top-info-bar"
 @rendermode InteractiveServer
+@attribute [Story("Nexus", "Components", "Top Info Bar")]
 
-<StoryHeader Title="Nexus Top Info Bar">
+<StoryShell Title="Nexus Top Info Bar">
+
+<p class="text-sm text-slate-400 mb-5">
     <code class="text-sky-300">NexusGameplayTopInfoBar</code> showing both players, faction colors, energy, round, and
     presence.
-</StoryHeader>
+</p>
 
 <div class="mb-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-    <label class="ui-panel-card-inner flex items-center gap-2 text-xs text-slate-300">
-        <input type="checkbox" @bind="_currentSubmitted" />
-        Current submitted
-    </label>
-    <label class="ui-panel-card-inner flex items-center gap-2 text-xs text-slate-300">
-        <input type="checkbox" @bind="_opponentSubmitted" />
-        Opponent submitted
-    </label>
+    <StoryToggle @bind-Value="_currentSubmitted" Label="Current submitted" />
+    <StoryToggle @bind-Value="_opponentSubmitted" Label="Opponent submitted" />
     <label class="ui-panel-card-inner flex items-center gap-2 text-xs text-slate-300">
         <span>Round</span>
         <input type="number" min="1" class="w-16 rounded border border-white/10 bg-slate-950/70 px-2 py-1"
@@ -41,6 +38,8 @@
         Swap factions
     </button>
 </div>
+
+</StoryShell>
 
 @code {
     private int _round = 4;

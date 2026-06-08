@@ -1,0 +1,36 @@
+@* Replaces StoryHeader — wraps every story with a consistent title and optional
+   description. The description is a plain string (rich markup goes inline in
+   ChildContent). Controls (VariantPicker, toggles, etc.) go inline in ChildContent. *@
+
+<div class="mb-5 space-y-1">
+    <p class="ui-section-eyebrow">Story</p>
+    <h2 class="ui-section-title">@Title</h2>
+    @if (Description is not null)
+    {
+        <p class="text-sm text-slate-400">@Description</p>
+    }
+</div>
+
+@ChildContent
+
+@code {
+    /// <summary>
+    /// Story title rendered as an h2.
+    /// </summary>
+    [Parameter, EditorRequired]
+    public string Title { get; set; } = "";
+
+    /// <summary>
+    /// Optional plain-text description rendered below the title.
+    /// For rich markup (<c>code</c>, <c>em</c>, <c>strong</c>), put the
+    /// description inline in <c>ChildContent</c> instead.
+    /// </summary>
+    [Parameter]
+    public string? Description { get; set; }
+
+    /// <summary>
+    /// Main story content, including controls, panels, fixtures, etc.
+    /// </summary>
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+}
