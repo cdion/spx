@@ -18,7 +18,11 @@
     <span class="font-semibold">@displayName</span>
     @if (ShowIncome && IncomeValue > 0)
     {
-        <span class="ui-type-meta text-yellow-400/80">+@IncomeValue ⚡</span>
+        <span class="ui-type-meta text-yellow-400/80">⚡@IncomeValue</span>
+    }
+    @if (ShowIncome && SupplyValue > 0)
+    {
+        <span class="ui-type-meta text-sky-400/80">⬡@SupplyValue</span>
     }
 </span>
 
@@ -43,6 +47,9 @@
 
     [Parameter]
     public int IncomeValue { get; set; }
+
+    [Parameter]
+    public int SupplyValue { get; set; }
 
     [Parameter]
     public bool ShowHomeStar { get; set; }

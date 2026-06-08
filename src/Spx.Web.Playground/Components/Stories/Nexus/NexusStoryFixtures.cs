@@ -400,6 +400,7 @@ internal static class NexusStoryFixtures
                     NexusMap.Player1HomeCoord,
                     false,
                     3,
+                    2,
                     Player1Id,
                     Player1Id,
                     ImmutableDictionary<Guid, ImmutableArray<NexusUnitStackGroup>>.Empty.Add(
@@ -418,6 +419,7 @@ internal static class NexusStoryFixtures
                 new NexusSystemView(
                     NexusMap.NexusCoord,
                     true,
+                    0,
                     0,
                     null,
                     Player1Id,
@@ -445,6 +447,7 @@ internal static class NexusStoryFixtures
                     new HexCoord(0, 1),
                     false,
                     2,
+                    0,
                     null,
                     null,
                     ImmutableDictionary<Guid, ImmutableArray<NexusUnitStackGroup>>
@@ -489,6 +492,7 @@ internal static class NexusStoryFixtures
                     new HexCoord(1, -1),
                     false,
                     4,
+                    0,
                     null,
                     null,
                     ImmutableDictionary<Guid, ImmutableArray<NexusUnitStackGroup>>.Empty.Add(

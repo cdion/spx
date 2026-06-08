@@ -20,7 +20,9 @@
     <Project Path="tests/Spx.Game.Application.IntegrationTests/Spx.Game.Application.IntegrationTests.csproj" />
     <Project Path="tests/Spx.Grains.IntegrationTests/Spx.Grains.IntegrationTests.csproj" />
     <Project Path="tests/Spx.Grains.Tests/Spx.Grains.Tests.csproj" />
+    <Project Path="tests/Spx.Web.Components.Tests/Spx.Web.Components.Tests.csproj" />
     <Project Path="tests/Spx.Web.Tests/Spx.Web.Tests.csproj" />
+    <Project Path="tests/Spx.Web.E2ETests/Spx.Web.E2ETests.csproj" />
   </Folder>
   <Folder Name="/tools/" />
   <Folder Name="/tools/dev/" />

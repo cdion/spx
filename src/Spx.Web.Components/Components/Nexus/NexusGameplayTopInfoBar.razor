@@ -2,8 +2,11 @@
     <article class="ui-panel-row items-start">
         <div class="space-y-1">
             <p class="@NexusFactionCss.PlayerNameClass(CurrentPlayer.Faction)">@CurrentPlayer.PlayerName</p>
-            <p class="text-2xl font-semibold text-yellow-400">@CurrentPlayer.Energy⚡</p>
-            <p class="text-sm text-slate-300">@CurrentPlayer.CapitalCount / @CurrentPlayer.SupplyPool ⚓</p>
+            <div class="flex gap-4">
+                <p class="text-lg font-semibold text-yellow-400">⚡@CurrentPlayer.Energy</p>
+                <p class="text-lg font-semibold text-sky-400">⬡@CurrentPlayer.SupplyPool</p>
+            </div>
+            <p class="text-sm text-slate-400">@CurrentPlayer.CapitalCount Capital</p>
         </div>
         <div class="flex flex-col items-end gap-1 pt-1">
             <StatusBadge Tone="@SubmissionTone(CurrentPlayer.HasSubmittedOrders)">
@@ -21,8 +24,11 @@
         <article class="ui-panel-row items-start">
             <div class="space-y-1">
                 <p class="@NexusFactionCss.PlayerNameClass(Opponent.Faction)">@Opponent.PlayerName</p>
-                <p class="text-2xl font-semibold text-yellow-400">@Opponent.Energy⚡</p>
-                <p class="text-sm text-slate-300">@Opponent.CapitalCount / @Opponent.SupplyPool ⚓</p>
+                <div class="flex gap-4">
+                    <p class="text-lg font-semibold text-yellow-400">⚡@Opponent.Energy</p>
+                    <p class="text-lg font-semibold text-sky-400">⬡@Opponent.SupplyPool</p>
+                </div>
+                <p class="text-sm text-slate-400">@Opponent.CapitalCount Capital</p>
             </div>
             <div class="flex flex-col items-end gap-1 pt-1">
                 <StatusBadge Tone="@SubmissionTone(Opponent.HasSubmittedOrders)">@SubmissionLabel(Opponent.HasSubmittedOrders)

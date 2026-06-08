@@ -46,7 +46,7 @@ public class NexusGameViewQueriesTests
                         ))
                         .ToImmutableArray()
             );
-        return new NexusSystemView(coord, false, 2, null, null, dict);
+        return new NexusSystemView(coord, false, 2, 0, null, null, dict);
     }
 
     private static NexusPlayerView MakePlayer(Guid id) =>
@@ -152,7 +152,7 @@ public class NexusGameViewQueriesTests
         var movableStacks = ImmutableDictionary<Guid, ImmutableArray<NexusUnitStackGroup>>.Empty;
         var view = MakeView(
             playerId,
-            new NexusSystemView(source, false, 2, null, null, unitStacks, movableStacks)
+            new NexusSystemView(source, false, 2, 0, null, null, unitStacks, movableStacks)
         );
 
         var result = NexusViewQueries.GetValidMoveDestinations(view, playerId, source);

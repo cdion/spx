@@ -5,7 +5,7 @@ using Spx.Game.Application;
 using Spx.Web.Components.Lobby;
 using Xunit;
 
-namespace Spx.Web.Tests;
+namespace Spx.Web.Components.Tests;
 
 public sealed class LobbyMessageComposerTests : TestContext
 {

@@ -1,9 +1,10 @@
 using System.Collections.Immutable;
 using Spx.Contracts;
 using Spx.Game.Application;
+using Spx.Game.Application.Nexus;
 using Spx.Nexus.Domain;
 
-namespace Spx.Web.Tests;
+namespace Spx.Web.Components.Tests;
 
 internal static class GamePageCoordinatorTestData
 {

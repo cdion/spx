@@ -37,6 +37,7 @@
                                     </Content>
                                 </HoverTooltip>
                                 <button type="button" class="ui-button-icon-danger shrink-0" title="Delete design"
+                                        data-testid="@NexusDesignEditorPanelTestIds.ExistingDesignDelete(design.Name)"
                                         disabled="@IsSubmitting"
                                         @onclick="() => DeleteDesignAsync(design.DesignId)">
                                     ×
@@ -61,6 +62,7 @@
             <div class="ui-field">
                 <label class="ui-label" for="design-name">Name</label>
                 <input id="design-name" type="text" class="ui-input" placeholder="e.g. Interceptor"
+                       data-testid="@NexusDesignEditorPanelTestIds.DesignNameInput"
                        @bind="_name" @bind:event="oninput" maxlength="40" />
             </div>
 
@@ -73,6 +75,7 @@
                         var hull = group.Hull;
                         <label class="flex cursor-pointer items-center gap-1.5 text-base text-slate-300">
                             <input type="radio" name="design-hull" class="accent-indigo-400"
+                                   data-testid="@NexusDesignEditorPanelTestIds.HullRadio(hull)"
                                    checked="@(_hull == hull)"
                                    @onchange="() => SetHull(hull)" />
                             <NexusCategoryPip Category="@hull" Size="@NexusPipSize.Small" /> @group.Label
@@ -113,6 +116,7 @@
                                     <span class="ui-badge-slots">@FormatSlotCost(NexusModuleCosts.GetSlots(mod))</span>
                                 </span>
                                 <button type="button" class="ui-button-icon-danger shrink-0" title="Remove module"
+                                        data-testid="@NexusDesignEditorPanelTestIds.ModuleRemoveButton(idx)"
                                         @onclick="() => RemoveModule(idx)">×</button>
                             </li>
                         }
@@ -124,7 +128,8 @@
                     <div class="min-w-0 flex-1">
                         <label class="ui-label" for="add-module-type">Module</label>
                         <select id="add-module-type" class="ui-select w-full"
-                                @bind="_addModuleType">
+                                data-testid="@NexusDesignEditorPanelTestIds.ModuleTypeSelect"
+                                @bind="_addModuleType" @bind:event="onchange">
                             @foreach (var mt in AvailableModuleTypes)
                             {
                                 <option value="@mt">@mt</option>
@@ -137,7 +142,8 @@
                         <div class="min-w-0 flex-1">
                             <label class="ui-label" for="add-module-category">Target</label>
                             <select id="add-module-category" class="ui-select w-full"
-                                    @bind="_addModuleCategory">
+                                    data-testid="@NexusDesignEditorPanelTestIds.ModuleCategorySelect"
+                                    @bind="_addModuleCategory" @bind:event="onchange">
                                 @foreach (var cat in AvailableCategories)
                                 {
                                     <option value="@cat">@cat</option>
@@ -165,6 +171,7 @@
                     </div>
 
                     <button type="button" class="ui-button-secondary shrink-0 self-end"
+                            data-testid="@NexusDesignEditorPanelTestIds.AddModuleButton"
                             disabled="@(AddError is not null)"
                             title="@(AddError ?? "")"
                             @onclick="AddModule">+ Add</button>
@@ -207,6 +214,7 @@
             }
 
             <button type="button" class="ui-button-primary w-full"
+                    data-testid="@NexusDesignEditorPanelTestIds.CreateDesignButton"
                     disabled="@(!CanCreate)"
                     @onclick="CreateDesignAsync">
                 @(IsSubmitting ? "Creating..." : "Create Design")

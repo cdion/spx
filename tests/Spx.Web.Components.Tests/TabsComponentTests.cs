@@ -3,12 +3,12 @@ using Microsoft.AspNetCore.Components;
 using Spx.Web.Components;
 using Xunit;
 
-namespace Spx.Web.Tests;
+namespace Spx.Web.Components.Tests;
 
 public sealed class TabsComponentTests : TestContext
 {
     [Fact]
-    public void ArrowRightSelectsNextEnabledTab()
+    public void ArrowRight_Selects_NextEnabledTab()
     {
         const string selected = "Orders";
         string? captured = null;
@@ -33,7 +33,7 @@ public sealed class TabsComponentTests : TestContext
     }
 
     [Fact]
-    public void RendersExpectedAriaAttributesForTabs()
+    public void Tabs_Render_ExpectedAriaAttributes()
     {
         var cut = RenderComponent<Tabs<string>>(parameters =>
             parameters

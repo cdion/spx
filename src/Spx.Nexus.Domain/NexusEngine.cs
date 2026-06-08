@@ -145,6 +145,7 @@ public static class NexusEngine
                 s.Coord,
                 s.IsNexus,
                 s.IncomeValue,
+                s.SupplyValue,
                 s.HomePlayerId,
                 s.ControlOwner,
                 ProjectUnitStacks(state, s, viewDesigns),
@@ -716,7 +717,7 @@ public static class NexusEngine
     }
 
     private static int ComputeSupplyPool(NexusState state, Guid playerId) =>
-        state.Systems.Where(s => s.ControlOwner == playerId).Sum(s => s.IncomeValue);
+        state.Systems.Where(s => s.ControlOwner == playerId).Sum(s => s.SupplyValue);
 
     private static int ComputeCapitalCount(NexusState state, Guid playerId) =>
         state.Systems.Sum(s =>

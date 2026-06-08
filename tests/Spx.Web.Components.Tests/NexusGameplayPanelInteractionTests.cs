@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Components.Web;
 using Spx.Web.Components.Nexus;
 using Xunit;
 
-namespace Spx.Web.Tests;
+namespace Spx.Web.Components.Tests;
 
 public sealed class NexusGameplayPanelInteractionTests : TestContext
 {
@@ -197,9 +197,7 @@ public sealed class NexusGameplayPanelInteractionTests : TestContext
             )
             .Click();
 
-        cut.FindAll("button")
-            .Single(button => button.TextContent.Contains("Select All", StringComparison.Ordinal))
-            .Click();
+        cut.Find(TestIdSelector(NexusGameplayPanelTestIds.SelectWholeFleet)).Click();
         cut.Find(
                 TestIdSelector(
                     NexusGameplayPanelTestIds.System(GamePageCoordinatorTestData.MoveTargetCoord)

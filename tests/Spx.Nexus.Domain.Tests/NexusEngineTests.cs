@@ -229,7 +229,11 @@ public class NexusMapTests
     {
         var incomeSystems = Map.Where(s => !s.IsNexus && !s.HomePlayerId.HasValue).ToList();
         Assert.Equal(16, incomeSystems.Count);
-        Assert.All(incomeSystems, s => Assert.InRange(s.IncomeValue, 1, 2));
+        Assert.All(incomeSystems, s => Assert.InRange(s.IncomeValue, 0, 2));
+        Assert.Equal(4, incomeSystems.Count(s => s.IncomeValue == 0));
+        Assert.Equal(6, incomeSystems.Count(s => s.IncomeValue == 1));
+        Assert.Equal(6, incomeSystems.Count(s => s.IncomeValue == 2));
+        Assert.All(incomeSystems, s => Assert.InRange(s.SupplyValue, 0, 2));
     }
 
     [Fact]
@@ -1312,6 +1316,7 @@ public class NexusPersistentDamageTests
         var fallbackSupply = s.Systems.First(sys => sys.Coord == new HexCoord(1, -1));
         fallbackSupply.ControlOwner = P1Id;
         fallbackSupply.IncomeValue = 2;
+        fallbackSupply.SupplyValue = 2;
 
         p1Home.Units[P1Id] =
         [
@@ -1913,7 +1918,7 @@ public class NexusSupplyCheckTests
         SubmitBoth(s);
 
         var view = NexusEngine.BuildView(s, GameId, P1Id);
-        var expected = s.Systems.Where(sys => sys.ControlOwner == P1Id).Sum(sys => sys.IncomeValue);
+        var expected = s.Systems.Where(sys => sys.ControlOwner == P1Id).Sum(sys => sys.SupplyValue);
         Assert.Equal(expected, view.CurrentPlayer.SupplyPool);
     }
 

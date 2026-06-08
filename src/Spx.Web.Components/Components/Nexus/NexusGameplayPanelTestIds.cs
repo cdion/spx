@@ -7,6 +7,7 @@ public static class NexusGameplayPanelTestIds
     public const string PendingGateOrder = "nexus-pending-gate-order";
     public const string PendingGateOrderRemove = "nexus-pending-gate-order-remove";
     public const string SubmitOrdersButton = "nexus-submit-orders";
+    public const string SelectWholeFleet = "nexus-select-whole-fleet";
 
     public static string ResolveEventRow(int index) => $"nexus-resolve-event-{index}";
 

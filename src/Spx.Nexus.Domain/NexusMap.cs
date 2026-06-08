@@ -61,11 +61,41 @@ public static class NexusMap
     }.AsReadOnly();
 
     /// <summary>
+    /// Fixed (Energy, Supply) stat table for all 19 systems.
+    /// Each of the 8 profiles appears exactly twice across the 16 income systems.
+    /// Home systems are (2,2); Nexus is (0,0).
+    /// </summary>
+    private static readonly Dictionary<HexCoord, (int Energy, int Supply)> SystemStats =
+        new Dictionary<HexCoord, (int, int)>
+        {
+            // Ring 1 — clockwise from NE
+            [new(1, -1)] = (2, 1), // Alpha — Core World
+            [new(1, 0)] = (1, 1), // Beta — Colony
+            [new(0, 1)] = (2, 2), // Gamma — Capital
+            [new(-1, 1)] = (2, 0), // Delta — Trade Port
+            [new(-1, 0)] = (1, 0), // Epsilon — Refinery
+            [new(0, -1)] = (0, 1), // Zeta — Outpost
+            // Ring 2 — clockwise from NE
+            [new(2, -1)] = (1, 1), // Eta — Colony
+            [new(2, 0)] = (0, 2), // Theta — Depot
+            [new(1, 1)] = (1, 0), // Iota — Refinery
+            [new(0, 2)] = (1, 2), // Kappa — Garrison
+            [new(-1, 2)] = (2, 2), // Lambda — Capital
+            [new(-2, 1)] = (0, 1), // Mu — Outpost
+            [new(-2, 0)] = (2, 1), // Nu — Core World
+            [new(-1, -1)] = (0, 2), // Xi — Depot
+            [new(0, -2)] = (2, 0), // Omicron — Trade Port
+            [new(1, -2)] = (1, 2), // Pi — Garrison
+        };
+
+    /// <summary>
     /// Generates the initial <see cref="NexusSystemState"/> list for a new game.
-    /// Income values for the 16 non-nexus non-home systems are randomly assigned (1-2 Energy/turn).
+    /// Each system gets a fixed (Energy, Supply) stat pair from the stat table;
+    /// home systems are (2,2); Nexus is (0,0).
     /// </summary>
     public static List<NexusSystemState> GenerateMap(Guid player1Id, Guid player2Id, Random rng)
     {
+        _ = rng; // kept for interface compat; stats are now deterministic
         var systems = new List<NexusSystemState>(19);
 
         foreach (var coord in NexusMapTopology.AllCoords)
@@ -79,21 +109,27 @@ public static class NexusMap
                 : isPlayer2Home ? player2Id
                 : null;
 
-            var incomeValue =
+            var energyValue =
                 isNexus ? 0
                 : homePlayerId.HasValue ? 2
-                : rng.Next(1, 3); // 1-2 inclusive
+                : SystemStats.TryGetValue(coord, out var stats) ? stats.Energy
+                : 1; // fallback — should not happen
+
+            var supplyValue =
+                isNexus ? 0
+                : homePlayerId.HasValue ? 2
+                : SystemStats.TryGetValue(coord, out var stats2) ? stats2.Supply
+                : 1; // fallback
 
             var system = new NexusSystemState
             {
                 Coord = coord,
                 IsNexus = isNexus,
                 HomePlayerId = homePlayerId,
-                IncomeValue = incomeValue,
+                IncomeValue = energyValue,
+                SupplyValue = supplyValue,
                 ControlOwner = homePlayerId,
             };
-
-            // Starting units are no longer seeded here — players build from their own designs.
 
             systems.Add(system);
         }

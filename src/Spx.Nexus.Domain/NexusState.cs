@@ -51,9 +51,13 @@ public sealed class NexusSystemState
     [Id(2)]
     public Guid? HomePlayerId { get; set; }
 
-    /// <summary>Energy per turn. 0 for Nexus; 3 for home systems; 2–5 for income systems.</summary>
+    /// <summary>Energy per turn. 0 for Nexus; 2 for home systems; 0–2 for income systems.</summary>
     [Id(3)]
     public int IncomeValue { get; set; }
+
+    /// <summary>Supply contribution — fleet capacity granted when controlled. 0 for Nexus; 2 for home systems; 0–2 for income systems.</summary>
+    [Id(6)]
+    public int SupplyValue { get; set; }
 
     /// <summary>Null = uncontrolled; set to a player ID when that player controls the system.</summary>
     [Id(4)]

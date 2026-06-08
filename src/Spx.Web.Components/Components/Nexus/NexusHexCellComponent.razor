@@ -69,12 +69,29 @@
     {
         get
         {
-            if (System.IsNexus || System.IncomeValue == 0)
+            if (System.IsNexus)
+                return string.Empty;
+            if (System.IncomeValue == 0 && System.SupplyValue == 0)
                 return string.Empty;
 
-            return $"<text x=\"{NexusHexHelpers.Fmt(Center.X)}\" y=\"{NexusHexHelpers.Fmt(Center.Y + 22)}\" "
-                + "text-anchor=\"middle\" fill=\"rgba(250,204,21,0.7)\" font-size=\"7\" font-family=\"monospace\">"
-                + $"+{System.IncomeValue}⚡</text>";
+            var parts = new System.Collections.Generic.List<string>(2);
+            if (System.IncomeValue > 0)
+                parts.Add($"⚡{System.IncomeValue}");
+            if (System.SupplyValue > 0)
+                parts.Add($"⬡{System.SupplyValue}");
+
+            var cx = NexusHexHelpers.Fmt(Center.X);
+            var y = NexusHexHelpers.Fmt(Center.Y + 22);
+            // Home systems display on two lines (Energy top, Supply bottom)
+            if (System.HomePlayerId.HasValue && System.IncomeValue > 0 && System.SupplyValue > 0)
+            {
+                var y2 = NexusHexHelpers.Fmt(Center.Y + 29);
+                return $"<text x=\"{cx}\" y=\"{y}\" text-anchor=\"middle\" fill=\"rgba(250,204,21,0.7)\" font-size=\"6.5\" font-family=\"monospace\">⚡{System.IncomeValue}</text>"
+                    + $"<text x=\"{cx}\" y=\"{y2}\" text-anchor=\"middle\" fill=\"rgba(147,197,253,0.7)\" font-size=\"6.5\" font-family=\"monospace\">⬡{System.SupplyValue}</text>";
+            }
+
+            var fill = System.IncomeValue > 0 ? "rgba(250,204,21,0.7)" : "rgba(147,197,253,0.7)";
+            return $"<text x=\"{cx}\" y=\"{y}\" text-anchor=\"middle\" fill=\"{fill}\" font-size=\"7\" font-family=\"monospace\">{string.Join(" ", parts)}</text>";
         }
     }
 

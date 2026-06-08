@@ -3,7 +3,7 @@ using Spx.Nexus.Domain;
 using Spx.Web.Components.Nexus;
 using Xunit;
 
-namespace Spx.Web.Tests;
+namespace Spx.Web.Components.Tests;
 
 public sealed class NexusGameplayPanelStateTests
 {

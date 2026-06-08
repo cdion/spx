@@ -19,6 +19,7 @@ public sealed record NexusSystemView(
     [property: Id(0)] HexCoord Coord,
     [property: Id(1)] bool IsNexus,
     [property: Id(2)] int IncomeValue,
+    [property: Id(7)] int SupplyValue,
     [property: Id(3)] Guid? HomePlayerId,
     [property: Id(4)] Guid? ControlOwner,
     [property: Id(5)] ImmutableDictionary<Guid, ImmutableArray<NexusUnitStackGroup>> UnitStacks,

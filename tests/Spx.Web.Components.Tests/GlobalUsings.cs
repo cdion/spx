@@ -1,0 +1,9 @@
+global using System.Collections.Immutable;
+global using Spx.Contracts;
+global using Spx.Game.Application;
+global using Spx.Game.Application.Nexus;
+global using Spx.Nexus.Domain;
+global using Spx.Web.Components;
+global using Spx.Web.Components.Lobby;
+global using Spx.Web.Components.Nexus;
+global using Xunit;
