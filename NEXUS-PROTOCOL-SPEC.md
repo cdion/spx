@@ -43,25 +43,35 @@ The 16 non-home, non-Nexus systems use 8 distinct stat profiles, each appearing 
 
 ### Map Layout
 
-Ring 1 (clockwise from NE, closer to Nexus):
-- Alpha — **Core World** (2,1)
-- Beta — **Colony** (1,1)
-- Gamma — **Capital** (2,2)
-- Delta — **Trade Port** (2,0)
-- Epsilon — **Refinery** (1,0)
-- Zeta — **Outpost** (0,1)
+The layout is mirror-symmetric across the diagonal through the two home systems.
+Each income system at coord (q,r) has the same stats as its mirror at (-q,-r),
+so both players have equal access to all profiles.
 
-Ring 2 (clockwise from NE):
-- Eta — **Colony** (1,1)
-- Theta — **Depot** (0,2)
-- Iota — **Refinery** (1,0)
-- Kappa — **Garrison** (1,2)
-- Lambda — **Capital** (2,2)
-- Mu — **Outpost** (0,1)
-- Nu — **Core World** (2,1)
-- Xi — **Depot** (0,2)
-- Omicron — **Trade Port** (2,0)
-- Pi — **Garrison** (1,2)
+#### Ring 1 (mirror pairs)
+
+| Clockwise from NE | Coords | Profile | (E,S) |
+|---|---|---|---|
+| Alpha | (1,-1) | Core World | (2,1) |
+| Delta | (-1,1) | Core World | (2,1) |
+| Beta | (1,0) | Colony | (1,1) |
+| Epsilon | (-1,0) | Colony | (1,1) |
+| Gamma | (0,1) | Capital | (2,2) |
+| Zeta | (0,-1) | Capital | (2,2) |
+
+#### Ring 2 (mirror pairs)
+
+| Clockwise from NE | Coords | Profile | (E,S) |
+|---|---|---|---|
+| Eta | (2,-1) | Trade Port | (2,0) |
+| Mu | (-2,1) | Trade Port | (2,0) |
+| Theta | (2,0) | Depot | (0,2) |
+| Nu | (-2,0) | Depot | (0,2) |
+| Iota | (1,1) | Refinery | (1,0) |
+| Xi | (-1,-1) | Refinery | (1,0) |
+| Kappa | (0,2) | Garrison | (1,2) |
+| Omicron | (0,-2) | Garrison | (1,2) |
+| Lambda | (-1,2) | Outpost | (0,1) |
+| Pi | (1,-2) | Outpost | (0,1) |
 
 ### Sector Names
 
@@ -470,17 +480,17 @@ Games are created via invite link:
 │  Nexus Protocol · Round 4 · PLANNING                          [⚙ 1/2] [Submit]    │
 ├────────────────┬─────────────────────────────────────┬───────────────────────────────┤
 │                │                                     │  Round 4 — Planning           │
-│  YOU  (Blue)   │         ⚡1⬡1 ⚡2⬡1                   │  ──────────────────────       │
-│  ⚡ 12 → 8    │       ⚡2⬡2 ·  ·  · ⚡1⬡0              │  ○ Combat at Gamma            │
-│  ⬡ 6 (4 cap) │     ·  ·  · [N] ·  ·  ·              │    A loses 1 Light Tank       │
-│                │   ⚡0⬡1 ·  ·  ·  · ⚡2⬡0               │  ○ A took control of Theta    │
-│  OPPONENT (Red)│       ⚡1⬡1 ·  ·  ⚡0⬡2               │  ○ A collected +7⚡ Energy    │
-│  ⚡ 24         │         ⚡2⬡1 ⚡1⬡1                   │                               │
-│  ⬡ 8 (3 cap) │                                     │  Round 3                      │
+│  YOU  (Blue)   │         ⚡1⬢1 ⚡2⬢1                   │  ──────────────────────       │
+│  ⚡ 12 → 8    │       ⚡2⬢2 ·  ·  · ⚡1⬢0              │  ○ Combat at Gamma            │
+│  ⬢ 6 (4 cap) │     ·  ·  · [N] ·  ·  ·              │    A loses 1 Light Tank       │
+│                │   ⚡0⬢1 ·  ·  ·  · ⚡2⬢0               │  ○ A took control of Theta    │
+│  OPPONENT (Red)│       ⚡1⬢1 ·  ·  ⚡0⬢2               │  ○ A collected +7⚡ Energy    │
+│  ⚡ 24         │         ⚡2⬢1 ⚡1⬢1                   │                               │
+│  ⬢ 8 (3 cap) │                                     │  Round 3                      │
 │                │                                     │  ──────────────────────       │
 │  ─────────────│                                     │  ○ A advanced to Alpha        │
 │                │   Legend:                           │    × Light Freighter          │
-│  PENDING       │   ⚡ = Energy  ⬡ = Supply            │  ○ B's Capital at Theta       │
+│  PENDING       │   ⚡ = Energy  ⬢ = Supply            │  ○ B's Capital at Theta       │
 │                │   ◆ = your units  ◇ = enemy         │    disbanded (over supply)    │
 │  Alpha → Beta │                                     │                               │
 │    LF + LT[×] │                                     │                               │
@@ -498,7 +508,7 @@ Games are created via invite link:
 ```
     ╔══════════╗
     ║  Vega    ║   ← sector name (non-home, non-Nexus systems only)
-    ║  ⚡2 ⬡1  │   ← Energy (⚡) + Supply (⬡); monospace
+    ║  ⚡2 ⬢1  │   ← Energy (⚡) + Supply (⬢); monospace
     ║    ◆     ║   ← your presence diamond (faction color)
     ╚══════════╝
        (blue tint = you control)
@@ -507,7 +517,7 @@ Games are created via invite link:
 When both factions have units on the same system, two diamonds appear side by side — yours offset left, opponent's offset right:
 ```
     ╔══════════╗
-    ║  ⚡2 ⬡1  │
+    ║  ⚡2 ⬢1  │
     ║  ◆    ◆  ║   ← your color left · opponent color right
     ╚══════════╝
        (contested — no tint)
@@ -531,7 +541,7 @@ Three-column layout with a persistent top bar:
   ```
   YOU  (Blue)
   ⚡ 12 → 8
-  ⬡ 6  (Capitals: 4)
+  ⬢ 6  (Capitals: 4)
   ```
 
 During Planning phase your Energy shows the projected balance after all queued build costs (e.g. "12 → 8"). Pending orders list below resources during Planning phase.
@@ -542,7 +552,7 @@ During Planning phase your Energy shows the projected balance after all queued b
 
 Each system shows:
 - **Background tint / border:** control indicator (your color / opponent color / contested / uncontrolled gray); Nexus uses a distinct neutral style
-- **Resource labels:** Energy value (⚡) and Supply value (⬡) shown on every income system; home systems show `⚡2 ⬡2`; Nexus shows no resources
+- **Resource labels:** Energy value (⚡) and Supply value (⬢) shown on every income system; home systems show `⚡2 ⬢2`; Nexus shows no resources
 - **Unit presence:** a small colored diamond renders in the lower portion of the hex for each faction that has units there; your faction's diamond is offset left when both are present, opponent's right; no numeric count is shown on the hex
 - **Nexus Gate badge:** when your gate construction is in progress, two small pip circles render on the Nexus hex; the first pip is lit in your faction color when stage 1 is complete, the second when stage 2 is complete
 

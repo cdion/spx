@@ -62,30 +62,32 @@ public static class NexusMap
 
     /// <summary>
     /// Fixed (Energy, Supply) stat table for all 19 systems.
-    /// Each of the 8 profiles appears exactly twice across the 16 income systems.
+    /// Layout is mirror-symmetric: each income system at coord (q,r)
+    /// has the same stats as its mirror at (-q,-r), so both players
+    /// have equal access to all profiles.
     /// Home systems are (2,2); Nexus is (0,0).
     /// </summary>
     private static readonly Dictionary<HexCoord, (int Energy, int Supply)> SystemStats =
         new Dictionary<HexCoord, (int, int)>
         {
-            // Ring 1 — clockwise from NE
-            [new(1, -1)] = (2, 1), // Alpha — Core World
-            [new(1, 0)] = (1, 1), // Beta — Colony
-            [new(0, 1)] = (2, 2), // Gamma — Capital
-            [new(-1, 1)] = (2, 0), // Delta — Trade Port
-            [new(-1, 0)] = (1, 0), // Epsilon — Refinery
-            [new(0, -1)] = (0, 1), // Zeta — Outpost
-            // Ring 2 — clockwise from NE
-            [new(2, -1)] = (1, 1), // Eta — Colony
-            [new(2, 0)] = (0, 2), // Theta — Depot
-            [new(1, 1)] = (1, 0), // Iota — Refinery
-            [new(0, 2)] = (1, 2), // Kappa — Garrison
-            [new(-1, 2)] = (2, 2), // Lambda — Capital
-            [new(-2, 1)] = (0, 1), // Mu — Outpost
-            [new(-2, 0)] = (2, 1), // Nu — Core World
-            [new(-1, -1)] = (0, 2), // Xi — Depot
-            [new(0, -2)] = (2, 0), // Omicron — Trade Port
-            [new(1, -2)] = (1, 2), // Pi — Garrison
+            // Ring 1 — mirror pairs (q,r) ↔ (-q,-r)
+            [new(1, -1)] = (2, 1), // Alpha  ↔ Delta   — Core World
+            [new(-1, 1)] = (2, 1), // Delta  ↔ Alpha
+            [new(1, 0)] = (1, 1), // Beta   ↔ Epsilon — Colony
+            [new(-1, 0)] = (1, 1), // Epsilon↔ Beta
+            [new(0, 1)] = (2, 2), // Gamma  ↔ Zeta    — Capital
+            [new(0, -1)] = (2, 2), // Zeta   ↔ Gamma
+            // Ring 2 — mirror pairs (q,r) ↔ (-q,-r)
+            [new(2, -1)] = (2, 0), // Eta    ↔ Mu      — Trade Port
+            [new(-2, 1)] = (2, 0), // Mu     ↔ Eta
+            [new(2, 0)] = (0, 2), // Theta  ↔ Nu      — Depot
+            [new(-2, 0)] = (0, 2), // Nu     ↔ Theta
+            [new(1, 1)] = (1, 0), // Iota   ↔ Xi      — Refinery
+            [new(-1, -1)] = (1, 0), // Xi     ↔ Iota
+            [new(0, 2)] = (1, 2), // Kappa  ↔ Omicron — Garrison
+            [new(0, -2)] = (1, 2), // Omicron↔ Kappa
+            [new(-1, 2)] = (0, 1), // Lambda ↔ Pi      — Outpost
+            [new(1, -2)] = (0, 1), // Pi     ↔ Lambda
         };
 
     /// <summary>
